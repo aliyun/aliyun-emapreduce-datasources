@@ -13,7 +13,7 @@
 ```
 
 		git clone https://github.com/aliyun/aliyun-spark-sdk.git
-	    cd ...
+	    cd  aliyun-spark-sdk
 	    mvn clean package -Dmaven.test.skip=true
 
 ```
