@@ -27,7 +27,7 @@
 
 #### Maven 
 
-You need to install the SDK into local maven repository and add the dependency into pom.xml.
+You need to install the SDK into local maven repository and add following dependency.
 
 ```
 
@@ -46,7 +46,7 @@ You need to install the SDK into local maven repository and add the dependency i
 In this section, we will demonstrate how to manipulate the Aliyun OSS data in Spark.
 
 ### Step-1. Initialize an OssOps
-Before we read/write OSS data, we need to initialize an OssOps, like:
+Before read/write OSS data, we need to initialize an OssOps, like:
 
 
 ```
@@ -132,7 +132,7 @@ We support different types of URI for each filesystem client:
 In this section, we will demonstrate how to manipulate the Aliyun ODPS data in Spark.
 
 ### Step-1. Initialize and OdpsOps
-Before we read/write ODPS data, we need to initialize an OdpsOps, like:
+Before read/write ODPS data, we need to initialize an OdpsOps, like:
 
 
 ```
