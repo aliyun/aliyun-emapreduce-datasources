@@ -30,10 +30,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkContext, SparkConf}
 
-/**
- * LinearRegression example on AMR
- * Created by genmao.ygm on 2015/8/7.
- */
 object LinearRegression {
   object RegType extends Enumeration {
     type RegType = Value
@@ -94,9 +90,9 @@ object LinearRegression {
         """
           |For example, the following command runs this app on a synthetic dataset:
           |
-          | bin/spark-submit --class org.apache.spark.examples.mllib.LinearRegression \
-          |  examples/target/scala-*/spark-examples-*.jar \
-          |  data/mllib/sample_linear_regression_data.txt 2 <access key id> <access key secret> <aliyun oss endpoint>
+          | bin/spark-submit --class com.aliyun.amr.examples.mllib.LinearRegression \
+          |  examples/target/scala-*/amr-examples-*.jar \
+          |  data/mllib/abalone.txt 2 <access key id> <access key secret> <aliyun OSS endpoint>
         """.stripMargin)
     }
 
