@@ -38,6 +38,8 @@ import org.apache.hadoop.util.Progressable;
 
 public class OssFileSystem extends PrimitiveFileSystem {
 
+    public static final int OSS_MAX_LISTING_LENGTH = 1000;
+
     private URI uri;
 
     private FileSystemStore store;
