@@ -52,7 +52,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         this.bucket = uri.getHost();
     }
 
-    public void storeFile(String key, File file, byte[] md5Hash)
+    public void storeFile(String key, File file)
             throws IOException {
 
         BufferedInputStream in = null;
@@ -60,7 +60,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             in = new BufferedInputStream(new FileInputStream(file));
             ObjectMetadata objMeta = new ObjectMetadata();
             objMeta.setContentLength(file.length());
-            objMeta.setContentMD5(new String(md5Hash));
             ossClient.putObject(bucket, key, in, objMeta);
         } catch (ServiceException e) {
             handleServiceException(e);

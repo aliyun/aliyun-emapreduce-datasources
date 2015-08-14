@@ -41,7 +41,7 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
         dataMap.put(key, new byte[0]);
     }
 
-    public void storeFile(String key, File file, byte[] md5Hash)
+    public void storeFile(String key, File file)
             throws IOException {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();

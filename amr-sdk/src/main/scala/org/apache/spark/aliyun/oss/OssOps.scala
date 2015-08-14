@@ -121,6 +121,7 @@ private[spark] class OssOps(
       })
 
       // generate the final meta file.
+      fs.mkdirs(new Path(path))
       val inode: INode = new INode(INode.FileType.FILE, blocks)
       fs.getFileSystemStore.storeINode(new Path(path), inode)
     }
