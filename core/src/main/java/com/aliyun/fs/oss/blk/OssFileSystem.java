@@ -42,7 +42,7 @@ public class OssFileSystem extends PrimitiveFileSystem {
 
     private FileSystemStore store;
 
-    private Path workingDir;
+    private Path workingDir = new Path(".");
 
     private ArrayList<Block> blocksForOneTime = new ArrayList<Block>();
 
@@ -73,8 +73,6 @@ public class OssFileSystem extends PrimitiveFileSystem {
         store.initialize(uri, conf);
         setConf(conf);
         this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
-        this.workingDir =
-                new Path("/user", System.getProperty("user.name")).makeQualified(this);
     }
 
     private static FileSystemStore createDefaultStore(Configuration conf) {
@@ -114,10 +112,8 @@ public class OssFileSystem extends PrimitiveFileSystem {
     }
 
     private Path makeAbsolute(Path path) {
-        if (path.isAbsolute()) {
-            return path;
-        }
-        return new Path(workingDir, path);
+        // TODO: here need to review
+        return path;
     }
 
     /**
@@ -125,7 +121,20 @@ public class OssFileSystem extends PrimitiveFileSystem {
      */
     @Override
     public boolean mkdirs(Path path, FsPermission permission) throws IOException {
-        throw new IOException("OSS does not support to create directory.");
+        Path absolutePath = makeAbsolute(path);
+        List<Path> paths = new ArrayList<Path>();
+        do {
+            paths.add(0, absolutePath);
+            absolutePath = absolutePath.getParent();
+        } while (absolutePath != null);
+
+        boolean result = true;
+        for (Path p : paths) {
+            if (checkValidity(p)) {
+                result &= mkdir(p);
+            }
+        }
+        return result;
     }
 
     private boolean mkdir(Path path) throws IOException {
@@ -175,7 +184,10 @@ public class OssFileSystem extends PrimitiveFileSystem {
         }
         ArrayList<FileStatus> ret = new ArrayList<FileStatus>();
         for (Path p : store.listSubPaths(absolutePath)) {
-            ret.add(getFileStatus(p.makeQualified(this)));
+            // Here, we need to convert "file/path" to "/file/path". Otherwise, Path.makeQualified will
+            // throw `URISyntaxException`.
+            Path modifiedPath = new Path("/" + p.toString());
+            ret.add(getFileStatus(modifiedPath.makeQualified(this)));
         }
         return ret.toArray(new FileStatus[0]);
     }
@@ -358,5 +370,10 @@ public class OssFileSystem extends PrimitiveFileSystem {
             final Block[] ret = inode.getBlocks();
             return ret == null ? 0L : ret[0].getLength();
         }
+    }
+
+    private boolean checkValidity(Path path) {
+        String key = JetOssFileSystemStore.pathToKey(path);
+        return key.length() > 0;
     }
 }

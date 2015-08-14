@@ -120,30 +120,19 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
         private String key;
         private File backupFile;
         private OutputStream backupStream;
-        private MessageDigest digest;
         private boolean closed;
 
-        public NativeOssFsOutputStream(Configuration conf,
-                                      NativeFileSystemStore store, String key, Progressable progress,
-                                      int bufferSize) throws IOException {
+        public NativeOssFsOutputStream(Configuration conf, NativeFileSystemStore store, String key,
+                                       Progressable progress, int bufferSize) throws IOException {
             this.conf = conf;
             this.key = key;
             this.backupFile = newBackupFile();
             LOG.info("OutputStream for key '" + key + "' writing to tempfile '" + this.backupFile + "'");
-            try {
-                this.digest = MessageDigest.getInstance("MD5");
-                this.backupStream = new BufferedOutputStream(new DigestOutputStream(
-                        new FileOutputStream(backupFile), this.digest));
-            } catch (NoSuchAlgorithmException e) {
-                LOG.warn("Cannot load MD5 digest algorithm," +
-                        "skipping message integrity check.", e);
-                this.backupStream = new BufferedOutputStream(
-                        new FileOutputStream(backupFile));
-            }
+            this.backupStream = new BufferedOutputStream(new FileOutputStream(backupFile));
         }
 
         private File newBackupFile() throws IOException {
-            File dir = new File(conf.get("fs.oss.buffer.dir"));
+            File dir = new File(conf.get("fs.oss.buffer.dir", "/tmp/oss/"));
             if (!dir.mkdirs() && !dir.exists()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }
@@ -167,8 +156,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
             LOG.info("OutputStream for key '" + key + "' closed. Now beginning upload");
 
             try {
-                byte[] md5Hash = digest == null ? null : digest.digest();
-                store.storeFile(key, backupFile, md5Hash);
+                store.storeFile(key, backupFile);
             } finally {
                 if (!backupFile.delete()) {
                     LOG.warn("Could not delete temporary OSS file: " + backupFile);
@@ -192,7 +180,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
 
     private URI uri;
     private NativeFileSystemStore store;
-    private Path workingDir;
+    private Path workingDir = new Path(".");
 
     public NativeOssFileSystem() {
         // set store in initialize()
@@ -211,8 +199,6 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
         store.initialize(uri, conf);
         setConf(conf);
         this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
-        this.workingDir =
-                new Path("/user", System.getProperty("user.name")).makeQualified(this);
     }
 
     private static NativeFileSystemStore createDefaultStore(Configuration conf) {
@@ -252,10 +238,8 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
     }
 
     private Path makeAbsolute(Path path) {
-        if (path.isAbsolute()) {
-            return path;
-        }
-        return new Path(workingDir, path);
+        // TODO: here need to review
+        return path;
     }
 
     /** This optional operation is not yet supported. */
@@ -408,7 +392,10 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
                             relativePath.substring(0, relativePath.indexOf(FOLDER_SUFFIX)))));
                 }
                 else {
-                    status.add(newFile(fileMetadata, subpath));
+                    // Here, we need to convert "file/path" to "/file/path". Otherwise, Path.makeQualified will
+                    // throw `URISyntaxException`.
+                    Path modifiedPath = new Path("/" + subpath.toString());
+                    status.add(newFile(fileMetadata, modifiedPath));
                 }
             }
             for (String commonPrefix : listing.getCommonPrefixes()) {
@@ -439,7 +426,34 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
 
     @Override
     public boolean mkdirs(Path f, FsPermission permission) throws IOException {
-        throw new IOException("OSS does not support to create directory.");
+        Path absolutePath = makeAbsolute(f);
+        List<Path> paths = new ArrayList<Path>();
+        do {
+            paths.add(0, absolutePath);
+            absolutePath = absolutePath.getParent();
+        } while (absolutePath != null);
+
+        boolean result = true;
+        for (Path path : paths) {
+            result &= mkdir(path);
+        }
+        return result;
+    }
+
+    public boolean mkdir(Path f) throws IOException {
+        try {
+            FileStatus fileStatus = getFileStatus(f);
+            if (!fileStatus.isDir()) {
+                throw new IOException(String.format(
+                        "Can't make directory for path '%s' since it is a file.", f));
+
+            }
+        } catch (FileNotFoundException e) {
+            LOG.debug("Making dir '" + f + "' in OSS");
+            String key = pathToKey(f) + FOLDER_SUFFIX;
+            store.storeEmptyFile(key);
+        }
+        return true;
     }
 
     @Override

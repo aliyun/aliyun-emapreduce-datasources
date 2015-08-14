@@ -34,7 +34,7 @@ public interface NativeFileSystemStore {
 
     void initialize(URI uri, Configuration conf) throws IOException;
 
-    void storeFile(String key, File file, byte[] md5Hash) throws IOException;
+    void storeFile(String key, File file) throws IOException;
     void storeEmptyFile(String key) throws IOException;
 
     FileMetadata retrieveMetadata(String key) throws IOException;
