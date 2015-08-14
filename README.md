@@ -252,6 +252,17 @@ If only use `Native OSS` or `Block-Based OSS`, you just need to add the correspo
 
 ``` 
 
+Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
+
+```
+
+	val data = sc.parallelize(1 to 10)
+	data.saveAsTextFile("ossn://bucket/path3")
+
+```
+
+**Attention**: now we only support saving to **native** URI through `RDD.saveAsTextFile(...)`.
+
 ## Future Work
 
 - Support more Aliyun base service, like OTS, ONS and so on.
