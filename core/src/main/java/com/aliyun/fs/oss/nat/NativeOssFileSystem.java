@@ -387,8 +387,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
                     // this is just the directory we have been asked to list
                 }
                 else if (relativePath.endsWith(FOLDER_SUFFIX)) {
-                    status.add(newDirectory(new Path(
-                            absolutePath,
+                    status.add(newDirectory(new Path("/" +
                             relativePath.substring(0, relativePath.indexOf(FOLDER_SUFFIX)))));
                 }
                 else {
@@ -401,7 +400,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
             for (String commonPrefix : listing.getCommonPrefixes()) {
                 Path subpath = keyToPath(commonPrefix);
                 String relativePath = pathUri.relativize(subpath.toUri()).getPath();
-                status.add(newDirectory(new Path(absolutePath, relativePath)));
+                status.add(newDirectory(new Path("/" + relativePath)));
             }
             priorLastKey = listing.getPriorLastKey();
         } while (priorLastKey != null);

@@ -228,18 +228,32 @@ public class JetOssFileSystemStore implements FileSystemStore {
 
     public Set<Path> listSubPaths(Path path) throws IOException {
         try {
-            String prefix = pathToKey(path);
-            if (!prefix.endsWith(PATH_DELIMITER)) {
-                prefix += PATH_DELIMITER;
-            }
+            List<OSSObjectSummary> ossObjectSummaries = new ArrayList<OSSObjectSummary>();
 
-            ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucket);
-            listObjectsRequest.setPrefix(prefix);
-            listObjectsRequest.setDelimiter(PATH_DELIMITER);
-            List<OSSObjectSummary> objects = ossClient.listObjects(listObjectsRequest).getObjectSummaries();
+            String priorLastKey = null;
+            do {
+                String prefix = pathToKey(path);
+                if (!prefix.endsWith(PATH_DELIMITER)) {
+                    prefix += PATH_DELIMITER;
+                }
+
+                ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucket);
+                listObjectsRequest.setPrefix(prefix);
+                listObjectsRequest.setMarker(priorLastKey);
+                listObjectsRequest.setDelimiter(PATH_DELIMITER);
+                listObjectsRequest.setMaxKeys(OssFileSystem.OSS_MAX_LISTING_LENGTH);
+                ObjectListing listing = ossClient.listObjects(listObjectsRequest);
+                List<OSSObjectSummary> objects = listing.getObjectSummaries();
+                Iterator<OSSObjectSummary> iter = objects.iterator();
+                while (iter.hasNext()) {
+                    OSSObjectSummary obj = iter.next();
+                    ossObjectSummaries.add(obj);
+                }
+                priorLastKey = listing.getNextMarker();
+            } while (priorLastKey != null);
 
             Set<Path> prefixes = new TreeSet<Path>();
-            Iterator<OSSObjectSummary> iter = objects.iterator();
+            Iterator<OSSObjectSummary> iter = ossObjectSummaries.iterator();
             while(iter.hasNext()) {
                 OSSObjectSummary obj = iter.next();
                 prefixes.add(keyToPath(obj.getKey()));
