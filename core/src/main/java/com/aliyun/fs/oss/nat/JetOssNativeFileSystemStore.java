@@ -52,15 +52,23 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         this.bucket = uri.getHost();
     }
 
-    public void storeFile(String key, File file)
+    public void storeFile(String key, File file, boolean append)
             throws IOException {
 
         BufferedInputStream in = null;
         try {
             in = new BufferedInputStream(new FileInputStream(file));
             ObjectMetadata objMeta = new ObjectMetadata();
-            objMeta.setContentLength(file.length());
-            ossClient.putObject(bucket, key, in, objMeta);
+            if (!append) {
+                objMeta.setContentLength(file.length());
+                ossClient.putObject(bucket, key, in, objMeta);
+            } else {
+                ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
+                Long preContentLength = objectMetadata.getContentLength();
+                objMeta.setContentLength(preContentLength + file.length());
+                AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, in, objMeta);
+                ossClient.appendObject(appendObjectRequest);
+            }
         } catch (ServiceException e) {
             handleServiceException(e);
         } finally {
