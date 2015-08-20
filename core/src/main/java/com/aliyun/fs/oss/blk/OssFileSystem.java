@@ -194,19 +194,21 @@ public class OssFileSystem extends PrimitiveFileSystem {
         return ret.toArray(new FileStatus[0]);
     }
 
-    /** This optional operation is not yet supported. */
-    public FSDataOutputStream append(Path f, int bufferSize,
-                                     Progressable progress) throws IOException {
-        throw new IOException("Not supported");
+    public FSDataOutputStream append(Path file, int bufferSize, Progressable progress) throws IOException {
+        this.blocksForOneTime.clear();
+        INode inode = checkFile(file);
+        return new FSDataOutputStream(
+                new OssAppendOutputStream(getConf(), store, makeAbsolute(file), inode, getDefaultBlockSize(file),
+                        progress, getConf().getInt("io.file.buffer.size", 4096), blocksForOneTime),
+                statistics);
     }
 
     /**
      * @param permission Currently ignored.
      */
     @Override
-    public FSDataOutputStream create(Path file, FsPermission permission,
-                                     boolean overwrite, int bufferSize,
-                                     short replication, long blockSize, Progressable progress)
+    public FSDataOutputStream create(Path file, FsPermission permission, boolean overwrite,
+                                     int bufferSize, short replication, long blockSize, Progressable progress)
             throws IOException {
 
         this.blocksForOneTime.clear();
@@ -218,8 +220,8 @@ public class OssFileSystem extends PrimitiveFileSystem {
                 throw new IOException("File already exists: " + file);
             }
         }
-        return new FSDataOutputStream
-                (new OssOutputStream(getConf(), store, makeAbsolute(file),
+        return new FSDataOutputStream(
+                new OssOutputStream(getConf(), store, makeAbsolute(file),
                         blockSize, progress, bufferSize, blocksForOneTime),
                         statistics);
     }
