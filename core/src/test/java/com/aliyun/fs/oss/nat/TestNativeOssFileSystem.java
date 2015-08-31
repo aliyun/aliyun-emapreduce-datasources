@@ -21,6 +21,8 @@ package com.aliyun.fs.oss.nat;
 import com.aliyun.fs.oss.common.InMemoryNativeFileSystemStore;
 import junit.framework.TestCase;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
@@ -57,9 +59,9 @@ public class TestNativeOssFileSystem extends TestCase {
     @Override
     protected void setUp() throws IOException {
         conf = new Configuration();
-        conf.set("fs.oss.endpoint", "");
-        conf.set("fs.oss.accessKeyId", "");
-        conf.set("fs.oss.accessKeySecret", "");
+        conf.set("fs.oss.endpoint", "endpointUrl");
+        conf.set("fs.oss.accessKeyId", "accessKeyId");
+        conf.set("fs.oss.accessKeySecret", "accessKeySecret");
         store = new JetOssNativeFileSystemStore();
         fs = new NativeOssFileSystem(store);
         fs.initialize(URI.create("ossn://bucket/"), conf);
@@ -128,5 +130,32 @@ public class TestNativeOssFileSystem extends TestCase {
     public void testEmptyFile() throws Exception {
         store.storeEmptyFile("test/oss/file1");
         fs.open(path("test/oss/file1")).close();
+    }
+
+    public void testAppendWrite() throws IOException {
+        String base = "test/oss";
+        Path path = path(base);
+
+        FSDataOutputStream fsDataOutputStream = fs.append(path);
+        fsDataOutputStream.write("Hello".getBytes());
+        fsDataOutputStream.flush();
+        fsDataOutputStream.close();
+
+        Long fileLen = fs.getFileStatus(path).getLen();
+        assert(fileLen == 5);
+
+        fsDataOutputStream = fs.append(path);
+        fsDataOutputStream.write(" world!".getBytes());
+        fsDataOutputStream.flush();
+        fsDataOutputStream.close();
+
+        fileLen = fs.getFileStatus(path).getLen();
+        assert(fileLen == 12);
+
+        FSDataInputStream fsDataInputStream = fs.open(path);
+        byte[] bytes = new byte[12];
+        fsDataInputStream.read(bytes);
+        String content = new String(bytes);
+        assert(content.equals("Hello world!"));
     }
 }

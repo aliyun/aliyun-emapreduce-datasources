@@ -25,8 +25,14 @@ import java.io.IOException;
 import java.net.URI;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.Path;
 
 public class TestOssFileSystem extends TestCase {
+    private Configuration conf;
+    private JetOssFileSystemStore store;
+    private OssFileSystem fs;
 
     public void testInitialization() throws IOException {
         initializationTest("oss://a:b@c", "oss://a:b@c");
@@ -45,5 +51,56 @@ public class TestOssFileSystem extends TestCase {
         OssFileSystem fs = new OssFileSystem(new InMemoryFileSystemStore());
         fs.initialize(URI.create(initializationUri), new Configuration());
         assertEquals(URI.create(expectedUri), fs.getUri());
+    }
+
+    private Path path(String pathString) {
+        return new Path("oss://bucket/" + pathString).makeQualified(fs);
+    }
+
+    @Override
+    protected void setUp() throws IOException {
+        conf = new Configuration();
+        conf.set("fs.oss.endpoint", "endpointUrl");
+        conf.set("fs.oss.accessKeyId", "accessKeyId");
+        conf.set("fs.oss.accessKeySecret", "accessKeySecret");
+        store = new JetOssFileSystemStore();
+        fs = new OssFileSystem(store);
+        fs.initialize(URI.create("oss://bucket/"), conf);
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        fs.delete(path("test"));
+        super.tearDown();
+    }
+
+    public void testAppendWrite() throws IOException {
+        String base = "test/oss";
+        Path path = path(base);
+
+        FSDataOutputStream fsDataOutputStream = fs.create(path);
+        fsDataOutputStream.write("Hello".getBytes());
+        fsDataOutputStream.flush();
+        fsDataOutputStream.close();
+
+        Long fileLen = fs.getFileStatus(path).getLen();
+        assert(fileLen == 5);
+
+        fsDataOutputStream = fs.append(path);
+        fsDataOutputStream.write(" world!".getBytes());
+        fsDataOutputStream.flush();
+        fsDataOutputStream.close();
+
+        fileLen = fs.getFileStatus(path).getLen();
+        assert(fileLen == 12);
+
+        FSDataInputStream fsDataInputStream = fs.open(path);
+        byte[] bytes = new byte[12];
+        int numBytes = fsDataInputStream.read(bytes);
+        while(numBytes < bytes.length) {
+            numBytes += fsDataInputStream.read(bytes, numBytes, bytes.length);
+        }
+        String content = new String(bytes);
+        assert(content.equals("Hello world!"));
     }
 }

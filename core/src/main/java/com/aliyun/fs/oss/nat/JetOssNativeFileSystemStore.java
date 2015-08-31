@@ -35,6 +35,7 @@ import java.util.List;
 import com.aliyun.fs.oss.common.OssException;
 import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.oss.OSSClient;
+import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.hadoop.conf.Configuration;
@@ -52,15 +53,29 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         this.bucket = uri.getHost();
     }
 
-    public void storeFile(String key, File file)
+    public void storeFile(String key, File file, boolean append)
             throws IOException {
 
         BufferedInputStream in = null;
         try {
             in = new BufferedInputStream(new FileInputStream(file));
             ObjectMetadata objMeta = new ObjectMetadata();
-            objMeta.setContentLength(file.length());
-            ossClient.putObject(bucket, key, in, objMeta);
+            if (!append) {
+                objMeta.setContentLength(file.length());
+                ossClient.putObject(bucket, key, in, objMeta);
+            } else {
+                if (!checkAppendableFile(key)) {
+                    AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
+                    appendObjectRequest.setPosition(0L);
+                    ossClient.appendObject(appendObjectRequest);
+                } else {
+                    ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
+                    Long preContentLength = objectMetadata.getContentLength();
+                    AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
+                    appendObjectRequest.setPosition(preContentLength);
+                    ossClient.appendObject(appendObjectRequest);
+                }
+            }
         } catch (ServiceException e) {
             handleServiceException(e);
         } finally {
@@ -223,6 +238,19 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
         else {
             throw new OssException(e);
+        }
+    }
+
+    private boolean checkAppendableFile(String key) {
+        try {
+            ossClient.getObject(bucket, key);
+            return true;
+        } catch (OSSException e) {
+            if (e.getErrorCode().equals("NoSuchKey")) {
+                return false;
+            } else {
+                throw new OssException(e);
+            }
         }
     }
 }

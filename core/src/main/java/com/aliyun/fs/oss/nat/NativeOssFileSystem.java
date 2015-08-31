@@ -121,11 +121,13 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
         private File backupFile;
         private OutputStream backupStream;
         private boolean closed;
+        private boolean append;
 
         public NativeOssFsOutputStream(Configuration conf, NativeFileSystemStore store, String key,
-                                       Progressable progress, int bufferSize) throws IOException {
+                                       boolean append, Progressable progress, int bufferSize) throws IOException {
             this.conf = conf;
             this.key = key;
+            this.append = append;
             this.backupFile = newBackupFile();
             LOG.info("OutputStream for key '" + key + "' writing to tempfile '" + this.backupFile + "'");
             this.backupStream = new BufferedOutputStream(new FileOutputStream(backupFile));
@@ -156,7 +158,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
             LOG.info("OutputStream for key '" + key + "' closed. Now beginning upload");
 
             try {
-                store.storeFile(key, backupFile);
+                store.storeFile(key, backupFile, append);
             } finally {
                 if (!backupFile.delete()) {
                     LOG.warn("Could not delete temporary OSS file: " + backupFile);
@@ -242,25 +244,26 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
         return path;
     }
 
-    /** This optional operation is not yet supported. */
     @Override
     public FSDataOutputStream append(Path f, int bufferSize,
                                      Progressable progress) throws IOException {
-        throw new IOException("Not supported");
+        Path absolutePath = makeAbsolute(f);
+        String key = pathToKey(absolutePath);
+        return new FSDataOutputStream(new NativeOssFsOutputStream(getConf(), store,
+                key, true, progress, bufferSize), statistics);
     }
 
     @Override
-    public FSDataOutputStream create(Path f, FsPermission permission,
-                                     boolean overwrite, int bufferSize, short replication, long blockSize,
-                                     Progressable progress) throws IOException {
-
+    public FSDataOutputStream create(Path f, FsPermission permission, boolean overwrite, int bufferSize,
+                                     short replication, long blockSize, Progressable progress)
+            throws IOException {
         if (exists(f) && !overwrite) {
             throw new IOException("File already exists:"+f);
         }
         Path absolutePath = makeAbsolute(f);
         String key = pathToKey(absolutePath);
         return new FSDataOutputStream(new NativeOssFsOutputStream(getConf(), store,
-                key, progress, bufferSize), statistics);
+                key, false, progress, bufferSize), statistics);
     }
 
     @Override

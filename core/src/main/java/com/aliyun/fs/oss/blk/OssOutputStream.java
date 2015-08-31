@@ -61,7 +61,7 @@ public class OssOutputStream extends OutputStream {
 
   private byte[] outBuf;
 
-  private List<Block> blocks = new ArrayList<Block>();
+  protected List<Block> blocks = new ArrayList<Block>();
 
   private ArrayList<Block> blocksForOneTime;
 
