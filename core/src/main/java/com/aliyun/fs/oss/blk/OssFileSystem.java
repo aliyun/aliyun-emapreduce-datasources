@@ -210,7 +210,6 @@ public class OssFileSystem extends PrimitiveFileSystem {
     public FSDataOutputStream create(Path file, FsPermission permission, boolean overwrite,
                                      int bufferSize, short replication, long blockSize, Progressable progress)
             throws IOException {
-
         this.blocksForOneTime.clear();
         INode inode = store.retrieveINode(makeAbsolute(file));
         if (inode != null) {
