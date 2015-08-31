@@ -36,7 +36,7 @@ import org.apache.spark.{Logging, SparkContext, TaskContext}
 
 import scala.reflect.ClassTag
 
-private[spark] class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret: String,
+class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret: String,
               odpsUrl: String, tunnelUrl: String) extends Logging with Serializable {
   @transient val account = new AliyunAccount(accessKeyId, accessKeySecret)
   @transient val odps = new Odps(account)

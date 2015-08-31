@@ -28,11 +28,12 @@ import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
 import org.apache.spark.rdd.RDD
 
-private[spark] class OssOps(
+class OssOps(
     @transient sc: SparkContext,
     endpoint: String,
     accessKeyId: String,
-    accessKeySecret: String)
+    accessKeySecret: String,
+    securityToken: Option[String] = None)
   extends Logging with Serializable {
 
   def readOssFileWithJava(
@@ -50,7 +51,7 @@ private[spark] class OssOps(
   def readOssFile(
       path: String,
       minPartitions: Int): RDD[String] = {
-    new OssRDD(sc, endpoint, accessKeyId, accessKeySecret, path, minPartitions)
+    new OssRDD(sc, path, minPartitions, endpoint, accessKeyId, accessKeySecret, securityToken)
   }
 
   def saveToOssFile[T](
@@ -61,6 +62,8 @@ private[spark] class OssOps(
       hadoopConf.set("fs.oss.endpoint", endpoint)
       hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
       hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
+      hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
+
       val sparkConf = sc.getConf
       if (sparkConf != null) {
           sparkConf.getAll.foreach{ case (key, value) =>
@@ -113,7 +116,11 @@ private[spark] class OssOps(
       // we can not use OssFileSystem to delete task meta files, because we may
       // delete the blocks in the same time. So, we need to use the OSS SDK
       // to delete task meta files.
-      val ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret)
+      val ossClient = if (securityToken.nonEmpty) {
+        new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken.get)
+      } else {
+        new OSSClient(endpoint, accessKeyId, accessKeySecret)
+      }
       taskMetaFiles.foreach(file => {
         val bucket = file.toUri.getHost
         val key = file.toUri.getPath.substring(1)
@@ -132,5 +139,10 @@ object OssOps {
 
   def apply(sc: SparkContext, endpoint: String, accessKeyId: String, accessKeySecret: String): OssOps = {
     new OssOps(sc, endpoint, accessKeyId, accessKeySecret)
+  }
+
+  def apply(sc: SparkContext, endpoint: String, accessKeyId: String, accessKeySecret: String, securityToken: String)
+    : OssOps = {
+    new OssOps(sc, endpoint, accessKeyId, accessKeySecret, Some(securityToken))
   }
 }

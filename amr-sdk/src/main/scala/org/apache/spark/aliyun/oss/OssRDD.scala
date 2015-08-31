@@ -44,11 +44,12 @@ class OssPartition(
 }
 class OssRDD(
     @transient sc: SparkContext,
+    path: String,
+    numPartitions: Int,
     endpoint: String,
     accessKeyId: String,
     accessKeySecret: String,
-    path: String,
-    numPartitions: Int)
+    securityToken: Option[String] = None)
   extends RDD[String](sc, Nil) with Logging {
 
   @transient private val sparkConf = sc.getConf
@@ -57,6 +58,8 @@ class OssRDD(
     hadoopConf.set("fs.oss.endpoint", endpoint)
     hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
     hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
+    hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
+
     if (sparkConf != null) {
       sparkConf.getAll.foreach{ case (key, value) =>
         if (key.startsWith("spark.hadoop.")) {
