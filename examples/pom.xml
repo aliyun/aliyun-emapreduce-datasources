@@ -76,6 +76,30 @@
             <version>3.2.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.aliyun.openservices</groupId>
+            <artifactId>ons-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.openservices</groupId>
+            <artifactId>ons-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.rocketmq</groupId>
+            <artifactId>rocketmq-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.rocketmq</groupId>
+            <artifactId>rocketmq-common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.rocketmq</groupId>
+            <artifactId>rocketmq-remoting</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -133,6 +157,12 @@
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
                             <include>org.aspectj:aspectjrt</include>
                             <include>com.github.scopt:scopt_2.10</include>
+                            <include>org.jdom:jdom</include>
+                            <include>com.aliyun.openservices:ons-client</include>
+                            <include>com.aliyun.openservices:ons-api</include>
+                            <include>com.alibaba.rocketmq:rocketmq-client</include>
+                            <include>com.alibaba.rocketmq:rocketmq-common</include>
+                            <include>com.alibaba.rocketmq:rocketmq-remoting</include>
                         </includes>
                     </artifactSet>
                 </configuration>

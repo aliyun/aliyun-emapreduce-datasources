@@ -32,6 +32,20 @@
                 <scope>provided</scope>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-sql_2.10</artifactId>
+                <version>1.4.0</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-streaming_2.10</artifactId>
+                <version>1.4.0</version>
+                <scope>provided</scope>
+            </dependency>
+
             <!-- Explicit listing of transitive deps that are shaded. Otherwise, odd compiler crashes. -->
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
@@ -106,10 +120,33 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.10</artifactId>
-                <version>1.4.0</version>
-                <scope>provided</scope>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>ons-client</artifactId>
+                <version>1.1.8</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>ons-api</artifactId>
+                <version>1.1.8</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.rocketmq</groupId>
+                <artifactId>rocketmq-client</artifactId>
+                <version>3.2.5</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.rocketmq</groupId>
+                <artifactId>rocketmq-common</artifactId>
+                <version>3.2.5</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.rocketmq</groupId>
+                <artifactId>rocketmq-remoting</artifactId>
+                <version>3.2.5</version>
             </dependency>
 
             <dependency>
@@ -141,6 +178,18 @@
                 <scope>test</scope>
             </dependency>
 
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>1.9.5</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>18.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
