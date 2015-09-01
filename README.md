@@ -20,7 +20,7 @@
 
 #### Use SDK in Eclipse project directly
 
-- copy `amr-sdk-<version>.jar` to your project
+- copy `emr-sdk-<version>.jar` to your project
 - right click Eclipse project -> Properties -> Java Build Path -> Add JARs
 - choose and import the sdk
 - you can use the sdk in your Eclipse project
@@ -31,11 +31,11 @@ You need to install the SDK into local maven repository and add following depend
 
 ```
 
-		mvn install:install-file -Dfile=amr-sdk-<version>.jar -DgroupId=com.aliyun -DartifactId=amr-sdk_2.10 -Dversion=0.1.0 -Dpackaging=jar
+		mvn install:install-file -Dfile=emr-sdk-<version>.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=0.1.0 -Dpackaging=jar
 
         <dependency>
             <groupId>com.aliyun</groupId>
-            <artifactId>amr-sdk_2.10</artifactId>
+            <artifactId>emr-sdk_2.10</artifactId>
             <version>0.1.0</version>
         </dependency>
 

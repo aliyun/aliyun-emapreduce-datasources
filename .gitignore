@@ -1,0 +1,5 @@
+.idea/
+core/target/
+emr-sdk/target/
+examples/target/
+*.iml

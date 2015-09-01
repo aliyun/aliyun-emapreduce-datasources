@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.aliyun.amr.examples.mllib
+package com.aliyun.emr.examples.mllib
 
 import _root_.scopt.OptionParser
 import org.apache.log4j.{Level, Logger}
@@ -90,8 +90,8 @@ object LinearRegression {
         """
           |For example, the following command runs this app on a synthetic dataset:
           |
-          | bin/spark-submit --class com.aliyun.amr.examples.mllib.LinearRegression \
-          |  examples/target/scala-*/amr-examples-*.jar \
+          | bin/spark-submit --class com.aliyun.emr.examples.mllib.LinearRegression \
+          |  examples/target/scala-*/emr-examples-*.jar \
           |  data/mllib/abalone.txt 2 <access key id> <access key secret> <aliyun OSS endpoint>
         """.stripMargin)
     }

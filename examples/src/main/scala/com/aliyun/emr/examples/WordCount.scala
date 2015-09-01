@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.aliyun.amr.examples
+package com.aliyun.emr.examples
 
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record

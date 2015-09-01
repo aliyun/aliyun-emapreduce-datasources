@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.aliyun.amr.examples
+package com.aliyun.emr.examples
 
 import scala.math.random
 
