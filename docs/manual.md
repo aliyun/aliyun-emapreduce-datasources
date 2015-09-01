@@ -31,7 +31,7 @@ You need to install the SDK into local maven repository and add following depend
 
 ```
 
-		mvn install:install-file -Dfile=emr-sdk-<version>.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=0.1.0 -Dpackaging=jar
+		mvn install:install-file -Dfile=emr-sdk_2.10-<version>.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=0.1.0 -Dpackaging=jar
 
         <dependency>
             <groupId>com.aliyun</groupId>

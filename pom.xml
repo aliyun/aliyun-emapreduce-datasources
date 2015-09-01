@@ -8,7 +8,7 @@
 
     <modules>
         <module>core</module>
-        <module>emr-sdk</module>
+        <module>sdk</module>
         <module>examples</module>
     </modules>
 

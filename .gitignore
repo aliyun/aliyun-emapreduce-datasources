@@ -3,3 +3,4 @@ core/target/
 emr-sdk/target/
 examples/target/
 *.iml
+sdk/target/

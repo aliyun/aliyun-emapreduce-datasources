@@ -119,7 +119,7 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/${emr.jar.dir}/aliyun-spark-sdk-${project.version}.jar</outputFile>
+                    <outputFile>${project.build.directory}/${emr.jar.dir}/emr-sdk_2.10-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
                             <include>com.aliyun.odps:odps-sdk-core</include>
