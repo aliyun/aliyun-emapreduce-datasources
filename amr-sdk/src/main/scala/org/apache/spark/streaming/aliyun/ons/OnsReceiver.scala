@@ -32,7 +32,7 @@ import org.apache.spark.streaming.receiver.Receiver
 private[ons] class OnsReceiver(
     consumerID: String,
     topic: String,
-    subExpression: String,
+    tags: String,
     accessKeyId: String,
     accessKeySecret: String,
     storageLevel: StorageLevel,
@@ -53,7 +53,7 @@ private[ons] class OnsReceiver(
         properties.put(PropertyKeyConst.SecretKey, accessKeySecret)
         val onsFactoryImpl = new ONSFactoryImpl
         consumer = onsFactoryImpl.createConsumer(properties)
-        consumer.subscribe(topic, subExpression, new MessageListener() {
+        consumer.subscribe(topic, tags, new MessageListener() {
           override def consume(message: Message, context: ConsumeContext): Action = {
             try {
               receiver.store(func(message))

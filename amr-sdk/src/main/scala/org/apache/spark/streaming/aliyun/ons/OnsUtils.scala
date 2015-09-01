@@ -29,7 +29,7 @@ object OnsUtils {
    * @param ssc StreamingContext object
    * @param consumerId Name of a set of consumers
    * @param topic Which topic to subscribe
-   * @param tags Which tag to subscribe
+   * @param tags Which tag to subscribe, only support OR expression, e.g: "tag1 || tag2 || tag3"
    * @param accessKeyId Aliyun Access Key ID
    * @param accessKeySecret Aliyun Access Key Secret
    * @param storageLevel Storage level to use for storing the received objects.

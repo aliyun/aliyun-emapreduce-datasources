@@ -26,7 +26,7 @@ private[ons] class OnsInputDStream(
     @transient _ssc: StreamingContext,
     consumerID: String,
     topic: String,
-    subExpression: String,
+    tags: String,
     accessKeyId: String,
     accessKeySecret: String,
     storageLevel: StorageLevel,
@@ -34,6 +34,6 @@ private[ons] class OnsInputDStream(
   extends ReceiverInputDStream[Array[Byte]](_ssc) {
 
   override def getReceiver(): Receiver[Array[Byte]] = {
-    new OnsReceiver(consumerID, topic, subExpression, accessKeyId, accessKeySecret, storageLevel, func)
+    new OnsReceiver(consumerID, topic, tags, accessKeyId, accessKeySecret, storageLevel, func)
   }
 }
