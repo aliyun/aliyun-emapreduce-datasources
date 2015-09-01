@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.aliyun.amr.examples
+package com.aliyun.emr.examples
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.aliyun.oss.OssOps

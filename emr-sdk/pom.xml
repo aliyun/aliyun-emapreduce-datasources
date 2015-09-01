@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>com.aliyun</groupId>
-        <artifactId>amr_2.10</artifactId>
+        <artifactId>emr_2.10</artifactId>
         <version>0.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>amr-sdk_2.10</artifactId>
+    <artifactId>emr-sdk_2.10</artifactId>
     <packaging>jar</packaging>
-    <name>AMR SDK</name>
+    <name>Aliyun Spark SDK</name>
 
     <dependencies>
         <dependency>
@@ -23,7 +23,7 @@
 
         <dependency>
             <groupId>com.aliyun</groupId>
-            <artifactId>amr-core_2.10</artifactId>
+            <artifactId>emr-core_2.10</artifactId>
             <version>0.1.0</version>
         </dependency>
 
@@ -119,12 +119,12 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/${amr.jar.dir}/amr-sdk-${project.version}.jar</outputFile>
+                    <outputFile>${project.build.directory}/${emr.jar.dir}/aliyun-spark-sdk-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
-                            <include>com.aliyun:amr-core_2.10</include>
+                            <include>com.aliyun:emr-core_2.10</include>
                         </includes>
                     </artifactSet>
                 </configuration>

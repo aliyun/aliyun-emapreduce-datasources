@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>com.aliyun</groupId>
-    <artifactId>amr_2.10</artifactId>
+    <artifactId>emr_2.10</artifactId>
     <version>0.1.0</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>amr-core_2.10</artifactId>
+  <artifactId>emr-core_2.10</artifactId>
   <packaging>jar</packaging>
-  <name>AMR OSS FileSystem</name>
+  <name>Aliyun EMR Core</name>
 
   <dependencies>
       <dependency>
