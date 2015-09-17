@@ -32,7 +32,6 @@
       <dependency>
           <groupId>com.aliyun.oss</groupId>
           <artifactId>aliyun-sdk-oss</artifactId>
-          <scope>provided</scope>
       </dependency>
   </dependencies>
 
@@ -51,6 +50,29 @@
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <configuration>
+                <shadedArtifactAttached>false</shadedArtifactAttached>
+                <outputFile>${project.build.directory}/${emr.jar.dir}/emr-examples_2.10-${project.version}.jar</outputFile>
+                <artifactSet>
+                    <includes>
+                        <include>com.aliyun.oss:aliyun-sdk-oss</include>
+                        <include>org.jdom:jdom</include>
+                        <include>org.apache.httpcomponents:httpcore</include>
+                    </includes>
+                </artifactSet>
+            </configuration>
+            <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>shade</goal>
+                    </goals>
+                </execution>
+            </executions>
         </plugin>
     </plugins>
   </build>
