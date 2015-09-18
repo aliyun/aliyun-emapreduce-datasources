@@ -177,7 +177,7 @@ public class OssFileSystem extends PrimitiveFileSystem {
         Path absolutePath = makeAbsolute(f);
         INode inode = store.retrieveINode(absolutePath);
         if (inode == null) {
-            return null;
+            return new FileStatus[0];
         }
         if (inode.isFile()) {
             return new FileStatus[] {
