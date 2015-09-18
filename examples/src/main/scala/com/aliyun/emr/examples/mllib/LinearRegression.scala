@@ -108,8 +108,8 @@ object LinearRegression {
     conf.set("spark.hadoop.fs.oss.accessKeyId", params.accessKeyId)
     conf.set("spark.hadoop.fs.oss.accessKeySecret", params.accessKeySecret)
     conf.set("spark.hadoop.fs.oss.endpoint", params.endpoint)
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
     val sc = new SparkContext(conf)
 
     val examples = MLUtils.loadLibSVMFile(sc,params.input).cache()

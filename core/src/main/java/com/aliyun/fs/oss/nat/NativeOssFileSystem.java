@@ -333,7 +333,7 @@ public class NativeOssFileSystem extends FileSystem {
 
     @Override
     public String getScheme() {
-        return "ossn";
+        return "oss";
     }
 
     @Override

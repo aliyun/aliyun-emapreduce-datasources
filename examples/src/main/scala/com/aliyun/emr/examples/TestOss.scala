@@ -33,8 +33,8 @@ object TestOss {
           |    accessKeySecret  Aliyun Key Secret.
           |    endpoint         Aliyun OSS endpoint.
           |    inputPath        Aliyun OSS object path, supporting two modes: block-based and native.
-          |                     block-based: oss://bucket/object/path
-          |                     native: ossn://bucket/object/path
+          |                     block-based: ossbfs://bucket/object/path
+          |                     native: oss://bucket/object/path
           |    numPartitions    the number of RDD partitions.
           |
         """.stripMargin)

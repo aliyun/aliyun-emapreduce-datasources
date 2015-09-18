@@ -35,15 +35,15 @@ public class TestNativeOssFileSystem extends TestCase {
     private NativeOssFileSystem fs;
 
     public void testInitialization() throws IOException {
-        initializationTest("ossn://a:b@c", "ossn://a:b@c");
-        initializationTest("ossn://a:b@c/", "ossn://a:b@c");
-        initializationTest("ossn://a:b@c/path", "ossn://a:b@c");
-        initializationTest("ossn://a@c", "ossn://a@c");
-        initializationTest("ossn://a@c/", "ossn://a@c");
-        initializationTest("ossn://a@c/path", "ossn://a@c");
-        initializationTest("ossn://c", "ossn://c");
-        initializationTest("ossn://c/", "ossn://c");
-        initializationTest("ossn://c/path", "ossn://c");
+        initializationTest("oss://a:b@c", "ossn://a:b@c");
+        initializationTest("oss://a:b@c/", "ossn://a:b@c");
+        initializationTest("oss://a:b@c/path", "ossn://a:b@c");
+        initializationTest("oss://a@c", "ossn://a@c");
+        initializationTest("oss://a@c/", "ossn://a@c");
+        initializationTest("oss://a@c/path", "ossn://a@c");
+        initializationTest("oss://c", "ossn://c");
+        initializationTest("oss://c/", "ossn://c");
+        initializationTest("oss://c/path", "ossn://c");
     }
 
     private void initializationTest(String initializationUri, String expectedUri)
@@ -54,7 +54,7 @@ public class TestNativeOssFileSystem extends TestCase {
     }
 
     private Path path(String pathString) {
-        return new Path("ossn://bucket/" + pathString).makeQualified(fs);
+        return new Path("oss://bucket/" + pathString).makeQualified(fs);
     }
 
     @Override
@@ -65,7 +65,7 @@ public class TestNativeOssFileSystem extends TestCase {
         conf.set("fs.oss.accessKeySecret", "accessKeySecret");
         store = new JetOssNativeFileSystemStore();
         fs = new NativeOssFileSystem(store);
-        fs.initialize(URI.create("ossn://bucket/"), conf);
+        fs.initialize(URI.create("oss://bucket/"), conf);
     }
 
     @Override
