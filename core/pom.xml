@@ -10,7 +10,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>emr-core_2.10</artifactId>
+  <artifactId>emr-core</artifactId>
   <packaging>jar</packaging>
   <name>Aliyun EMR Core</name>
 
@@ -56,7 +56,7 @@
             <artifactId>maven-shade-plugin</artifactId>
             <configuration>
                 <shadedArtifactAttached>false</shadedArtifactAttached>
-                <outputFile>${project.build.directory}/${emr.jar.dir}/emr-examples_2.10-${project.version}.jar</outputFile>
+                <outputFile>${project.build.directory}/shaded/emr-core-${project.version}.jar</outputFile>
                 <artifactSet>
                     <includes>
                         <include>com.aliyun.oss:aliyun-sdk-oss</include>

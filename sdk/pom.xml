@@ -35,7 +35,7 @@
 
         <dependency>
             <groupId>com.aliyun</groupId>
-            <artifactId>emr-core_2.10</artifactId>
+            <artifactId>emr-core</artifactId>
             <version>0.1.0</version>
         </dependency>
 
@@ -155,12 +155,12 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/${emr.jar.dir}/emr-sdk_2.10-${project.version}.jar</outputFile>
+                    <outputFile>${project.build.directory}/shaded/emr-sdk_2.10-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
-                            <include>com.aliyun:emr-core_2.10</include>
+                            <include>com.aliyun:emr-core</include>
                         </includes>
                     </artifactSet>
                 </configuration>
