@@ -47,9 +47,6 @@ object TestOss {
     val numPartitions = args(4).toInt
 
     val conf = new SparkConf().setAppName("Test OSS Read")
-    conf.set("spark.hadoop.fs.oss.accessKeyId", accessKeyId)
-    conf.set("spark.hadoop.fs.oss.accessKeySecret", accessKeySecret)
-    conf.set("spark.hadoop.fs.oss.endpoint", endpoint)
     val sc = new SparkContext(conf)
 
     val ossData = OssOps(sc, endpoint, accessKeyId, accessKeySecret).readOssFile(inputPath, numPartitions)

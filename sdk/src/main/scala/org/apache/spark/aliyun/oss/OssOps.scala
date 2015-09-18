@@ -18,11 +18,8 @@
 
 package org.apache.spark.aliyun.oss
 
-import com.aliyun.fs.oss.common.{Block, INode}
-import com.aliyun.fs.utils.FileSystemFactory
-import com.aliyun.oss.OSSClient
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark._
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
@@ -63,6 +60,8 @@ class OssOps(
       hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
       hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
       hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
+      hadoopConf.set("fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+      hadoopConf.set("fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
 
       val sparkConf = sc.getConf
       if (sparkConf != null) {
@@ -79,15 +78,15 @@ class OssOps(
     }
 
     val filePath = new Path(path)
-    val fs = FileSystemFactory.get(filePath, hadoopConfiguration)
+    val fs = FileSystem.get(filePath.toUri, hadoopConfiguration)
     fs.initialize(filePath.toUri, hadoopConfiguration)
     // We need to delete the old file first, and then write.
     fs.delete(filePath)
     val serializedHadoopConf = new SerializableWritable[Configuration](hadoopConfiguration)
-    def writeToFile(context: TaskContext, iter: Iterator[T]): (String, Array[Block]) = {
+    def writeToFile(context: TaskContext, iter: Iterator[T]) {
       val conf = serializedHadoopConf.value
       val tmpPath = new Path(path + "/part-" + context.partitionId())
-      val fs = FileSystemFactory.get(tmpPath, conf)
+      val fs = FileSystem.get(tmpPath.toUri, conf)
       fs.initialize(tmpPath.toUri, conf)
       val out = fs.create(tmpPath)
       var recordsWritten = 0L
@@ -102,36 +101,11 @@ class OssOps(
       }
       out.flush()
       out.close()
-      val blocks = fs.getCurrentBlocks.toArray(new Array[Block](0))
       outputMetrics.setRecordsWritten(recordsWritten)
       val byteLength = fs.getFileStatus(tmpPath).getLen
       outputMetrics.setBytesWritten(byteLength)
-      (tmpPath.toString, blocks)
     }
-    val res = sc.runJob(rdd, writeToFile _)
-    if (FileSystemFactory.checkBlockBased(filePath)) {
-      val taskMetaFiles = res.map(e => new Path(e._1))
-      val blocks = res.flatMap(e => e._2)
-
-      // we can not use OssFileSystem to delete task meta files, because we may
-      // delete the blocks in the same time. So, we need to use the OSS SDK
-      // to delete task meta files.
-      val ossClient = if (securityToken.nonEmpty) {
-        new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken.get)
-      } else {
-        new OSSClient(endpoint, accessKeyId, accessKeySecret)
-      }
-      taskMetaFiles.foreach(file => {
-        val bucket = file.toUri.getHost
-        val key = file.toUri.getPath.substring(1)
-        ossClient.deleteObject(bucket, key)
-      })
-
-      // generate the final meta file.
-      fs.mkdirs(new Path(path))
-      val inode: INode = new INode(INode.FileType.FILE, blocks)
-      fs.getFileSystemStore.storeINode(new Path(path), inode)
-    }
+    sc.runJob(rdd, writeToFile _)
   }
 }
 

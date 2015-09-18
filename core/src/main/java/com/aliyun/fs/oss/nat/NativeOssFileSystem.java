@@ -30,19 +30,14 @@ import com.aliyun.fs.oss.common.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.BufferedFSInputStream;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FSInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.io.retry.RetryPolicy;
 import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.util.Progressable;
 
-public class NativeOssFileSystem extends PrimitiveFileSystem {
+public class NativeOssFileSystem extends FileSystem {
 
     public static final Log LOG =
             LogFactory.getLog(NativeOssFileSystem.class);
@@ -51,16 +46,6 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
     public static final long MAX_OSS_FILE_SIZE = 5 * 1024 * 1024 * 1024L;
     public static final String PATH_DELIMITER = Path.SEPARATOR;
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
-
-    @Override
-    public FileSystemStore getFileSystemStore() {
-        return null;
-    }
-
-    @Override
-    public ArrayList<Block> getCurrentBlocks() {
-        return new ArrayList<Block>();
-    }
 
     private class NativeOssFsInputStream extends FSInputStream {
 

@@ -19,12 +19,12 @@
 package com.aliyun.fs.utils;
 
 import com.aliyun.fs.oss.common.OssRecordReader;
-import com.aliyun.fs.oss.common.PrimitiveFileSystem;
 import com.google.common.base.Charsets;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -36,7 +36,7 @@ import java.util.ArrayList;
 
 public class OssInputUtils {
     private Configuration conf;
-    private PrimitiveFileSystem fs;
+    private FileSystem fs;
 
     private static final double SPLIT_SLOP = 1.1;   // 10% slop
 
@@ -49,7 +49,7 @@ public class OssInputUtils {
 
     public FileSplit[] getSplits(String file, int numSplits) throws IOException {
         Path path = new Path(file);
-        this.fs = FileSystemFactory.get(path, conf);
+        this.fs = FileSystem.get(path.toUri(), conf);
         fs.initialize(path.toUri(), conf);
 
         FileStatus[] files = fs.listStatus(path);
@@ -95,7 +95,7 @@ public class OssInputUtils {
         }
 
         if (fs == null) {
-            this.fs = FileSystemFactory.get(fileSplit.getPath(), conf);
+            this.fs = FileSystem.get(fileSplit.getPath().toUri(), conf);
             fs.initialize(fileSplit.getPath().toUri(), conf);
         }
 

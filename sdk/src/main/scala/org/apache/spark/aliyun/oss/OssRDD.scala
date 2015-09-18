@@ -59,6 +59,8 @@ class OssRDD(
     hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
     hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
     hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
+    hadoopConf.set("fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+    hadoopConf.set("fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
 
     if (sparkConf != null) {
       sparkConf.getAll.foreach{ case (key, value) =>
