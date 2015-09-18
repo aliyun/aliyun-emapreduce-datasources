@@ -26,17 +26,14 @@ import java.util.concurrent.TimeUnit;
 
 import com.aliyun.fs.oss.common.*;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.io.retry.RetryPolicy;
 import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.util.Progressable;
 
-public class OssFileSystem extends PrimitiveFileSystem {
+public class OssFileSystem extends FileSystem {
 
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
 
@@ -338,17 +335,6 @@ public class OssFileSystem extends PrimitiveFileSystem {
 
     void purge() throws IOException {
         store.purge();
-    }
-
-    public FileSystemStore getFileSystemStore() {
-        return this.store;
-    }
-
-    /**
-     * get blocks of `write` file for this time.
-     */
-    public ArrayList<Block> getCurrentBlocks() {
-        return this.blocksForOneTime;
     }
 
     private static class OssFileStatus extends FileStatus {
