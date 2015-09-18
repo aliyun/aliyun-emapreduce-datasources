@@ -55,7 +55,7 @@ public class OssFileSystem extends FileSystem {
 
     @Override
     public String getScheme() {
-        return "oss";
+        return "ossbfs";
     }
 
     @Override

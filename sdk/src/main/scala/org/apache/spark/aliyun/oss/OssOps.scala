@@ -60,8 +60,8 @@ class OssOps(
       hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
       hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
       hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
-      hadoopConf.set("fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-      hadoopConf.set("fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+      hadoopConf.set("fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+      hadoopConf.set("fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
 
       val sparkConf = sc.getConf
       if (sparkConf != null) {
