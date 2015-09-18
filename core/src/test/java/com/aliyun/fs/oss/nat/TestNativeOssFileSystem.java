@@ -23,6 +23,7 @@ import junit.framework.TestCase;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
@@ -157,5 +158,22 @@ public class TestNativeOssFileSystem extends TestCase {
         fsDataInputStream.read(bytes);
         String content = new String(bytes);
         assert(content.equals("Hello world!"));
+    }
+
+    public void testEmptyDirectory() throws IOException {
+        String base = "test";
+        Path dir = path(base);
+
+        fs.mkdirs(dir);
+        FileStatus[] fileStatuses = fs.listStatus(dir);
+        assert(fileStatuses.length == 0);
+
+        FSDataOutputStream fsDataOutputStream = fs.create(path("test/file"));
+        fsDataOutputStream.write("Hello World!".getBytes());
+        fsDataOutputStream.flush();
+        fsDataOutputStream.close();
+
+        fileStatuses = fs.listStatus(dir);
+        assert(fileStatuses.length == 1);
     }
 }

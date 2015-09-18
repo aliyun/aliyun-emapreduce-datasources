@@ -410,7 +410,7 @@ public class NativeOssFileSystem extends PrimitiveFileSystem {
 
         if (status.isEmpty() &&
                 store.retrieveMetadata(key + FOLDER_SUFFIX) == null) {
-            return null;
+            return new FileStatus[0];
         }
 
         return status.toArray(new FileStatus[status.size()]);
