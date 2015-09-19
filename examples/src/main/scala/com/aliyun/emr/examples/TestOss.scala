@@ -38,6 +38,7 @@ object TestOss {
           |    numPartitions    the number of RDD partitions.
           |
         """.stripMargin)
+      System.exit(1)
     }
 
     val accessKeyId = args(0)
@@ -47,9 +48,14 @@ object TestOss {
     val numPartitions = args(4).toInt
 
     val conf = new SparkConf().setAppName("Test OSS Read")
+    conf.set("spark.hadoop.fs.oss.accessKeyId", accessKeyId)
+    conf.set("spark.hadoop.fs.oss.accessKeySecret", accessKeySecret)
+    conf.set("spark.hadoop.fs.oss.endpoint", endpoint)
+    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
     val sc = new SparkContext(conf)
 
-    val ossData = OssOps(sc, endpoint, accessKeyId, accessKeySecret).readOssFile(inputPath, numPartitions)
+    val ossData = sc.textFile(inputPath, numPartitions)
     println("The top 10 lines are:")
     ossData.top(10).foreach(println)
   }

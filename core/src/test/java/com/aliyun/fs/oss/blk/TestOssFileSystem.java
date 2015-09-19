@@ -36,15 +36,15 @@ public class TestOssFileSystem extends TestCase {
     private OssFileSystem fs;
 
     public void testInitialization() throws IOException {
-        initializationTest("ossbfs://a:b@c", "oss://a:b@c");
-        initializationTest("ossbfs://a:b@c/", "oss://a:b@c");
-        initializationTest("ossbfs://a:b@c/path", "oss://a:b@c");
-        initializationTest("ossbfs://a@c", "oss://a@c");
-        initializationTest("ossbfs://a@c/", "oss://a@c");
-        initializationTest("ossbfs://a@c/path", "oss://a@c");
-        initializationTest("ossbfs://c", "oss://c");
-        initializationTest("ossbfs://c/", "oss://c");
-        initializationTest("ossbfs://c/path", "oss://c");
+        initializationTest("ossbfs://a:b@c", "ossbfs://a:b@c");
+        initializationTest("ossbfs://a:b@c/", "ossbfs://a:b@c");
+        initializationTest("ossbfs://a:b@c/path", "ossbfs://a:b@c");
+        initializationTest("ossbfs://a@c", "ossbfs://a@c");
+        initializationTest("ossbfs://a@c/", "ossbfs://a@c");
+        initializationTest("ossbfs://a@c/path", "ossbfs://a@c");
+        initializationTest("ossbfs://c", "ossbfs://c");
+        initializationTest("ossbfs://c/", "ossbfs://c");
+        initializationTest("ossbfs://c/path", "ossbfs://c");
     }
 
     private void initializationTest(String initializationUri, String expectedUri)
@@ -79,15 +79,12 @@ public class TestOssFileSystem extends TestCase {
         String base = "test/oss";
         Path path = path(base);
 
-        FSDataOutputStream fsDataOutputStream = fs.create(path);
-        fsDataOutputStream.write("Hello".getBytes());
-        fsDataOutputStream.flush();
-        fsDataOutputStream.close();
+        crearteEmptyFile(path);
 
         Long fileLen = fs.getFileStatus(path).getLen();
         assert(fileLen == 5);
 
-        fsDataOutputStream = fs.append(path);
+        FSDataOutputStream fsDataOutputStream = fs.append(path);
         fsDataOutputStream.write(" world!".getBytes());
         fsDataOutputStream.flush();
         fsDataOutputStream.close();
@@ -105,20 +102,79 @@ public class TestOssFileSystem extends TestCase {
         assert(content.equals("Hello world!"));
     }
 
-    public void testEmptyDirectory() throws IOException {
-        String base = "test";
-        Path dir = path(base);
+    public void testRename() throws IOException {
+        Path path = path("test/dir/file1");
+        Path renamed = path("test/dir/file2");
+        crearteEmptyFile(path);
 
-        fs.mkdirs(dir);
-        FileStatus[] fileStatuses = fs.listStatus(dir);
-        assert(fileStatuses.length == 0);
+        fs.rename(path, renamed);
+        assert(fs.exists(renamed));
+        assert(!fs.exists(path));
+    }
 
-        FSDataOutputStream fsDataOutputStream = fs.create(path("test/file"));
-        fsDataOutputStream.write("Hello World!".getBytes());
+    public void testListStatus() throws IOException {
+        String key0 = "test/file0";
+        String key1 = "test/dir1/file1";
+        String key2 = "test/dir1/dir12/file2";
+        String key3 = "test/dir2/file3";
+        crearteEmptyFile(path(key0));
+        crearteEmptyFile(path(key1));
+        crearteEmptyFile(path(key2));
+        crearteEmptyFile(path(key3));
+
+        assert(fs.listStatus(path("test")).length == 3);
+        assert(fs.listStatus(path("test/file0")).length == 1);
+        assert(fs.listStatus(path("test/dir1")).length == 2);
+        assert(fs.listStatus(path("test/dir1/file1")).length == 1);
+        assert(fs.listStatus(path("test/dir1/dir12/file2")).length == 1);
+        assert(fs.listStatus(path("test/dir2")).length == 1);
+        assert(fs.listStatus(path("test/dir2/file3")).length == 1);
+        assert(fs.listStatus(path("test/dir3")).length == 0);
+
+        assert(fs.listStatus(path("test/dir1/file1"))[0].isFile());
+        assert(fs.listStatus(path("test/dir2"))[0].isFile());
+        assert(fs.listStatus(path("test/dir1"))[0].isFile() && fs.listStatus(path("test/dir1"))[1].isDirectory()
+                || fs.listStatus(path("test/dir1"))[1].isFile() && fs.listStatus(path("test/dir1"))[0].isDirectory());
+    }
+
+    public void testDelete() throws IOException {
+        String key0 = "test/file0";
+        String key1 = "test/dir1/file1";
+        String key2 = "test/dir1/dir12/file2";
+        crearteEmptyFile(path(key0));
+        crearteEmptyFile(path(key1));
+        crearteEmptyFile(path(key2));
+
+        assert(!fs.delete(path("test2")));
+        try {
+            fs.delete(path("test"), false);
+            assert(1 == 0);
+        } catch (Exception e) {
+            assert(1 == 1);
+        }
+
+        assert(fs.delete(path("test/file0")));
+        assert(fs.delete(path("test/dir1")));
+    }
+
+    public void testFileStatus() throws IOException {
+        crearteEmptyFile(path("test/dir1/file1"));
+
+        assert(fs.getFileStatus(path("test/dir1/file1")).isFile());
+        assert(fs.getFileStatus(path("test/dir1")).isDirectory());
+        assert(fs.getFileStatus(path("/")).isDirectory());
+        try {
+            fs.getFileStatus(path("test2"));
+            assert(1 == 0);
+        } catch (Exception e) {
+            assert(1 == 1);
+        }
+    }
+
+    private void crearteEmptyFile(Path path) throws IOException {
+        FSDataOutputStream fsDataOutputStream = fs.create(path);
+        fsDataOutputStream.write("Hello".getBytes());
         fsDataOutputStream.flush();
         fsDataOutputStream.close();
-
-        fileStatuses = fs.listStatus(dir);
-        assert(fileStatuses.length == 1);
     }
 }

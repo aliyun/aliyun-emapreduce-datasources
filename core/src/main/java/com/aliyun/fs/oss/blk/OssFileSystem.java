@@ -120,32 +120,7 @@ public class OssFileSystem extends FileSystem {
      */
     @Override
     public boolean mkdirs(Path path, FsPermission permission) throws IOException {
-        Path absolutePath = makeAbsolute(path);
-        List<Path> paths = new ArrayList<Path>();
-        do {
-            paths.add(0, absolutePath);
-            absolutePath = absolutePath.getParent();
-        } while (absolutePath != null);
-
-        boolean result = true;
-        for (Path p : paths) {
-            if (checkValidity(p)) {
-                result &= mkdir(p);
-            }
-        }
-        return result;
-    }
-
-    private boolean mkdir(Path path) throws IOException {
-        Path absolutePath = makeAbsolute(path);
-        INode inode = store.retrieveINode(absolutePath);
-        if (inode == null) {
-            store.storeINode(absolutePath, INode.DIRECTORY_INODE);
-        } else if (inode.isFile()) {
-            throw new IOException(String.format(
-                    "Can't make directory for path %s since it is a file.",
-                    absolutePath));
-        }
+        // DO Nothings
         return true;
     }
 
@@ -320,6 +295,13 @@ public class OssFileSystem extends FileSystem {
      */
     @Override
     public FileStatus getFileStatus(Path f)  throws IOException {
+        Path absolutePath = makeAbsolute(f);
+        String key = JetOssFileSystemStore.pathToKey(absolutePath);
+
+        if (key.length() == 0) { // root always exists
+            return new OssFileStatus(f.makeQualified(this), INode.DIRECTORY_INODE);
+        }
+
         INode inode = store.retrieveINode(makeAbsolute(f));
         if (inode == null) {
             throw new FileNotFoundException(f + ": No such file or directory.");
@@ -359,10 +341,5 @@ public class OssFileSystem extends FileSystem {
             final Block[] ret = inode.getBlocks();
             return ret == null ? 0L : ret[0].getLength();
         }
-    }
-
-    private boolean checkValidity(Path path) {
-        String key = JetOssFileSystemStore.pathToKey(path);
-        return key.length() > 0;
     }
 }

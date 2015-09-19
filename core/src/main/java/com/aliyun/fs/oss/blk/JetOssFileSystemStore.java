@@ -82,7 +82,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
         String accessKeyId = conf.get("fs.oss.accessKeyId");
         String accessKeySecret = conf.get("fs.oss.accessKeySecret");
         String securityToken = conf.get("fs.oss.securityToken");
-        if (securityToken.equals("null")) {
+        if (securityToken == null || securityToken.equals("null")) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
@@ -189,7 +189,11 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     public INode retrieveINode(Path path) throws IOException {
-        return INode.deserialize(get(pathToKey(path), true));
+        if (listDeepSubPaths(path).size() > 0) {
+            return INode.DIRECTORY_INODE;
+        } else {
+            return INode.deserialize(get(pathToKey(path), true));
+        }
     }
 
     public File retrieveBlock(Block block, long byteRangeStart)
@@ -234,7 +238,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
     public Set<Path> listSubPaths(Path path) throws IOException {
         try {
             List<OSSObjectSummary> ossObjectSummaries = new ArrayList<OSSObjectSummary>();
-
+            List<String> commonPrefixes = new ArrayList<String>();
             String priorLastKey = null;
             do {
                 String prefix = pathToKey(path);
@@ -248,6 +252,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
                 listObjectsRequest.setDelimiter(PATH_DELIMITER);
                 listObjectsRequest.setMaxKeys(OssFileSystem.OSS_MAX_LISTING_LENGTH);
                 ObjectListing listing = ossClient.listObjects(listObjectsRequest);
+                commonPrefixes.addAll(listing.getCommonPrefixes());
                 List<OSSObjectSummary> objects = listing.getObjectSummaries();
                 Iterator<OSSObjectSummary> iter = objects.iterator();
                 while (iter.hasNext()) {
@@ -262,6 +267,11 @@ public class JetOssFileSystemStore implements FileSystemStore {
             while(iter.hasNext()) {
                 OSSObjectSummary obj = iter.next();
                 prefixes.add(keyToPath(obj.getKey()));
+            }
+
+            Iterator<String> iter2 = commonPrefixes.iterator();
+            while(iter2.hasNext()) {
+                prefixes.add(keyToPath(iter2.next()));
             }
             prefixes.remove(path);
             return prefixes;
@@ -279,10 +289,13 @@ public class JetOssFileSystemStore implements FileSystemStore {
             if (!prefix.endsWith(PATH_DELIMITER)) {
                 prefix += PATH_DELIMITER;
             }
-            OSSObject[] objects = (OSSObject[]) ossClient.listObjects(bucket, prefix).getObjectSummaries().toArray();
+            ObjectListing listing = ossClient.listObjects(bucket, prefix);
             Set<Path> prefixes = new TreeSet<Path>();
-            for (int i = 0; i < objects.length; i++) {
-                prefixes.add(keyToPath(objects[i].getKey()));
+            List<OSSObjectSummary> objects = listing.getObjectSummaries();
+            Iterator<OSSObjectSummary> iter = objects.iterator();
+            while(iter.hasNext()) {
+                OSSObjectSummary obj = iter.next();
+                prefixes.add(keyToPath(obj.getKey()));
             }
             prefixes.remove(path);
             return prefixes;

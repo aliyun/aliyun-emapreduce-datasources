@@ -42,7 +42,6 @@ public class NativeOssFileSystem extends FileSystem {
     public static final Log LOG =
             LogFactory.getLog(NativeOssFileSystem.class);
 
-    public static final String FOLDER_SUFFIX = "_$folder$";
     public static final long MAX_OSS_FILE_SIZE = 5 * 1024 * 1024 * 1024L;
     public static final String PATH_DELIMITER = Path.SEPARATOR;
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
@@ -273,8 +272,6 @@ public class NativeOssFileSystem extends FileSystem {
                 throw new IOException("Can not delete " + f + " at is a not empty directory and recurse option is false");
             }
 
-            createParent(f);
-
             LOG.debug("Deleting directory '" + f  + "'");
             String priorLastKey = null;
             do {
@@ -286,13 +283,12 @@ public class NativeOssFileSystem extends FileSystem {
             } while (priorLastKey != null);
 
             try {
-                store.delete(key + FOLDER_SUFFIX);
+                store.delete(key);
             } catch (FileNotFoundException e) {
                 //this is fine, we don't require a marker
             }
         } else {
             LOG.debug("Deleting file '" + f + "'");
-            createParent(f);
             store.delete(key);
         }
         return true;
@@ -312,11 +308,6 @@ public class NativeOssFileSystem extends FileSystem {
         if (meta != null) {
             LOG.debug("getFileStatus returning 'file' for key '" + key + "'");
             return newFile(meta, absolutePath);
-        }
-        if (store.retrieveMetadata(key + FOLDER_SUFFIX) != null) {
-            LOG.debug("getFileStatus returning 'directory' for key '" + key + "' as '"
-                    + key + FOLDER_SUFFIX + "' exists");
-            return newDirectory(absolutePath);
         }
 
         LOG.debug("getFileStatus listing key '" + key + "'");
@@ -369,14 +360,9 @@ public class NativeOssFileSystem extends FileSystem {
             PartialListing listing = store.list(key, OSS_MAX_LISTING_LENGTH, priorLastKey, false);
             for (FileMetadata fileMetadata : listing.getFiles()) {
                 Path subpath = keyToPath(fileMetadata.getKey());
-                String relativePath = pathUri.relativize(subpath.toUri()).getPath();
 
                 if (fileMetadata.getKey().equals(key + "/")) {
                     // this is just the directory we have been asked to list
-                }
-                else if (relativePath.endsWith(FOLDER_SUFFIX)) {
-                    status.add(newDirectory(new Path("/" +
-                            relativePath.substring(0, relativePath.indexOf(FOLDER_SUFFIX)))));
                 }
                 else {
                     // Here, we need to convert "file/path" to "/file/path". Otherwise, Path.makeQualified will
@@ -393,8 +379,7 @@ public class NativeOssFileSystem extends FileSystem {
             priorLastKey = listing.getPriorLastKey();
         } while (priorLastKey != null);
 
-        if (status.isEmpty() &&
-                store.retrieveMetadata(key + FOLDER_SUFFIX) == null) {
+        if (status.isEmpty()) {
             return new FileStatus[0];
         }
 
@@ -413,33 +398,7 @@ public class NativeOssFileSystem extends FileSystem {
 
     @Override
     public boolean mkdirs(Path f, FsPermission permission) throws IOException {
-        Path absolutePath = makeAbsolute(f);
-        List<Path> paths = new ArrayList<Path>();
-        do {
-            paths.add(0, absolutePath);
-            absolutePath = absolutePath.getParent();
-        } while (absolutePath != null);
-
-        boolean result = true;
-        for (Path path : paths) {
-            result &= mkdir(path);
-        }
-        return result;
-    }
-
-    public boolean mkdir(Path f) throws IOException {
-        try {
-            FileStatus fileStatus = getFileStatus(f);
-            if (!fileStatus.isDir()) {
-                throw new IOException(String.format(
-                        "Can't make directory for path '%s' since it is a file.", f));
-
-            }
-        } catch (FileNotFoundException e) {
-            LOG.debug("Making dir '" + f + "' in OSS");
-            String key = pathToKey(f) + FOLDER_SUFFIX;
-            store.storeEmptyFile(key);
-        }
+        //DO Nothings
         return true;
     }
 
@@ -455,19 +414,6 @@ public class NativeOssFileSystem extends FileSystem {
         return new FSDataInputStream(new BufferedFSInputStream(
                 new NativeOssFsInputStream(store.retrieve(key), key), bufferSize));
     }
-
-    // rename() and delete() use this method to ensure that the parent directory
-    // of the source does not vanish.
-    private void createParent(Path path) throws IOException {
-        Path parent = path.getParent();
-        if (parent != null) {
-            String key = pathToKey(makeAbsolute(parent));
-            if (key.length() > 0) {
-                store.storeEmptyFile(key + FOLDER_SUFFIX);
-            }
-        }
-    }
-
 
     @Override
     public boolean rename(Path src, Path dst) throws IOException {
@@ -519,7 +465,6 @@ public class NativeOssFileSystem extends FileSystem {
             store.delete(srcKey);
         } else {
             LOG.debug(debugPreamble + "src is directory, so copying contents");
-            store.storeEmptyFile(dstKey + FOLDER_SUFFIX);
 
             List<String> keysToDelete = new ArrayList<String>();
             String priorLastKey = null;
@@ -538,7 +483,7 @@ public class NativeOssFileSystem extends FileSystem {
             }
 
             try {
-                store.delete(srcKey + FOLDER_SUFFIX);
+                store.delete(srcKey);
             } catch (FileNotFoundException e) {
                 //this is fine, we don't require a marker
             }
