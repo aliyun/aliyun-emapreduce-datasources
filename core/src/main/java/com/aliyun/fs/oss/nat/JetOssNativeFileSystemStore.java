@@ -104,6 +104,16 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
+    @Override
+    public boolean objectExists(String key) throws IOException {
+        InputStream in = get(key);
+        if (in == null) {
+            return false;
+        }
+        in.close();
+        return true;
+    }
+
     public FileMetadata retrieveMetadata(String key) throws IOException {
         try {
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -256,6 +266,22 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             } else {
                 throw new OssException(e);
             }
+        }
+    }
+
+    private InputStream get(String key)
+            throws IOException {
+        try {
+            OSSObject object = ossClient.getObject(bucket, key);
+            return object.getObjectContent();
+        } catch (ServiceException e) {
+            if ("NoSuchKey".equals(e.getErrorCode())) {
+                return null;
+            }
+            if (e.getCause() instanceof IOException) {
+                throw (IOException) e.getCause();
+            }
+            throw new OssException(e);
         }
     }
 }

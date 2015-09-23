@@ -37,7 +37,7 @@ public interface FileSystemStore {
     void storeINode(Path path, INode inode) throws IOException;
     void storeBlock(Block block, File file) throws IOException;
 
-    boolean inodeExists(Path path) throws IOException;
+    boolean objectExists(String key) throws IOException;
     boolean blockExists(long blockId) throws IOException;
 
     INode retrieveINode(Path path) throws IOException;

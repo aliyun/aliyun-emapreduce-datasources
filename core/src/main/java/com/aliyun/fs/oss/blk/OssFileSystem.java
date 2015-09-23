@@ -45,6 +45,8 @@ public class OssFileSystem extends FileSystem {
 
     private ArrayList<Block> blocksForOneTime = new ArrayList<Block>();
 
+    private Random r = new Random();
+
     public OssFileSystem() {
         // set store in initialize()
     }
@@ -120,7 +122,24 @@ public class OssFileSystem extends FileSystem {
      */
     @Override
     public boolean mkdirs(Path path, FsPermission permission) throws IOException {
-        // DO Nothings
+        // Issue #27
+        Path absolutePath = makeAbsolute(path);
+        INode inode = store.retrieveINode(absolutePath);
+
+        if (inode == null) {
+            String dir = path.toUri().getPath().substring(1);
+            long key = r.nextLong();
+            while (store.objectExists(dir + "/." + key + ".empty")) {
+                key = r.nextLong();
+            }
+            Path tmpFile = makeAbsolute(new Path(absolutePath, "." + key + ".empty"));
+            store.storeINode(tmpFile, new INode(INode.FileType.FILE, new Block[0]));
+        } else if (inode.isFile()) {
+            throw new IOException(String.format(
+                    "Can't make directory for path %s since it is a file.",
+                    absolutePath));
+        }
+
         return true;
     }
 
@@ -339,7 +358,7 @@ public class OssFileSystem extends FileSystem {
 
         private static long findBlocksize(INode inode) {
             final Block[] ret = inode.getBlocks();
-            return ret == null ? 0L : ret[0].getLength();
+            return (ret == null || ret.length == 0) ? 0L : ret[0].getLength();
         }
     }
 }

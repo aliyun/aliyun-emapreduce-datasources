@@ -114,8 +114,8 @@ public class JetOssFileSystemStore implements FileSystemStore {
         delete(blockToKey(block));
     }
 
-    public boolean inodeExists(Path path) throws IOException {
-        InputStream in = get(pathToKey(path), true);
+    public boolean objectExists(String key) throws IOException {
+        InputStream in = get(key, false);
         if (in == null) {
             return false;
         }

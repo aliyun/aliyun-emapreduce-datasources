@@ -41,6 +41,10 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
         dataMap.put(key, new byte[0]);
     }
 
+    public boolean objectExists(String key) throws IOException {
+        return false;
+    }
+
     public void storeFile(String key, File file, boolean append)
             throws IOException {
 

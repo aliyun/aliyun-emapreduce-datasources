@@ -177,4 +177,16 @@ public class TestOssFileSystem extends TestCase {
         fsDataOutputStream.flush();
         fsDataOutputStream.close();
     }
+
+    public void testMkdirs() throws IOException {
+        Path p1 = path("test/dir1");
+        Path p2 = path("test/dir1/dir2");
+
+        fs.mkdirs(p1);
+        assert(fs.getFileStatus(p1).isDirectory());
+
+        fs.mkdirs(p2);
+        assert(fs.getFileStatus(p1).isDirectory());
+        assert(fs.getFileStatus(p2).isDirectory());
+    }
 }

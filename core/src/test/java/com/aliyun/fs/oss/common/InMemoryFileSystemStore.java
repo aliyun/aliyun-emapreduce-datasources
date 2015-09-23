@@ -64,8 +64,8 @@ public class InMemoryFileSystemStore implements FileSystemStore {
         blocks.remove(block.getId());
     }
 
-    public boolean inodeExists(Path path) throws IOException {
-        return inodes.containsKey(normalize(path));
+    public boolean objectExists(String key) throws IOException {
+        return false;
     }
 
     public boolean blockExists(long blockId) throws IOException {

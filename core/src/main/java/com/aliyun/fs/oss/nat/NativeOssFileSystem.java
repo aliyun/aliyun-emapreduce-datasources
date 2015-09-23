@@ -45,6 +45,7 @@ public class NativeOssFileSystem extends FileSystem {
     public static final long MAX_OSS_FILE_SIZE = 5 * 1024 * 1024 * 1024L;
     public static final String PATH_DELIMITER = Path.SEPARATOR;
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
+    private Random r = new Random();
 
     private class NativeOssFsInputStream extends FSInputStream {
 
@@ -398,7 +399,23 @@ public class NativeOssFileSystem extends FileSystem {
 
     @Override
     public boolean mkdirs(Path f, FsPermission permission) throws IOException {
-        //DO Nothings
+        try {
+            FileStatus fileStatus = getFileStatus(f);
+            if (!fileStatus.isDir()) {
+                throw new IOException(String.format(
+                        "Can't make directory for path '%s' since it is a file.", f));
+
+            }
+        } catch (FileNotFoundException e) {
+            LOG.debug("Making dir '" + f + "' in OSS");
+            String dir = f.toUri().getPath().substring(1);
+            long key = r.nextLong();
+            while (store.objectExists(dir +"/." + key + ".empty")) {
+                key = r.nextLong();
+            }
+            store.storeEmptyFile(dir +"/." + key + ".empty");
+        }
+
         return true;
     }
 

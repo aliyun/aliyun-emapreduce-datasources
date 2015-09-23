@@ -36,6 +36,7 @@ public interface NativeFileSystemStore {
 
     void storeFile(String key, File file, boolean append) throws IOException;
     void storeEmptyFile(String key) throws IOException;
+    boolean objectExists(String key) throws IOException;
 
     FileMetadata retrieveMetadata(String key) throws IOException;
     InputStream retrieve(String key) throws IOException;
