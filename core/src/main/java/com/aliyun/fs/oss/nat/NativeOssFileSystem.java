@@ -409,11 +409,7 @@ public class NativeOssFileSystem extends FileSystem {
         } catch (FileNotFoundException e) {
             LOG.debug("Making dir '" + f + "' in OSS");
             String dir = f.toUri().getPath().substring(1);
-            long key = r.nextLong();
-            while (store.objectExists(dir +"/." + key + ".empty")) {
-                key = r.nextLong();
-            }
-            store.storeEmptyFile(dir +"/." + key + ".empty");
+            store.storeEmptyFile(dir +"/");
         }
 
         return true;

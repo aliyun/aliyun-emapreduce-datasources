@@ -257,7 +257,9 @@ public class JetOssFileSystemStore implements FileSystemStore {
                 Iterator<OSSObjectSummary> iter = objects.iterator();
                 while (iter.hasNext()) {
                     OSSObjectSummary obj = iter.next();
-                    ossObjectSummaries.add(obj);
+                    if (!obj.getKey().equals(prefix)) {
+                        ossObjectSummaries.add(obj);
+                    }
                 }
                 priorLastKey = listing.getNextMarker();
             } while (priorLastKey != null);
@@ -273,7 +275,6 @@ public class JetOssFileSystemStore implements FileSystemStore {
             while(iter2.hasNext()) {
                 prefixes.add(keyToPath(iter2.next()));
             }
-            prefixes.remove(path);
             return prefixes;
         } catch (ServiceException e) {
             if (e.getCause() instanceof IOException) {
@@ -323,6 +324,10 @@ public class JetOssFileSystemStore implements FileSystemStore {
             }
             throw new OssException(e);
         }
+    }
+
+    public void storeINodeWithKey(String key, INode inode) throws IOException {
+        put(key, inode.serialize(), inode.getSerializedLength(), true);
     }
 
     public void storeINode(Path path, INode inode) throws IOException {
@@ -385,7 +390,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     public void dump() throws IOException {
-        StringBuilder sb = new StringBuilder("OSS Filesystem, ");
+        StringBuilder sb = new StringBuilder("OSS Block Filesystem, ");
         sb.append(bucket).append("\n");
         try {
             ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucket);

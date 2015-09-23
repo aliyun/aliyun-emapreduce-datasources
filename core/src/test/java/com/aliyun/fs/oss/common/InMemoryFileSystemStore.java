@@ -133,6 +133,11 @@ public class InMemoryFileSystemStore implements FileSystemStore {
         inodes.put(normalize(path), inode);
     }
 
+    @Override
+    public void storeINodeWithKey(String key, INode inode) throws IOException {
+
+    }
+
     public void storeBlock(Block block, File file) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];

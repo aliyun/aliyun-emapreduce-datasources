@@ -128,12 +128,7 @@ public class OssFileSystem extends FileSystem {
 
         if (inode == null) {
             String dir = path.toUri().getPath().substring(1);
-            long key = r.nextLong();
-            while (store.objectExists(dir + "/." + key + ".empty")) {
-                key = r.nextLong();
-            }
-            Path tmpFile = makeAbsolute(new Path(absolutePath, "." + key + ".empty"));
-            store.storeINode(tmpFile, new INode(INode.FileType.FILE, new Block[0]));
+            store.storeINodeWithKey(dir+"/", new INode(INode.FileType.FILE, new Block[0]));
         } else if (inode.isFile()) {
             throw new IOException(String.format(
                     "Can't make directory for path %s since it is a file.",
