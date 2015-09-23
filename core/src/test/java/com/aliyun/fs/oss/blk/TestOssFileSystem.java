@@ -79,7 +79,7 @@ public class TestOssFileSystem extends TestCase {
         String base = "test/oss";
         Path path = path(base);
 
-        crearteEmptyFile(path);
+        createEmptyFile(path);
 
         Long fileLen = fs.getFileStatus(path).getLen();
         assert(fileLen == 5);
@@ -105,7 +105,7 @@ public class TestOssFileSystem extends TestCase {
     public void testRename() throws IOException {
         Path path = path("test/dir/file1");
         Path renamed = path("test/dir/file2");
-        crearteEmptyFile(path);
+        createEmptyFile(path);
 
         fs.rename(path, renamed);
         assert(fs.exists(renamed));
@@ -117,10 +117,10 @@ public class TestOssFileSystem extends TestCase {
         String key1 = "test/dir1/file1";
         String key2 = "test/dir1/dir12/file2";
         String key3 = "test/dir2/file3";
-        crearteEmptyFile(path(key0));
-        crearteEmptyFile(path(key1));
-        crearteEmptyFile(path(key2));
-        crearteEmptyFile(path(key3));
+        createEmptyFile(path(key0));
+        createEmptyFile(path(key1));
+        createEmptyFile(path(key2));
+        createEmptyFile(path(key3));
 
         assert(fs.listStatus(path("test")).length == 3);
         assert(fs.listStatus(path("test/file0")).length == 1);
@@ -141,9 +141,9 @@ public class TestOssFileSystem extends TestCase {
         String key0 = "test/file0";
         String key1 = "test/dir1/file1";
         String key2 = "test/dir1/dir12/file2";
-        crearteEmptyFile(path(key0));
-        crearteEmptyFile(path(key1));
-        crearteEmptyFile(path(key2));
+        createEmptyFile(path(key0));
+        createEmptyFile(path(key1));
+        createEmptyFile(path(key2));
 
         assert(!fs.delete(path("test2")));
         try {
@@ -158,7 +158,7 @@ public class TestOssFileSystem extends TestCase {
     }
 
     public void testFileStatus() throws IOException {
-        crearteEmptyFile(path("test/dir1/file1"));
+        createEmptyFile(path("test/dir1/file1"));
 
         assert(fs.getFileStatus(path("test/dir1/file1")).isFile());
         assert(fs.getFileStatus(path("test/dir1")).isDirectory());
@@ -171,7 +171,7 @@ public class TestOssFileSystem extends TestCase {
         }
     }
 
-    private void crearteEmptyFile(Path path) throws IOException {
+    private void createEmptyFile(Path path) throws IOException {
         FSDataOutputStream fsDataOutputStream = fs.create(path);
         fsDataOutputStream.write("Hello".getBytes());
         fsDataOutputStream.flush();
