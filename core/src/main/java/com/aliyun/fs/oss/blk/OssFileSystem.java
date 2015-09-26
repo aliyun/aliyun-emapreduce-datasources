@@ -215,6 +215,13 @@ public class OssFileSystem extends FileSystem {
             } else {
                 throw new IOException("File already exists: " + file);
             }
+        } else {
+            Path parent = file.getParent();
+            if (parent != null) {
+                if (!mkdirs(parent)) {
+                    throw new IOException("Mkdirs failed to create " + parent.toString());
+                }
+            }
         }
         return new FSDataOutputStream(
                 new OssOutputStream(getConf(), store, makeAbsolute(file),
@@ -320,6 +327,13 @@ public class OssFileSystem extends FileSystem {
      */
     @Override
     public FileStatus getFileStatus(Path f)  throws IOException {
+        Path absolutePath = makeAbsolute(f);
+        String key = JetOssFileSystemStore.pathToKey(absolutePath);
+
+        if (key.length() == 0) { // root always exists
+            return new OssFileStatus(f.makeQualified(this), INode.DIRECTORY_INODE);
+        }
+
         INode inode = store.retrieveINode(makeAbsolute(f));
         if (inode == null) {
             throw new FileNotFoundException(f + ": No such file or directory.");

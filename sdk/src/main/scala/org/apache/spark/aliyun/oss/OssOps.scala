@@ -59,7 +59,11 @@ class OssOps(
       hadoopConf.set("fs.oss.endpoint", endpoint)
       hadoopConf.set("fs.oss.accessKeyId", accessKeyId)
       hadoopConf.set("fs.oss.accessKeySecret", accessKeySecret)
-      hadoopConf.set("fs.oss.securityToken", securityToken.getOrElse("null"))
+      securityToken match {
+        case Some(token) =>
+          hadoopConf.set("fs.oss.securityToken", token)
+        case None =>
+      }
       hadoopConf.set("fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
       hadoopConf.set("fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
 

@@ -82,7 +82,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
         String accessKeyId = conf.get("fs.oss.accessKeyId");
         String accessKeySecret = conf.get("fs.oss.accessKeySecret");
         String securityToken = conf.get("fs.oss.securityToken");
-        if (securityToken.equals("null")) {
+        if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
