@@ -35,15 +35,15 @@ public class TestNativeOssFileSystem extends TestCase {
     private NativeOssFileSystem fs;
 
     public void testInitialization() throws IOException {
-        initializationTest("oss://a:b@c", "ossn://a:b@c");
-        initializationTest("oss://a:b@c/", "ossn://a:b@c");
-        initializationTest("oss://a:b@c/path", "ossn://a:b@c");
-        initializationTest("oss://a@c", "ossn://a@c");
-        initializationTest("oss://a@c/", "ossn://a@c");
-        initializationTest("oss://a@c/path", "ossn://a@c");
-        initializationTest("oss://c", "ossn://c");
-        initializationTest("oss://c/", "ossn://c");
-        initializationTest("oss://c/path", "ossn://c");
+        initializationTest("oss://a:b@c", "oss://a:b@c");
+        initializationTest("oss://a:b@c/", "oss://a:b@c");
+        initializationTest("oss://a:b@c/path", "oss://a:b@c");
+        initializationTest("oss://a@c", "oss://a@c");
+        initializationTest("oss://a@c/", "oss://a@c");
+        initializationTest("oss://a@c/path", "oss://a@c");
+        initializationTest("oss://c", "oss://c");
+        initializationTest("oss://c/", "oss://c");
+        initializationTest("oss://c/path", "oss://c");
     }
 
     private void initializationTest(String initializationUri, String expectedUri)
@@ -80,28 +80,6 @@ public class TestNativeOssFileSystem extends TestCase {
         store.storeEmptyFile(base + "/dir/file3");
     }
 
-    public void testDirWithDifferentMarkersWorks() throws Exception {
-        for (int i = 0; i < 3; i++) {
-            String base = "test/oss" + i;
-            Path path = path(base);
-
-            createTestFiles(base);
-
-            if (i == 0) {
-                // test for _$folder$ marker
-                store.storeEmptyFile(base + "_$folder$");
-                store.storeEmptyFile(base + "/dir_$folder$");
-            } else if (i == 1) {
-                // test the end slash file marker
-                store.storeEmptyFile(base + "/");
-                store.storeEmptyFile(base + "/dir/");
-            }
-
-            assertTrue(fs.getFileStatus(path).isDir());
-            assertEquals(2, fs.listStatus(path).length);
-        }
-    }
-
     public void testDeleteWithNoMarker() throws IOException {
         String base = "test/oss";
         Path path = path(base);
@@ -109,8 +87,7 @@ public class TestNativeOssFileSystem extends TestCase {
         createTestFiles(base);
 
         fs.delete(path, true);
-
-        assertNull(fs.listStatus(path));
+        assert(fs.listStatus(path).length == 0);
     }
 
     public void testRenameWithNoMarker() throws IOException {
@@ -160,20 +137,87 @@ public class TestNativeOssFileSystem extends TestCase {
         assert(content.equals("Hello world!"));
     }
 
-    public void testEmptyDirectory() throws IOException {
-        String base = "test";
-        Path dir = path(base);
-
-        fs.mkdirs(dir);
-        FileStatus[] fileStatuses = fs.listStatus(dir);
-        assert(fileStatuses.length == 0);
-
-        FSDataOutputStream fsDataOutputStream = fs.create(path("test/file"));
-        fsDataOutputStream.write("Hello World!".getBytes());
+    public void testRename() throws IOException {
+        Path path = path("test/dir/file1");
+        Path renamed = path("test/dir/file2");
+        FSDataOutputStream fsDataOutputStream = fs.create(path);
+        fsDataOutputStream.write("Hello".getBytes());
         fsDataOutputStream.flush();
         fsDataOutputStream.close();
 
-        fileStatuses = fs.listStatus(dir);
-        assert(fileStatuses.length == 1);
+        fs.rename(path, renamed);
+        assert(fs.exists(renamed));
+        assert(!fs.exists(path));
+    }
+
+    public void testListStatus() throws IOException {
+        String key0 = "test/file0";
+        String key1 = "test/dir1/file1";
+        String key2 = "test/dir1/dir12/file2";
+        String key3 = "test/dir2/file3";
+        store.storeEmptyFile(key0);
+        store.storeEmptyFile(key1);
+        store.storeEmptyFile(key2);
+        store.storeEmptyFile(key3);
+
+        assert(fs.listStatus(path("test")).length == 3);
+        assert(fs.listStatus(path("test/file0")).length == 1);
+        assert(fs.listStatus(path("test/dir1")).length == 2);
+        assert(fs.listStatus(path("test/dir1/file1")).length == 1);
+        assert(fs.listStatus(path("test/dir1/dir12/file2")).length == 1);
+        assert(fs.listStatus(path("test/dir2")).length == 1);
+        assert(fs.listStatus(path("test/dir2/file3")).length == 1);
+        assert(fs.listStatus(path("test/dir3")).length == 0);
+
+        assert(fs.listStatus(path("test/dir1/file1"))[0].isFile());
+        assert(fs.listStatus(path("test/dir2"))[0].isFile());
+        assert(fs.listStatus(path("test/dir1"))[0].isFile() && fs.listStatus(path("test/dir1"))[1].isDirectory()
+                || fs.listStatus(path("test/dir1"))[1].isFile() && fs.listStatus(path("test/dir1"))[0].isDirectory());
+    }
+
+    public void testDelete() throws IOException {
+        String key0 = "test/file0";
+        String key1 = "test/dir1/file1";
+        String key2 = "test/dir1/dir12/file2";
+        store.storeEmptyFile(key0);
+        store.storeEmptyFile(key1);
+        store.storeEmptyFile(key2);
+
+        assert(!fs.delete(path("test2")));
+        try {
+            fs.delete(path("test"), false);
+            assert(1 == 0);
+        } catch (Exception e) {
+            assert(1 == 1);
+        }
+
+        assert(fs.delete(path("test/file0")));
+        assert(fs.delete(path("test/dir1")));
+    }
+
+    public void testFileStatus() throws IOException {
+        store.storeEmptyFile("test/dir1/file1");
+
+        assert(fs.getFileStatus(path("test/dir1/file1")).isFile());
+        assert(fs.getFileStatus(path("test/dir1")).isDirectory());
+        assert(fs.getFileStatus(path("/")).isDirectory());
+        try {
+            fs.getFileStatus(path("test2"));
+            assert(1 == 0);
+        } catch (Exception e) {
+            assert(1 == 1);
+        }
+    }
+
+    public void testMkdirs() throws IOException {
+        Path p1 = path("test/dir1");
+        Path p2 = path("test/dir1/dir2");
+
+        fs.mkdirs(p1);
+        assert(fs.getFileStatus(p1).isDirectory());
+
+        fs.mkdirs(p2);
+        assert(fs.getFileStatus(p1).isDirectory());
+        assert(fs.getFileStatus(p2).isDirectory());
     }
 }
