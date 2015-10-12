@@ -219,10 +219,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 for (int i = 0; i < partCount; i++) {
                     long skipBytes = partSize * i;
                     long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
-                    UploadPartCopyRequest uploadPartCopyRequest = new UploadPartCopyRequest();
-                    uploadPartCopyRequest.setSourceKey("/" + bucket + "/" + srcKey);
-                    uploadPartCopyRequest.setBucketName(bucket);
-                    uploadPartCopyRequest.setKey(dstKey);
+                    UploadPartCopyRequest uploadPartCopyRequest = new UploadPartCopyRequest(bucket, srcKey, bucket, dstKey);
                     uploadPartCopyRequest.setUploadId(uploadId);
                     uploadPartCopyRequest.setPartSize(size);
                     uploadPartCopyRequest.setBeginIndex(skipBytes);
