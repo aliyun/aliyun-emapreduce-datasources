@@ -29,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -41,6 +42,8 @@ import com.aliyun.oss.model.*;
 import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
+
+    private Long MAX_COPY_SIZE = 500 * 1024 * 1024L;
 
     private OSSClient ossClient;
     private String bucket;
@@ -197,7 +200,39 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public void copy(String srcKey, String dstKey) throws IOException {
         try {
-            ossClient.copyObject(bucket, srcKey, bucket, dstKey);
+            ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
+            Long contentLength = objectMetadata.getContentLength();
+            if (contentLength <= MAX_COPY_SIZE) {
+                ossClient.copyObject(bucket, srcKey, bucket, dstKey);
+            } else {
+                InitiateMultipartUploadRequest initiateMultipartUploadRequest =
+                        new InitiateMultipartUploadRequest(bucket, dstKey);
+                InitiateMultipartUploadResult initiateMultipartUploadResult =
+                        ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+                String uploadId = initiateMultipartUploadResult.getUploadId();
+                Long partSize = 1024 * 1024 * 100L;
+                int partCount = (int) (contentLength / partSize);
+                if (contentLength % partSize != 0) {
+                    partCount++;
+                }
+                List<PartETag> partETags = new ArrayList<PartETag>();
+                for (int i = 0; i < partCount; i++) {
+                    long skipBytes = partSize * i;
+                    long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
+                    UploadPartCopyRequest uploadPartCopyRequest = new UploadPartCopyRequest(bucket, srcKey, bucket, dstKey);
+                    uploadPartCopyRequest.setUploadId(uploadId);
+                    uploadPartCopyRequest.setPartSize(size);
+                    uploadPartCopyRequest.setBeginIndex(skipBytes);
+                    uploadPartCopyRequest.setPartNumber(i + 1);
+                    UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadPartCopyRequest);
+                    partETags.add(uploadPartCopyResult.getPartETag());
+                }
+
+                CompleteMultipartUploadRequest completeMultipartUploadRequest =
+                        new CompleteMultipartUploadRequest(
+                                bucket, dstKey, initiateMultipartUploadResult.getUploadId(), partETags);
+                ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+            }
         } catch (ServiceException e) {
             handleServiceException(srcKey, e);
         }
