@@ -53,6 +53,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private OSSClient ossClient;
     private String bucket;
     private Boolean enableMultiPart;
+    private int numCopyThreads;
 
     public void initialize(URI uri, Configuration conf) throws IOException {
         String endpoint = conf.get("fs.oss.endpoint");
@@ -66,6 +67,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
         this.bucket = uri.getHost();
         this.enableMultiPart = conf.getBoolean("fs.oss.multipart.enable", true);
+        this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
     }
 
     public void storeFile(String key, File file, boolean append)
@@ -217,8 +219,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 InitiateMultipartUploadResult initiateMultipartUploadResult =
                         ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
                 String uploadId = initiateMultipartUploadResult.getUploadId();
-                Long partSize = 16 * 1024 * 1024L;
-                int partCount = (int) (contentLength / partSize);
+                Long partSize = contentLength / numCopyThreads;
+                int partCount = numCopyThreads;
                 if (contentLength % partSize != 0) {
                     partCount++;
                 }
@@ -233,7 +235,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                         ossCopyTask.setUuid(i + "");
                         tasks.add(ossCopyTask);
                     }
-                    TaskEngine taskEngine = new TaskEngine(tasks, 5, 5);
+                    TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
                     taskEngine.executeTask();
                     Map<String, Object> responseMap = taskEngine.getResultMap();
                     for(int i = 0; i < partCount; i++) {
