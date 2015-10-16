@@ -18,7 +18,7 @@ public class TaskEngine {
         this.taskList = taskList;
         unCompletedTask = new CountDownLatch(taskList.size());
         executorService = new ThreadPoolExecutor(coreSize, maxSize, 60L, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>());
+                    new LinkedBlockingQueue<Runnable>());
     }
 
     public void reportCompleted() {

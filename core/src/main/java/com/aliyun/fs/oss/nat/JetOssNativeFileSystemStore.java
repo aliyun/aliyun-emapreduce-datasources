@@ -232,16 +232,22 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                         long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
                         OSSCopyTask ossCopyTask = new OSSCopyTask(
                                 ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
-                        ossCopyTask.setUuid(i + "");
+                        ossCopyTask.setUuid(i+"");
                         tasks.add(ossCopyTask);
                     }
                     TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
-                    taskEngine.executeTask();
-                    Map<String, Object> responseMap = taskEngine.getResultMap();
-                    for(int i = 0; i < partCount; i++) {
-                        UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
-                                ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
-                        partETags.add(uploadPartCopyResult.getPartETag());
+                    try {
+                        taskEngine.executeTask();
+                        Map<String, Object> responseMap = taskEngine.getResultMap();
+                        for (int i = 0; i < partCount; i++) {
+                            UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
+                                    ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
+                            partETags.add(uploadPartCopyResult.getPartETag());
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        taskEngine.shutdown();
                     }
                 } else {
                     for (int i = 0; i < partCount; i++) {
@@ -258,14 +264,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 }
 
                 CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                        new CompleteMultipartUploadRequest(
-                                bucket, dstKey, initiateMultipartUploadResult.getUploadId(), partETags);
+                        new CompleteMultipartUploadRequest(bucket, dstKey, uploadId, partETags);
                 ossClient.completeMultipartUpload(completeMultipartUploadRequest);
             }
         } catch (ServiceException e) {
             handleServiceException(srcKey, e);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
