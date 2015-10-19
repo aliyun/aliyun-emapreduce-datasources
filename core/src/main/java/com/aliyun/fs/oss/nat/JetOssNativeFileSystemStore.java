@@ -48,7 +48,7 @@ import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
-    private Long MAX_COPY_SIZE = 128 * 1024 * 1024L;
+    private Long MAX_COPY_SIZE;
 
     private OSSClient ossClient;
     private String bucket;
@@ -66,8 +66,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
         }
         this.bucket = uri.getHost();
-        this.enableMultiPart = conf.getBoolean("fs.oss.multipart.enable", true);
+        this.enableMultiPart = conf.getBoolean("fs.oss.multipart.parallel.enable", true);
         this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
+        this.MAX_COPY_SIZE = conf.getLong("fs.oss.copy.normal.maxsize", 128 * 1024 * 1024L);
     }
 
     public void storeFile(String key, File file, boolean append)
@@ -211,7 +212,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         try {
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
             Long contentLength = objectMetadata.getContentLength();
-            if (contentLength <= MAX_COPY_SIZE) {
+            if (contentLength <= Math.min(MAX_COPY_SIZE, 512 * 1024 * 1024L)) {
                 ossClient.copyObject(bucket, srcKey, bucket, dstKey);
             } else {
                 InitiateMultipartUploadRequest initiateMultipartUploadRequest =
