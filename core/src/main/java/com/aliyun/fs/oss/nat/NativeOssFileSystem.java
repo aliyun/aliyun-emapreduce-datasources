@@ -20,13 +20,11 @@ package com.aliyun.fs.oss.nat;
 
 import java.io.*;
 import java.net.URI;
-import java.security.DigestOutputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import com.aliyun.fs.oss.common.*;
+import com.aliyun.fs.oss.utils.Utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -119,7 +117,7 @@ public class NativeOssFileSystem extends FileSystem {
         }
 
         private File newBackupFile() throws IOException {
-            File dir = new File(conf.get("fs.oss.buffer.dir", "/tmp/oss/"));
+            File dir = Utils.getOSSBufferDir(conf);
             if (!dir.mkdirs() && !dir.exists()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }

@@ -21,6 +21,7 @@ package com.aliyun.fs.oss.blk;
 import com.aliyun.fs.oss.common.Block;
 import com.aliyun.fs.oss.common.FileSystemStore;
 import com.aliyun.fs.oss.common.INode;
+import com.aliyun.fs.oss.utils.Utils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.Progressable;
@@ -83,7 +84,7 @@ public class OssOutputStream extends OutputStream {
   }
 
   private File newBackupFile() throws IOException {
-    File dir = new File(conf.get("fs.oss.buffer.dir", "/tmp/oss/"));
+    File dir = Utils.getOSSBufferDir(conf);
     if (!dir.exists() && !dir.mkdirs()) {
       throw new IOException("Cannot create OSS buffer directory: " + dir);
     }

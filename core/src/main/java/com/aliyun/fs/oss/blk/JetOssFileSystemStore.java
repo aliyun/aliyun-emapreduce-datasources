@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.*;
 
 import com.aliyun.fs.oss.common.*;
+import com.aliyun.fs.oss.utils.Utils;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
@@ -222,7 +223,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     private File newBackupFile() throws IOException {
-        File dir = new File(conf.get("fs.oss.buffer.dir", "/tmp/oss/"));
+        File dir = Utils.getOSSBufferDir(conf);
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IOException("Cannot create OSS buffer directory: " + dir);
         }
