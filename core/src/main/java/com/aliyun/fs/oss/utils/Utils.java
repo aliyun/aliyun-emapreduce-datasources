@@ -26,6 +26,6 @@ public class Utils {
     public static File getOSSBufferDir(Configuration conf) {
         String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "/tmp/oss/").split(",");
         int randomIdx = (new Random()).nextInt() % bufferDirs.length;
-        return new File(bufferDirs[Math.abs(randomIdx)]);
+        return new File(bufferDirs[Math.abs(randomIdx)], "oss");
     }
 }
