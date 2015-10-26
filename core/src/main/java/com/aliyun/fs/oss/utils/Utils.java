@@ -18,14 +18,21 @@
 package com.aliyun.fs.oss.utils;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 
 import java.io.File;
+import java.net.URI;
 import java.util.Random;
 
 public class Utils {
     public static File getOSSBufferDir(Configuration conf) {
-        String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "/tmp/oss/").split(",");
-        int randomIdx = (new Random()).nextInt() % bufferDirs.length;
-        return new File(bufferDirs[Math.abs(randomIdx)]);
+        String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "file:///tmp/").split(",");
+        String[] bufferPaths = new String[bufferDirs.length];
+        for(int i = 0; i < bufferDirs.length; i++) {
+            URI uri = new Path(bufferDirs[i]).toUri();
+            bufferPaths[i] = uri.getPath();
+        }
+        int randomIdx = (new Random()).nextInt() % bufferPaths.length;
+        return new File(bufferPaths[Math.abs(randomIdx)], "oss");
     }
 }
