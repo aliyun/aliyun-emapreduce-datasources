@@ -22,17 +22,28 @@ import org.apache.hadoop.fs.Path;
 
 import java.io.File;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class Utils {
     public static File getOSSBufferDir(Configuration conf) {
+        boolean confirmExists = conf.getBoolean("fs.oss.buffer.dirs.exists", false);
         String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "file:///tmp/").split(",");
-        String[] bufferPaths = new String[bufferDirs.length];
+        List<String> bufferPaths = new ArrayList<String>();
         for(int i = 0; i < bufferDirs.length; i++) {
             URI uri = new Path(bufferDirs[i]).toUri();
-            bufferPaths[i] = uri.getPath();
+            String path = uri.getPath();
+            Boolean fileExists = new File(path).exists();
+            if (confirmExists && !fileExists) {
+                continue;
+            }
+            bufferPaths.add(path);
         }
-        int randomIdx = (new Random()).nextInt() % bufferPaths.length;
-        return new File(bufferPaths[Math.abs(randomIdx)], "oss");
+        if (bufferPaths.size() == 0) {
+            bufferPaths.add("/tmp/");
+        }
+        int randomIdx = (new Random()).nextInt() % bufferPaths.size();
+        return new File(bufferPaths.get(Math.abs(randomIdx)), "oss");
     }
 }
