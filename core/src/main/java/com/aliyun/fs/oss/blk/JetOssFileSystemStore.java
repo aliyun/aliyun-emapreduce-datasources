@@ -339,7 +339,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
 
     public static String pathToKey(Path path) {
         if (path.isAbsolute()) {
-            LOG.info("OSS File Path can not start with \"/\", so we need to scratch the first \"/\".");
+            LOG.debug("OSS File Path can not start with \"/\", so we need to scratch the first \"/\".");
             String absolutePath = path.toUri().getPath();
             return absolutePath.substring(1);
         }
