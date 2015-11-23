@@ -49,6 +49,11 @@ public class JetOssFileSystemStore implements FileSystemStore {
     private static final Map<String, String> METADATA =
             new HashMap<String, String>();
 
+    private String endpoint = null;
+    private String accessKeyId = null;
+    private String accessKeySecret = null;
+    private String securityToken = null;
+
     static {
         METADATA.put(FILE_SYSTEM_NAME, FILE_SYSTEM_VALUE);
         METADATA.put(FILE_SYSTEM_TYPE_NAME, FILE_SYSTEM_TYPE_VALUE);
@@ -78,17 +83,38 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     public void initialize(URI uri, Configuration conf) throws IOException {
+        if (uri.getHost() == null) {
+            throw new IllegalArgumentException("Invalid hostname in URI " + uri);
+        }
         this.conf = conf;
-        String endpoint = conf.get("fs.oss.endpoint");
-        String accessKeyId = conf.get("fs.oss.accessKeyId");
-        String accessKeySecret = conf.get("fs.oss.accessKeySecret");
-        String securityToken = conf.get("fs.oss.securityToken");
+        String userInfo = uri.getUserInfo();
+        if (userInfo != null) {
+            String[] ossCredentials  = userInfo.split(":");
+            if (ossCredentials.length >= 2) {
+                accessKeyId = ossCredentials[0];
+                accessKeySecret = ossCredentials[1];
+            }
+            if (ossCredentials.length == 3) {
+                securityToken = ossCredentials[2];
+            }
+        }
+
+        if (accessKeyId == null) {
+            accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
+        }
+        if (accessKeySecret == null) {
+            accessKeySecret = conf.getTrimmed("fs.oss.accessKeySecret");
+        }
+        if (securityToken == null) {
+            securityToken = conf.getTrimmed("fs.oss.securityToken");
+        }
+        bucket = uri.getHost();
+        endpoint = Utils.getEndpoint(bucket, accessKeyId, accessKeySecret);
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
         }
-        this.bucket = uri.getHost();
         this.bufferSize = conf.getInt("io.file.buffer.size", 4096);
     }
 
