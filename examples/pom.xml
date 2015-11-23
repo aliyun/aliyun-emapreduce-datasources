@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.aliyun</groupId>
         <artifactId>emr_2.10</artifactId>
-        <version>0.1.0</version>
+        <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -40,13 +40,13 @@
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>emr-sdk_2.10</artifactId>
-            <version>0.1.0</version>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>emr-core</artifactId>
-            <version>0.1.0</version>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
