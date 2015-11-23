@@ -36,10 +36,7 @@ import java.util.Map;
 
 import com.aliyun.fs.oss.common.OssException;
 import com.aliyun.fs.oss.common.PartialListing;
-import com.aliyun.fs.oss.utils.OSSCopyTask;
-import com.aliyun.fs.oss.utils.Result;
-import com.aliyun.fs.oss.utils.Task;
-import com.aliyun.fs.oss.utils.TaskEngine;
+import com.aliyun.fs.oss.utils.*;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
@@ -55,17 +52,43 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private Boolean enableMultiPart;
     private int numCopyThreads;
 
+    private String endpoint = null;
+    private String accessKeyId = null;
+    private String accessKeySecret = null;
+    private String securityToken = null;
+
     public void initialize(URI uri, Configuration conf) throws IOException {
-        String endpoint = conf.get("fs.oss.endpoint");
-        String accessKeyId = conf.get("fs.oss.accessKeyId");
-        String accessKeySecret = conf.get("fs.oss.accessKeySecret");
-        String securityToken = conf.get("fs.oss.securityToken");
+        if (uri.getHost() == null) {
+            throw new IllegalArgumentException("Invalid hostname in URI " + uri);
+        }
+        String userInfo = uri.getUserInfo();
+        if (userInfo != null) {
+            String[] ossCredentials  = userInfo.split(":");
+            if (ossCredentials.length >= 2) {
+                accessKeyId = ossCredentials[0];
+                accessKeySecret = ossCredentials[1];
+            }
+            if (ossCredentials.length == 3) {
+                securityToken = ossCredentials[2];
+            }
+        }
+
+        if (accessKeyId == null) {
+            accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
+        }
+        if (accessKeySecret == null) {
+            accessKeySecret = conf.getTrimmed("fs.oss.accessKeySecret");
+        }
+        if (securityToken == null) {
+            securityToken = conf.getTrimmed("fs.oss.securityToken");
+        }
+        bucket = uri.getHost();
+        endpoint = Utils.getEndpoint(bucket, accessKeyId, accessKeySecret);
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
         }
-        this.bucket = uri.getHost();
         this.enableMultiPart = conf.getBoolean("fs.oss.multipart.parallel.enable", true);
         this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
         this.MAX_COPY_SIZE = conf.getLong("fs.oss.copy.normal.maxsize", 128 * 1024 * 1024L);

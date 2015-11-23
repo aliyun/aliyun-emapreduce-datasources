@@ -4,3 +4,4 @@ emr-sdk/target/
 examples/target/
 *.iml
 sdk/target/
+log.txt
