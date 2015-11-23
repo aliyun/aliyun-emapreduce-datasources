@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun</groupId>
     <artifactId>emr_2.10</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
 
     <modules>
         <module>core</module>
