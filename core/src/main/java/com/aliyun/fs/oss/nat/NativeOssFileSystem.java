@@ -213,7 +213,7 @@ public class NativeOssFileSystem extends FileSystem {
         if (!path.isAbsolute()) {
             throw new IllegalArgumentException("Path must be absolute: " + path);
         }
-        LOG.debug("OSS File Path can not start with \"/\", so we need to scratch the first \"/\".");
+        // OSS File Path can not start with "/", so we need to scratch the first "/".
         String absolutePath = path.toUri().getPath();
         return absolutePath.substring(1);
     }
