@@ -20,7 +20,7 @@
 
 #### Use SDK in Eclipse project directly
 
-- copy `emr-sdk-<version>.jar` to your project
+- copy `emr-sdk_2.10-<version>.jar` to your project
 - right click Eclipse project -> Properties -> Java Build Path -> Add JARs
 - choose and import the sdk
 - you can use the sdk in your Eclipse project
@@ -87,7 +87,7 @@ In above codes, the variables accessKeyId and accessKeySecret are assigned to us
 ```
 
 		// == Step-2 ==
-        val inputPath = "ossn://bucket-name/input/path"
+        val inputPath = "oss://bucket-name/input/path"
 		val numPartitions = 2
 		val inputData = ossOps.readOssFile(inputPath, numPartitions)
 		inputData.top(10).foreach(println)
@@ -102,7 +102,7 @@ In above codes, the variables accessKeyId and accessKeySecret are assigned to us
 ```
 
 		// Step-3
-		val outputPath = "ossn://bucket-name/output/path"
+		val outputPath = "oss://bucket-name/output/path"
 		val resultData = inputData.map(e => s"$e has been processed.")
 		ossOps.saveToOssFile(outputPath, resultData)
 
@@ -123,9 +123,10 @@ Now, we only support two ways to read and write Aliyun OSS data:
 
 We support different types of URI for each filesystem client:
 
-- Native URI： **ossn**://bucket-name/object/path
-- Block-based URI: **oss**://bucket-name/object/path
+- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket/object/path
+- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket/object/path
 
+So, we can set OSS "AccessKeyId/AccessKeySecret" in both Configuration and OSS URI.
 
 ## ODPS Support
 
@@ -226,8 +227,8 @@ Now, we provide a transparent way to support Aliyun OSS, with no code changes an
 
 ```
 
-	conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+	conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
 
 
 ```
@@ -240,14 +241,14 @@ If only use `Native OSS` or `Block-Based OSS`, you just need to add the correspo
     conf.set("spark.hadoop.fs.oss.accessKeyId", "accessKeyId")
     conf.set("spark.hadoop.fs.oss.accessKeySecret", "accessKeySecret")
     conf.set("spark.hadoop.fs.oss.endpoint", "endpoint")
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.ossn.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
     val sc = new SparkContext(conf)
 	
-	val path1 = "oss://bucket/path1"
+	val path1 = "ossbfs://bucket/path1"
 	val rdd1 = sc.textFile(path1)
 
-	val path2 = "ossn://bucket/path2"
+	val path2 = "oss://bucket/path2"
 	val rdd2 = sc.textFile(path2)
 
 ``` 
@@ -257,7 +258,7 @@ Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
 ```
 
 	val data = sc.parallelize(1 to 10)
-	data.saveAsTextFile("ossn://bucket/path3")
+	data.saveAsTextFile("oss://bucket/path3")
 
 ```
 
