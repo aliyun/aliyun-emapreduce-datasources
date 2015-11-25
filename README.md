@@ -123,10 +123,53 @@ Now, we only support two ways to read and write Aliyun OSS data:
 
 We support different types of URI for each filesystem client:
 
-- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket.endpoint/object/path
-- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket.endpoint/object/path
+- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
+- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
 
 So, we can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in both Configuration and OSS URI.
+
+## Advanced  Usage
+
+Now, we provide a transparent way to support Aliyun OSS, with no code changes and just few configurations. All you need to do is just to provide two configuations in your project:
+
+```
+
+	conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+
+
+```
+
+If only use `Native OSS` or `Block-Based OSS`, you just need to add the corresponding configuration. Then, you can load OSS data through `SparkContext.textFile(...)`, like:
+
+```
+
+	val conf = new SparkConf()
+    conf.set("spark.hadoop.fs.oss.accessKeyId", "accessKeyId")
+    conf.set("spark.hadoop.fs.oss.accessKeySecret", "accessKeySecret")
+    conf.set("spark.hadoop.fs.oss.endpoint", "endpoint")
+    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
+    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+    val sc = new SparkContext(conf)
+	
+	val path1 = "ossbfs://bucket/path1"
+	val rdd1 = sc.textFile(path1)
+
+	val path2 = "oss://bucket/path2"
+	val rdd2 = sc.textFile(path2)
+
+``` 
+
+Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
+
+```
+
+	val data = sc.parallelize(1 to 10)
+	data.saveAsTextFile("oss://bucket/path3")
+
+```
+
+**Attention**: now we only support saving to **native** URI through `RDD.saveAsTextFile(...)`.
 
 ## ODPS Support
 
@@ -221,52 +264,54 @@ In above codes, we need to define a `write` function to preprocess reslult data 
 
 It means to write each line of result RDD into the first column of ODPS table.
 
-## Advanced  Usage
+## ONS Support
 
-Now, we provide a transparent way to support Aliyun OSS, with no code changes and just few configurations. All you need to do is just to provide two configuations in your project:
-
-```
-
-	conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-
+In this section, we will demonstrate how to comsume ONS message in Spark.
 
 ```
+    // cId: Aliyun ONS ConsumerID
+    // topic: Message Topic
+    // subExpression: Message Tag
+    val Array(cId, topic, subExpression, parallelism, interval) = args
 
-If only use `Native OSS` or `Block-Based OSS`, you just need to add the corresponding configuration. Then, you can load OSS data through `SparkContext.textFile(...)`, like:
+    val accessKeyId = "accessKeyId"
+    val accessKeySecret = "accessKeySecret"
 
+    val numStreams = parallelism.toInt
+    val batchInterval = Milliseconds(interval.toInt)
+
+    val conf = new SparkConf().setAppName("Spark ONS Sample")
+    val ssc = new StreamingContext(conf, batchInterval)
+
+	// define `func` to preprocess each message 
+    def func: Message => Array[Byte] = msg => msg.getBody
+    val onsStreams = (0 until numStreams).map { i =>
+      println(s"starting stream $i")
+      OnsUtils.createStream(
+        ssc,
+        cId,
+        topic,
+        subExpression,
+        accessKeyId,
+        accessKeySecret,
+        StorageLevel.MEMORY_AND_DISK_2,
+        func)
+    }
+
+    val unionStreams = ssc.union(onsStreams)
+    unionStreams.foreachRDD(rdd => {
+      rdd.map(bytes => new String(bytes)).flatMap(line => line.split(" "))
+        .map(word => (word, 1))
+        .reduceByKey(_ + _).collect().foreach(e => println(s"word: ${e._1}, cnt: ${e._2}"))
+    })
+
+    ssc.start()
+    ssc.awaitTermination()
 ```
-
-	val conf = new SparkConf()
-    conf.set("spark.hadoop.fs.oss.accessKeyId", "accessKeyId")
-    conf.set("spark.hadoop.fs.oss.accessKeySecret", "accessKeySecret")
-    conf.set("spark.hadoop.fs.oss.endpoint", "endpoint")
-    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-    val sc = new SparkContext(conf)
-	
-	val path1 = "ossbfs://bucket/path1"
-	val rdd1 = sc.textFile(path1)
-
-	val path2 = "oss://bucket/path2"
-	val rdd2 = sc.textFile(path2)
-
-``` 
-
-Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
-
-```
-
-	val data = sc.parallelize(1 to 10)
-	data.saveAsTextFile("oss://bucket/path3")
-
-```
-
-**Attention**: now we only support saving to **native** URI through `RDD.saveAsTextFile(...)`.
 
 ## Future Work
 
-- Support more Aliyun base service, like OTS, ONS and so on.
+- Support more Aliyun base service, like OTS, SLS* and so on.
 - Support more friendly code migration.
 
 ## License
