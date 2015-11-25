@@ -123,10 +123,10 @@ Now, we only support two ways to read and write Aliyun OSS data:
 
 We support different types of URI for each filesystem client:
 
-- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket/object/path
-- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket/object/path
+- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket.endpoint/object/path
+- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket.endpoint/object/path
 
-So, we can set OSS "AccessKeyId/AccessKeySecret" in both Configuration and OSS URI.
+So, we can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in both Configuration and OSS URI.
 
 ## ODPS Support
 
