@@ -108,8 +108,9 @@ public class JetOssFileSystemStore implements FileSystemStore {
         if (securityToken == null) {
             securityToken = conf.getTrimmed("fs.oss.securityToken");
         }
-        bucket = uri.getHost();
-        endpoint = Utils.getEndpoint(bucket, accessKeyId, accessKeySecret);
+        String host = uri.getHost();
+        bucket = host.substring(0, host.indexOf("."));
+        endpoint = host.substring(host.indexOf(".")+1);
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {

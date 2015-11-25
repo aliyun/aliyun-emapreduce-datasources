@@ -32,8 +32,8 @@ public class OssAppendOutputStream extends OssOutputStream {
 
     public OssAppendOutputStream(Configuration conf, FileSystemStore store, Path path,
                                  INode inode, long blockSize, Progressable progress,
-                                 int buffersize, ArrayList<Block> blocksForOneTime) throws IOException {
-        super(conf, store, path, blockSize, progress, buffersize, blocksForOneTime);
+                                 int bufferSize, ArrayList<Block> blocksForOneTime) throws IOException {
+        super(conf, store, path, blockSize, progress, bufferSize, blocksForOneTime);
 
         Block[] blocks = inode.getBlocks();
         for(Block block: blocks) {
