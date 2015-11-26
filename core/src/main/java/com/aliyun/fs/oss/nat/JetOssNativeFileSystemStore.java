@@ -73,6 +73,14 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             }
         }
 
+        String host = uri.getHost();
+        if (!host.contains(".")) {
+            bucket = host;
+        } else {
+            bucket = host.substring(0, host.indexOf("."));
+            endpoint = host.substring(host.indexOf(".") + 1);
+        }
+
         if (accessKeyId == null) {
             accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
         }
@@ -82,9 +90,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         if (securityToken == null) {
             securityToken = conf.getTrimmed("fs.oss.securityToken");
         }
-        String host = uri.getHost();
-        bucket = host.substring(0, host.indexOf("."));
-        endpoint = host.substring(host.indexOf(".") + 1);
+
+        if (endpoint == null) {
+            endpoint = conf.getTrimmed("fs.oss.endpoint");
+        }
+
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
