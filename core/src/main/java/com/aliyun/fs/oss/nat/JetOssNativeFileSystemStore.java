@@ -41,6 +41,7 @@ import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
@@ -74,9 +75,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
 
         String host = uri.getHost();
-        if (!host.contains(".")) {
+        if (!StringUtils.isEmpty(host) && !host.contains(".")) {
             bucket = host;
-        } else {
+        } else if (!StringUtils.isEmpty(host)) {
             bucket = host.substring(0, host.indexOf("."));
             endpoint = host.substring(host.indexOf(".") + 1);
         }

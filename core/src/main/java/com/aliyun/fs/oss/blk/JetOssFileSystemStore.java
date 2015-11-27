@@ -27,6 +27,7 @@ import com.aliyun.fs.oss.utils.Utils;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -99,6 +100,14 @@ public class JetOssFileSystemStore implements FileSystemStore {
             }
         }
 
+        String host = uri.getHost();
+        if (!StringUtils.isEmpty(host) && !host.contains(".")) {
+            bucket = host;
+        } else if (!StringUtils.isEmpty(host)) {
+            bucket = host.substring(0, host.indexOf("."));
+            endpoint = host.substring(host.indexOf(".") + 1);
+        }
+
         if (accessKeyId == null) {
             accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
         }
@@ -108,9 +117,10 @@ public class JetOssFileSystemStore implements FileSystemStore {
         if (securityToken == null) {
             securityToken = conf.getTrimmed("fs.oss.securityToken");
         }
-        String host = uri.getHost();
-        bucket = host.substring(0, host.indexOf("."));
-        endpoint = host.substring(host.indexOf(".")+1);
+        if (endpoint == null) {
+            endpoint = conf.getTrimmed("fs.oss.endpoint");
+        }
+
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
         } else {
