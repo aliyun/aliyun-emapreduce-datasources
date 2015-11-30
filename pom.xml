@@ -150,6 +150,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>sls-loghub-client-inner</artifactId>
+                <version>0.1.4</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest_2.10</artifactId>
                 <version>2.2.1</version>

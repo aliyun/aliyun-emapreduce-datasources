@@ -108,26 +108,4 @@ object OnsUtils {
       func: Message => Array[Byte]): JavaReceiverInputDStream[Array[Byte]] = {
     createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, func)
   }
-
-  /**
-   * Create an union input stream that pulls message from a Aliyun ONS stream.
-   * @param jssc Java streamingContext object
-   * @param consumerIdTopicTags Trituple(consumerId, topic, tag)
-   * @param accessKeyId Aliyun Access Key ID
-   * @param accessKeySecret Aliyun Access Key Secret
-   * @param storageLevel Storage level to use for storing the received objects.
-   *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
-   * @param func Extract information from ONS message
-   * @return
-   */
-  @Experimental
-  def createStreams(
-      jssc: JavaStreamingContext,
-      consumerIdTopicTags: Array[(String, String, String)],
-      accessKeyId: String,
-      accessKeySecret: String,
-      storageLevel: StorageLevel,
-      func: Message => Array[Byte]): DStream[Array[Byte]] = {
-    createStreams(jssc.ssc, consumerIdTopicTags, accessKeyId, accessKeySecret, storageLevel, func)
-  }
 }
