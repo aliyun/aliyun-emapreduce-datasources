@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.sls
+package org.apache.spark.streaming.aliyun.logservice
 
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.storage.StorageLevel
@@ -32,12 +32,12 @@ object LoghubUtils {
       mysqlPwd: String,
       mysqlWorkerInstanceTableName: String,
       mysqlShardLeaseTableName: String,
-      loghubProject: String,
-      logStream: String,
+      logServiceProject: String,
+      logStore: String,
       loghubConsumeGroup: String,
       instanceBaseName: String,
       loghubEndpoint: String,
-      accesskeyId: String,
+      accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
     ssc.withNamedScope("loghub stream") {
@@ -50,12 +50,12 @@ object LoghubUtils {
         mysqlPwd,
         mysqlWorkerInstanceTableName,
         mysqlShardLeaseTableName,
-        loghubProject,
-        logStream,
+        logServiceProject,
+        logStore,
         loghubConsumeGroup,
         instanceBaseName,
         loghubEndpoint,
-        accesskeyId,
+        accessKeyId,
         accessKeySecret,
         storageLevel)
     }
@@ -71,13 +71,13 @@ object LoghubUtils {
       mysqlPwd: String,
       mysqlWorkerInstanceTableName: String,
       mysqlShardLeaseTableName: String,
-      loghubProject: String,
-      logStream: String,
+      logServiceProject: String,
+      logStore: String,
       numShards: Int,
       loghubConsumeGroup: String,
       instanceBaseName: String,
       loghubEndpoint: String,
-      accesskeyId: String,
+      accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
     ssc.withNamedScope("loghub stream") {
@@ -91,12 +91,12 @@ object LoghubUtils {
           mysqlPwd,
           mysqlWorkerInstanceTableName,
           mysqlShardLeaseTableName,
-          loghubProject,
-          logStream,
+          logServiceProject,
+          logStore,
           loghubConsumeGroup,
           instanceBaseName,
           loghubEndpoint,
-          accesskeyId,
+          accessKeyId,
           accessKeySecret,
           storageLevel)
       ))

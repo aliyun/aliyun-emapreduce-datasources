@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.sls
+package org.apache.spark.streaming.aliyun.logservice
 
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
@@ -30,12 +30,12 @@ class LoghubInputDStream(
     mysqlPwd: String,
     mysqlWorkerInstanceTableName: String,
     mysqlShardLeaseTableName: String,
-    loghubProject: String,
-    logStream: String,
+    logServiceProject: String,
+    logStore: String,
     loghubConsumeGroup: String,
     instanceBaseName: String,
     loghubEndpoint: String,
-    accesskeyId: String,
+    accessKeyId: String,
     accessKeySecret: String,
     storageLevel: StorageLevel)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
@@ -48,12 +48,12 @@ class LoghubInputDStream(
       mysqlPwd,
       mysqlWorkerInstanceTableName,
       mysqlShardLeaseTableName,
-      loghubProject,
-      logStream,
+      logServiceProject,
+      logStore,
       loghubConsumeGroup,
       instanceBaseName,
       loghubEndpoint,
-      accesskeyId,
+      accessKeyId,
       accessKeySecret,
       storageLevel)
 }
