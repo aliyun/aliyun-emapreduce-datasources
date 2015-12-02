@@ -117,7 +117,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 objMeta.setContentLength(file.length());
                 ossClient.putObject(bucket, key, in, objMeta);
             } else {
-                if (!checkAppendableFile(key)) {
+                if (!doesObjectExist(key)) {
                     AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
                     appendObjectRequest.setPosition(0L);
                     ossClient.appendObject(appendObjectRequest);
@@ -154,6 +154,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public FileMetadata retrieveMetadata(String key) throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                return null;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             return new FileMetadata(key, objectMetadata.getContentLength(),
                     objectMetadata.getLastModified().getTime());
@@ -168,6 +171,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public InputStream retrieve(String key) throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                return null;
+            }
             OSSObject object = ossClient.getObject(bucket, key);
             return object.getObjectContent();
         } catch (ServiceException e) {
@@ -179,6 +185,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public InputStream retrieve(String key, long byteRangeStart)
             throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                return null;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
             GetObjectRequest getObjReq = new GetObjectRequest(bucket, key);
@@ -245,6 +254,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public void copy(String srcKey, String dstKey) throws IOException {
         try {
+            if (!doesObjectExist(srcKey)) {
+                return;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
             Long contentLength = objectMetadata.getContentLength();
             if (contentLength <= Math.min(MAX_COPY_SIZE, 512 * 1024 * 1024L)) {
@@ -351,16 +363,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
-    private boolean checkAppendableFile(String key) {
-        try {
-            ossClient.getObject(bucket, key);
-            return true;
-        } catch (OSSException e) {
-            if (e.getErrorCode().equals("NoSuchKey")) {
-                return false;
-            } else {
-                throw new OssException(e);
-            }
-        }
+    public boolean doesObjectExist(String key) {
+        return ossClient.doesObjectExist(bucket, key);
     }
 }
