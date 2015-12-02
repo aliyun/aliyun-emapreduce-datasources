@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.sls
+package org.apache.spark.streaming.aliyun.logservice
 
 import com.aliyun.openservices.loghub.client.ClientWorker
 import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition, LogHubClientDbConfig}
@@ -23,7 +23,7 @@ import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
-private[sls] class LoghubReceiver(
+private[logservice] class LoghubReceiver(
     mysqlHost: String,
     mysqlPort: Int,
     mysqlDatabase: String,
@@ -31,12 +31,12 @@ private[sls] class LoghubReceiver(
     mysqlPwd: String,
     mysqlWorkerInstanceTableName: String,
     mysqlShardLeaseTableName: String,
-    loghubProject: String,
-    logStream: String,
+    logServiceProject: String,
+    logStore: String,
     loghubConsumeGroup: String,
     instanceBaseName: String,
     loghubEndpoint: String,
-    accesskeyId: String,
+    accessKeyId: String,
     accessKeySecret: String,
     storageLevel: StorageLevel)
   extends Receiver[Array[Byte]](storageLevel) with Logging {
@@ -53,7 +53,7 @@ private[sls] class LoghubReceiver(
         val initCursor = LogHubCursorPosition.END_CURSOR
 
         val config = new LogHubConfig(loghubConsumeGroup, s"$instanceBaseName-$streamId",
-          loghubEndpoint, loghubProject, logStream, accesskeyId, accessKeySecret, initCursor)
+          loghubEndpoint, logServiceProject, logStore, accessKeyId, accessKeySecret, initCursor)
 
         config.setDataFetchIntervalMillis(1000)
 

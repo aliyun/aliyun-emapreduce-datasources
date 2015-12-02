@@ -1,4 +1,4 @@
-package org.apache.spark.streaming.aliyun.sls
+package org.apache.spark.streaming.aliyun.logservice
 
 import com.aliyun.openservices.loghub.client.interfaces.{ILogHubProcessor, ILogHubProcessorFactory}
 
