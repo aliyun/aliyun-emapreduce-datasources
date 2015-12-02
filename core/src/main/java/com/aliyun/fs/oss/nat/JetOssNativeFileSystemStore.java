@@ -37,6 +37,7 @@ import java.util.Map;
 import com.aliyun.fs.oss.common.OssException;
 import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
+import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
@@ -46,12 +47,13 @@ import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
-    private Long MAX_COPY_SIZE;
+    private Long maxSimpleCopySize;
 
     private OSSClient ossClient;
     private String bucket;
-    private Boolean enableMultiPart;
     private int numCopyThreads;
+    private int maxSplitSize;
+    private int numSplits;
 
     private String endpoint = null;
     private String accessKeyId = null;
@@ -96,14 +98,17 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             endpoint = conf.getTrimmed("fs.oss.endpoint");
         }
 
+        ClientConfiguration cc = intializeOSSClientConfig(conf);
+
         if (securityToken == null) {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
+            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, cc);
         } else {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
+            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken, cc);
         }
-        this.enableMultiPart = conf.getBoolean("fs.oss.multipart.parallel.enable", true);
         this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
-        this.MAX_COPY_SIZE = conf.getLong("fs.oss.copy.normal.maxsize", 128 * 1024 * 1024L);
+        this.maxSplitSize = conf.getInt("fs.oss.multipart.split.max.byte", 64 * 1024 * 1024);
+        this.numSplits = conf.getInt("fs.oss.multipart.split.number", numCopyThreads);
+        this.maxSimpleCopySize = conf.getLong("fs.oss.copy.simple.max.byte", 128 * 1024 * 1024L);
     }
 
     public void storeFile(String key, File file, boolean append)
@@ -247,7 +252,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         try {
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
             Long contentLength = objectMetadata.getContentLength();
-            if (contentLength <= Math.min(MAX_COPY_SIZE, 512 * 1024 * 1024L)) {
+            if (contentLength <= Math.min(maxSimpleCopySize, 512 * 1024 * 1024L)) {
                 ossClient.copyObject(bucket, srcKey, bucket, dstKey);
             } else {
                 InitiateMultipartUploadRequest initiateMultipartUploadRequest =
@@ -255,48 +260,34 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 InitiateMultipartUploadResult initiateMultipartUploadResult =
                         ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
                 String uploadId = initiateMultipartUploadResult.getUploadId();
-                Long partSize = contentLength / numCopyThreads;
-                int partCount = numCopyThreads;
+                Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
+                int partCount = (int) (contentLength / partSize);
                 if (contentLength % partSize != 0) {
                     partCount++;
                 }
                 List<PartETag> partETags = new ArrayList<PartETag>();
-                if (enableMultiPart) {
-                    List<Task> tasks = new ArrayList<Task>();
+                List<Task> tasks = new ArrayList<Task>();
+                for (int i = 0; i < partCount; i++) {
+                    long skipBytes = partSize * i;
+                    long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
+                    OSSCopyTask ossCopyTask = new OSSCopyTask(
+                            ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
+                    ossCopyTask.setUuid(i+"");
+                    tasks.add(ossCopyTask);
+                }
+                TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+                try {
+                    taskEngine.executeTask();
+                    Map<String, Object> responseMap = taskEngine.getResultMap();
                     for (int i = 0; i < partCount; i++) {
-                        long skipBytes = partSize * i;
-                        long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
-                        OSSCopyTask ossCopyTask = new OSSCopyTask(
-                                ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
-                        ossCopyTask.setUuid(i+"");
-                        tasks.add(ossCopyTask);
-                    }
-                    TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
-                    try {
-                        taskEngine.executeTask();
-                        Map<String, Object> responseMap = taskEngine.getResultMap();
-                        for (int i = 0; i < partCount; i++) {
-                            UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
-                                    ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
-                            partETags.add(uploadPartCopyResult.getPartETag());
-                        }
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } finally {
-                        taskEngine.shutdown();
-                    }
-                } else {
-                    for (int i = 0; i < partCount; i++) {
-                        long skipBytes = partSize * i;
-                        long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
-                        UploadPartCopyRequest uploadPartCopyRequest = new UploadPartCopyRequest(bucket, srcKey, bucket, dstKey);
-                        uploadPartCopyRequest.setUploadId(uploadId);
-                        uploadPartCopyRequest.setPartSize(size);
-                        uploadPartCopyRequest.setBeginIndex(skipBytes);
-                        uploadPartCopyRequest.setPartNumber(i + 1);
-                        UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadPartCopyRequest);
+                        UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
+                                ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
                         partETags.add(uploadPartCopyResult.getPartETag());
                     }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    taskEngine.shutdown();
                 }
 
                 CompleteMultipartUploadRequest completeMultipartUploadRequest =
@@ -362,5 +353,19 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 throw new OssException(e);
             }
         }
+    }
+
+    private ClientConfiguration intializeOSSClientConfig(Configuration conf) {
+        ClientConfiguration cc = new ClientConfiguration();
+        cc.setConnectionTimeout(conf.getInt("fs.oss.client.connection.timeout",
+                ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT));
+        cc.setSocketTimeout(conf.getInt("fs.oss.client.socket.timeout",
+                ClientConfiguration.DEFAULT_SOCKET_TIMEOUT));
+        cc.setConnectionTTL(conf.getLong("fs.oss.client.connection.ttl",
+                ClientConfiguration.DEFAULT_CONNECTION_TTL));
+        cc.setMaxConnections(conf.getInt("fs.oss.connection.max",
+                ClientConfiguration.DEFAULT_MAX_CONNECTIONS));
+
+        return cc;
     }
 }
