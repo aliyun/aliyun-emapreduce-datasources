@@ -24,6 +24,7 @@ import java.util.*;
 
 import com.aliyun.fs.oss.common.*;
 import com.aliyun.fs.oss.utils.Utils;
+import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
@@ -120,11 +121,11 @@ public class JetOssFileSystemStore implements FileSystemStore {
         if (endpoint == null) {
             endpoint = conf.getTrimmed("fs.oss.endpoint");
         }
-
+        ClientConfiguration cc = intializeOSSClientConfig(conf);
         if (securityToken == null) {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret);
+            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, cc);
         } else {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken);
+            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken, cc);
         }
         this.bufferSize = conf.getInt("io.file.buffer.size", 4096);
     }
@@ -435,5 +436,19 @@ public class JetOssFileSystemStore implements FileSystemStore {
             throw new OssException(e);
         }
         System.out.println(sb);
+    }
+
+    private ClientConfiguration intializeOSSClientConfig(Configuration conf) {
+        ClientConfiguration cc = new ClientConfiguration();
+        cc.setConnectionTimeout(conf.getInt("fs.oss.client.connection.timeout",
+                ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT));
+        cc.setSocketTimeout(conf.getInt("fs.oss.client.socket.timeout",
+                ClientConfiguration.DEFAULT_SOCKET_TIMEOUT));
+        cc.setConnectionTTL(conf.getLong("fs.oss.client.connection.ttl",
+                ClientConfiguration.DEFAULT_CONNECTION_TTL));
+        cc.setMaxConnections(conf.getInt("fs.oss.connection.max",
+                ClientConfiguration.DEFAULT_MAX_CONNECTIONS));
+
+        return cc;
     }
 }
