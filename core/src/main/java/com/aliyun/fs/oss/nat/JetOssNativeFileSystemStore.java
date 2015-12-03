@@ -124,7 +124,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 ossClient.putObject(bucket, key, in, objMeta);
             } else {
                 if (!doesObjectExist(key)) {
-                    LOG.error("NoSuchKey: " + key);
                     AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
                     appendObjectRequest.setPosition(0L);
                     ossClient.appendObject(appendObjectRequest);
@@ -162,7 +161,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public FileMetadata retrieveMetadata(String key) throws IOException {
         try {
             if (!doesObjectExist(key)) {
-                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -180,7 +178,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public InputStream retrieve(String key) throws IOException {
         try {
             if (!doesObjectExist(key)) {
-                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             OSSObject object = ossClient.getObject(bucket, key);
@@ -195,7 +192,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             throws IOException {
         try {
             if (!doesObjectExist(key)) {
-                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -265,7 +261,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public void copy(String srcKey, String dstKey) throws IOException {
         try {
             if (!doesObjectExist(srcKey)) {
-                LOG.error("NoSuchKey: " + srcKey);
                 return;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
@@ -361,7 +356,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     }
 
     private boolean doesObjectExist(String key) {
-        return ossClient.doesObjectExist(bucket, key);
+        try {
+            return ossClient.doesObjectExist(bucket, key);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private ClientConfiguration initializeOSSClientConfig(Configuration conf) {

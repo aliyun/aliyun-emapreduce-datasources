@@ -174,7 +174,6 @@ public class JetOssFileSystemStore implements FileSystemStore {
             throws IOException {
         try {
             if (!doesObjectExist(key)) {
-                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             OSSObject object = ossClient.getObject(bucket, key);
@@ -196,7 +195,6 @@ public class JetOssFileSystemStore implements FileSystemStore {
     private InputStream get(String key, long byteRangeStart) throws IOException {
         try {
             if (!doesObjectExist(key)) {
-                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -446,7 +444,11 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     private boolean doesObjectExist(String key) {
-        return ossClient.doesObjectExist(bucket, key);
+        try {
+            return ossClient.doesObjectExist(bucket, key);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private ClientConfiguration initializeOSSClientConfig(Configuration conf) {
