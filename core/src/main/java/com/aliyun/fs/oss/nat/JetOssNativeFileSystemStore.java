@@ -39,7 +39,6 @@ import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
 import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.commons.lang.StringUtils;
@@ -100,7 +99,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             endpoint = conf.getTrimmed("fs.oss.endpoint");
         }
 
-        ClientConfiguration cc = intializeOSSClientConfig(conf);
+        ClientConfiguration cc = initializeOSSClientConfig(conf);
 
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, cc);
@@ -365,7 +364,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         return ossClient.doesObjectExist(bucket, key);
     }
 
-    private ClientConfiguration intializeOSSClientConfig(Configuration conf) {
+    private ClientConfiguration initializeOSSClientConfig(Configuration conf) {
         ClientConfiguration cc = new ClientConfiguration();
         cc.setConnectionTimeout(conf.getInt("fs.oss.client.connection.timeout",
                 ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT));

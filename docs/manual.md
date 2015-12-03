@@ -6,7 +6,7 @@
 
 ## Introduction
 
-- This SDK supports interaction with Aliyun's base service, e.g. OSS and ODPS, in Spark runtime environment.
+- This SDK supports interaction with Aliyun's base service, e.g. OSS, ODPS, LogService and ONS, in Spark runtime environment.
 
 ## Build and Install
 
@@ -31,12 +31,12 @@ You need to install the SDK into local maven repository and add following depend
 
 ```
 
-		mvn install:install-file -Dfile=emr-sdk_2.10-1.0.0.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=1.0.0 -Dpackaging=jar
+		mvn install:install-file -Dfile=emr-sdk_2.10-1.0.2.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=1.0.2 -Dpackaging=jar
 
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>emr-sdk_2.10</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.2</version>
         </dependency>
 
 ```
@@ -63,11 +63,6 @@ Before read/write OSS data, we need to initialize an OssOps, like:
 	    val endpoint = "http://oss-cn-hangzhou.aliyuncs.com"
 	
 	    val conf = new SparkConf().setAppName("Spark OSS Sample")
-		// three important confirguation
-	    conf.set("spark.hadoop.fs.oss.accessKeyId", accessKeyId)
-	    conf.set("spark.hadoop.fs.oss.accessKeySecret", accessKeySecret)
-	    conf.set("spark.hadoop.fs.oss.endpoint", endpoint)
-
 		val sc = new SparkContext(conf)
 		val ossOps = OssOps(sc, endpoint, accessKeyId, accessKeySecret)
 
@@ -123,10 +118,10 @@ Now, we only support two ways to read and write Aliyun OSS data:
 
 We support different types of URI for each filesystem client:
 
-- Native URI： **oss**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
-- Block-based URI: **ossbfs**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
+- Native URI： **oss**://accesskeyId:accessKeySecret@bucket.endpoint/object/path
+- Block Based URI: **ossbfs**://accesskeyId:accessKeySecret@bucket.endpoint/object/path
 
-So, we can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in both Configuration and OSS URI.
+So, we can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in OSS URI.
 
 ## Advanced  Usage
 
@@ -134,29 +129,20 @@ Now, we provide a transparent way to support Aliyun OSS, with no code changes an
 
 ```
 
-	conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+	conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
 
 
 ```
 
-If only use `Native OSS` or `Block-Based OSS`, you just need to add the corresponding configuration. Then, you can load OSS data through `SparkContext.textFile(...)`, like:
+Then, you can load OSS data through `SparkContext.textFile(...)`, like:
 
 ```
 
 	val conf = new SparkConf()
-    conf.set("spark.hadoop.fs.oss.accessKeyId", "accessKeyId")
-    conf.set("spark.hadoop.fs.oss.accessKeySecret", "accessKeySecret")
-    conf.set("spark.hadoop.fs.oss.endpoint", "endpoint")
-    conf.set("spark.hadoop.fs.ossbfs.impl", "com.aliyun.fs.oss.blk.OssFileSystem")
     conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
     val sc = new SparkContext(conf)
-	
-	val path1 = "ossbfs://bucket/path1"
-	val rdd1 = sc.textFile(path1)
-
-	val path2 = "oss://bucket/path2"
-	val rdd2 = sc.textFile(path2)
+	val path = "oss://accesskeyId:accessKeySecret@bucket.endpoint/input"
+	val rdd = sc.textFile(path)
 
 ``` 
 
@@ -165,7 +151,7 @@ Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
 ```
 
 	val data = sc.parallelize(1 to 10)
-	data.saveAsTextFile("oss://bucket/path3")
+	data.saveAsTextFile("oss://accesskeyId:accessKeySecret@bucket.endpoint/output")
 
 ```
 
