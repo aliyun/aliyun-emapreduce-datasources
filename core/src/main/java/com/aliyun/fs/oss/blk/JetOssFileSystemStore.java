@@ -35,8 +35,7 @@ import org.apache.hadoop.fs.Path;
 
 public class JetOssFileSystemStore implements FileSystemStore {
 
-    public static final Log LOG =
-            LogFactory.getLog(JetOssFileSystemStore.class);
+    public static final Log LOG = LogFactory.getLog(JetOssFileSystemStore.class);
 
     private static final String FILE_SYSTEM_NAME = "fs";
     private static final String FILE_SYSTEM_VALUE = "Hadoop";
@@ -173,6 +172,10 @@ public class JetOssFileSystemStore implements FileSystemStore {
     private InputStream get(String key, boolean checkMetadata)
             throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
+                return null;
+            }
             OSSObject object = ossClient.getObject(bucket, key);
             if (checkMetadata) {
                 checkMetadata(object);
@@ -191,6 +194,10 @@ public class JetOssFileSystemStore implements FileSystemStore {
 
     private InputStream get(String key, long byteRangeStart) throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
+                return null;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
             GetObjectRequest getObjReq = new GetObjectRequest(bucket, key);
@@ -435,5 +442,9 @@ public class JetOssFileSystemStore implements FileSystemStore {
             throw new OssException(e);
         }
         System.out.println(sb);
+    }
+
+    private boolean doesObjectExist(String key) {
+        return ossClient.doesObjectExist(bucket, key);
     }
 }

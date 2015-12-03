@@ -43,10 +43,12 @@ import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
-
+    public static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
     private Long maxSimpleCopySize;
 
     private OSSClient ossClient;
@@ -123,6 +125,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 ossClient.putObject(bucket, key, in, objMeta);
             } else {
                 if (!doesObjectExist(key)) {
+                    LOG.error("NoSuchKey: " + key);
                     AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
                     appendObjectRequest.setPosition(0L);
                     ossClient.appendObject(appendObjectRequest);
@@ -160,6 +163,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public FileMetadata retrieveMetadata(String key) throws IOException {
         try {
             if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -177,6 +181,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public InputStream retrieve(String key) throws IOException {
         try {
             if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             OSSObject object = ossClient.getObject(bucket, key);
@@ -191,6 +196,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             throws IOException {
         try {
             if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
@@ -260,6 +266,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public void copy(String srcKey, String dstKey) throws IOException {
         try {
             if (!doesObjectExist(srcKey)) {
+                LOG.error("NoSuchKey: " + srcKey);
                 return;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
@@ -354,7 +361,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
-    public boolean doesObjectExist(String key) {
+    private boolean doesObjectExist(String key) {
         return ossClient.doesObjectExist(bucket, key);
     }
 
