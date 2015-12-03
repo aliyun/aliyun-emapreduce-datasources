@@ -39,14 +39,15 @@ import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
 import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.OSSException;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
-
+    public static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
     private Long maxSimpleCopySize;
 
     private OSSClient ossClient;
@@ -98,7 +99,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             endpoint = conf.getTrimmed("fs.oss.endpoint");
         }
 
-        ClientConfiguration cc = intializeOSSClientConfig(conf);
+        ClientConfiguration cc = initializeOSSClientConfig(conf);
 
         if (securityToken == null) {
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, cc);
@@ -122,7 +123,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 objMeta.setContentLength(file.length());
                 ossClient.putObject(bucket, key, in, objMeta);
             } else {
-                if (!checkAppendableFile(key)) {
+                if (!doesObjectExist(key)) {
+                    LOG.error("NoSuchKey: " + key);
                     AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
                     appendObjectRequest.setPosition(0L);
                     ossClient.appendObject(appendObjectRequest);
@@ -159,6 +161,10 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public FileMetadata retrieveMetadata(String key) throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
+                return null;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             return new FileMetadata(key, objectMetadata.getContentLength(),
                     objectMetadata.getLastModified().getTime());
@@ -173,6 +179,10 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public InputStream retrieve(String key) throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
+                return null;
+            }
             OSSObject object = ossClient.getObject(bucket, key);
             return object.getObjectContent();
         } catch (ServiceException e) {
@@ -184,6 +194,10 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public InputStream retrieve(String key, long byteRangeStart)
             throws IOException {
         try {
+            if (!doesObjectExist(key)) {
+                LOG.error("NoSuchKey: " + key);
+                return null;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
             GetObjectRequest getObjReq = new GetObjectRequest(bucket, key);
@@ -250,6 +264,10 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public void copy(String srcKey, String dstKey) throws IOException {
         try {
+            if (!doesObjectExist(srcKey)) {
+                LOG.error("NoSuchKey: " + srcKey);
+                return;
+            }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, srcKey);
             Long contentLength = objectMetadata.getContentLength();
             if (contentLength <= Math.min(maxSimpleCopySize, 512 * 1024 * 1024L)) {
@@ -342,20 +360,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
-    private boolean checkAppendableFile(String key) {
-        try {
-            ossClient.getObject(bucket, key);
-            return true;
-        } catch (OSSException e) {
-            if (e.getErrorCode().equals("NoSuchKey")) {
-                return false;
-            } else {
-                throw new OssException(e);
-            }
-        }
+    private boolean doesObjectExist(String key) {
+        return ossClient.doesObjectExist(bucket, key);
     }
 
-    private ClientConfiguration intializeOSSClientConfig(Configuration conf) {
+    private ClientConfiguration initializeOSSClientConfig(Configuration conf) {
         ClientConfiguration cc = new ClientConfiguration();
         cc.setConnectionTimeout(conf.getInt("fs.oss.client.connection.timeout",
                 ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT));
