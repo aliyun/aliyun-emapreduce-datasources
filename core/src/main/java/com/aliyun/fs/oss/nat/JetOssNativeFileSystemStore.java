@@ -49,6 +49,7 @@ import org.apache.hadoop.conf.Configuration;
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
     private Long maxSimpleCopySize;
+    private Long maxSimplePutSize;
 
     private OSSClient ossClient;
     private String bucket;
@@ -107,21 +108,35 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken, cc);
         }
         this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
-        this.maxSplitSize = conf.getInt("fs.oss.multipart.split.max.byte", 64 * 1024 * 1024);
+        this.maxSplitSize = conf.getInt("fs.oss.multipart.split.max.byte", 5 * 1024 * 1024);
         this.numSplits = conf.getInt("fs.oss.multipart.split.number", numCopyThreads);
-        this.maxSimpleCopySize = conf.getLong("fs.oss.copy.simple.max.byte", 128 * 1024 * 1024L);
+        this.maxSimpleCopySize = conf.getLong("fs.oss.copy.simple.max.byte", 64 * 1024 * 1024L);
+        this.maxSimplePutSize = conf.getLong("fs.oss.put.simple.max.byte", 64 * 1024 * 1024);
     }
 
     public void storeFile(String key, File file, boolean append)
             throws IOException {
-
         BufferedInputStream in = null;
+
         try {
             in = new BufferedInputStream(new FileInputStream(file));
             ObjectMetadata objMeta = new ObjectMetadata();
             if (!append) {
-                objMeta.setContentLength(file.length());
-                ossClient.putObject(bucket, key, in, objMeta);
+                Long fileLength = file.length();
+                if (fileLength < maxSimplePutSize) {
+                    objMeta.setContentLength(file.length());
+                    ossClient.putObject(bucket, key, in, objMeta);
+                } else {
+                    InitiateMultipartUploadRequest initiateMultipartUploadRequest =
+                            new InitiateMultipartUploadRequest(bucket, key);
+                    InitiateMultipartUploadResult initiateMultipartUploadResult =
+                            ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+                    String uploadId = initiateMultipartUploadResult.getUploadId();
+                    List<PartETag> partETags = multiPartFile(key, file, uploadId);
+                    CompleteMultipartUploadRequest completeMultipartUploadRequest =
+                            new CompleteMultipartUploadRequest(bucket, key, uploadId, partETags);
+                    ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+                }
             } else {
                 if (!doesObjectExist(key)) {
                     AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
@@ -361,6 +376,34 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public List<PartETag> multiPartFile(String finalDstKey, File file, String uploadId) throws IOException {
+        Long contentLength = file.length();
+        int partCount = (int) (contentLength / maxSplitSize);
+        if (contentLength % maxSplitSize != 0) {
+            partCount++;
+        }
+
+        List<PartETag> partETags = new ArrayList<PartETag>();
+        for(int i=0; i<partCount; i++) {
+            FileInputStream fis = new FileInputStream(file);
+            long skipBytes = maxSplitSize * i;
+            fis.skip(skipBytes);
+            long size = maxSplitSize < contentLength - skipBytes ? maxSplitSize : contentLength - skipBytes;
+            UploadPartRequest uploadPartRequest = new UploadPartRequest();
+            uploadPartRequest.setBucketName(bucket);
+            uploadPartRequest.setKey(finalDstKey);
+            uploadPartRequest.setUploadId(uploadId);
+            uploadPartRequest.setInputStream(fis);
+            uploadPartRequest.setPartSize(size);
+            uploadPartRequest.setPartNumber(i+1);
+            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadPartRequest);
+            partETags.add(uploadPartResult.getPartETag());
+            fis.close();
+        }
+
+        return partETags;
     }
 
     private ClientConfiguration initializeOSSClientConfig(Configuration conf) {
