@@ -37,6 +37,8 @@ import java.util.Map;
 import com.aliyun.fs.oss.common.OssException;
 import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
+import com.aliyun.fs.oss.utils.task.OSSCopyTask;
+import com.aliyun.fs.oss.utils.task.OSSPutTask;
 import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.ServiceException;
@@ -123,19 +125,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             ObjectMetadata objMeta = new ObjectMetadata();
             if (!append) {
                 Long fileLength = file.length();
-                if (fileLength < maxSimplePutSize) {
+                if (fileLength < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
                     objMeta.setContentLength(file.length());
                     ossClient.putObject(bucket, key, in, objMeta);
                 } else {
-                    InitiateMultipartUploadRequest initiateMultipartUploadRequest =
-                            new InitiateMultipartUploadRequest(bucket, key);
-                    InitiateMultipartUploadResult initiateMultipartUploadResult =
-                            ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
-                    String uploadId = initiateMultipartUploadResult.getUploadId();
-                    List<PartETag> partETags = multiPartFile(key, file, uploadId);
-                    CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                            new CompleteMultipartUploadRequest(bucket, key, uploadId, partETags);
-                    ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+                    doMultipartPut(file, key);
                 }
             } else {
                 if (!doesObjectExist(key)) {
@@ -283,44 +277,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             if (contentLength <= Math.min(maxSimpleCopySize, 512 * 1024 * 1024L)) {
                 ossClient.copyObject(bucket, srcKey, bucket, dstKey);
             } else {
-                InitiateMultipartUploadRequest initiateMultipartUploadRequest =
-                        new InitiateMultipartUploadRequest(bucket, dstKey);
-                InitiateMultipartUploadResult initiateMultipartUploadResult =
-                        ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
-                String uploadId = initiateMultipartUploadResult.getUploadId();
-                Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
-                int partCount = (int) (contentLength / partSize);
-                if (contentLength % partSize != 0) {
-                    partCount++;
-                }
-                List<PartETag> partETags = new ArrayList<PartETag>();
-                List<Task> tasks = new ArrayList<Task>();
-                for (int i = 0; i < partCount; i++) {
-                    long skipBytes = partSize * i;
-                    long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
-                    OSSCopyTask ossCopyTask = new OSSCopyTask(
-                            ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
-                    ossCopyTask.setUuid(i+"");
-                    tasks.add(ossCopyTask);
-                }
-                TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
-                try {
-                    taskEngine.executeTask();
-                    Map<String, Object> responseMap = taskEngine.getResultMap();
-                    for (int i = 0; i < partCount; i++) {
-                        UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
-                                ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
-                        partETags.add(uploadPartCopyResult.getPartETag());
-                    }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } finally {
-                    taskEngine.shutdown();
-                }
-
-                CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                        new CompleteMultipartUploadRequest(bucket, dstKey, uploadId, partETags);
-                ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+                doMultipartCopy(srcKey, dstKey, contentLength);
             }
         } catch (ServiceException e) {
             handleServiceException(srcKey, e);
@@ -378,32 +335,86 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
-    public List<PartETag> multiPartFile(String finalDstKey, File file, String uploadId) throws IOException {
-        Long contentLength = file.length();
-        int partCount = (int) (contentLength / maxSplitSize);
-        if (contentLength % maxSplitSize != 0) {
+    private void doMultipartCopy(String srcKey, String dstKey, Long contentLength) {
+        InitiateMultipartUploadRequest initiateMultipartUploadRequest =
+                new InitiateMultipartUploadRequest(bucket, dstKey);
+        InitiateMultipartUploadResult initiateMultipartUploadResult =
+                ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+        String uploadId = initiateMultipartUploadResult.getUploadId();
+        Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
+        int partCount = (int) (contentLength / partSize);
+        if (contentLength % partSize != 0) {
             partCount++;
         }
-
         List<PartETag> partETags = new ArrayList<PartETag>();
-        for(int i=0; i<partCount; i++) {
-            FileInputStream fis = new FileInputStream(file);
-            long skipBytes = maxSplitSize * i;
-            fis.skip(skipBytes);
-            long size = maxSplitSize < contentLength - skipBytes ? maxSplitSize : contentLength - skipBytes;
-            UploadPartRequest uploadPartRequest = new UploadPartRequest();
-            uploadPartRequest.setBucketName(bucket);
-            uploadPartRequest.setKey(finalDstKey);
-            uploadPartRequest.setUploadId(uploadId);
-            uploadPartRequest.setInputStream(fis);
-            uploadPartRequest.setPartSize(size);
-            uploadPartRequest.setPartNumber(i+1);
-            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadPartRequest);
-            partETags.add(uploadPartResult.getPartETag());
-            fis.close();
+        List<Task> tasks = new ArrayList<Task>();
+        for (int i = 0; i < partCount; i++) {
+            long skipBytes = partSize * i;
+            long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
+            OSSCopyTask ossCopyTask = new OSSCopyTask(
+                    ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
+            ossCopyTask.setUuid(i+"");
+            tasks.add(ossCopyTask);
+        }
+        TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+        try {
+            taskEngine.executeTask();
+            Map<String, Object> responseMap = taskEngine.getResultMap();
+            for (int i = 0; i < partCount; i++) {
+                UploadPartCopyResult uploadPartCopyResult = (UploadPartCopyResult)
+                        ((Result) responseMap.get(i+"")).getModels().get("uploadPartCopyResult");
+                partETags.add(uploadPartCopyResult.getPartETag());
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            taskEngine.shutdown();
         }
 
-        return partETags;
+        CompleteMultipartUploadRequest completeMultipartUploadRequest =
+                new CompleteMultipartUploadRequest(bucket, dstKey, uploadId, partETags);
+        ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+    }
+
+    private void doMultipartPut(File file, String key) throws IOException {
+        Long contentLength = file.length();
+        InitiateMultipartUploadRequest initiateMultipartUploadRequest =
+                new InitiateMultipartUploadRequest(bucket, key);
+        InitiateMultipartUploadResult initiateMultipartUploadResult =
+                ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+        String uploadId = initiateMultipartUploadResult.getUploadId();
+        Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
+        int partCount = (int) (contentLength / partSize);
+        if (contentLength % partSize != 0) {
+            partCount++;
+        }
+        List<PartETag> partETags = new ArrayList<PartETag>();
+        List<Task> tasks = new ArrayList<Task>();
+        for (int i = 0; i < partCount; i++) {
+            long skipBytes = partSize * i;
+            long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
+            OSSPutTask ossPutTask = new OSSPutTask(ossClient, uploadId, bucket, key, size, skipBytes, i+1, file);
+            ossPutTask.setUuid(i + "");
+            tasks.add(ossPutTask);
+        }
+        TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+        try {
+            taskEngine.executeTask();
+            Map<String, Object> responseMap = taskEngine.getResultMap();
+            for (int i = 0; i < partCount; i++) {
+                UploadPartResult uploadPartResult = (UploadPartResult)
+                        ((Result) responseMap.get(i+"")).getModels().get("uploadPartResult");
+                partETags.add(uploadPartResult.getPartETag());
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            taskEngine.shutdown();
+        }
+
+        CompleteMultipartUploadRequest completeMultipartUploadRequest =
+                new CompleteMultipartUploadRequest(bucket, key, uploadId, partETags);
+        ossClient.completeMultipartUpload(completeMultipartUploadRequest);
     }
 
     private ClientConfiguration initializeOSSClientConfig(Configuration conf) {

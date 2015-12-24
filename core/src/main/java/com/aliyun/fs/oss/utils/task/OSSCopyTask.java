@@ -15,13 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.aliyun.fs.oss.utils;
+package com.aliyun.fs.oss.utils.task;
 
+import com.aliyun.fs.oss.utils.Result;
+import com.aliyun.fs.oss.utils.Task;
+import com.aliyun.fs.oss.utils.TaskEngine;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.model.UploadPartCopyRequest;
 import com.aliyun.oss.model.UploadPartCopyResult;
-
-import java.util.UUID;
 
 public class OSSCopyTask extends Task {
     OSSClient ossClient;
