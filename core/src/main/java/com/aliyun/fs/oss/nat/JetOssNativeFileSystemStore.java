@@ -50,7 +50,7 @@ import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
-    private int numSplitsUpperLimit = 1000;
+    private int numSplitsUpperLimit = 10000;
 
     private Long maxSimpleCopySize;
     private Long maxSimplePutSize;
