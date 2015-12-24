@@ -49,7 +49,9 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
-    public static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
+    private static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
+    private int numSplitsUpperLimit = 10000;
+
     private Long maxSimpleCopySize;
     private Long maxSimplePutSize;
 
@@ -341,7 +343,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         InitiateMultipartUploadResult initiateMultipartUploadResult =
                 ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
         String uploadId = initiateMultipartUploadResult.getUploadId();
-        Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
+        Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
+        Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
         int partCount = (int) (contentLength / partSize);
         if (contentLength % partSize != 0) {
             partCount++;
@@ -383,7 +386,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         InitiateMultipartUploadResult initiateMultipartUploadResult =
                 ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
         String uploadId = initiateMultipartUploadResult.getUploadId();
-        Long partSize = Math.min(maxSplitSize, contentLength / numSplits);
+        Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
+        Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
         int partCount = (int) (contentLength / partSize);
         if (contentLength % partSize != 0) {
             partCount++;
