@@ -131,6 +131,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                     objMeta.setContentLength(file.length());
                     ossClient.putObject(bucket, key, in, objMeta);
                 } else {
+                    LOG.info("using multipart upload for key " + key + ", size: " + fileLength);
                     doMultipartPut(file, key);
                 }
             } else {
@@ -279,6 +280,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             if (contentLength <= Math.min(maxSimpleCopySize, 512 * 1024 * 1024L)) {
                 ossClient.copyObject(bucket, srcKey, bucket, dstKey);
             } else {
+                LOG.info("using multipart copy for copying from srckey " + srcKey + " to " + dstKey +
+                        ", size: " + contentLength);
                 doMultipartCopy(srcKey, dstKey, contentLength);
             }
         } catch (ServiceException e) {
@@ -349,6 +352,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         if (contentLength % partSize != 0) {
             partCount++;
         }
+        LOG.info("multipart copying, partCount" + partCount + ", partSize " + partSize);
         List<PartETag> partETags = new ArrayList<PartETag>();
         List<Task> tasks = new ArrayList<Task>();
         for (int i = 0; i < partCount; i++) {
@@ -392,6 +396,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         if (contentLength % partSize != 0) {
             partCount++;
         }
+        LOG.info("multipart uploading, partCount" + partCount + ", partSize " + partSize);
         List<PartETag> partETags = new ArrayList<PartETag>();
         List<Task> tasks = new ArrayList<Task>();
         for (int i = 0; i < partCount; i++) {
