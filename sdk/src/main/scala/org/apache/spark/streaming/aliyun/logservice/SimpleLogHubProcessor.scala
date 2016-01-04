@@ -18,15 +18,19 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.util
 
+import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
-import com.aliyun.openservices.sls.common.{LogItem, LogGroupData}
+import com.aliyun.openservices.sls.common.{LogContent, LogItem, LogGroupData}
 
 import scala.collection.JavaConversions._
 
 class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
   private var mShardId: String = _
   private var mLastCheckTime = 0L
+  private val __TIME__ = "__time__"
+  private val __TOPIC__ = "__topic__"
+  private val __SOURCE__ = "__source__"
 
   override def shutdown(iLogHubCheckPointTracker: ILogHubCheckPointTracker): Unit = {
     iLogHubCheckPointTracker.saveCheckPoint(true)
@@ -37,7 +41,9 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
   }
 
   override def process(list: util.List[LogGroupData], iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
-    list.foreach(group => group.GetAllLogs().foreach(item => process(item)))
+    list.foreach(group => {
+      group.GetAllLogs().foreach(item => process(group, item))
+    })
     val ct = System.currentTimeMillis()
     try {
       (ct - mLastCheckTime) > 60 * 1000 match {
@@ -55,7 +61,17 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
     ""
   }
 
-  private def process(item: LogItem): Unit = {
-    receiver.store(item.ToJsonString().getBytes)
+  private def process(group: LogGroupData, item: LogItem): Unit = {
+    val topic = group.GetTopic()
+    val source = group.GetSource()
+    val obj = new JSONObject()
+    obj.put(__TIME__, Integer.valueOf(item.mLogTime))
+    obj.put(__TOPIC__, topic)
+    obj.put(__SOURCE__, source)
+    item.mContents.iterator().foreach(content => {
+      obj.put(content.GetKey(), content.GetValue())
+    })
+
+    receiver.store(obj.toString.getBytes)
   }
 }
