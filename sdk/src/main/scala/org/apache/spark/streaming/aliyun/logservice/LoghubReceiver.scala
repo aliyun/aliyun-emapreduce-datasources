@@ -32,9 +32,9 @@ private[logservice] class LoghubReceiver(
     mysqlWorkerInstanceTableName: String,
     mysqlShardLeaseTableName: String,
     logServiceProject: String,
-    logStore: String,
-    loghubConsumeGroup: String,
-    instanceBaseName: String,
+    logStoreName: String,
+    loghubConsumerGroupName: String,
+    loghubInstanceNameBase: String,
     loghubEndpoint: String,
     accessKeyId: String,
     accessKeySecret: String,
@@ -52,10 +52,11 @@ private[logservice] class LoghubReceiver(
           mysqlWorkerInstanceTableName, mysqlShardLeaseTableName)
         val initCursor = LogHubCursorPosition.END_CURSOR
 
-        val config = new LogHubConfig(loghubConsumeGroup, s"$instanceBaseName-$streamId",
-          loghubEndpoint, logServiceProject, logStore, accessKeyId, accessKeySecret, initCursor)
+        val config = new LogHubConfig(
+          loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+          loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor)
 
-        config.setDataFetchIntervalMillis(1000)
+        config.setDataFetchIntervalMillis(200)
 
         val leaseManager = new MySqlLogHubLeaseManager(dbConfig)
 

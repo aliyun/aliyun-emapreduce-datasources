@@ -23,6 +23,7 @@ import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
 object LoghubUtils {
   @Experimental
+  @Deprecated
   def createStream(
       ssc: StreamingContext,
       mysqlHost: String,
@@ -33,9 +34,9 @@ object LoghubUtils {
       mysqlWorkerInstanceTableName: String,
       mysqlShardLeaseTableName: String,
       logServiceProject: String,
-      logStore: String,
-      loghubConsumeGroup: String,
-      instanceBaseName: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubInstanceNameBase: String,
       loghubEndpoint: String,
       accessKeyId: String,
       accessKeySecret: String,
@@ -51,9 +52,130 @@ object LoghubUtils {
         mysqlWorkerInstanceTableName,
         mysqlShardLeaseTableName,
         logServiceProject,
-        logStore,
-        loghubConsumeGroup,
-        instanceBaseName,
+        logStoreName,
+        loghubConsumerGroupName,
+        loghubInstanceNameBase,
+        loghubEndpoint,
+        accessKeyId,
+        accessKeySecret,
+        storageLevel)
+    }
+  }
+
+  @Experimental
+  @Deprecated
+  def createStream(
+      ssc: StreamingContext,
+      mysqlHost: String,
+      mysqlPort: Int,
+      mysqlDatabase: String,
+      mysqlUser: String,
+      mysqlPwd: String,
+      mysqlWorkerInstanceTableName: String,
+      mysqlShardLeaseTableName: String,
+      logServiceProject: String,
+      logStoreName: String,
+      numReceivers: Int,
+      loghubConsumerGroupName: String,
+      loghubInstanceNameBase: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
+        new LoghubInputDStream(
+          ssc,
+          mysqlHost,
+          mysqlPort,
+          mysqlDatabase,
+          mysqlUser,
+          mysqlPwd,
+          mysqlWorkerInstanceTableName,
+          mysqlShardLeaseTableName,
+          logServiceProject,
+          logStoreName,
+          loghubConsumerGroupName,
+          loghubInstanceNameBase,
+          loghubEndpoint,
+          accessKeyId,
+          accessKeySecret,
+          storageLevel)
+      ))
+    }
+  }
+
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      mysqlHost: String,
+      mysqlPort: Int,
+      mysqlDatabase: String,
+      mysqlUser: String,
+      mysqlPwd: String,
+      mysqlWorkerInstanceTableName: String,
+      mysqlShardLeaseTableName: String,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      new LoghubInputDStream(
+        ssc,
+        mysqlHost,
+        mysqlPort,
+        mysqlDatabase,
+        mysqlUser,
+        mysqlPwd,
+        mysqlWorkerInstanceTableName,
+        mysqlShardLeaseTableName,
+        logServiceProject,
+        logStoreName,
+        loghubConsumerGroupName,
+        appId,
+        loghubEndpoint,
+        accessKeyId,
+        accessKeySecret,
+        storageLevel)
+    }
+  }
+
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      mysqlHost: String,
+      mysqlPort: Int,
+      mysqlDatabase: String,
+      mysqlUser: String,
+      mysqlPwd: String,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      new LoghubInputDStream(
+        ssc,
+        mysqlHost,
+        mysqlPort,
+        mysqlDatabase,
+        mysqlUser,
+        mysqlPwd,
+        "loghub_worker",
+        "loghub_lease",
+        logServiceProject,
+        logStoreName,
+        loghubConsumerGroupName,
+        appId,
         loghubEndpoint,
         accessKeyId,
         accessKeySecret,
@@ -72,16 +194,17 @@ object LoghubUtils {
       mysqlWorkerInstanceTableName: String,
       mysqlShardLeaseTableName: String,
       logServiceProject: String,
-      logStore: String,
-      numShards: Int,
-      loghubConsumeGroup: String,
-      instanceBaseName: String,
+      logStoreName: String,
+      numReceivers: Int,
+      loghubConsumerGroupName: String,
       loghubEndpoint: String,
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
     ssc.withNamedScope("loghub stream") {
-      ssc.union(Array.tabulate(numShards)(e => e).map(t =>
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
         new LoghubInputDStream(
           ssc,
           mysqlHost,
@@ -92,9 +215,50 @@ object LoghubUtils {
           mysqlWorkerInstanceTableName,
           mysqlShardLeaseTableName,
           logServiceProject,
-          logStore,
-          loghubConsumeGroup,
-          instanceBaseName,
+          logStoreName,
+          loghubConsumerGroupName,
+          appId,
+          loghubEndpoint,
+          accessKeyId,
+          accessKeySecret,
+          storageLevel)
+      ))
+    }
+  }
+
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      mysqlHost: String,
+      mysqlPort: Int,
+      mysqlDatabase: String,
+      mysqlUser: String,
+      mysqlPwd: String,
+      logServiceProject: String,
+      logStoreName: String,
+      numReceivers: Int,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
+        new LoghubInputDStream(
+          ssc,
+          mysqlHost,
+          mysqlPort,
+          mysqlDatabase,
+          mysqlUser,
+          mysqlPwd,
+          "loghub_worker",
+          "loghub_lease",
+          logServiceProject,
+          logStoreName,
+          loghubConsumerGroupName,
+          appId,
           loghubEndpoint,
           accessKeyId,
           accessKeySecret,

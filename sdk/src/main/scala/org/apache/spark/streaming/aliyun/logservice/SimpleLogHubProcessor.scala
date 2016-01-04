@@ -56,9 +56,6 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
   }
 
   private def process(item: LogItem): Unit = {
-    item.GetLogContents().foreach(logContent => {
-      val content = s"${logContent.GetKey()}, ${logContent.GetValue()}"
-      receiver.store(content.getBytes())
-    })
+    receiver.store(item.ToJsonString().getBytes)
   }
 }
