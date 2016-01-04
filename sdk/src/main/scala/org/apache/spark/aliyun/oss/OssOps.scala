@@ -33,6 +33,17 @@ class OssOps(
     securityToken: Option[String] = None)
   extends Logging with Serializable {
 
+  /**
+   * Read data from OSS.
+   *
+   * {{{
+   *   test
+   * }}}
+   *
+   * @param path A OSS file path which job is reading.
+   * @param minPartitions l
+   * @return
+   */
   def readOssFileWithJava(
       path: String,
       minPartitions: Int): JavaRDD[String] = {
