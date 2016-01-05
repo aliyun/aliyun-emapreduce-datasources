@@ -75,10 +75,10 @@ object LoghubUtils {
       mysqlShardLeaseTableName: String,
       logServiceProject: String,
       logStoreName: String,
-      numReceivers: Int,
       loghubConsumerGroupName: String,
       loghubInstanceNameBase: String,
       loghubEndpoint: String,
+      numReceivers: Int,
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
@@ -195,9 +195,9 @@ object LoghubUtils {
       mysqlShardLeaseTableName: String,
       logServiceProject: String,
       logStoreName: String,
-      numReceivers: Int,
       loghubConsumerGroupName: String,
       loghubEndpoint: String,
+      numReceivers: Int,
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
@@ -236,9 +236,9 @@ object LoghubUtils {
       mysqlPwd: String,
       logServiceProject: String,
       logStoreName: String,
-      numReceivers: Int,
       loghubConsumerGroupName: String,
       loghubEndpoint: String,
+      numReceivers: Int,
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
