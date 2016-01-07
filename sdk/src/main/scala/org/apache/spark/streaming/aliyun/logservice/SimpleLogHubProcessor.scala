@@ -62,16 +62,21 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
   }
 
   private def process(group: LogGroupData, item: LogItem): Unit = {
-    val topic = group.GetTopic()
-    val source = group.GetSource()
-    val obj = new JSONObject()
-    obj.put(__TIME__, Integer.valueOf(item.mLogTime))
-    obj.put(__TOPIC__, topic)
-    obj.put(__SOURCE__, source)
-    item.mContents.iterator().foreach(content => {
-      obj.put(content.GetKey(), content.GetValue())
-    })
+    try {
+      val topic = group.GetTopic()
+      val source = group.GetSource()
+      val obj = new JSONObject()
+      obj.put(__TIME__, Integer.valueOf(item.mLogTime))
+      obj.put(__TOPIC__, topic)
+      obj.put(__SOURCE__, source)
+      item.mContents.iterator().foreach(content => {
+        obj.put(content.GetKey(), content.GetValue())
+      })
 
-    receiver.store(obj.toString.getBytes)
+      receiver.store(obj.toJSONString.getBytes)
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+    }
   }
 }
