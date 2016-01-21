@@ -51,17 +51,33 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Read table from ODPS.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {   *
+   *     @Override
+   *     public List<Long> call(Record record, TableSchema schema) throws Exception {
+   *         List<Long> ret = new ArrayList<Long>();
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             ret.add(Long.valueOf(record.getString(i)));
+   *         }
+   *         return ret;
+   *     }
+   *    }
    *
+   *    JavaRDD<List<Long>> readData = odpsOps.readTableWithJava("odps-project", "odps-table", "odps-partition", new RecordToLongs(), 2);
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job are reading.
-   * @param partition The name of partition, when job is reading a `Partitioned Table`.
+   * @param partition The name of partition, when job is reading a `Partitioned Table`, like pt='xxx'.
    * @param transfer A function for transferring ODPS table to [[org.apache.spark.api.java.JavaRDD]].
    *                 We apply the function to all [[com.aliyun.odps.data.Record]] of table.
    * @param numPartition The number of RDD partition, implying the concurrency to read ODPS table.
    * @return A JavaRDD which contains all records of ODPS table.
    */
   def readTableWithJava[R](
-      project: String, table: String, partition: String,
+      project: String,
+      table: String,
+      partition: String,
       transfer: JFunction2[Record, TableSchema, R],
       numPartition: Int): JavaRDD[R] = {
     new JavaRDD(
@@ -72,7 +88,21 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Read table from ODPS.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {   *
+   *     @Override
+   *     public List<Long> call(Record record, TableSchema schema) throws Exception {
+   *         List<Long> ret = new ArrayList<Long>();
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             ret.add(Long.valueOf(record.getString(i)));
+   *         }
+   *         return ret;
+   *     }
+   *    }
    *
+   *    JavaRDD<List<Long>> readData = odpsOps.readTableWithJava("odps-project", "odps-table", new RecordToLongs(), 2);
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table from which the job is reading
    * @param transfer A function for transferring ODPS table to [[org.apache.spark.api.java.JavaRDD]].
@@ -81,7 +111,8 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    * @return A JavaRDD which contains all records of ODPS table.
    */
   def readTableWithJava[R](
-      project: String, table: String,
+      project: String,
+      table: String,
       transfer: JFunction2[Record, TableSchema, R],
       numPartition: Int): JavaRDD[R] = {
     new JavaRDD(
@@ -92,16 +123,32 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   JavaRDD<List<Long>> data = ...
+   *   static class SaveRecord implements Function3<List<Long>, Record, TableSchema, BoxedUnit> {
+   *     @Override
+   *     public BoxedUnit call(List<Long> data, Record record, TableSchema schema) throws Exception {
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             record.setString(i, data.get(i).toString());
+   *         }
+   *         return null;
+   *     }
+   *   }
    *
+   *   odpsOps.saveToTableWithJava("odps-project", "odps-table", "odps-partition", data, new SaveRecord());
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
-   * @param partition The name of partition, when job is writing a `Partitioned Table`.
+   * @param partition The name of partition, when job is writing a `Partitioned Table`, like pt='xxx'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be written into a ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.api.java.JavaRDD]] to ODPS table.
    *                 We apply the function to all elements of JavaRDD.
    */
   def saveToTableWithJava[T](
-      project: String, table: String, partition: String,
+      project: String,
+      table: String,
+      partition: String,
       javaRdd: JavaRDD[T],
       transfer: JFunction3[T, Record, TableSchema, Unit]) {
     saveToTable(project, table, partition, javaRdd.rdd,
@@ -111,10 +158,24 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   JavaRDD<List<Long>> data = ...
+   *   static class SaveRecord implements Function3<List<Long>, Record, TableSchema, BoxedUnit> {
+   *     @Override
+   *     public BoxedUnit call(List<Long> data, Record record, TableSchema schema) throws Exception {
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             record.setString(i, data.get(i).toString());
+   *         }
+   *         return null;
+   *     }
+   *   }
    *
+   *   odpsOps.saveToTableWithJava("odps-project", "odps-table", "odps-partition", data, new SaveRecord(), false);
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
-   * @param partition The name of partition, when job is writing a `Partitioned Table`.
+   * @param partition The name of partition, when job is writing a `Partitioned Table`, like pt='xxx'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be written into a ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.api.java.JavaRDD]] to ODPS table.
    *                 We apply the function to all elements of JavaRDD.
@@ -122,7 +183,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    *                      exist.
    */
   def saveToTableWithJava[T](
-      project: String, table: String, partition: String,
+      project: String,
+      table: String,
+      partition: String,
       javaRdd: JavaRDD[T],
       transfer: JFunction3[T, Record, TableSchema, Unit],
       defaultCreate: Boolean) {
@@ -133,10 +196,24 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   JavaRDD<List<Long>> data = ...
+   *   static class SaveRecord implements Function3<List<Long>, Record, TableSchema, BoxedUnit> {
+   *     @Override
+   *     public BoxedUnit call(List<Long> data, Record record, TableSchema schema) throws Exception {
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             record.setString(i, data.get(i).toString());
+   *         }
+   *         return null;
+   *     }
+   *   }
    *
+   *   odpsOps.saveToTableWithJava("odps-project", "odps-table", "odps-partition", data, new SaveRecord(), false, false);
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
-   * @param partition The name of partition, when job is writing a `Partitioned Table`.
+   * @param partition The name of partition, when job is writing a `Partitioned Table`, like pt='xxx'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be written into a ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.api.java.JavaRDD]] to ODPS table.
    *                 We apply the function to all elements of JavaRDD.
@@ -146,10 +223,13 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    *                  NOTE: only support overwriting partition, not table.
    */
   def saveToTableWithJava[T](
-      project: String, table: String, partition: String,
+      project: String,
+      table: String,
+      partition: String,
       javaRdd: JavaRDD[T],
       transfer: JFunction3[T, Record, TableSchema, Unit],
-      defaultCreate: Boolean, overwrite: Boolean) {
+      defaultCreate: Boolean,
+      overwrite: Boolean) {
     saveToTable(project, table, partition, javaRdd.rdd,
       (t: T, record: Record, schema: TableSchema) => transfer.call(t, record, schema),
       defaultCreate, overwrite)(fakeClassTag)
@@ -157,7 +237,21 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   OdpsOps odpsOps = ...
+   *   JavaRDD<List<Long>> data = ...
+   *   static class SaveRecord implements Function3<List<Long>, Record, TableSchema, BoxedUnit> {
+   *     @Override
+   *     public BoxedUnit call(List<Long> data, Record record, TableSchema schema) throws Exception {
+   *         for (int i = 0; i < schema.getColumns().size(); i++) {
+   *             record.setString(i, data.get(i).toString());
+   *         }
+   *         return null;
+   *     }
+   *   }
    *
+   *   odpsOps.saveToTableWithJava("odps-project", "odps-table", data, new SaveRecord());
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be written into a ODPS table.
@@ -165,7 +259,8 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    *                 We apply the function to all elements of JavaRDD.
    */
   def saveToTableWithJava[T](
-      project: String, table: String,
+      project: String,
+      table: String,
       javaRdd: JavaRDD[T],
       transfer: JFunction3[T, Record, TableSchema, Unit]) {
     saveToTable(project, table, javaRdd.rdd,
@@ -174,10 +269,21 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Read table from ODPS.
+   * {{{
+   *   val odpsOps = ...
+   *   val odpsTable = odpsOps.readTable("odps-project", "odps-table", "odps-partition", readFunc, 2)
    *
+   *   def readFunc(record: Record, schema: TableSchema): Array[Long] = {
+   *     val ret = new Array[Long](schema.getColumns.size())
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       ret(i) = record.getString(i).toLong
+   *     }
+   *     ret
+   *   }
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
-   * @param partition The name of partition, when job is reading a `Partitioned Table`.
+   * @param partition The name of partition, when job is reading a `Partitioned Table`, like pt='xxx'.
    * @param transfer A function for transferring ODPS table to [[org.apache.spark.rdd.RDD]].
    *                 We apply the function to all [[com.aliyun.odps.data.Record]] of table.
    * @param numPartition The number of RDD partition, implying the concurrency to read ODPS table.
@@ -185,7 +291,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    */
   @unchecked
   def readTable[T: ClassTag](
-      project: String, table: String, partition: String,
+      project: String,
+      table: String,
+      partition: String,
       transfer: (Record, TableSchema) => T,
       numPartition: Int): RDD[T] = {
     val func = sc.clean(transfer)
@@ -202,7 +310,18 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Read table from ODPS.
+   * {{{
+   *   val odpsOps = ...
+   *   val odpsTable = odpsOps.readTable("odps-project", "odps-table", readFunc, 2)
    *
+   *   def readFunc(record: Record, schema: TableSchema): Array[Long] = {
+   *     val ret = new Array[Long](schema.getColumns.size())
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       ret(i) = record.getString(i).toLong
+   *     }
+   *     ret
+   *   }
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
    * @param transfer A function for transferring ODPS table to [[org.apache.spark.rdd.RDD]].
@@ -212,7 +331,8 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    */
   @unchecked
   def readTable[T: ClassTag](
-      project: String, table: String,
+      project: String,
+      table: String,
       transfer: (Record, TableSchema) => T,
       numPartition: Int): RDD[T] = {
     val func = sc.clean(transfer)
@@ -222,11 +342,15 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Load ODPS table into [[org.apache.spark.sql.DataFrame]].
-   *
+   * {{{
+   *   val sqlContext = ...
+   *   val odpsOps = ...
+   *   val odpstableDF = odpsOps.loadOdpsTable(sqlContext, "odps-project", "odps-table", "odps-partition", Array(0, 2, 3), 2)
+   * }}}
    * @param sqlContext A Spark SQL context
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
-   * @param partition The name of partition, when job is reading a `Partitioned Table`.
+   * @param partition The name of partition, when job is reading a `Partitioned Table`, like pt='xxx'.
    * @param cols Implying to load which columns
    * @param numPartition The number of RDD partition, implying the concurrency to read ODPS table.
    * @return A DataFrame which contains relevant records of ODPS table.
@@ -250,11 +374,15 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Load ODPS table into [[org.apache.spark.sql.DataFrame]].
-   *
+   * {{{
+   *   val sqlContext = ...
+   *   val odpsOps = ...
+   *   val odpstableDF = odpsOps.loadOdpsTable(sqlContext, "odps-project", "odps-table", Array(0, 2, 3), 2)
+   * }}}
    * @param sqlContext A Spark SQL context
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
-   * @param cols Implying to load which columns
+   * @param cols Implying to load which columns, i.e. Array(0, 1, 3).
    * @param numPartition The number of RDD partition, implying the concurrency to read ODPS table.
    * @return A DataFrame which contains relevant records of ODPS table.
    */
@@ -276,23 +404,46 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   val odpsOps = ...
+   *   val data: RDD[Array[Long]] = ...
+   *   odps.saveToTable("odps-project", "odps-table", "odps-partition", data, writeFunc)
    *
+   *   def writeFunc(kv: Array[Long], record: Record, schema: TableSchema) {
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       record.setString(i, kv(i).toString)
+   *     }
+   *   }
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job is writing.
-   * @param partition The name of partition, when job is writing a `Partitioned Table`.
+   * @param partition The name of partition, when job is writing a `Partitioned Table`, like pt='xxx'.
    * @param rdd A [[org.apache.spark.rdd.RDD]] which will be written into a ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.rdd.RDD]] to ODPS table.
    *                 We apply the function to all elements of RDD.
    */
   def saveToTable[T: ClassTag](
-      project: String, table: String, partition: String,
-      rdd: RDD[T], transfer: (T, Record, TableSchema) => Unit) {
+      project: String,
+      table: String,
+      partition: String,
+      rdd: RDD[T],
+      transfer: (T, Record, TableSchema) => Unit) {
     saveToTable(project, table, partition, rdd, transfer, false, false)
   }
 
   /**
    * Save a RDD to ODPS table.
+   * {{{
+   *   val odpsOps = ...
+   *   val data: RDD[Array[Long]] = ...
+   *   odps.saveToTable("odps-project", "odps-table", "odps-partition", data, writeFunc, false)
    *
+   *   def writeFunc(kv: Array[Long], record: Record, schema: TableSchema) {
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       record.setString(i, kv(i).toString)
+   *     }
+   *   }
+   * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job is writing.
    * @param partition The name of partition, when job is writing a `Partitioned Table`.
@@ -303,9 +454,177 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    *                      not exist.
    */
   def saveToTable[T: ClassTag](
-      project: String, table: String, partition: String,
-      rdd: RDD[T], transfer: (T, Record, TableSchema) => Unit, defaultCreate: Boolean) {
+      project: String,
+      table: String,
+      partition: String,
+      rdd: RDD[T],
+      transfer: (T, Record, TableSchema) => Unit,
+      defaultCreate: Boolean) {
     saveToTable(project, table, partition, rdd, transfer, defaultCreate, false)
+  }
+
+  /**
+   * Save a RDD to ODPS table.
+   * {{{
+   *   val odpsOps = ...
+   *   val data: RDD[Array[Long]] = ...
+   *   odps.saveToTable("odps-project", "odps-table", "odps-partition", data, writeFunc, false, false)
+   *
+   *   def writeFunc(kv: Array[Long], record: Record, schema: TableSchema) {
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       record.setString(i, kv(i).toString)
+   *     }
+   *   }
+   * }}}
+   * @param project The name of ODPS project.
+   * @param table The name of table, which job is writing.
+   * @param partition The name of partition, when job is writing a Partitioned Table, lie pt='xxx'.
+   * @param rdd A org.apache.spark.rdd.RDD which will be written into a ODPS table.
+   * @param transfer A function for transferring org.apache.spark.rdd.RDD to ODPS table.
+   *                 We apply the function to all elements of RDD.
+   * @param defaultCreate Implying whether to create a table partition, if the specific partition
+   *                      does not exist.
+   * @param overwrite Implying whether to overwrite the specific partition if exists.
+   *                  NOTE: only support overwriting partition, not table.
+   */
+  @unchecked
+  def saveToTable[T: ClassTag](
+      project: String,
+      table: String,
+      partition: String,
+      rdd: RDD[T],
+      transfer: (T, Record, TableSchema) => Unit,
+      defaultCreate: Boolean,
+      overwrite: Boolean) {
+
+    def transfer0(t: T, record: Record, scheme: TableSchema): Record = {
+      transfer(t, record, scheme)
+      record
+    }
+
+    val func = sc.clean(transfer0 _)
+    odps.setDefaultProject(project)
+    val partitionSpec = new PartitionSpec(partition)
+
+    if(overwrite) {
+      val success = dropPartition(project, table, partition)
+      if(!success)
+        logInfo("delete partition failed.")
+      createPartition(project, table, partition)
+    }
+
+    if(defaultCreate) {
+      createPartition(project, table, partition)
+    }
+
+    val uploadSession = tunnel.createUploadSession(project, table, partitionSpec)
+    logInfo("Odps upload session status is: " + uploadSession.getStatus.toString)
+    val uploadId = uploadSession.getId
+
+    def writeToFile(context: TaskContext, iter: Iterator[T]) {
+      val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
+      val odps_ = new Odps(account_)
+      odps_.setDefaultProject(project)
+      odps_.setEndpoint(odpsUrl)
+      val tunnel_ = new DataTunnel(odps_)
+      tunnel_.setEndpoint(tunnelUrl)
+      val partitionSpec_ = new PartitionSpec(partition)
+      val uploadSession_ = tunnel_.getUploadSession(project, table, partitionSpec_, uploadId)
+      val writer = uploadSession_.openRecordWriter(context.partitionId)
+
+      // for odps metrics monitor
+      var recordsWritten = 0L
+      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
+      context.taskMetrics.outputMetrics = Some(outputMetrics)
+
+      while (iter.hasNext) {
+        val value = iter.next()
+        logDebug("context id: " + context.partitionId + " write: " + value)
+        writer.write(func(value, uploadSession_.newRecord(), uploadSession_.getSchema))
+        recordsWritten += 1
+      }
+      logDebug("ready context id: " + context.partitionId)
+      writer.close()
+      logDebug("finish context id: " + context.partitionId)
+      outputMetrics.setRecordsWritten(recordsWritten)
+      val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
+      outputMetrics.setBytesWritten(totalBytes)
+    }
+
+    sc.runJob(rdd, writeToFile _)
+    val arr = Array.tabulate(rdd.partitions.length)(l => Long.box(l))
+    uploadSession.commit(arr)
+  }
+
+  /**
+   * Save a RDD to ODPS table.
+   * {{{
+   *   val odpsOps = ...
+   *   val data: RDD[Array[Long]] = ...
+   *   odps.saveToTable("odps-project", "odps-table", data, writeFunc)
+   *
+   *   def writeFunc(kv: Array[Long], record: Record, schema: TableSchema) {
+   *     for (i <- 0 until schema.getColumns.size()) {
+   *       record.setString(i, kv(i).toString)
+   *     }
+   *   }
+   * }}}
+   * @param project The name of ODPS project.
+   * @param table The name of table, which job is writing.
+   * @param rdd A org.apache.spark.rdd.RDD which will be written into a ODPS table.
+   * @param transfer A function for transferring org.apache.spark.rdd.RDD to ODPS table.
+   *                 We apply the function to all elements of RDD.
+   */
+  @unchecked
+  def saveToTable[T: ClassTag](
+      project: String,
+      table: String,
+      rdd: RDD[T],
+      transfer: (T, Record, TableSchema) => Unit) {
+
+    def transfer0(t: T, record: Record, scheme: TableSchema): Record = {
+      transfer(t, record, scheme)
+      record
+    }
+
+    val func = sc.clean(transfer0 _)
+    odps.setDefaultProject(project)
+    val uploadSession = tunnel.createUploadSession(project, table)
+    logInfo("Odps upload session status is: " + uploadSession.getStatus.toString)
+    val uploadId = uploadSession.getId
+
+    def writeToFile(context: TaskContext, iter: Iterator[T]) {
+      val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
+      val odps_ = new Odps(account_)
+      odps_.setDefaultProject(project)
+      odps_.setEndpoint(odpsUrl)
+      val tunnel_ = new DataTunnel(odps_)
+      tunnel_.setEndpoint(tunnelUrl)
+      val uploadSession_ = tunnel_.getUploadSession(project, table, uploadId)
+      val writer = uploadSession_.openRecordWriter(context.partitionId)
+
+      // for odps metrics monitor
+      var recordsWritten = 0L
+      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
+      context.taskMetrics.outputMetrics = Some(outputMetrics)
+
+      while (iter.hasNext) {
+        val value = iter.next()
+        logDebug("context id: " + context.partitionId + " write: " + value)
+        writer.write(func(value, uploadSession_.newRecord(), uploadSession_.getSchema))
+        recordsWritten += 1
+      }
+      logDebug("ready context id: " + context.partitionId)
+      writer.close()
+      logDebug("finish context id: " + context.partitionId)
+      outputMetrics.setRecordsWritten(recordsWritten)
+      val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
+      outputMetrics.setBytesWritten(totalBytes)
+    }
+
+    sc.runJob(rdd, writeToFile _)
+    val arr = Array.tabulate(rdd.partitions.length)(l => Long.box(l))
+    uploadSession.commit(arr)
   }
 
   private def prepareCols(cols: Array[Int], columnsLen: Int): Array[Int] = {
@@ -401,144 +720,6 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
     }
 
     (name, colType)
-  }
-
-  /**
-   * Save a RDD to ODPS table.
-   *
-   * @param project The name of ODPS project.
-   * @param table The name of table, which job is writing.
-   * @param partition The name of partition, when job is writing a Partitioned Table.
-   * @param rdd A org.apache.spark.rdd.RDD which will be written into a ODPS table.
-   * @param transfer A function for transferring org.apache.spark.rdd.RDD to ODPS table.
-   *                 We apply the function to all elements of RDD.
-   * @param defaultCreate Implying whether to create a table partition, if the specific partition
-   *                      does not exist.
-   * @param overwrite Implying whether to overwrite the specific partition if exists.
-   *                  NOTE: only support overwriting partition, not table.
-   */
-  @unchecked
-  def saveToTable[T: ClassTag](
-      project: String, table: String, partition: String,
-      rdd: RDD[T], transfer: (T, Record, TableSchema) => Unit,
-      defaultCreate: Boolean, overwrite: Boolean) {
-
-    def transfer0(t: T, record: Record, scheme: TableSchema): Record = {
-      transfer(t, record, scheme)
-      record
-    }
-
-    val func = sc.clean(transfer0 _)
-    odps.setDefaultProject(project)
-    val partitionSpec = new PartitionSpec(partition)
-
-    if(overwrite) {
-      val success = dropPartition(project, table, partition)
-      if(!success)
-        logInfo("delete partition failed.")
-      createPartition(project, table, partition)
-    }
-
-    if(defaultCreate) {
-      createPartition(project, table, partition)
-    }
-
-    val uploadSession = tunnel.createUploadSession(project, table, partitionSpec)
-    logInfo("Odps upload session status is: " + uploadSession.getStatus.toString)
-    val uploadId = uploadSession.getId
-
-    def writeToFile(context: TaskContext, iter: Iterator[T]) {
-      val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
-      val odps_ = new Odps(account_)
-      odps_.setDefaultProject(project)
-      odps_.setEndpoint(odpsUrl)
-      val tunnel_ = new DataTunnel(odps_)
-      tunnel_.setEndpoint(tunnelUrl)
-      val partitionSpec_ = new PartitionSpec(partition)
-      val uploadSession_ = tunnel_.getUploadSession(project, table, partitionSpec_, uploadId)
-      val writer = uploadSession_.openRecordWriter(context.partitionId)
-
-      // for odps metrics monitor
-      var recordsWritten = 0L
-      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
-      context.taskMetrics.outputMetrics = Some(outputMetrics)
-
-      while (iter.hasNext) {
-        val value = iter.next()
-        logDebug("context id: " + context.partitionId + " write: " + value)
-        writer.write(func(value, uploadSession_.newRecord(), uploadSession_.getSchema))
-        recordsWritten += 1
-      }
-      logDebug("ready context id: " + context.partitionId)
-      writer.close()
-      logDebug("finish context id: " + context.partitionId)
-      outputMetrics.setRecordsWritten(recordsWritten)
-      val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
-      outputMetrics.setBytesWritten(totalBytes)
-    }
-
-    sc.runJob(rdd, writeToFile _)
-    val arr = Array.tabulate(rdd.partitions.length)(l => Long.box(l))
-    uploadSession.commit(arr)
-  }
-
-  /**
-   * Save a RDD to ODPS table.
-   *
-   * @param project The name of ODPS project.
-   * @param table The name of table, which job is writing.
-   * @param rdd A org.apache.spark.rdd.RDD which will be written into a ODPS table.
-   * @param transfer A function for transferring org.apache.spark.rdd.RDD to ODPS table.
-   *                 We apply the function to all elements of RDD.
-   */
-  @unchecked
-  def saveToTable[T: ClassTag](
-      project: String, table: String, rdd: RDD[T],
-      transfer: (T, Record, TableSchema) => Unit) {
-
-    def transfer0(t: T, record: Record, scheme: TableSchema): Record = {
-      transfer(t, record, scheme)
-      record
-    }
-
-    val func = sc.clean(transfer0 _)
-    odps.setDefaultProject(project)
-    val uploadSession = tunnel.createUploadSession(project, table)
-    logInfo("Odps upload session status is: " + uploadSession.getStatus.toString)
-    val uploadId = uploadSession.getId
-
-    def writeToFile(context: TaskContext, iter: Iterator[T]) {
-      val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
-      val odps_ = new Odps(account_)
-      odps_.setDefaultProject(project)
-      odps_.setEndpoint(odpsUrl)
-      val tunnel_ = new DataTunnel(odps_)
-      tunnel_.setEndpoint(tunnelUrl)
-      val uploadSession_ = tunnel_.getUploadSession(project, table, uploadId)
-      val writer = uploadSession_.openRecordWriter(context.partitionId)
-
-      // for odps metrics monitor
-      var recordsWritten = 0L
-      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
-      context.taskMetrics.outputMetrics = Some(outputMetrics)
-
-      while (iter.hasNext) {
-        val value = iter.next()
-        logDebug("context id: " + context.partitionId + " write: " + value)
-        writer.write(func(value, uploadSession_.newRecord(), uploadSession_.getSchema))
-        recordsWritten += 1
-      }
-      logDebug("ready context id: " + context.partitionId)
-      writer.close()
-      logDebug("finish context id: " + context.partitionId)
-      outputMetrics.setRecordsWritten(recordsWritten)
-      val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
-      outputMetrics.setBytesWritten(totalBytes)
-    }
-
-    sc.runJob(rdd, writeToFile _)
-    val arr = Array.tabulate(rdd.partitions.length)(l => Long.box(l))
-    uploadSession.commit(arr)
   }
 
   private def checkTableAndPartition(

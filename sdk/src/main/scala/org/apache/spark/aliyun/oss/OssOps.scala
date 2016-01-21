@@ -35,15 +35,15 @@ class OssOps(
 
   /**
    * Read data from OSS.
-   *
    * {{{
-   *   test
-   * }}}
+   *   OssOps ossOps = ...
    *
+   * }}}
    * @param path A OSS file path which job is reading.
    * @param minPartitions l
    * @return
    */
+  @Deprecated("use Java")
   def readOssFileWithJava(
       path: String,
       minPartitions: Int): JavaRDD[String] = {
