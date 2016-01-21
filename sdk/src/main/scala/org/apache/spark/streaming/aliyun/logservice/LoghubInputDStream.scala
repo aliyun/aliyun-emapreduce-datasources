@@ -39,8 +39,11 @@ class LoghubInputDStream(
     accessKeySecret: String,
     storageLevel: StorageLevel)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
+  val dataFetchIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
+
   override def getReceiver(): Receiver[Array[Byte]] =
     new LoghubReceiver(
+      dataFetchIntervalMillis,
       mysqlHost,
       mysqlPort,
       mysqlDatabase,

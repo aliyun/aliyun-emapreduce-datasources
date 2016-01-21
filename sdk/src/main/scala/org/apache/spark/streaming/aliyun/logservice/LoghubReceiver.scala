@@ -24,6 +24,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
 private[logservice] class LoghubReceiver(
+    dataFetchIntervalMillis: Long,
     mysqlHost: String,
     mysqlPort: Int,
     mysqlDatabase: String,
@@ -56,7 +57,7 @@ private[logservice] class LoghubReceiver(
           loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
           loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor)
 
-        config.setDataFetchIntervalMillis(200)
+        config.setDataFetchIntervalMillis(dataFetchIntervalMillis)
 
         val leaseManager = new MySqlLogHubLeaseManager(dbConfig)
 
