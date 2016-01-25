@@ -25,6 +25,26 @@ import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
 import org.apache.spark.rdd.RDD
 
+/**
+ * Various utility classes for working with Aliyun OSS.
+ * 
+ * OSS URI:
+ * {{{
+ *   There are two kinds of OSS URI:
+ *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
+ *   Simplified OSS URI: oss://bucket/path
+ *
+ *   like:
+ *      oss://kj7aY*******UYx6:AiNMAlxz*************1PxaPaL8t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
+ *      oss://aBucket/fileA
+ *
+ *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
+ *      SparkConf conf = new SparkConf()
+ *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj7aY*******UYx6")
+ *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "AiNMAlxz*************1PxaPaL8t")
+ *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
+ * }}}
+ */
 class OssOps(
     @transient sc: SparkContext,
     endpoint: String,
@@ -38,23 +58,6 @@ class OssOps(
    * {{{
    *   OssOps ossOps = ...
    *   JavaRDD[T] javaRdd = ossOps.readOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
-   * }}}
-   *
-   * OSS URI:
-   * {{{
-   *   There are two kinds of OSS URI:
-   *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
-   *   Simplified OSS URI: oss://bucket/path
-   *
-   *   like:
-   *      oss://kj*************6:Ai***************************t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
-   *      oss://aBucket/fileB
-   *
-   *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
-   *      SparkConf conf = new SparkConf()
-   *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj*************6")
-   *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "Ai***************************t")
-   *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
    * }}}
    * @param path An OSS file path which job is reading.
    * @param minPartitions The minimum partitions of RDD
@@ -74,23 +77,6 @@ class OssOps(
    *   JavaRDD[T] javaRdd = ...
    *   ossOps.saveToOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", javaRdd)
    * }}}
-   *
-   * OSS URI:
-   * {{{
-   *   There are two kinds of OSS URI:
-   *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
-   *   Simplified OSS URI: oss://bucket/path
-   *
-   *   like:
-   *      oss://kj*************6:Ai***************************t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
-   *      oss://aBucket/fileB
-   *
-   *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
-   *      SparkConf conf = new SparkConf()
-   *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj*************6")
-   *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "Ai***************************t")
-   *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
-   * }}}
    * @param path An OSS file path which job is writing to.
    * @param javaRdd A JavaRDD that you want to save to OSS.
    */
@@ -106,23 +92,6 @@ class OssOps(
    * {{{
    *   val ossOps: OssOps = ...
    *   val javaRdd: JavaRDD[T] = ossOps.readOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
-   * }}}
-   *
-   * OSS URI:
-   * {{{
-   *   There are two kinds of OSS URI:
-   *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
-   *   Simplified OSS URI: oss://bucket/path
-   *
-   *   like:
-   *      oss://kj*************6:Ai***************************t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
-   *      oss://aBucket/fileB
-   *
-   *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
-   *      val conf = new SparkConf()
-   *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj*************6")
-   *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "Ai***************************t")
-   *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
    * }}}
    * @param path An OSS file path which job is reading.
    * @param minPartitions The minimum partitions of RDD
@@ -141,23 +110,6 @@ class OssOps(
    *   val ossOps: OssOps = ...
    *   val rdd: RDD[T] = ...
    *   ossOps.saveToOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", rdd)
-   * }}}
-   *
-   * OSS URI:
-   * {{{
-   *   There are two kinds of OSS URI:
-   *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
-   *   Simplified OSS URI: oss://bucket/path
-   *
-   *   like:
-   *      oss://kj*************6:Ai***************************t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
-   *      oss://aBucket/fileB
-   *
-   *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
-   *      val conf = new SparkConf()
-   *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj*************6")
-   *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "Ai***************************t")
-   *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
    * }}}
    * @param path An OSS file path which job is writing to.
    * @param rdd A RDD that you want to save to OSS.

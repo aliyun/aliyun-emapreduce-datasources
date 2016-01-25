@@ -25,6 +25,50 @@ import org.apache.spark.Logging
 
 class OdpsUtils(odps: Odps) extends Logging{
 
+  /**
+   * Check if specific ODPS table and partition exist or else.
+   *
+   * <h4>Examples</h4>
+   * <blockquote>
+   * <table border=0 cellspacing=3 cellpadding=0 summary="Examples of checking ODPS table and partition existence">
+   *     <tr bgcolor="#ccccff">
+   *         <th align=left>Type of ODPS table
+   *         <th align=left>Table exist
+   *         <th align=left>Partition exist
+   *         <th align=left>Return
+   *     <tr>
+   *         <td><code>Non-partitioned</code>
+   *         <td><code>false</code>
+   *         <td><code>-</code>
+   *         <td><code>(false, false)</code>
+   *     <tr bgcolor="#eeeeff">
+   *         <td><code>Non-partitioned</code>
+   *         <td><code>true</code>
+   *         <td><code>-</code>
+   *         <td><code>(true, false)</code>
+   *     <tr>
+   *         <td><code>Partitioned</code>
+   *         <td><code>true</code>
+   *         <td><code>false</code>
+   *         <td><code>(true, false)</code>
+   *     <tr bgcolor="#eeeeff">
+   *         <td><code>Partitioned</code>
+   *         <td><code>true</code>
+   *         <td><code>true</code>
+   *         <td><code>(true, true)</code>
+   *     <tr>
+   *         <td><code>Partitioned</code>
+   *         <td><code>false</code>
+   *         <td><code>-</code>
+   *         <td><code>(false, false)</code>
+   * </table>
+   * </blockquote>
+   *
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param pname The name of ODPS table partition, if partitioned table.
+   * @returns
+   */
   def checkTableAndPartition(
       project: String,
       table: String,
@@ -50,6 +94,13 @@ class OdpsUtils(odps: Odps) extends Logging{
     }
   }
 
+  /**
+   * Drop specific partition of ODPS table.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param pname The name of ODPS table partition, if partitioned table.
+   * @return Success or not.
+   */
   def dropPartition(
        project: String,
        table: String,
@@ -70,6 +121,12 @@ class OdpsUtils(odps: Odps) extends Logging{
     }
   }
 
+  /**
+   * Drop specific ODPS table.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @return Success or not.
+   */
   def dropTable(
      project: String,
      table: String): Boolean = {
@@ -88,6 +145,13 @@ class OdpsUtils(odps: Odps) extends Logging{
     }
   }
 
+  /**
+   * Create specific partition of ODPS table.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param pname The name of ODPS table partition, if partitioned table.
+   * @return Success or not.
+   */
   def createPartition(
      project: String,
      table: String,
@@ -113,7 +177,13 @@ class OdpsUtils(odps: Odps) extends Logging{
     true
   }
 
-
+  /**
+   * Get the table schema of ODPS table.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param isPartition Is partition column or not.
+   * @return
+   */
   def getTableSchema(project: String, table: String, isPartition: Boolean): Array[(String, String)] =  {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
@@ -131,6 +201,13 @@ class OdpsUtils(odps: Odps) extends Logging{
     })
   }
 
+  /**
+   * Get information of specific column via column name.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param name The name of specific column.
+   * @return Column index and type.
+   */
   def getColumnByName(project: String, table: String, name: String): (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
@@ -146,6 +223,13 @@ class OdpsUtils(odps: Odps) extends Logging{
     (idx.toString, colType)
   }
 
+  /**
+   * Get information of specific column vai column index.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @param idx The index of specific column.
+   * @return Column name and type.
+   */
   def getColumnByIdx(project: String, table: String, idx: Int): (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
@@ -162,6 +246,12 @@ class OdpsUtils(odps: Odps) extends Logging{
     (name, colType)
   }
 
+  /**
+   * Run sql on ODPS.
+   * @param project The name of ODPS project.
+   * @param sqlCmd An ODPS sql
+   * @return An instance of ODPS.
+   */
   def runSQL(project: String, sqlCmd: String): Instance =  {
     val odps = new Odps(this.odps.getAccount)
     odps.setDefaultProject(project)
@@ -173,6 +263,12 @@ class OdpsUtils(odps: Odps) extends Logging{
     }
   }
 
+  /**
+   * Get all partition [[PartitionSpec]] of specific ODPS table.
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @return All partition [[PartitionSpec]]
+   */
   def getAllPartitionSpecs(table: String, project: String = null): Iterator[PartitionSpec] = {
     if(project != null)
       odps.setDefaultProject(project)
