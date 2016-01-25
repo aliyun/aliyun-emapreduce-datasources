@@ -25,6 +25,26 @@ import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
 import org.apache.spark.rdd.RDD
 
+/**
+ * Various utility classes for working with Aliyun OSS.
+ * 
+ * OSS URI:
+ * {{{
+ *   There are two kinds of OSS URI:
+ *   Complete OSS URI: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
+ *   Simplified OSS URI: oss://bucket/path
+ *
+ *   like:
+ *      oss://kj7aY*******UYx6:AiNMAlxz*************1PxaPaL8t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
+ *      oss://aBucket/fileA
+ *
+ *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
+ *      SparkConf conf = new SparkConf()
+ *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj7aY*******UYx6")
+ *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "AiNMAlxz*************1PxaPaL8t")
+ *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
+ * }}}
+ */
 class OssOps(
     @transient sc: SparkContext,
     endpoint: String,
@@ -33,24 +53,68 @@ class OssOps(
     securityToken: Option[String] = None)
   extends Logging with Serializable {
 
+  /**
+   * Read data from OSS.
+   * {{{
+   *   OssOps ossOps = ...
+   *   JavaRDD[T] javaRdd = ossOps.readOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
+   * }}}
+   * @param path An OSS file path which job is reading.
+   * @param minPartitions The minimum partitions of RDD
+   * @return A JavaRDD[String] that contains all lines of OSS object.
+   */
+  @deprecated("use JavaSparkContext.textFile(\"oss://...\") instead")
   def readOssFileWithJava(
       path: String,
       minPartitions: Int): JavaRDD[String] = {
     new JavaRDD(readOssFile(path, minPartitions))
   }
 
+  /**
+   * Write RDD to OSS
+   * {{{
+   *   OssOps ossOps = ...
+   *   JavaRDD[T] javaRdd = ...
+   *   ossOps.saveToOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", javaRdd)
+   * }}}
+   * @param path An OSS file path which job is writing to.
+   * @param javaRdd A JavaRDD that you want to save to OSS.
+   */
+  @deprecated("use JavaRDD.saveAsTextFile(\"oss://...\")")
   def saveToOssFileWithJava[T](
       path: String,
       javaRdd: JavaRDD[T]): Unit = {
     saveToOssFile(path, javaRdd.rdd)
   }
 
+  /**
+   * Read data from OSS.
+   * {{{
+   *   val ossOps: OssOps = ...
+   *   val javaRdd: JavaRDD[T] = ossOps.readOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
+   * }}}
+   * @param path An OSS file path which job is reading.
+   * @param minPartitions The minimum partitions of RDD
+   * @return A JavaRDD[String] that contains all lines of OSS object.
+   */
+  @deprecated("use SparkContext.textFile(\"oss://...\") instead")
   def readOssFile(
       path: String,
       minPartitions: Int): RDD[String] = {
     new OssRDD(sc, path, minPartitions, endpoint, accessKeyId, accessKeySecret, securityToken)
   }
 
+  /**
+   * Write RDD to OSS
+   * {{{
+   *   val ossOps: OssOps = ...
+   *   val rdd: RDD[T] = ...
+   *   ossOps.saveToOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", rdd)
+   * }}}
+   * @param path An OSS file path which job is writing to.
+   * @param rdd A RDD that you want to save to OSS.
+   */
+  @deprecated("use RDD.saveAsTextFile(\"oss://...\")")
   def saveToOssFile[T](
       path: String,
       rdd: RDD[T]): Unit = {
