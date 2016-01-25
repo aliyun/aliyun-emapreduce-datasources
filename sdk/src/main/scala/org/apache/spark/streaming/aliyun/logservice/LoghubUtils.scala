@@ -22,8 +22,28 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
 object LoghubUtils {
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param mysqlWorkerInstanceTableName
+   * @param mysqlShardLeaseTableName
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubInstanceNameBase
+   * @param loghubEndpoint
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
-  @Deprecated
+  @deprecated("No need to provide \"loghubInstanceNameBase\" argument", "1.0.5")
   def createStream(
       ssc: StreamingContext,
       mysqlHost: String,
@@ -62,8 +82,29 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param mysqlWorkerInstanceTableName
+   * @param mysqlShardLeaseTableName
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubInstanceNameBase
+   * @param loghubEndpoint
+   * @param numReceivers
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
-  @Deprecated
+  @deprecated("No need to provide \"loghubInstanceNameBase\" argument", "1.0.5")
   def createStream(
       ssc: StreamingContext,
       mysqlHost: String,
@@ -105,6 +146,25 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param mysqlWorkerInstanceTableName
+   * @param mysqlShardLeaseTableName
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubEndpoint
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
@@ -145,6 +205,23 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubEndpoint
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
@@ -183,6 +260,26 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param mysqlWorkerInstanceTableName
+   * @param mysqlShardLeaseTableName
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubEndpoint
+   * @param numReceivers
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
@@ -226,6 +323,24 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *
+   * @param ssc
+   * @param mysqlHost
+   * @param mysqlPort
+   * @param mysqlDatabase
+   * @param mysqlUser
+   * @param mysqlPwd
+   * @param logServiceProject
+   * @param logStoreName
+   * @param loghubConsumerGroupName
+   * @param loghubEndpoint
+   * @param numReceivers
+   * @param accessKeyId
+   * @param accessKeySecret
+   * @param storageLevel
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
