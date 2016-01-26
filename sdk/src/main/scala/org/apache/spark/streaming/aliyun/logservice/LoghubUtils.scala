@@ -60,7 +60,7 @@ object LoghubUtils {
    * Create loghub [[DStream]].
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
@@ -159,7 +159,7 @@ object LoghubUtils {
    * Create loghub [[DStream]].
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
@@ -263,7 +263,7 @@ object LoghubUtils {
   /**
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
@@ -359,7 +359,7 @@ object LoghubUtils {
    * Create loghub [[DStream]].
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
@@ -449,7 +449,7 @@ object LoghubUtils {
    * Create loghub [[DStream]].
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
@@ -551,7 +551,7 @@ object LoghubUtils {
    * Create loghub [[DStream]].
    *{{{
    *   val dbHost = "localhost"
-   *   val dbPort = "3307"
+   *   val dbPort = "3306"
    *   val db = "sample-db"
    *   val dbUser = "tom"
    *   var pwd = "123456"
