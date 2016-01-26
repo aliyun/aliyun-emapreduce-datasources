@@ -53,7 +53,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    * Read table from ODPS.
    * {{{
    *   OdpsOps odpsOps = ...
-   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {   *
+   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {
    *     @Override
    *     public List<Long> call(Record record, TableSchema schema) throws Exception {
    *         List<Long> ret = new ArrayList<Long>();
@@ -90,7 +90,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
    * Read table from ODPS.
    * {{{
    *   OdpsOps odpsOps = ...
-   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {   *
+   *   static class RecordToLongs implements Function2<Record, TableSchema, List<Long>> {
    *     @Override
    *     public List<Long> call(Record record, TableSchema schema) throws Exception {
    *         List<Long> ret = new ArrayList<Long>();

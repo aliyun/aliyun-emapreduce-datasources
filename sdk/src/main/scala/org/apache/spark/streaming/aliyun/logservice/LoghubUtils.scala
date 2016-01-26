@@ -21,25 +21,98 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
+/**
+ * Various utility classes for working with Aliyun LogService.
+ *
+ * Prepare Work:
+ * {{{
+ *   Before receiving log data, we need to create two mysql tables used by loghub:
+ *
+ *   Create Table if not exists loghub_lease
+ *   (
+ *     `auto_id` int(10) not null auto_increment,
+ *     `consume_group` varchar(64),
+ *     `logstream_sig` varchar(64),
+ *     `shard_id` varchar(64),
+ *     `lease_id` int(20),
+ *     `lease_owner` varchar(64),
+ *     `consumer_owner` varchar(64),
+ *     `update_time` datetime,
+ *     `checkpoint` text,
+ *     PRIMARY KEY(`auto_id`),
+ *     UNIQUE KEY(`consume_group`,`logstream_sig`, `shard_id`)
+ *   )ENGINE = InnoDB DEFAULT CHARSET=utf8;
+
+ *   Create Table if not exists loghub_worker
+ *   (
+ *     `auto_id` int(10) not null auto_increment,
+ *     `consume_group` varchar(64),
+ *     `logstream_sig` varchar(64),
+ *     `instance_name` varchar(64),
+ *     `update_time` datetime,
+ *     PRIMARY KEY(`auto_id`),
+ *     UNIQUE KEY(`consume_group`, `logstream_sig`, `instance_name`)
+ *     )ENGINE = InnoDB DEFAULT CHARSET=utf8;
+ * }}}
+ */
 object LoghubUtils {
   /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val instanceWorker = "loghub_worker"
+   *   val lease = "loghub_lease"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val instanceNameBase = "sample-namebase"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param mysqlWorkerInstanceTableName
-   * @param mysqlShardLeaseTableName
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubInstanceNameBase
-   * @param loghubEndpoint
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     instanceWorker,
+   *     lease,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     instanceNameBase,
+   *     endpoint,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param mysqlWorkerInstanceTableName The name of `WorkInstance` table, such as "loghub_worker" above.
+   * @param mysqlShardLeaseTableName The name of `ShardLease` table, such as "loghub_lease" above.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubInstanceNameBase The name base of each loghub instance.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental
@@ -83,24 +156,65 @@ object LoghubUtils {
   }
 
   /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val instanceWorker = "loghub_worker"
+   *   val lease = "loghub_lease"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val instanceNameBase = "sample-namebase"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val numReceivers = 2
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param mysqlWorkerInstanceTableName
-   * @param mysqlShardLeaseTableName
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubInstanceNameBase
-   * @param loghubEndpoint
-   * @param numReceivers
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     instanceWorker,
+   *     lease,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     instanceNameBase,
+   *     endpoint,
+   *     numReceivers
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param mysqlWorkerInstanceTableName The name of `WorkInstance` table, such as "loghub_worker" above.
+   * @param mysqlShardLeaseTableName The name of `ShardLease` table, such as "loghub_lease" above.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubInstanceNameBase The name base of each loghub instance.
+   * @param loghubEndpoint The endpoint of loghub
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental
@@ -147,22 +261,58 @@ object LoghubUtils {
   }
 
   /**
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val instanceWorker = "loghub_worker"
+   *   val lease = "loghub_lease"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param mysqlWorkerInstanceTableName
-   * @param mysqlShardLeaseTableName
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubEndpoint
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     instanceWorker,
+   *     lease,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     endpoint,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param mysqlWorkerInstanceTableName The name of `WorkInstance` table, such as "loghub_worker" above.
+   * @param mysqlShardLeaseTableName The name of `ShardLease` table, such as "loghub_lease" above.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental
@@ -206,20 +356,55 @@ object LoghubUtils {
   }
 
   /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val instanceWorker = "loghub_worker"
+   *   val lease = "loghub_lease"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val numReceivers = 2
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubEndpoint
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     endpoint,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental
@@ -261,23 +446,62 @@ object LoghubUtils {
   }
 
   /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val instanceWorker = "loghub_worker"
+   *   val lease = "loghub_lease"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val numReceivers = 2
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param mysqlWorkerInstanceTableName
-   * @param mysqlShardLeaseTableName
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubEndpoint
-   * @param numReceivers
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     instanceWorker,
+   *     lease,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     endpoint,
+   *     numReceivers
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param mysqlWorkerInstanceTableName The name of `WorkInstance` table, such as "loghub_worker" above.
+   * @param mysqlShardLeaseTableName The name of `ShardLease` table, such as "loghub_lease" above.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental
@@ -324,21 +548,56 @@ object LoghubUtils {
   }
 
   /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val dbHost = "localhost"
+   *   val dbPort = "3307"
+   *   val db = "sample-db"
+   *   val dbUser = "tom"
+   *   var pwd = "123456"
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val endpoint = "cn-hangzhou-intranet.sls.aliyuncs.com"
+   *   val accessKeyId = "kj7aY*******UYx6"
+   *   val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *   val numReceivers = 2
+   *   val batchInterval = Milliseconds(5 * 1000)
    *
-   * @param ssc
-   * @param mysqlHost
-   * @param mysqlPort
-   * @param mysqlDatabase
-   * @param mysqlUser
-   * @param mysqlPwd
-   * @param logServiceProject
-   * @param logStoreName
-   * @param loghubConsumerGroupName
-   * @param loghubEndpoint
-   * @param numReceivers
-   * @param accessKeyId
-   * @param accessKeySecret
-   * @param storageLevel
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     dbHost,
+   *     dbPort,
+   *     db,
+   *     dbUser,
+   *     pwd,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     endpoint,
+   *     numReceivers
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param mysqlHost The host of Mysql needed by loghub.
+   * @param mysqlPort  The port of Mysql needed by loghub.
+   * @param mysqlDatabase The name of mysql database.
+   * @param mysqlUser The username of mysql.
+   * @param mysqlPwd The password of mysql.
+   * @param logServiceProject The name of `LogService` project
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun AccessKeyId.
+   * @param accessKeySecret The Aliyun AccessKeySecret.
+   * @param storageLevel The storage level.
    * @return
    */
   @Experimental

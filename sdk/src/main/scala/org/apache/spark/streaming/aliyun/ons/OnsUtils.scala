@@ -16,8 +16,11 @@
  */
 package org.apache.spark.streaming.aliyun.ons
 
+import com.aliyun.odps.TableSchema
+import com.aliyun.odps.data.Record
 import com.aliyun.openservices.ons.api.Message
 import org.apache.spark.annotation.Experimental
+import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
@@ -26,6 +29,31 @@ import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 object OnsUtils {
   /**
    * Create an input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    val ssc: StreamingSparkContext = ...
+   *    val cid = "ConsumerID"
+   *    val topic = "sample-topic"
+   *    val subExpression = "*"
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val accessKeySecret = ""
+   *
+   *    def func: Message => Array[Byte] = msg => msg.getBody
+   *
+   *    val onsStream = OnsUtils.createStream(
+   *     ssc,
+   *     cId,
+   *     topic,
+   *     subExpression,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK_2,
+   *     func)
+   *
+   *     onsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   * }}}
    * @param ssc StreamingContext object
    * @param consumerId Name of a set of consumers
    * @param topic Which topic to subscribe
@@ -54,6 +82,27 @@ object OnsUtils {
 
   /**
    * Create an union input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    val ssc: StreamingSparkContext = ...
+   *    val consumerIdTopicTags = Array(("ConsumerID1", "sample-topic1", "*"))
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val accessKeySecret = ""
+   *
+   *    def func: Message => Array[Byte] = msg => msg.getBody
+   *
+   *    val onsStream = OnsUtils.createStream(
+   *     ssc,
+   *
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     StorageLevel.MEMORY_AND_DISK_2,
+   *     func)
+   *
+   *     onsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   * }}}
    * @param ssc StreamingContext object
    * @param consumerIdTopicTags Trituple(consumerId, topic, tag)
    * @param accessKeyId Aliyun Access Key ID
@@ -85,6 +134,35 @@ object OnsUtils {
 
   /**
    * Create an input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    JavaStreamingContext jssc = ...
+   *    String cid = "ConsumerID"
+   *    String topic = "sample-topic"
+   *    String subExpression = "*"
+   *    String accessKeyId = "kj7aY*******UYx6"
+   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    String accessKeySecret = ""
+   *
+   *    static class ReadMessage implements Function<Message, Byte[]> {
+   *        @Override
+   *        public Byte[] call(Message msg) {
+   *            return msg.getBody;
+   *    }
+   *
+   *    JavaReceiverInputDStream<Byte[]> onsStream = OnsUtils.createStream(
+   *        ssc,
+   *        cId,
+   *        topic,
+   *        subExpression,
+   *        accessKeyId,
+   *        accessKeySecret,
+   *        StorageLevel.MEMORY_AND_DISK_2,
+   *        ReadMessage)
+   *
+   *     onsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   * }}}
    * @param jssc Java streamingContext object
    * @param consumerId Name of a set of consumers
    * @param topic Which topic to subscribe
@@ -105,7 +183,8 @@ object OnsUtils {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel,
-      func: Message => Array[Byte]): JavaReceiverInputDStream[Array[Byte]] = {
-    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, func)
+      func: JFunction[Message, Array[Byte]]): JavaReceiverInputDStream[Array[Byte]] = {
+    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel,
+      (msg: Message) => func.call(msg))
   }
 }
