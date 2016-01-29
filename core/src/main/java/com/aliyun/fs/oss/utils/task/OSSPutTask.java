@@ -56,7 +56,7 @@ public class OSSPutTask extends Task {
 
     @Override
     public void execute(TaskEngine engineRef) {
-        InputStream instream;
+        InputStream instream = null;
         Result result = new Result();
 
         try {
@@ -78,6 +78,14 @@ public class OSSPutTask extends Task {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (instream != null) {
+                try {
+                    instream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }
