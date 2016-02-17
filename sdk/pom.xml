@@ -128,8 +128,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.aliyun</groupId>
-            <artifactId>sls-loghub-client-inner</artifactId>
+            <groupId>com.aliyun.openservices</groupId>
+            <artifactId>loghub-client-lib</artifactId>
         </dependency>
 
         <dependency>

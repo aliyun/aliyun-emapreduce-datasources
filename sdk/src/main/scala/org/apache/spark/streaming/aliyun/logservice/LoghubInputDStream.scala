@@ -23,13 +23,6 @@ import org.apache.spark.streaming.receiver.Receiver
 
 class LoghubInputDStream(
     @transient _ssc: StreamingContext,
-    mysqlHost: String,
-    mysqlPort: Int,
-    mysqlDatabase: String,
-    mysqlUser: String,
-    mysqlPwd: String,
-    mysqlWorkerInstanceTableName: String,
-    mysqlShardLeaseTableName: String,
     logServiceProject: String,
     logStoreName: String,
     loghubConsumerGroupName: String,
@@ -39,18 +32,15 @@ class LoghubInputDStream(
     accessKeySecret: String,
     storageLevel: StorageLevel)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
+  val mConsumeInOrder = _ssc.sc.getConf.getBoolean("spark.logservice.fetch.inOrder", true)
+  val mHeartBeatIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.heartbeat.interval.millis", 30000L)
   val dataFetchIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
 
   override def getReceiver(): Receiver[Array[Byte]] =
     new LoghubReceiver(
+      mConsumeInOrder,
+      mHeartBeatIntervalMillis,
       dataFetchIntervalMillis,
-      mysqlHost,
-      mysqlPort,
-      mysqlDatabase,
-      mysqlUser,
-      mysqlPwd,
-      mysqlWorkerInstanceTableName,
-      mysqlShardLeaseTableName,
       logServiceProject,
       logStoreName,
       loghubConsumerGroupName,
