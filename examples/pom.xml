@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.aliyun</groupId>
         <artifactId>emr_2.10</artifactId>
-        <version>1.0.5</version>
+        <version>1.0.6-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -40,13 +40,13 @@
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>emr-sdk_2.10</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun</groupId>
             <artifactId>emr-core</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -108,11 +108,6 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>

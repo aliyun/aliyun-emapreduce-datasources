@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.aliyun</groupId>
     <artifactId>emr_2.10</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -41,11 +41,10 @@
     <plugins>
         <plugin>
             <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-                <source>1.6</source>
-                <target>1.6</target>
-                <encoding>UTF-8</encoding>
-            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
         </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
