@@ -23,47 +23,30 @@ import org.apache.spark.SparkConf
 
 object TestLoghub {
   def main(args: Array[String]): Unit = {
-    if (args.length < 15) {
+    if (args.length < 8) {
       System.err.println(
-        """Usage: TestLoghub <database host> <database port> <database> <database user> <database password>
-          |         <worker instance table name> <shard lease table name> <sls project> <sls logstore>
-          |         <loghub group name> <instance name> <sls endpoint> <access key id> <access key secret>
-          |         <batch interval seconds>
+        """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <instance name> <sls endpoint>
+          |         <access key id> <access key secret> <batch interval seconds>
         """.stripMargin)
       System.exit(1)
     }
 
-    val dbHost = args(0)
-    val dbPort = args(1).toInt
-    val db = args(2)
-    val dbUser = args(3)
-    val pwd = args(4)
-    val instanceWorker = args(5)
-    val lease = args(6)
-    val loghubProject = args(7)
-    val logStream = args(8)
-    val loghubGroupName = args(9)
-    val instanceName = args(10)
-    val endpoint = args(11)
-    val accesskeyId = args(12)
-    val accessKeySecret = args(13)
-    val batchInterval = Milliseconds(args(14).toInt * 1000)
+    val loghubProject = args(0)
+    val logStream = args(1)
+    val loghubGroupName = args(2)
+    val instanceName = args(3)
+    val endpoint = args(4)
+    val accesskeyId = args(5)
+    val accessKeySecret = args(6)
+    val batchInterval = Milliseconds(args(7).toInt * 1000)
 
     val conf = new SparkConf().setAppName("Test SLS Loghub")
     val ssc = new StreamingContext(conf, batchInterval)
     val loghubStream = LoghubUtils.createStream(
       ssc,
-      dbHost,
-      dbPort,
-      db,
-      dbUser,
-      pwd,
-      instanceWorker,
-      lease,
       loghubProject,
       logStream,
       loghubGroupName,
-      instanceName,
       endpoint,
       accesskeyId,
       accessKeySecret,

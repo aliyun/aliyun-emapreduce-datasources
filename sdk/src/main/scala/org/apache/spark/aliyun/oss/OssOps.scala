@@ -59,11 +59,12 @@ class OssOps(
    *   OssOps ossOps = ...
    *   JavaRDD[T] javaRdd = ossOps.readOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
    * }}}
+   * @since 1.0.5
+   * @deprecated Use JavaSparkContext.textFile("oss://...") instead.
    * @param path An OSS file path which job is reading.
-   * @param minPartitions The minimum partitions of RDD
+   * @param minPartitions The minimum partitions of RDD.
    * @return A JavaRDD[String] that contains all lines of OSS object.
    */
-  @deprecated("use JavaSparkContext.textFile(\"oss://...\") instead")
   def readOssFileWithJava(
       path: String,
       minPartitions: Int): JavaRDD[String] = {
@@ -77,10 +78,11 @@ class OssOps(
    *   JavaRDD[T] javaRdd = ...
    *   ossOps.saveToOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", javaRdd)
    * }}}
+   * @since 1.0.5
+   * @deprecated Use JavaRDD.saveAsTextFile("oss://...") instead.
    * @param path An OSS file path which job is writing to.
    * @param javaRdd A JavaRDD that you want to save to OSS.
    */
-  @deprecated("use JavaRDD.saveAsTextFile(\"oss://...\")")
   def saveToOssFileWithJava[T](
       path: String,
       javaRdd: JavaRDD[T]): Unit = {
@@ -93,11 +95,12 @@ class OssOps(
    *   val ossOps: OssOps = ...
    *   val javaRdd: JavaRDD[T] = ossOps.readOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
    * }}}
+   * @since 1.0.5
+   * @deprecated Use SparkContext.textFile("oss://...") instead.
    * @param path An OSS file path which job is reading.
-   * @param minPartitions The minimum partitions of RDD
+   * @param minPartitions The minimum partitions of RDD.
    * @return A JavaRDD[String] that contains all lines of OSS object.
    */
-  @deprecated("use SparkContext.textFile(\"oss://...\") instead")
   def readOssFile(
       path: String,
       minPartitions: Int): RDD[String] = {
@@ -111,10 +114,11 @@ class OssOps(
    *   val rdd: RDD[T] = ...
    *   ossOps.saveToOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", rdd)
    * }}}
+   * @since 1.0.5
+   * @deprecated Use RDD.saveAsTextFile("oss://...") instead.
    * @param path An OSS file path which job is writing to.
    * @param rdd A RDD that you want to save to OSS.
    */
-  @deprecated("use RDD.saveAsTextFile(\"oss://...\")")
   def saveToOssFile[T](
       path: String,
       rdd: RDD[T]): Unit = {

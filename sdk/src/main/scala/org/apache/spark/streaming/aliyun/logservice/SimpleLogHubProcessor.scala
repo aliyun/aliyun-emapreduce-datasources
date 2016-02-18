@@ -19,14 +19,14 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util
 
 import com.alibaba.fastjson.JSONObject
+import com.aliyun.openservices.log.common.{LogItem, LogGroupData}
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
-import com.aliyun.openservices.sls.common.{LogContent, LogItem, LogGroupData}
 
 import scala.collection.JavaConversions._
 
 class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
-  private var mShardId: String = _
+  private var mShardId: Int = 0
   private var mLastCheckTime = 0L
   private val __TIME__ = "__time__"
   private val __TOPIC__ = "__topic__"
@@ -36,8 +36,8 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
     iLogHubCheckPointTracker.saveCheckPoint(true)
   }
 
-  override def initialize(s: String): Unit = {
-    mShardId = s
+  override def initialize(mShardId: Int): Unit = {
+    this.mShardId = mShardId
   }
 
   override def process(list: util.List[LogGroupData], iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {

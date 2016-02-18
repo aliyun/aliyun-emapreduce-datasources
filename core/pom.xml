@@ -3,7 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>com.aliyun</groupId>
+    <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.10</artifactId>
     <version>1.0.6-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
@@ -41,11 +41,10 @@
     <plugins>
         <plugin>
             <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-                <source>1.6</source>
-                <target>1.6</target>
-                <encoding>UTF-8</encoding>
-            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
         </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>

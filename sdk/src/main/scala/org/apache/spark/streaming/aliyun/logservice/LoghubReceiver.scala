@@ -17,21 +17,15 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 import com.aliyun.openservices.loghub.client.ClientWorker
-import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition, LogHubClientDbConfig}
-import com.aliyun.openservices.loghub.client.lease.impl.MySqlLogHubLeaseManager
+import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition}
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
 private[logservice] class LoghubReceiver(
+    mConsumeInOrder: Boolean,
+    mHeartBeatIntervalMillis: Long,
     dataFetchIntervalMillis: Long,
-    mysqlHost: String,
-    mysqlPort: Int,
-    mysqlDatabase: String,
-    mysqlUser: String,
-    mysqlPwd: String,
-    mysqlWorkerInstanceTableName: String,
-    mysqlShardLeaseTableName: String,
     logServiceProject: String,
     logStoreName: String,
     loghubConsumerGroupName: String,
@@ -47,26 +41,15 @@ private[logservice] class LoghubReceiver(
   private var worker: ClientWorker = null
 
   override def onStart(): Unit = {
-    workerThread = new Thread() {
-      override def run(): Unit = {
-        val dbConfig = new LogHubClientDbConfig(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPwd,
-          mysqlWorkerInstanceTableName, mysqlShardLeaseTableName)
-        val initCursor = LogHubCursorPosition.END_CURSOR
+    val initCursor = LogHubCursorPosition.END_CURSOR
+    val config = new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+      loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor, mHeartBeatIntervalMillis,
+      mConsumeInOrder)
+    config.setDataFetchIntervalMillis(dataFetchIntervalMillis)
 
-        val config = new LogHubConfig(
-          loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
-          loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor)
+    worker = new ClientWorker(new SimpleLogHubProcessorFactory(receiver), config)
 
-        config.setDataFetchIntervalMillis(dataFetchIntervalMillis)
-
-        val leaseManager = new MySqlLogHubLeaseManager(dbConfig)
-
-        worker = new ClientWorker(new SimpleLogHubProcessorFactory(receiver), config, leaseManager)
-
-        worker.run()
-      }
-    }
-
+    workerThread = new Thread(worker)
     workerThread.setName(s"SLS Loghub Receiver $streamId")
     workerThread.setDaemon(true)
     workerThread.start()
@@ -77,6 +60,7 @@ private[logservice] class LoghubReceiver(
     if (workerThread != null) {
       if (worker != null) {
         worker.shutdown()
+        Thread.sleep(30 * 1000)
       }
 
       workerThread.join()
