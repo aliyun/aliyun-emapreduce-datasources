@@ -3,7 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>com.aliyun</groupId>
+        <groupId>com.aliyun.emr</groupId>
         <artifactId>emr_2.10</artifactId>
         <version>1.0.6-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -34,7 +34,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.aliyun</groupId>
+            <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-core</artifactId>
             <version>1.0.6-SNAPSHOT</version>
         </dependency>
@@ -163,7 +163,7 @@
                     <outputFile>${project.build.directory}/shaded/emr-sdk_2.10-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
-                            <include>com.aliyun:emr-core</include>
+                            <include>com.aliyun.emr:emr-core</include>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
@@ -216,6 +216,10 @@
                   </goals>
                 </execution>
               </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

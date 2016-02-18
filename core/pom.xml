@@ -3,7 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>com.aliyun</groupId>
+    <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.10</artifactId>
     <version>1.0.6-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
@@ -61,6 +61,7 @@
                         <include>com.aliyun.oss:aliyun-sdk-oss</include>
                         <include>org.jdom:jdom</include>
                         <include>org.apache.httpcomponents:httpcore</include>
+                        <include>org.apache.httpcomponents:httpclient</include>
                     </includes>
                 </artifactSet>
             </configuration>
