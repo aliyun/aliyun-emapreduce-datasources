@@ -14,7 +14,7 @@
 
 		git clone https://github.com/aliyun/aliyun-spark-sdk.git
 	    cd  aliyun-spark-sdk
-	    mvn clean package -Dmaven.test.skip=true
+	    mvn clean package -DskipTests
 
 ```
 
@@ -27,16 +27,11 @@
 
 #### Maven 
 
-You need to install the SDK into local maven repository and add following dependency.
-
 ```
-
-		mvn install:install-file -Dfile=emr-sdk_2.10-1.0.2.jar -DgroupId=com.aliyun -DartifactId=emr-sdk_2.10 -Dversion=1.0.2 -Dpackaging=jar
-
         <dependency>
-            <groupId>com.aliyun</groupId>
+            <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-sdk_2.10</artifactId>
-            <version>1.0.2</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
 
 ```
@@ -45,85 +40,16 @@ You need to install the SDK into local maven repository and add following depend
 
 In this section, we will demonstrate how to manipulate the Aliyun OSS data in Spark.
 
-### Step-1. Initialize an OssOps
-Before read/write OSS data, we need to initialize an OssOps, like:
-
-
-```
-
-	import org.apache.spark.{SparkConf, SparkContext}
-	import org.apache.spark.aliyun.oss.OssOps
-	
-	object Sample {
-	  def main(args: Array[String]): Unit = {
-		// == Step-1 ==
-	    val accessKeyId = "<accessKeyId>"
-	    val accessKeySecret = "<accessKeySecret>"
-		// hangzhou for example
-	    val endpoint = "http://oss-cn-hangzhou.aliyuncs.com"
-	
-	    val conf = new SparkConf().setAppName("Spark OSS Sample")
-		val sc = new SparkContext(conf)
-		val ossOps = OssOps(sc, endpoint, accessKeyId, accessKeySecret)
-
-        // == Step-2 ==
-		...
-		// == Step-3 ==
-		...
-	  }
-	}
-
-```
-
-In above codes, the variables accessKeyId and accessKeySecret are assigned to users by system; they are named as ID pair, and used for user identification and signature authentication for OSS access. See [Aliyun AccessKeys](https://ak-console.aliyun.com/#/accesskey) for more information.
-
-### Step-2. Load OSS Data into Spark.
-
-```
-
-		// == Step-2 ==
-        val inputPath = "oss://bucket-name/input/path"
-		val numPartitions = 2
-		val inputData = ossOps.readOssFile(inputPath, numPartitions)
-		inputData.top(10).foreach(println)
-
-		// == Step-3 ==
-        ...
-
-```
-
-### Step-3. Save results into Aliyun OSS.
-
-```
-
-		// Step-3
-		val outputPath = "oss://bucket-name/output/path"
-		val resultData = inputData.map(e => s"$e has been processed.")
-		ossOps.saveToOssFile(outputPath, resultData)
-
-```
-
-### OSS Extension
-This SDK support two kinds of filesystem clients for reading and writing from and to Aliyun OSS, i.e.
-
-- Native OSS FileSystem： A native way to read and write regular files on Aliyun OSS. The advantage of this way is you can access files on OSS that came from other Aliyun base service or other tools. But file in Aliyun OSS has 48.8TB limit.
-- Block-based OSS FileSystem：This allows Aliyun OSS to supports larger files (no limit theoretically). File in Aliyun OSS is organized with many blocks. Each block is an Aliyun OSS object, and the block size is configurable, i.e. reuse the Hadoop's `fs.local.block.size` property. The disadvantage is that it can not interoperable with other Aliyun OSS tools.
-
-Now, we only support two ways to read and write Aliyun OSS data:
-
-- read by using `Native OSS FileSystem`, and write by using `Block-based OSS FileSystem`
-- read by using `Block-based OSS FileSystem`, and write by usring `Block-based OSS FileSystem`
+### OSS Extension - Native OSS FileSystem
+A native way to read and write regular files on Aliyun OSS. The advantage of this way is you can access files on OSS that came from other Aliyun base service or other tools. But file in Aliyun OSS has 48.8TB limit.
 
 ### OSS URI
 
-We support different types of URI for each filesystem client:
+- **oss**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
 
-- Native URI： **oss**://accesskeyId:accessKeySecret@bucket.endpoint/object/path
-- Block Based URI: **ossbfs**://accesskeyId:accessKeySecret@bucket.endpoint/object/path
+We can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in OSS URI.
 
-So, we can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in OSS URI.
-
-## Advanced  Usage
+### OSS usage
 
 Now, we provide a transparent way to support Aliyun OSS, with no code changes and just few configurations. All you need to do is just to provide two configuations in your project:
 
@@ -154,8 +80,6 @@ Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
 	data.saveAsTextFile("oss://accesskeyId:accessKeySecret@bucket.endpoint/output")
 
 ```
-
-**Attention**: now we only support saving to **native** URI through `RDD.saveAsTextFile(...)`.
 
 ## ODPS Support
 
@@ -295,9 +219,50 @@ In this section, we will demonstrate how to comsume ONS message in Spark.
     ssc.awaitTermination()
 ```
 
+## LogService Support
+
+In this section, we will demonstrate how to comsume Loghub data in Spark Streaming.
+
+```
+	if (args.length < 8) {
+      System.err.println(
+        """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint> <access key id>
+          |         <access key secret> <receiver number> <batch interval seconds>
+        """.stripMargin)
+      System.exit(1)
+    }
+
+    val logserviceProject = args(0)    // The project name in your LogService.
+    val logStoreName = args(1)         // The name of of logstream.
+    val loghubGroupName = args(2)      // Processes with the same loghubGroupName will consume data of logstream together.
+    val loghubEndpoint = args(3)       // API endpoint of LogService 
+    val accessKeyId = args(4)          // AccessKeyId
+    val accessKeySecret = args(5)      // AccessKeySecret
+    val numReceivers = args(6).toInt   
+    val batchInterval = Milliseconds(args(7).toInt * 1000) 
+
+    val conf = new SparkConf().setAppName("Test Loghub")
+    val ssc = new StreamingContext(conf, batchInterval)
+    val loghubStream = LoghubUtils.createStream(
+      ssc,
+      loghubProject,
+      logStream,
+      loghubGroupName,
+      endpoint,
+      numReceivers,
+      accessKeyId,
+      accessKeySecret,
+      StorageLevel.MEMORY_AND_DISK)
+
+    loghubStream.foreachRDD(rdd => println(rdd.count()))
+
+    ssc.start()
+    ssc.awaitTermination()
+```
+
 ## Future Work
 
-- Support more Aliyun base service, like OTS, SLS* and so on.
+- Support more Aliyun base service, like OTS and so on.
 - Support more friendly code migration.
 
 ## License
