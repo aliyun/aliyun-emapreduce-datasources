@@ -69,10 +69,10 @@ public class OSSClientAgent {
     @SuppressWarnings("unchecked")
     public OSSClientAgent(String endpoint, String accessKeyId, String accessKeySecret, String securityToken,
                           Configuration conf) throws Exception {
-        URL aliyunDeps = new URL("file:///home/hadoop/hadoop-aliyun-2.6.0.jar");
+        URL ossDepsURL = getOSSDepsURL(conf);
         String[] cp = System.getProperty("java.class.path").split(":");
         ArrayList<URL> urls = new ArrayList<URL>();
-        urls.add(aliyunDeps);
+        urls.add(ossDepsURL);
         for (String entity : cp) {
             urls.add(new URL("file://" + entity));
         }
@@ -467,7 +467,10 @@ public class OSSClientAgent {
     }
 
     private URL getOSSDepsURL(Configuration conf) throws Exception {
-        String ossDependency = conf.get("fs.oss.sdk.dependency.path", "/opt/apps/extra-jars/emr-core-1.1.0-SNAPSHOT.jar");
+        String ossDependency = conf.get("fs.oss.sdk.dependency.path");
+        if (ossDependency == null || ossDependency.isEmpty()) {
+            throw new Exception("Can not find oss sdk dependency, please set \"fs.oss.sdk.dependency.path\" first.");
+        }
         return new URL("file://"+ossDependency);
     }
 }
