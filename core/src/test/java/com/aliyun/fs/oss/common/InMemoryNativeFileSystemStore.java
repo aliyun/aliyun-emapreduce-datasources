@@ -32,7 +32,7 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
             new TreeMap<String, FileMetadata>();
     private SortedMap<String, byte[]> dataMap = new TreeMap<String, byte[]>();
 
-    public void initialize(URI uri, Configuration conf) throws IOException {
+    public void initialize(URI uri, Configuration conf) throws Exception {
         this.conf = conf;
     }
 

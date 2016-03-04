@@ -181,7 +181,12 @@ public class NativeOssFileSystem extends FileSystem {
         if (store == null) {
             store = createDefaultStore(conf);
         }
-        store.initialize(uri, conf);
+        try {
+            store.initialize(uri, conf);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new IOException(e);
+        }
         setConf(conf);
         this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
     }

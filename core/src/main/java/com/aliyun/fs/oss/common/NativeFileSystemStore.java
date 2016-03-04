@@ -32,7 +32,7 @@ import org.apache.hadoop.conf.Configuration;
  */
 public interface NativeFileSystemStore {
 
-    void initialize(URI uri, Configuration conf) throws IOException;
+    void initialize(URI uri, Configuration conf) throws Exception;
 
     void storeFile(String key, File file, boolean append) throws IOException;
     void storeEmptyFile(String key) throws IOException;
