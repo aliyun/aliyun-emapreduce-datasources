@@ -249,6 +249,20 @@ public class OSSClientAgent {
         }
     }
 
+    public void abortMultipartUpload(String bucket, String key, String uploadId) throws IOException {
+        try {
+            Class AbortMultipartUploadRequestClz =
+                    this.urlClassLoader.loadClass("com.aliyun.oss.model.AbortMultipartUploadRequest");
+            Constructor cons = AbortMultipartUploadRequestClz.getConstructor(String.class, String.class, String.class);
+            Object abortMultipartUploadRequest = cons.newInstance(bucket, key, uploadId);
+
+            Method method = this.ossClientClz.getMethod("abortMultipartUpload", AbortMultipartUploadRequestClz);
+            method.invoke(this.ossClient, abortMultipartUploadRequest);
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public CompleteMultipartUploadResult completeMultipartUpload(String buekct, String key, String uploadId, List<PartETag> partETags)
             throws IOException, OSSException, ClientException {
