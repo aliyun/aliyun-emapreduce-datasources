@@ -23,32 +23,31 @@ import org.apache.spark.SparkConf
 
 object TestLoghub {
   def main(args: Array[String]): Unit = {
-    if (args.length < 8) {
+    if (args.length < 7) {
       System.err.println(
-        """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <instance name> <sls endpoint>
+        """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds>
         """.stripMargin)
       System.exit(1)
     }
 
     val loghubProject = args(0)
-    val logStream = args(1)
+    val logStore = args(1)
     val loghubGroupName = args(2)
-    val instanceName = args(3)
-    val endpoint = args(4)
-    val accesskeyId = args(5)
-    val accessKeySecret = args(6)
-    val batchInterval = Milliseconds(args(7).toInt * 1000)
+    val endpoint = args(3)
+    val accessKeyId = args(4)
+    val accessKeySecret = args(5)
+    val batchInterval = Milliseconds(args(6).toInt * 1000)
 
     val conf = new SparkConf().setAppName("Test SLS Loghub")
     val ssc = new StreamingContext(conf, batchInterval)
     val loghubStream = LoghubUtils.createStream(
       ssc,
       loghubProject,
-      logStream,
+      logStore,
       loghubGroupName,
       endpoint,
-      accesskeyId,
+      accessKeyId,
       accessKeySecret,
       StorageLevel.MEMORY_AND_DISK)
 

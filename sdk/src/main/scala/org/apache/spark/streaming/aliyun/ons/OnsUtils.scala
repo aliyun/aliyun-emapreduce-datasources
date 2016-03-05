@@ -16,8 +16,6 @@
  */
 package org.apache.spark.streaming.aliyun.ons
 
-import com.aliyun.odps.TableSchema
-import com.aliyun.odps.data.Record
 import com.aliyun.openservices.ons.api.Message
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.function.{Function => JFunction}
@@ -26,6 +24,9 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
+/**
+ * Various utility classes for working with Aliyun ONS.
+ */
 object OnsUtils {
   /**
    * Create an input stream that pulls message from a Aliyun ONS stream.
