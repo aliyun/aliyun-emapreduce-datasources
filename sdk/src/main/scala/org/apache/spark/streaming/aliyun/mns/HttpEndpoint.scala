@@ -16,19 +16,21 @@
  */
 package org.apache.spark.streaming.aliyun.mns
 
-import java.io.{InputStreamReader, BufferedReader, DataInputStream}
+import java.io.{IOException, InputStreamReader, BufferedReader, DataInputStream}
 import java.net._
 import java.security.cert.CertificateFactory
 import java.text.SimpleDateFormat
-import java.util
-import java.util.{Date, Locale, Collections}
-import javax.xml.parsers.DocumentBuilderFactory
+import java.util.{Date, Locale}
+import javax.net.ssl.SSLServerSocketFactory
+import javax.xml.parsers.{ParserConfigurationException, DocumentBuilderFactory}
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.httpclient.HttpStatus
-import org.apache.http.{HttpEntityEnclosingRequest, MethodNotSupportedException, HttpResponse, HttpRequest}
+import org.apache.http._
+import org.apache.http.impl.{DefaultBHttpServerConnectionFactory, DefaultBHttpServerConnection}
 import org.apache.http.protocol._
 import org.apache.spark.Logging
 import org.w3c.dom.Element
+import org.xml.sax.SAXException
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -54,7 +56,7 @@ class HttpEndpoint(port: Int = 80) extends Logging {
 
   def start(): Unit = {
     try {
-      new Nothing(InetAddress.getLocalHost, this.port)
+      new Socket(InetAddress.getLocalHost, this.port)
       log.warn(s"port $port already in use, http server start failed")
       throw new BindException(s"port $port already in use")
     } catch {
@@ -271,6 +273,133 @@ class HttpEndpoint(port: Int = 80) extends Logging {
 
         val content = entity.getContent
         val dbf = DocumentBuilderFactory.newInstance
+        var notify: Element = null
+        try {
+          val db = dbf.newDocumentBuilder()
+          val document = db.parse(content)
+          val nl = document.getElementsByTagName("Notification")
+          if (nl == null || nl.getLength == 0) {
+            log.warn("xml tag error")
+            httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+            return
+          }
+          notify = nl.item(0).asInstanceOf[Element]
+        } catch {
+          case e: ParserConfigurationException =>
+            log.warn(s"xml parser fail, ${e.getMessage}")
+            httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+            return
+          case e: SAXException =>
+            log.warn(s"xml parser fail, ${e.getMessage}")
+            httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+            return
+        }
+
+        val certHeader = httpRequest.getFirstHeader("x-mns-signing-cert-url")
+        if (certHeader == null) {
+          log.warn("SigningCerURL Header not found")
+          httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+          return
+        }
+
+        var cert = certHeader.getValue
+        if (cert.isEmpty) {
+          log.warn("SigningCertURL empty")
+          httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+          return
+        }
+        cert = new String((Base64.decodeBase64(cert)))
+        log.debug(s"SigningCertURL: $cert")
+
+        if (!authenticate(method, target, hm, cert)) {
+          log.warn("authenticate fail")
+          httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
+          return
+        }
+        paserContent(notify)
+      }
+
+      httpResponse.setStatusCode(HttpStatus.SC_NO_CONTENT)
+    }
+  }
+
+  class RequestListenerThread() extends Thread {
+    private final var connFactory: HttpConnectionFactory[DefaultBHttpServerConnection] = _
+    private final var serverSocket: ServerSocket = _
+    private final var httpService: HttpService = _
+
+    def this(port: Int, httpService: HttpService, sf: SSLServerSocketFactory) {
+      this()
+      this.connFactory = DefaultBHttpServerConnectionFactory.INSTANCE
+      this.serverSocket = if (sf != null) {
+        sf.createServerSocket(port)
+      } else {
+        new ServerSocket(port)
+      }
+      this.httpService = httpService
+    }
+
+    override def run(): Unit = {
+      log.info(s"Listening on port ${this.serverSocket.getLocalPort}")
+      var t: Thread = null
+      var stopped: Boolean = false
+      while(!Thread.interrupted() && !stopped) {
+        try {
+          val socket = this.serverSocket.accept()
+          log.info(s"Incoming connection from ${socket.getInetAddress}")
+          val conn = this.connFactory.createConnection(socket)
+
+          t = new WorkerThread(this.httpService, conn)
+          t.setDaemon(true)
+          t.start();
+        } catch {
+          case e: IOException =>
+            log.error(s"Endpoint http server stopped or IO error, ${e.getMessage}")
+            try {
+              if (t != null) {
+                t.join(5000)
+              }
+            } catch {
+              case e: InterruptedException =>
+                stopped = true
+            }
+        }
+      }
+    }
+
+    override def interrupt(): Unit = {
+      super.interrupt()
+      try {
+        this.serverSocket.close()
+      } catch {
+        case e: IOException =>
+          log.error(e.getMessage)
+      }
+    }
+  }
+
+  class WorkerThread(private final val httpService: HttpService, private final val conn: HttpServerConnection) extends Thread {
+    override def run(): Unit = {
+      log.info("New connection thread")
+      val context = new BasicHttpContext(null)
+      try {
+        while(!Thread.interrupted() && this.conn.isOpen) {
+          this.httpService.handleRequest(this.conn, context)
+        }
+      } catch {
+        case e: ConnectionClosedException =>
+          log.error("Client closed connection")
+        case e: IOException =>
+          log.error(s"I/O error: ${e.getMessage}")
+        case e: HttpException =>
+          log.error(s"Unrecoverable HTTP protocol violation: ${e.getMessage}")
+      } finally {
+        try {
+          this.conn.close()
+        } catch {
+          case e: IOException =>
+            log.error(e.getMessage)
+        }
       }
     }
   }

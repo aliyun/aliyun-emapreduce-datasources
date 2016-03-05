@@ -80,7 +80,7 @@ private[mns] class MnsPullingReceiver(
       }
     }
 
-    workerThread.setName(s"SLS Loghub Receiver $streamId")
+    workerThread.setName(s"MNS Receiver $streamId")
     workerThread.setDaemon(true)
     workerThread.start()
     logInfo(s"Started receiver with streamId $streamId")
