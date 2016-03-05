@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.mns
+package org.apache.spark.streaming.aliyun.mns.pulling
 
 import java.util
 
-import com.aliyun.mns.client.{CloudQueue, CloudAccount, MNSClient}
+import com.aliyun.mns.client.{CloudAccount, CloudQueue, MNSClient}
 import com.aliyun.mns.common.{ClientException, ServiceException}
 import com.aliyun.mns.model.Message
 import org.apache.spark.Logging
@@ -38,14 +38,11 @@ private[mns] class MnsPullingReceiver(
   receiver =>
 
   private var workerThread: Thread = null
-  private var client: MNSClient = null
   private var queue: CloudQueue = null
   private val receiptsToDelete = new util.ArrayList[String]
 
   override def onStart(): Unit = {
-    val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
-    client = account.getMNSClient
-    queue = client.getQueueRef(queueName)
+    queue = MnsPullingReceiver.client.getQueueRef(queueName)
 
     workerThread = new Thread() {
       override def run(): Unit = {
@@ -53,12 +50,17 @@ private[mns] class MnsPullingReceiver(
           while (true) {
             val batchPopMessage = queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
             import scala.collection.JavaConversions._
-            for (popMsg <- batchPopMessage) {
-              receiver.store(func(popMsg))
-              receiptsToDelete.add(popMsg.getReceiptHandle)
+            if (batchPopMessage == null) {
+              log.warn("batch get nothing, wait for 5 seconds.")
+              Thread.sleep(5000L)
+            } else {
+              for (popMsg <- batchPopMessage) {
+                receiver.store(func(popMsg))
+                receiptsToDelete.add(popMsg.getReceiptHandle)
+              }
+              queue.batchDeleteMessage(receiptsToDelete)
+              receiptsToDelete.clear()
             }
-            queue.batchDeleteMessage(receiptsToDelete)
-            receiptsToDelete.clear()
           }
         } catch {
           case sex: ServiceException =>
@@ -73,8 +75,10 @@ private[mns] class MnsPullingReceiver(
         } finally {
           // Delete received message whatever.
           queue.batchDeleteMessage(receiptsToDelete)
-          if (client != null) {
-            client.close()
+          MnsPullingReceiver.client.synchronized {
+            if (MnsPullingReceiver.client != null) {
+              MnsPullingReceiver.client.close()
+            }
           }
         }
       }
@@ -91,15 +95,38 @@ private[mns] class MnsPullingReceiver(
     queue.batchDeleteMessage(receiptsToDelete)
 
     if (workerThread != null) {
-      if (client != null && client.isOpen) {
-        client.close()
-        client = null
-        Thread.sleep(5 * 1000)
+      MnsPullingReceiver.client.synchronized {
+        if (MnsPullingReceiver.client != null && MnsPullingReceiver.client.isOpen) {
+          MnsPullingReceiver.client.close()
+          MnsPullingReceiver.client = null
+          Thread.sleep(5 * 1000)
+        }
       }
 
       workerThread.join()
       workerThread = null
       logInfo(s"Stopped receiver for streamId $streamId")
     }
+  }
+}
+
+private[mns] object MnsPullingReceiver {
+  var client: MNSClient = null
+
+  def apply(
+      queueName: String,
+      batchMsgSize: Int,
+      pollingWaitSeconds: Int,
+      func: Message => Array[Byte],
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): MnsPullingReceiver = {
+    if (client != null) {
+      val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
+      client = account.getMNSClient
+    }
+    new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, func, accessKeyId, accessKeySecret, endpoint,
+      storageLevel)
   }
 }

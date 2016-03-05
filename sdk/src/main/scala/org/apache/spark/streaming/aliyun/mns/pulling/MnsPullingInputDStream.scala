@@ -14,11 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.mns
+package org.apache.spark.streaming.aliyun.mns.pulling
 
 import com.aliyun.mns.model.Message
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.aliyun.mns.pulling.MnsPullingReceiver
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 

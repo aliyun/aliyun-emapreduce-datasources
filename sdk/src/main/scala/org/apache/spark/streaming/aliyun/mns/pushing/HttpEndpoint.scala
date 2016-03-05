@@ -14,19 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.mns
+package org.apache.spark.streaming.aliyun.mns.pushing
 
-import java.io.{IOException, InputStreamReader, BufferedReader, DataInputStream}
+import java.io.{BufferedReader, DataInputStream, IOException, InputStreamReader}
 import java.net._
 import java.security.cert.CertificateFactory
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 import javax.net.ssl.SSLServerSocketFactory
-import javax.xml.parsers.{ParserConfigurationException, DocumentBuilderFactory}
+import javax.xml.parsers.{DocumentBuilderFactory, ParserConfigurationException}
+
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.httpclient.HttpStatus
 import org.apache.http._
-import org.apache.http.impl.{DefaultBHttpServerConnectionFactory, DefaultBHttpServerConnection}
+import org.apache.http.impl.{DefaultBHttpServerConnection, DefaultBHttpServerConnectionFactory}
 import org.apache.http.protocol._
 import org.apache.spark.Logging
 import org.w3c.dom.Element
@@ -106,10 +107,10 @@ class HttpEndpoint(port: Int = 80) extends Logging {
       val in = new DataInputStream(conn.getInputStream)
       val cf = CertificateFactory.getInstance("X.509")
       val c = cf.generateCertificate(in)
-      val pk = c.getPublicKey()
+      val pk = c.getPublicKey
       val signetCheck = java.security.Signature.getInstance("SHA1withRSA")
       signetCheck.initVerify(pk)
-      signetCheck.update(str2sign.getBytes())
+      signetCheck.update(str2sign.getBytes)
       signetCheck.verify(decodedSign)
     } catch {
       case e: Exception =>
@@ -151,7 +152,7 @@ class HttpEndpoint(port: Int = 80) extends Logging {
 
   class SimplifiedNSHandler extends HttpRequestHandler {
     override def handle(httpRequest: HttpRequest, httpResponse: HttpResponse, httpContext: HttpContext): Unit = {
-      val method = httpRequest.getRequestLine().getMethod().toUpperCase(Locale.ENGLISH)
+      val method = httpRequest.getRequestLine.getMethod.toUpperCase(Locale.ENGLISH)
 
       if (!method.equals("GET") && !method.equals("HEAD") && !method.equals("POST")) {
         throw new MethodNotSupportedException(s"$method method not supported.")
@@ -308,7 +309,7 @@ class HttpEndpoint(port: Int = 80) extends Logging {
           httpResponse.setStatusCode(HttpStatus.SC_BAD_REQUEST)
           return
         }
-        cert = new String((Base64.decodeBase64(cert)))
+        cert = new String(Base64.decodeBase64(cert))
         log.debug(s"SigningCertURL: $cert")
 
         if (!authenticate(method, target, hm, cert)) {
@@ -378,7 +379,8 @@ class HttpEndpoint(port: Int = 80) extends Logging {
     }
   }
 
-  class WorkerThread(private final val httpService: HttpService, private final val conn: HttpServerConnection) extends Thread {
+  class WorkerThread(private final val httpService: HttpService, private final val conn: HttpServerConnection)
+    extends Thread {
     override def run(): Unit = {
       log.info("New connection thread")
       val context = new BasicHttpContext(null)

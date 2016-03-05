@@ -17,28 +17,39 @@
 package org.apache.spark.streaming.aliyun.mns
 
 import com.aliyun.mns.model.Message
+import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.aliyun.mns.pulling.MnsPullingInputDStream
+import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 
 /**
  * Various utility classes for working with Aliyun MNS.
  */
 object MnsUtils {
-
-  def createPushingStream(): Unit = {
-
-  }
-
-  def createPullingStream(
+  def createPullingStreamAsBytes(
       ssc: StreamingContext,
       queueName: String,
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
-    ssc.withNamedScope("mns stream") {
+    ssc.withNamedScope("mns stream as bytes") {
       val func: Message => Array[Byte] = message => message.getMessageBodyAsBytes
+      new MnsPullingInputDStream(ssc, queueName, func, accessKeyId, accessKeySecret, endpoint, storageLevel)
+    }
+  }
+
+  def createPullingStreamAsRawBytes(
+      ssc: StreamingContext,
+      queueName: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("mns stream as raw bytes") {
+      val func: Message => Array[Byte] = message => message.getMessageBodyAsRawBytes
       new MnsPullingInputDStream(ssc, queueName, func, accessKeyId, accessKeySecret, endpoint, storageLevel)
     }
   }
@@ -54,5 +65,37 @@ object MnsUtils {
     ssc.withNamedScope("mns stream") {
       new MnsPullingInputDStream(ssc, queueName, func, accessKeyId, accessKeySecret, endpoint, storageLevel)
     }
+  }
+
+  def createPullingStreamAsBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+  }
+
+  def createPullingStreamAsRawBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+  }
+
+  def createPullingStream(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      func: JFunction[Message, Array[Byte]],
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createPullingStream(jssc.ssc, queueName, (msg: Message) => func.call(msg), accessKeyId, accessKeySecret, endpoint,
+      storageLevel)
   }
 }

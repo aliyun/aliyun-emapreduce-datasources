@@ -14,11 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.streaming.aliyun.mns
+package org.apache.spark.streaming.aliyun.mns.pushing
 
-import org.apache.http.{HttpResponse, HttpRequest}
-import org.apache.http.protocol.{HttpContext, HttpRequestHandler}
+class MnsPushingReceiver {
 
-class NSHandler extends HttpRequestHandler{
-  override def handle(httpRequest: HttpRequest, httpResponse: HttpResponse, httpContext: HttpContext): Unit = ???
 }
