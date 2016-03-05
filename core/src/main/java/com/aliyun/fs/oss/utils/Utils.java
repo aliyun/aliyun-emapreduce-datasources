@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Random;
 
 public class Utils {
+    private static int idx = 0;
     public static File getOSSBufferDir(Configuration conf) {
         boolean confirmExists = conf.getBoolean("fs.oss.buffer.dirs.exists", false);
         String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "file:///tmp/").split(",");
@@ -43,7 +44,7 @@ public class Utils {
         if (bufferPaths.size() == 0) {
             bufferPaths.add("/tmp/");
         }
-        int randomIdx = (new Random()).nextInt() % bufferPaths.size();
-        return new File(bufferPaths.get(Math.abs(randomIdx)), "oss");
+        idx = (idx + 1) % bufferPaths.size();
+        return new File(bufferPaths.get(Math.abs(idx)), "oss");
     }
 }
