@@ -162,7 +162,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             if (!dir.exists() && !dir.mkdirs()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }
-            File result = File.createTempFile("input-", ".tmp", dir);
+            File result = File.createTempFile("input-", ".empty", dir);
             ossClient.putObject(bucket, key, result);
             result.deleteOnExit();
         } catch (ServiceException e) {

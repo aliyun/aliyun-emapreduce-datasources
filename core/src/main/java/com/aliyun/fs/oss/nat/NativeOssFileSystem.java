@@ -121,7 +121,7 @@ public class NativeOssFileSystem extends FileSystem {
             if (!dir.mkdirs() && !dir.exists()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }
-            File result = File.createTempFile("output-", ".tmp", dir);
+            File result = File.createTempFile("output-", ".data", dir);
             result.deleteOnExit();
             return result;
         }

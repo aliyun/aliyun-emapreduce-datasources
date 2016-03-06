@@ -270,7 +270,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IOException("Cannot create OSS buffer directory: " + dir);
         }
-        File result = File.createTempFile("input-", ".tmp", dir);
+        File result = File.createTempFile("input-", ".data", dir);
         result.deleteOnExit();
         return result;
     }
