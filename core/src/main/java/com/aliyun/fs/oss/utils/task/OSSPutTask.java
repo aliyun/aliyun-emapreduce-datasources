@@ -17,6 +17,7 @@
  */
 package com.aliyun.fs.oss.utils.task;
 
+import com.aliyun.fs.oss.utils.OSSClientAgent;
 import com.aliyun.fs.oss.utils.Result;
 import com.aliyun.fs.oss.utils.Task;
 import com.aliyun.fs.oss.utils.TaskEngine;
@@ -27,7 +28,7 @@ import com.aliyun.oss.model.UploadPartResult;
 import java.io.*;
 
 public class OSSPutTask extends Task {
-    OSSClient ossClient;
+    OSSClientAgent ossClient;
     private String uploadId;
     private String bucket;
     private String key;
@@ -36,7 +37,7 @@ public class OSSPutTask extends Task {
     private int partNumber;
     private File localFile;
 
-    public OSSPutTask(OSSClient ossClient,
+    public OSSPutTask(OSSClientAgent ossClient,
                        String uploadId,
                        String bucket,
                        String key,
@@ -56,36 +57,16 @@ public class OSSPutTask extends Task {
 
     @Override
     public void execute(TaskEngine engineRef) {
-        InputStream instream = null;
         Result result = new Result();
-
         try {
-            instream = new FileInputStream(this.localFile);
-            instream.skip(this.beginIndex);
-            UploadPartRequest uploadPartRequest = new UploadPartRequest();
-            uploadPartRequest.setBucketName(bucket);
-            uploadPartRequest.setKey(key);
-            uploadPartRequest.setUploadId(uploadId);
-            uploadPartRequest.setInputStream(instream);
-            uploadPartRequest.setPartSize(partSize);
-            uploadPartRequest.setPartNumber(partNumber);
-            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadPartRequest);
+            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadId, bucket, key, partSize, beginIndex,
+                    partNumber, localFile);
             result.getModels().put("uploadPartResult", uploadPartResult);
             // TODO: fail?
             result.setSuccess(true);
             this.response = result;
-        } catch (FileNotFoundException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (instream != null) {
-                try {
-                    instream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 }

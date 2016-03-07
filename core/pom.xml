@@ -33,6 +33,11 @@
           <groupId>com.aliyun.oss</groupId>
           <artifactId>aliyun-sdk-oss</artifactId>
       </dependency>
+
+      <dependency>
+          <groupId>com.google.code.gson</groupId>
+          <artifactId>gson</artifactId>
+      </dependency>
   </dependencies>
 
   <build>
@@ -62,6 +67,7 @@
                         <include>org.jdom:jdom</include>
                         <include>org.apache.httpcomponents:httpcore</include>
                         <include>org.apache.httpcomponents:httpclient</include>
+                        <include>com.google.code.gson:gson</include>
                     </includes>
                 </artifactSet>
             </configuration>

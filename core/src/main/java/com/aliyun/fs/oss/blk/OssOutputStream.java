@@ -88,7 +88,7 @@ public class OssOutputStream extends OutputStream {
     if (!dir.exists() && !dir.mkdirs()) {
       throw new IOException("Cannot create OSS buffer directory: " + dir);
     }
-    File result = File.createTempFile("output-", ".tmp", dir);
+    File result = File.createTempFile("output-", ".data", dir);
     result.deleteOnExit();
     return result;
   }

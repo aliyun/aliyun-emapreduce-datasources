@@ -51,11 +51,12 @@ import org.apache.hadoop.conf.Configuration;
 public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private static final Log LOG = LogFactory.getLog(JetOssNativeFileSystemStore.class);
     private int numSplitsUpperLimit = 10000;
-
     private Long maxSimpleCopySize;
     private Long maxSimplePutSize;
 
-    private OSSClient ossClient;
+    private Configuration conf;
+
+    private OSSClientAgent ossClient;
     private String bucket;
     private int numCopyThreads;
     private int maxSplitSize;
@@ -66,7 +67,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private String accessKeySecret = null;
     private String securityToken = null;
 
-    public void initialize(URI uri, Configuration conf) throws IOException {
+    public void initialize(URI uri, Configuration conf) throws Exception {
         if (uri.getHost() == null) {
             throw new IllegalArgumentException("Invalid hostname in URI " + uri);
         }
@@ -82,6 +83,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             }
         }
 
+        this.conf = conf;
         String host = uri.getHost();
         if (!StringUtils.isEmpty(host) && !host.contains(".")) {
             bucket = host;
@@ -104,12 +106,10 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             endpoint = conf.getTrimmed("fs.oss.endpoint");
         }
 
-        ClientConfiguration cc = initializeOSSClientConfig(conf);
-
         if (securityToken == null) {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, cc);
+            this.ossClient = new OSSClientAgent(endpoint, accessKeyId, accessKeySecret, conf);
         } else {
-            this.ossClient = new OSSClient(endpoint, accessKeyId, accessKeySecret, securityToken, cc);
+            this.ossClient = new OSSClientAgent(endpoint, accessKeyId, accessKeySecret, securityToken, conf);
         }
         this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
         this.maxSplitSize = conf.getInt("fs.oss.multipart.split.max.byte", 5 * 1024 * 1024);
@@ -124,27 +124,21 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
         try {
             in = new BufferedInputStream(new FileInputStream(file));
-            ObjectMetadata objMeta = new ObjectMetadata();
-            if (!append) {
+             if (!append) {
                 Long fileLength = file.length();
                 if (fileLength < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
-                    objMeta.setContentLength(file.length());
-                    ossClient.putObject(bucket, key, in, objMeta);
+                    ossClient.putObject(bucket, key, file);
                 } else {
                     LOG.info("using multipart upload for key " + key + ", size: " + fileLength);
                     doMultipartPut(file, key);
                 }
             } else {
                 if (!doesObjectExist(key)) {
-                    AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
-                    appendObjectRequest.setPosition(0L);
-                    ossClient.appendObject(appendObjectRequest);
+                    ossClient.appendObject(bucket, key, file, 0L);
                 } else {
                     ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
                     Long preContentLength = objectMetadata.getContentLength();
-                    AppendObjectRequest appendObjectRequest = new AppendObjectRequest(bucket, key, file);
-                    appendObjectRequest.setPosition(preContentLength);
-                    ossClient.appendObject(appendObjectRequest);
+                    ossClient.appendObject(bucket, key, file, preContentLength);
                 }
             }
         } catch (ServiceException e) {
@@ -164,7 +158,13 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         try {
             ObjectMetadata objMeta = new ObjectMetadata();
             objMeta.setContentLength(0);
-            ossClient.putObject(bucket, key, new ByteArrayInputStream(new byte[0]), objMeta);
+            File dir = Utils.getOSSBufferDir(conf);
+            if (!dir.exists() && !dir.mkdirs()) {
+                throw new IOException("Cannot create OSS buffer directory: " + dir);
+            }
+            File result = File.createTempFile("input-", ".empty", dir);
+            ossClient.putObject(bucket, key, result);
+            result.deleteOnExit();
         } catch (ServiceException e) {
             handleServiceException(e);
         }
@@ -192,7 +192,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             if (!doesObjectExist(key)) {
                 return null;
             }
-            OSSObject object = ossClient.getObject(bucket, key);
+            ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
+            OSSObject object = ossClient.getObject(bucket, key, 0, objectMetadata.getContentLength());
             return object.getObjectContent();
         } catch (ServiceException e) {
             handleServiceException(key, e);
@@ -208,9 +209,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
-            GetObjectRequest getObjReq = new GetObjectRequest(bucket, key);
-            getObjReq.setRange(byteRangeStart, fileSize - 1);
-            OSSObject object = ossClient.getObject(getObjReq);
+            OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, fileSize-1);
             return object.getObjectContent();
         } catch (ServiceException e) {
             handleServiceException(key, e);
@@ -242,7 +241,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             listObjectsRequest.setMaxKeys(maxListingLength);
             listObjectsRequest.setPrefix(prefix);
 
-            ObjectListing listing = ossClient.listObjects(listObjectsRequest);
+            ObjectListing listing = ossClient.listObjects(bucket, prefix, delimiter, maxListingLength, priorLastKey);
             List<OSSObjectSummary> objects = listing.getObjectSummaries();
 
             FileMetadata[] fileMetadata =
@@ -291,7 +290,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public void purge(String prefix) throws IOException {
         try {
-            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix, null, null, null).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 ossClient.deleteObject(bucket, ossObjectSummary.getKey());
             }
@@ -304,8 +303,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         StringBuilder sb = new StringBuilder("OSS Native Filesystem, ");
         sb.append(bucket).append("\n");
         try {
-            ListObjectsRequest listObjectsRequest = new ListObjectsRequest(bucket);
-            List<OSSObjectSummary> objects = ossClient.listObjects(listObjectsRequest).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, null, null, null, null).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 sb.append(ossObjectSummary.getKey()).append("\n");
             }
@@ -340,11 +338,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
     }
 
-    private void doMultipartCopy(String srcKey, String dstKey, Long contentLength) {
-        InitiateMultipartUploadRequest initiateMultipartUploadRequest =
-                new InitiateMultipartUploadRequest(bucket, dstKey);
+    private void doMultipartCopy(String srcKey, String dstKey, Long contentLength) throws IOException {
         InitiateMultipartUploadResult initiateMultipartUploadResult =
-                ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+                ossClient.initiateMultipartUpload(bucket, dstKey);
         String uploadId = initiateMultipartUploadResult.getUploadId();
         Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
         Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
@@ -378,17 +374,13 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             taskEngine.shutdown();
         }
 
-        CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                new CompleteMultipartUploadRequest(bucket, dstKey, uploadId, partETags);
-        ossClient.completeMultipartUpload(completeMultipartUploadRequest);
+        ossClient.completeMultipartUpload(bucket, dstKey, uploadId, partETags);
     }
 
     private void doMultipartPut(File file, String key) throws IOException {
         Long contentLength = file.length();
-        InitiateMultipartUploadRequest initiateMultipartUploadRequest =
-                new InitiateMultipartUploadRequest(bucket, key);
         InitiateMultipartUploadResult initiateMultipartUploadResult =
-                ossClient.initiateMultipartUpload(initiateMultipartUploadRequest);
+                ossClient.initiateMultipartUpload(bucket, key);
         String uploadId = initiateMultipartUploadResult.getUploadId();
         Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
         Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
@@ -420,23 +412,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         } finally {
             taskEngine.shutdown();
         }
-
-        CompleteMultipartUploadRequest completeMultipartUploadRequest =
-                new CompleteMultipartUploadRequest(bucket, key, uploadId, partETags);
-        ossClient.completeMultipartUpload(completeMultipartUploadRequest);
-    }
-
-    private ClientConfiguration initializeOSSClientConfig(Configuration conf) {
-        ClientConfiguration cc = new ClientConfiguration();
-        cc.setConnectionTimeout(conf.getInt("fs.oss.client.connection.timeout",
-                ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT));
-        cc.setSocketTimeout(conf.getInt("fs.oss.client.socket.timeout",
-                ClientConfiguration.DEFAULT_SOCKET_TIMEOUT));
-        cc.setConnectionTTL(conf.getLong("fs.oss.client.connection.ttl",
-                ClientConfiguration.DEFAULT_CONNECTION_TTL));
-        cc.setMaxConnections(conf.getInt("fs.oss.connection.max",
-                ClientConfiguration.DEFAULT_MAX_CONNECTIONS));
-
-        return cc;
+        ossClient.completeMultipartUpload(bucket, key, uploadId, partETags);
     }
 }
