@@ -17,34 +17,31 @@
  */
 package com.aliyun.fs.oss.utils;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import java.io.File;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 public class Utils {
-    private static int idx = 0;
-    public static File getOSSBufferDir(Configuration conf) {
-        boolean confirmExists = conf.getBoolean("fs.oss.buffer.dirs.exists", false);
-        String[] bufferDirs = conf.get("fs.oss.buffer.dirs", "file:///tmp/").split(",");
-        List<String> bufferPaths = new ArrayList<String>();
-        for(int i = 0; i < bufferDirs.length; i++) {
-            URI uri = new Path(bufferDirs[i]).toUri();
-            String path = uri.getPath();
-            Boolean fileExists = new File(path).exists();
-            if (confirmExists && !fileExists) {
-                continue;
+    private static Log LOG = LogFactory.getLog(Utils.class);
+    public static synchronized File getOSSBufferDir(Configuration conf) {
+        String[] dataDirs = conf.get("dfs.datanode.data.dir", "file:///tmp/").split(",");
+        double minUsage = Double.MAX_VALUE;
+        int n = 0;
+        for(int i=0; i<dataDirs.length; i++) {
+            File file = new File(dataDirs[i]);
+            double diskUsage = 1.0 * (file.getTotalSpace() - file.getFreeSpace()) / file.getTotalSpace();
+            if (diskUsage < minUsage) {
+                n = i;
+                minUsage = diskUsage;
             }
-            bufferPaths.add(path);
+            i++;
         }
-        if (bufferPaths.size() == 0) {
-            bufferPaths.add("/tmp/");
-        }
-        idx = (idx + 1) % bufferPaths.size();
-        return new File(bufferPaths.get(Math.abs(idx)), "oss");
+
+        String diskPath = new Path(dataDirs[n]).toUri().getPath();
+        LOG.debug("choose oss buffer dir: "+diskPath+", and this disk usage is: "+minUsage);
+        return new File(diskPath, "data/oss");
     }
 }
