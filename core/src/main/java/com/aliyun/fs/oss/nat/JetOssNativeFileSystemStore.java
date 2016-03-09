@@ -158,7 +158,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         try {
             ObjectMetadata objMeta = new ObjectMetadata();
             objMeta.setContentLength(0);
-            File dir = Utils.getOSSBufferDir(conf);
+            File dir = Utils.getTempBufferDir(conf);
             if (!dir.exists() && !dir.mkdirs()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }

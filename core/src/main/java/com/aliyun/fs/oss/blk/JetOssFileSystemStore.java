@@ -266,7 +266,7 @@ public class JetOssFileSystemStore implements FileSystemStore {
     }
 
     private File newBackupFile() throws IOException {
-        File dir = Utils.getOSSBufferDir(conf);
+        File dir = Utils.getTempBufferDir(conf);
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IOException("Cannot create OSS buffer directory: " + dir);
         }
