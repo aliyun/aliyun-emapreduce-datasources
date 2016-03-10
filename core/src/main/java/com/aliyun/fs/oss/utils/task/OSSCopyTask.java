@@ -17,6 +17,7 @@
  */
 package com.aliyun.fs.oss.utils.task;
 
+import com.aliyun.fs.oss.utils.OSSClientAgent;
 import com.aliyun.fs.oss.utils.Result;
 import com.aliyun.fs.oss.utils.Task;
 import com.aliyun.fs.oss.utils.TaskEngine;
@@ -25,7 +26,7 @@ import com.aliyun.oss.model.UploadPartCopyRequest;
 import com.aliyun.oss.model.UploadPartCopyResult;
 
 public class OSSCopyTask extends Task {
-    OSSClient ossClient;
+    OSSClientAgent ossClient;
     private String uploadId;
     private String srcBucket;
     private String dstBucket;
@@ -35,7 +36,7 @@ public class OSSCopyTask extends Task {
     private Long beginIndex;
     private int partNumber;
 
-    public OSSCopyTask(OSSClient ossClient,
+    public OSSCopyTask(OSSClientAgent ossClient,
                        String uploadId,
                        String srcBucket,
                        String dstBucket,
@@ -58,16 +59,15 @@ public class OSSCopyTask extends Task {
     @Override
     public void execute(TaskEngine engineRef) {
         Result result = new Result();
-        UploadPartCopyRequest uploadPartCopyRequest = new UploadPartCopyRequest(srcBucket, srcKey, dstBucket, dstKey);
-        uploadPartCopyRequest.setUploadId(uploadId);
-        uploadPartCopyRequest.setPartSize(partSize);
-        uploadPartCopyRequest.setBeginIndex(beginIndex);
-        uploadPartCopyRequest.setPartNumber(partNumber);
-        UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadPartCopyRequest);
-        result.getModels().put("uploadPartCopyResult", uploadPartCopyResult);
-        // TODO: fail?
-        result.setSuccess(true);
-
-        this.response = result;
+        try {
+            UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadId, srcBucket, dstBucket, srcKey,
+                    dstKey, partSize, beginIndex, partNumber);
+            result.getModels().put("uploadPartCopyResult", uploadPartCopyResult);
+            // TODO: fail?
+            result.setSuccess(true);
+            this.response = result;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

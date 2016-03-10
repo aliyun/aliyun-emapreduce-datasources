@@ -117,11 +117,11 @@ public class NativeOssFileSystem extends FileSystem {
         }
 
         private File newBackupFile() throws IOException {
-            File dir = Utils.getOSSBufferDir(conf);
+            File dir = Utils.getTempBufferDir(conf);
             if (!dir.mkdirs() && !dir.exists()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
             }
-            File result = File.createTempFile("output-", ".tmp", dir);
+            File result = File.createTempFile("output-", ".data", dir);
             result.deleteOnExit();
             return result;
         }
@@ -181,7 +181,12 @@ public class NativeOssFileSystem extends FileSystem {
         if (store == null) {
             store = createDefaultStore(conf);
         }
-        store.initialize(uri, conf);
+        try {
+            store.initialize(uri, conf);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new IOException(e);
+        }
         setConf(conf);
         this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
     }
