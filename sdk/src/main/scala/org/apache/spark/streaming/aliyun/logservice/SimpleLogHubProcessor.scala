@@ -19,7 +19,8 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util
 
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.common.{LogItem, LogGroupData}
+import com.aliyun.openservices.log.common.Logs.Log
+import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
 
@@ -42,7 +43,7 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
 
   override def process(list: util.List[LogGroupData], iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
     list.foreach(group => {
-      group.GetAllLogs().foreach(item => process(group, item))
+      group.GetLogGroup().getLogsList.foreach(log => process(group, log))
     })
     val ct = System.currentTimeMillis()
     try {
@@ -61,16 +62,16 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
     ""
   }
 
-  private def process(group: LogGroupData, item: LogItem): Unit = {
+  private def process(group: LogGroupData, log: Log): Unit = {
     try {
       val topic = group.GetTopic()
       val source = group.GetSource()
       val obj = new JSONObject()
-      obj.put(__TIME__, Integer.valueOf(item.mLogTime))
+      obj.put(__TIME__, Integer.valueOf(log.getTime))
       obj.put(__TOPIC__, topic)
       obj.put(__SOURCE__, source)
-      item.mContents.iterator().foreach(content => {
-        obj.put(content.GetKey(), content.GetValue())
+      log.getContentsList.foreach(content => {
+        obj.put(content.getKey, content.getValue)
       })
 
       receiver.store(obj.toJSONString.getBytes)
