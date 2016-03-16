@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.10</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Aliyun EMR</name>
@@ -175,7 +175,7 @@
             <dependency>
                 <groupId>com.aliyun.openservices</groupId>
                 <artifactId>loghub-client-lib</artifactId>
-                <version>0.6.2</version>
+                <version>0.6.3</version>
             </dependency>
 
             <dependency>
