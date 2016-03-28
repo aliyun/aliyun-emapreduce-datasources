@@ -34,6 +34,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+/**
+ * @deprecated use JetOssNativeFileSystemStore instead.
+ */
+@Deprecated
 public class JetOssFileSystemStore implements FileSystemStore {
 
     public static final Log LOG = LogFactory.getLog(JetOssFileSystemStore.class);
