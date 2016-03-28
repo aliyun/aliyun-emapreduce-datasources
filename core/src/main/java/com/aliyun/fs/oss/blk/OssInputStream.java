@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.hadoop.fs.FileSystem;
 
+@Deprecated
 public class OssInputStream extends FSInputStream {
 
   private FileSystemStore store;

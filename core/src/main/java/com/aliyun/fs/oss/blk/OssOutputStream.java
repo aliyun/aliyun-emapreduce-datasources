@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@Deprecated
 public class OssOutputStream extends OutputStream {
 
   private Configuration conf;

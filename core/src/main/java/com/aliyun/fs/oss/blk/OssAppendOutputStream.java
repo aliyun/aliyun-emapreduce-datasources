@@ -28,6 +28,7 @@ import org.apache.hadoop.util.Progressable;
 import java.io.IOException;
 import java.util.ArrayList;
 
+@Deprecated
 public class OssAppendOutputStream extends OssOutputStream {
 
     public OssAppendOutputStream(Configuration conf, FileSystemStore store, Path path,
