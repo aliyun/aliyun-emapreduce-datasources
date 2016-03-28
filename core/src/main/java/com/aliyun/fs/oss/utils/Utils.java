@@ -23,31 +23,35 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import java.io.File;
+import java.util.Random;
 
 public class Utils {
-    private static Log LOG = LogFactory.getLog(Utils.class);
+    static final Log LOG = LogFactory.getLog(Utils.class);
     public static synchronized File getTempBufferDir(Configuration conf) {
         String[] dataDirs = conf.get("dfs.datanode.data.dir", "file:///tmp/").split(",");
-        double minUsage = Double.MAX_VALUE;
+        double maxUsage = Double.MIN_VALUE;
         int n = 0;
         for(int i=0; i<dataDirs.length; i++) {
-            File file = new File(new Path(dataDirs[i]).toUri().getPath());
+            File file = new File(new Path(dataDirs[i].trim()).toUri().getPath());
             double diskUsage = 1.0 * (file.getTotalSpace() - file.getFreeSpace()) / file.getTotalSpace();
-            if (diskUsage < minUsage) {
+            if (diskUsage > maxUsage) {
                 n = i;
-                minUsage = diskUsage;
+                maxUsage = diskUsage;
             }
-            i++;
         }
 
-        String diskPath = new Path(dataDirs[n]).toUri().getPath();
-        LOG.debug("choose oss buffer dir: "+diskPath+", and this disk usage is: "+minUsage);
-        return new File(diskPath, "data/oss");
-    }
+        int idx;
+        while (true) {
+            int i = Math.abs(new Random(System.currentTimeMillis()).nextInt()) % dataDirs.length;
+            if (i != n) {
+                idx = i;
+                break;
+            }
+        }
 
-    public static void main(String[] args) {
-        Configuration conf = new Configuration();
-        conf.set("dfs.datanode.data.dir", "file:///mnt/disk1,file:///mnt/disk4");
-        System.out.println(Utils.getTempBufferDir(conf));
+        String diskPath = new Path(dataDirs[idx].trim()).toUri().getPath();
+        LOG.debug("choose oss buffer dir: "+diskPath+", and this disk usage is: "+maxUsage);
+        return new File(diskPath, "data/oss");
+
     }
 }
