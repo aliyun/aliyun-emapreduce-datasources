@@ -50,7 +50,7 @@ public class Utils {
         }
 
         String diskPath = new Path(dataDirs[idx].trim()).toUri().getPath();
-        LOG.debug("choose oss buffer dir: "+diskPath+", and this disk usage is: "+maxUsage);
+        LOG.debug("choose oss buffer dir: "+diskPath);
         return new File(diskPath, "data/oss");
 
     }
