@@ -33,6 +33,12 @@ import org.apache.hadoop.io.retry.RetryPolicy;
 import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.util.Progressable;
 
+/**
+ * Put oss object in block-based style.
+ *
+ * @deprecated use NativeOSSFileSystem instead, to keep one simplex style to put oss object.
+ */
+@Deprecated
 public class OssFileSystem extends FileSystem {
 
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
