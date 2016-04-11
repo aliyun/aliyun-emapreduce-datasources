@@ -55,15 +55,15 @@ object OnsUtils {
    *       ...
    *     })
    * }}}
-   * @param ssc StreamingContext object
-   * @param consumerId Name of a set of consumers
-   * @param topic Which topic to subscribe
-   * @param tags Which tag to subscribe
-   * @param accessKeyId Aliyun Access Key ID
-   * @param accessKeySecret Aliyun Access Key Secret
+   * @param ssc StreamingContext object.
+   * @param consumerId Name of a set of consumers.
+   * @param topic Which topic to subscribe.
+   * @param tags Which tag to subscribe.
+   * @param accessKeyId Aliyun Access Key ID.
+   * @param accessKeySecret Aliyun Access Key Secret.
    * @param storageLevel Storage level to use for storing the received objects.
    *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
-   * @param func Extract information from ONS message
+   * @param func Extract information from ONS message.
    * @return
    */
   @Experimental
@@ -104,13 +104,13 @@ object OnsUtils {
    *       ...
    *     })
    * }}}
-   * @param ssc StreamingContext object
-   * @param consumerIdTopicTags Trituple(consumerId, topic, tag)
-   * @param accessKeyId Aliyun Access Key ID
-   * @param accessKeySecret Aliyun Access Key Secret
+   * @param ssc StreamingContext object.
+   * @param consumerIdTopicTags Trituple(consumerId, topic, tag).
+   * @param accessKeyId Aliyun Access Key ID.
+   * @param accessKeySecret Aliyun Access Key Secret.
    * @param storageLevel Storage level to use for storing the received objects.
    *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
-   * @param func Extract information from ONS message
+   * @param func Extract information from ONS message.
    * @return
    */
   @Experimental
@@ -136,13 +136,13 @@ object OnsUtils {
   /**
    * Create an input stream that pulls message from a Aliyun ONS stream.
    * {{{
-   *    JavaStreamingContext jssc = ...
-   *    String cid = "ConsumerID"
-   *    String topic = "sample-topic"
-   *    String subExpression = "*"
-   *    String accessKeyId = "kj7aY*******UYx6"
-   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
-   *    String accessKeySecret = ""
+   *    JavaStreamingContext jssc = ...;
+   *    String cid = "ConsumerID";
+   *    String topic = "sample-topic";
+   *    String subExpression = "*";
+   *    String accessKeyId = "kj7aY*******UYx6";
+   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
+   *    String accessKeySecret = "";
    *
    *    static class ReadMessage implements Function<Message, Byte[]> {
    *        @Override
@@ -158,21 +158,21 @@ object OnsUtils {
    *        accessKeyId,
    *        accessKeySecret,
    *        StorageLevel.MEMORY_AND_DISK_2,
-   *        ReadMessage)
+   *        ReadMessage);
    *
    *     onsStream.foreachRDD(rdd => {
    *       ...
-   *     })
+   *     });
    * }}}
-   * @param jssc Java streamingContext object
-   * @param consumerId Name of a set of consumers
-   * @param topic Which topic to subscribe
-   * @param tags Which tag to subscribe
-   * @param accessKeyId Aliyun Access Key ID
-   * @param accessKeySecret Aliyun Access Key Secret
+   * @param jssc Java streamingContext object.
+   * @param consumerId Name of a set of consumers.
+   * @param topic Which topic to subscribe.
+   * @param tags Which tag to subscribe.
+   * @param accessKeyId Aliyun Access Key ID.
+   * @param accessKeySecret Aliyun Access Key Secret.
    * @param storageLevel Storage level to use for storing the received objects.
    *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
-   * @param func Extract information from ONS message
+   * @param func Extract information from ONS message.
    * @return
    */
   @Experimental
