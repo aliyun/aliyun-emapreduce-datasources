@@ -49,14 +49,14 @@ object LoghubUtils {
    *
    *}}}
    * @param ssc StreamingContext.
-   * @param logServiceProject The name of `LogService` project
+   * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
    * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
    *                                name will consumer specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
-   * @param accessKeyId The Aliyun AccessKeyId.
-   * @param accessKeySecret The Aliyun AccessKeySecret.
-   * @param storageLevel The storage level.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
    * @return
    */
   @Experimental
@@ -112,15 +112,15 @@ object LoghubUtils {
    *
    *}}}
    * @param ssc StreamingContext.
-   * @param logServiceProject The name of `LogService` project
+   * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
    * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
    *                                name will consumer specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
    * @param numReceivers The number of receivers.
-   * @param accessKeyId The Aliyun AccessKeyId.
-   * @param accessKeySecret The Aliyun AccessKeySecret.
-   * @param storageLevel The storage level.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
    * @return
    */
   @Experimental

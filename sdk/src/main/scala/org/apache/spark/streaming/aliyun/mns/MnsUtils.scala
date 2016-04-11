@@ -28,6 +28,25 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
  * Various utility classes for working with Aliyun MNS.
  */
 object MnsUtils {
+  /**
+    * {{{
+    *    val queuename = "queueSample"
+    *    val accessKeyId = "kj7aY*******UYx6"
+    *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+    *    val endpoint = "http://184*********815.mns-test.aliyuncs.com:1234"
+    *
+    *    val conf = new SparkConf().setAppName("Test MNS")
+    *    val ssc = new StreamingContext(conf, Milliseconds(2000))
+    *    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename, accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+    * }}}
+    * @param ssc StreamingContext.
+    * @param queueName The name of MNS queue.
+    * @param accessKeyId The Aliyun Access Key Id.
+    * @param accessKeySecret The Aliyun Access Key Secret.
+    * @param endpoint The endpoint of MNS service.
+    * @param storageLevel Storage level to use for storing the received objects.
+    * @return
+    */
   def createPullingStreamAsBytes(
       ssc: StreamingContext,
       queueName: String,
@@ -41,6 +60,25 @@ object MnsUtils {
     }
   }
 
+  /**
+   * {{{
+   *    val queuename = "queueSample"
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val endpoint = "http://184*********815.mns-test.aliyuncs.com:1234"
+   *
+   *    val conf = new SparkConf().setAppName("Test MNS")
+   *    val ssc = new StreamingContext(conf, Milliseconds(2000))
+   *    val mnsStream = MnsUtils.createPullingStreamAsRawBytes(ssc, queuename, accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+   * }}}
+   * @param ssc StreamingContext.
+   * @param queueName The name of MNS queue.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStreamAsRawBytes(
       ssc: StreamingContext,
       queueName: String,
@@ -54,6 +92,28 @@ object MnsUtils {
     }
   }
 
+  /**
+   * {{{
+   *    val queuename = "queueSample"
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val endpoint = "http://184*********815.mns-test.aliyuncs.com:1234"
+   *
+   *    val conf = new SparkConf().setAppName("Test MNS")
+   *    val ssc = new StreamingContext(conf, Milliseconds(2000))
+   *
+   *    def func: Message => Array[Byte] = msg => msg.getMessageBodyAsRawBytes
+   *    val mnsStream = MnsUtils.createPullingStreamAsRawBytes(ssc, queuename, func, accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+   * }}}
+   * @param ssc StreamingContext.
+   * @param queueName The name of MNS queue.
+   * @param func Extract information from MNS message
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStream(
       ssc: StreamingContext,
       queueName: String,
@@ -67,6 +127,30 @@ object MnsUtils {
     }
   }
 
+  /**
+   * {{{
+   *    String queuename = "queueSample";
+   *    String accessKeyId = "kj7aY*******UYx6";
+   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
+   *    String endpoint = "http://184*********815.mns-test.aliyuncs.com:1234";
+   *
+   *    JavaStreamingContext jssc = ...;
+   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils.createPullingStreamAsBytes(
+   *        jssc,
+   *        queuename,
+   *        accesskeyId,
+   *        accessKeySecret,
+   *        endpoint,
+   *        StorageLevel.MEMORY_AND_DISK_2);
+   * }}}
+   * @param jssc Java streamingContext object.
+   * @param queueName The name of MNS queue.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStreamAsBytes(
       jssc: JavaStreamingContext,
       queueName: String,
@@ -77,6 +161,30 @@ object MnsUtils {
     createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
   }
 
+  /**
+   * {{{
+   *    String queuename = "queueSample";
+   *    String accessKeyId = "kj7aY*******UYx6";
+   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
+   *    String endpoint = "http://184*********815.mns-test.aliyuncs.com:1234";
+   *
+   *    JavaStreamingContext jssc = ...;
+   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils.createPullingStreamAsRawBytes(
+   *        jssc,
+   *        queuename,
+   *        accesskeyId,
+   *        accessKeySecret,
+   *        endpoint,
+   *        StorageLevel.MEMORY_AND_DISK_2);
+   * }}}
+   * @param jssc Java streamingContext object.
+   * @param queueName The name of MNS queue.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStreamAsRawBytes(
       jssc: JavaStreamingContext,
       queueName: String,
@@ -87,6 +195,38 @@ object MnsUtils {
     createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
   }
 
+  /**
+   * {{{
+   *    String queuename = "queueSample";
+   *    String accessKeyId = "kj7aY*******UYx6";
+   *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
+   *    String endpoint = "http://184*********815.mns-test.aliyuncs.com:1234";
+   *
+   *    static class ReadMessage implements Function<Message, Byte[]> {
+   *        @Override
+   *        public Byte[] call(Message msg) {
+   *            return msg.getMessageBodyAsRawBytes;
+   *    }
+   *
+   *    JavaStreamingContext jssc = ...;
+   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils.createPullingStreamAsRawBytes(
+   *        jssc,
+   *        queuename,
+   *        ReadMessage,
+   *        accesskeyId,
+   *        accessKeySecret,
+   *        endpoint,
+   *        StorageLevel.MEMORY_AND_DISK_2);
+   * }}}
+   * @param jssc Java streamingContext object.
+   * @param queueName The name of MNS queue.
+   * @param func Extract information from MNS message
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStream(
       jssc: JavaStreamingContext,
       queueName: String,
