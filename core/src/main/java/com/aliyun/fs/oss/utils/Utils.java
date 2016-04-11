@@ -42,11 +42,15 @@ public class Utils {
 
         // skip the disk whose free space is most not enough, and pick one randomly from the last disks.
         int idx;
-        while (true) {
-            int i = Math.abs(new Random(System.currentTimeMillis()).nextInt()) % dataDirs.length;
-            if (i != n) {
-                idx = i;
-                break;
+        if (dataDirs.length == 1) {
+            idx = 0;
+        } else {
+            while (true) {
+                int i = Math.abs(new Random(System.currentTimeMillis()).nextInt()) % dataDirs.length;
+                if (i != n) {
+                    idx = i;
+                    break;
+                }
             }
         }
 
