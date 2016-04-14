@@ -22,7 +22,6 @@ import com.aliyun.fs.oss.common.FileMetadata;
 import com.aliyun.fs.oss.common.NativeFileSystemStore;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -39,8 +38,6 @@ import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
 import com.aliyun.fs.oss.utils.task.OSSCopyTask;
 import com.aliyun.fs.oss.utils.task.OSSPutTask;
-import com.aliyun.oss.ClientConfiguration;
-import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.commons.lang.StringUtils;
@@ -319,6 +316,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         } else {
             handleServiceException(e);
         }
+        LOG.error(e);
     }
 
     private void handleServiceException(ServiceException e) throws IOException {
