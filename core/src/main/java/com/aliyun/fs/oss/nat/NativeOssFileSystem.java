@@ -202,11 +202,20 @@ public class NativeOssFileSystem extends FileSystem {
         exceptionToPolicyMap.put(OssException.class, basePolicy);
 
         RetryPolicy methodPolicy = RetryPolicies.retryByException(
-                RetryPolicies.TRY_ONCE_THEN_FAIL, exceptionToPolicyMap);
+                RetryPolicies.retryUpToMaximumCountWithFixedSleep(10, 5000, TimeUnit.MILLISECONDS),
+                exceptionToPolicyMap);
         Map<String, RetryPolicy> methodNameToPolicyMap =
                 new HashMap<String, RetryPolicy>();
         methodNameToPolicyMap.put("storeFile", methodPolicy);
-        methodNameToPolicyMap.put("rename", methodPolicy);
+        methodNameToPolicyMap.put("storeEmptyFile", methodPolicy);
+        methodNameToPolicyMap.put("retrieveMetadata", methodPolicy);
+        methodNameToPolicyMap.put("retrieve", methodPolicy);
+        methodNameToPolicyMap.put("purge", methodPolicy);
+        methodNameToPolicyMap.put("dump", methodPolicy);
+        methodNameToPolicyMap.put("doesObjectExist", methodPolicy);
+        methodNameToPolicyMap.put("copy", methodPolicy);
+        methodNameToPolicyMap.put("list", methodPolicy);
+        methodNameToPolicyMap.put("delete", methodPolicy);
 
         return (NativeFileSystemStore)
                 RetryProxy.create(NativeFileSystemStore.class, store,
