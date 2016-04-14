@@ -39,7 +39,7 @@ public class NativeOssFileSystem extends FileSystem {
 
     public static final Log LOG =
             LogFactory.getLog(NativeOssFileSystem.class);
-
+    public static final String FOLDER_SUFFIX = "_$folder$";
     public static final long MAX_OSS_FILE_SIZE = 5 * 1024 * 1024 * 1024L;
     public static final String PATH_DELIMITER = Path.SEPARATOR;
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
@@ -295,6 +295,12 @@ public class NativeOssFileSystem extends FileSystem {
                 }
                 priorLastKey = listing.getPriorLastKey();
             } while (priorLastKey != null);
+
+            try {
+                store.delete(key + FOLDER_SUFFIX);
+            } catch (FileNotFoundException e) {
+                //this is fine, we don't require a marker
+            }
         } else {
             LOG.debug("Deleting file '" + f + "'");
             createParent(f);
@@ -317,6 +323,12 @@ public class NativeOssFileSystem extends FileSystem {
         if (meta != null) {
             LOG.debug("getFileStatus returning 'file' for key '" + key + "'");
             return newFile(meta, absolutePath);
+        }
+
+        if (store.retrieveMetadata(key + FOLDER_SUFFIX) != null) {
+            LOG.debug("getFileStatus returning 'directory' for key '" + key + "' as '"
+                    + key + FOLDER_SUFFIX + "' exists");
+            return newDirectory(absolutePath);
         }
 
         LOG.debug("getFileStatus listing key '" + key + "'");
@@ -368,20 +380,24 @@ public class NativeOssFileSystem extends FileSystem {
         do {
             PartialListing listing = store.list(key, OSS_MAX_LISTING_LENGTH, priorLastKey, false);
             for (FileMetadata fileMetadata : listing.getFiles()) {
-                Path subpath = keyToPath(fileMetadata.getKey());
+                Path subPath = keyToPath(fileMetadata.getKey());
+                String relativePath = pathUri.relativize(subPath.toUri()).getPath();
 
                 if (fileMetadata.getKey().equals(key + "/")) {
                     // this is just the directory we have been asked to list
+                } else if (relativePath.endsWith(FOLDER_SUFFIX)) {
+                    status.add(newDirectory(new Path("/" +
+                            relativePath.substring(0, relativePath.indexOf(FOLDER_SUFFIX)))));
                 } else {
                     // Here, we need to convert "file/path" to "/file/path". Otherwise, Path.makeQualified will
                     // throw `URISyntaxException`.
-                    Path modifiedPath = new Path("/" + subpath.toString());
+                    Path modifiedPath = new Path("/" + subPath.toString());
                     status.add(newFile(fileMetadata, modifiedPath));
                 }
             }
             for (String commonPrefix : listing.getCommonPrefixes()) {
-                Path subpath = keyToPath(commonPrefix);
-                String relativePath = pathUri.relativize(subpath.toUri()).getPath();
+                Path subPath = keyToPath(commonPrefix);
+                String relativePath = pathUri.relativize(subPath.toUri()).getPath();
                 status.add(newDirectory(new Path("/" + relativePath)));
             }
             priorLastKey = listing.getPriorLastKey();
@@ -529,6 +545,11 @@ public class NativeOssFileSystem extends FileSystem {
                 store.delete(key);
             }
 
+            try {
+                store.delete(srcKey + FOLDER_SUFFIX);
+            } catch (FileNotFoundException e) {
+                //this is fine, we don't require a marker
+            }
             LOG.debug(debugPreamble + "done");
         }
 
