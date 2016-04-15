@@ -504,8 +504,8 @@ public class OSSClientAgent {
         Boolean runLocal = conf.getBoolean("job.runlocal", false);
         if ((internalDep == null || internalDep.isEmpty()) && !runLocal) {
             throw new RuntimeException("Job run local, set \"fs.oss.sdk.dependency.path\" first please.");
-
         } else if (internalDep == null || internalDep.isEmpty()) {
+            LOG.warn("\"job.runlocal\" set true.");
             return null;
         } else {
             return new URL("file://" + internalDep);
