@@ -22,6 +22,7 @@ import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.*;
 import com.google.gson.*;
+import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -43,31 +44,49 @@ import java.util.*;
 
 public class OSSClientAgent {
     private static final Log LOG = LogFactory.getLog(OSSClientAgent.class);
-    private static final URLClassLoader urlClassLoader;
+    private volatile static URLClassLoader urlClassLoader;
     private Object ossClient;
     private Class ossClientClz;
     private Gson gson = new Gson();
 
-    static {
-        try {
-            URL ossDepsURL = getOSSDepsURL();
-            String[] cp = System.getProperty("java.class.path").split(":");
-            ArrayList<URL> urls = new ArrayList<URL>();
-            urls.add(ossDepsURL);
-            for (String entity : cp) {
-                urls.add(new URL("file://" + entity));
+    @SuppressWarnings("unchecked")
+    private static URLClassLoader getUrlClassLoader(Configuration conf){
+        if(urlClassLoader == null){
+            synchronized(OSSClientAgent.class){
+                if(urlClassLoader == null){
+                    try {
+                        URL internalDep = getInternalDep(conf);
+                        ArrayList<URL> urls = new ArrayList<URL>();
+                        if (internalDep != null) {
+                            urls.add(internalDep);
+                        }
+                        String[] cp;
+                        if (SystemUtils.IS_OS_WINDOWS) {
+                            cp = System.getProperty("java.class.path").split(";");
+                            for (String entity : cp) {
+                                urls.add(new URL("file:" + entity));
+                            }
+                        } else {
+                            cp = System.getProperty("java.class.path").split(":");
+                            for (String entity : cp) {
+                                urls.add(new URL("file://" + entity));
+                            }
+                        }
+                        urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Can not initialize OSS URLClassLoader, " + e.getMessage());
+                    }
+                }
             }
-            urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
-        } catch (Exception e) {
-            throw new RuntimeException("Can not initialize OSS URLClassLoader, " + e.getMessage());
         }
+        return urlClassLoader;
     }
 
     @SuppressWarnings("unchecked")
     public OSSClientAgent(String endpoint, String accessKeyId, String accessKeySecret, Configuration conf)
             throws Exception {
-        this.ossClientClz = urlClassLoader.loadClass("com.aliyun.oss.OSSClient");
-        Class ClientConfigurationClz = urlClassLoader.loadClass("com.aliyun.oss.ClientConfiguration");
+        this.ossClientClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.OSSClient");
+        Class ClientConfigurationClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.ClientConfiguration");
         Object clientConfiguration = initializeOSSClientConfig(conf, ClientConfigurationClz);
         Constructor cons = this.ossClientClz.getConstructor(String.class, String.class, String.class, ClientConfigurationClz);
         this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret, clientConfiguration);
@@ -76,8 +95,8 @@ public class OSSClientAgent {
     @SuppressWarnings("unchecked")
     public OSSClientAgent(String endpoint, String accessKeyId, String accessKeySecret, String securityToken,
                           Configuration conf) throws Exception {
-        this.ossClientClz = urlClassLoader.loadClass("com.aliyun.oss.OSSClient");
-        Class ClientConfigurationClz = urlClassLoader.loadClass("com.aliyun.oss.ClientConfiguration");
+        this.ossClientClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.OSSClient");
+        Class ClientConfigurationClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.ClientConfiguration");
         Object clientConfiguration = initializeOSSClientConfig(conf, ClientConfigurationClz);
         Constructor cons = ossClientClz.getConstructor(String.class, String.class, String.class, String.class, ClientConfigurationClz);
         this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret, securityToken, clientConfiguration);
@@ -97,10 +116,10 @@ public class OSSClientAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public AppendObjectResult appendObject(String bucketName, String key, File file, Long position) throws IOException,
+    public AppendObjectResult appendObject(String bucketName, String key, File file, Long position, Configuration conf) throws IOException,
             OSSException, ClientException {
         try {
-            Class AppendObjectRequestClz = urlClassLoader.loadClass("com.aliyun.oss.model.AppendObjectRequest");
+            Class AppendObjectRequestClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.AppendObjectRequest");
             Constructor cons = AppendObjectRequestClz.getConstructor(String.class, String.class, File.class);
             Object appendObjectRequest = cons.newInstance(bucketName, key, file);
             Method method0 = AppendObjectRequestClz.getMethod("setPosition", Long.TYPE);
@@ -135,10 +154,10 @@ public class OSSClientAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public OSSObject getObject(String bucket, String key, long start, long end) throws IOException {
+    public OSSObject getObject(String bucket, String key, long start, long end, Configuration conf) throws IOException {
         InputStream inputStream;
         try {
-            Class GetObjectRequestClz = urlClassLoader.loadClass("com.aliyun.oss.model.GetObjectRequest");
+            Class GetObjectRequestClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.GetObjectRequest");
             Constructor cons0 = GetObjectRequestClz.getConstructor(String.class, String.class);
             Object getObjRequest = cons0.newInstance(bucket, key);
             Method method0 = GetObjectRequestClz.getMethod("setRange", Long.TYPE, Long.TYPE);
@@ -147,7 +166,7 @@ public class OSSClientAgent {
             Method method = this.ossClientClz.getMethod("getObject", GetObjectRequestClz);
             Object ret = method.invoke(this.ossClient, getObjRequest);
 
-            Class OSSObjectClz = urlClassLoader.loadClass("com.aliyun.oss.model.OSSObject");
+            Class OSSObjectClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.OSSObject");
             Method method1 = OSSObjectClz.getMethod("getObjectContent");
             inputStream = (InputStream) method1.invoke(ret);
 
@@ -183,11 +202,10 @@ public class OSSClientAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public ObjectListing listObjects(String bucket, String prefix, String delimiter, Integer maxListingLength, String priorLastKey)
-            throws IOException, OSSException,
-            ClientException {
+    public ObjectListing listObjects(String bucket, String prefix, String delimiter, Integer maxListingLength,
+                                     String priorLastKey, Configuration conf) throws IOException, OSSException, ClientException {
         try {
-            Class ListObjectsRequestClz = urlClassLoader.loadClass("com.aliyun.oss.model.ListObjectsRequest");
+            Class ListObjectsRequestClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.ListObjectsRequest");
             Constructor cons = ListObjectsRequestClz.getConstructor(String.class);
             Object listObjectsRequest = cons.newInstance(bucket);
             Method method0 = ListObjectsRequestClz.getMethod("setDelimiter", String.class);
@@ -231,11 +249,11 @@ public class OSSClientAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public InitiateMultipartUploadResult initiateMultipartUpload(String bucket, String key)
+    public InitiateMultipartUploadResult initiateMultipartUpload(String bucket, String key, Configuration conf)
             throws IOException, OSSException, ClientException {
         try {
             Class InitiateMultipartUploadRequestClz =
-                    urlClassLoader.loadClass("com.aliyun.oss.model.InitiateMultipartUploadRequest");
+                    getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.InitiateMultipartUploadRequest");
             Constructor cons = InitiateMultipartUploadRequestClz.getConstructor(String.class, String.class);
             Object initiateMultipartUploadRequest = cons.newInstance(bucket, key);
 
@@ -248,10 +266,10 @@ public class OSSClientAgent {
         }
     }
 
-    public void abortMultipartUpload(String bucket, String key, String uploadId) throws IOException {
+    public void abortMultipartUpload(String bucket, String key, String uploadId, Configuration conf) throws IOException {
         try {
             Class AbortMultipartUploadRequestClz =
-                    urlClassLoader.loadClass("com.aliyun.oss.model.AbortMultipartUploadRequest");
+                    getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.AbortMultipartUploadRequest");
             Constructor cons = AbortMultipartUploadRequestClz.getConstructor(String.class, String.class, String.class);
             Object abortMultipartUploadRequest = cons.newInstance(bucket, key, uploadId);
 
@@ -263,10 +281,10 @@ public class OSSClientAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public CompleteMultipartUploadResult completeMultipartUpload(String buekct, String key, String uploadId, List<PartETag> partETags)
+    public CompleteMultipartUploadResult completeMultipartUpload(String bucket, String key, String uploadId, List<PartETag> partETags, Configuration conf)
             throws IOException, OSSException, ClientException {
         try {
-            Class PartETagClz = urlClassLoader.loadClass("com.aliyun.oss.model.PartETag");
+            Class PartETagClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.PartETag");
             List<Object> tags = new ArrayList<Object>();
             for(PartETag partETag: partETags) {
                 Constructor cons = PartETagClz.getConstructor(Integer.TYPE, String.class);
@@ -275,9 +293,9 @@ public class OSSClientAgent {
             }
 
             Class CompleteMultipartUploadRequestClz =
-                    urlClassLoader.loadClass("com.aliyun.oss.model.CompleteMultipartUploadRequest");
+                    getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.CompleteMultipartUploadRequest");
             Constructor cons = CompleteMultipartUploadRequestClz.getConstructor(String.class, String.class, String.class, List.class);
-            Object completeMultipartUploadRequest = cons.newInstance(buekct, key, uploadId, tags);
+            Object completeMultipartUploadRequest = cons.newInstance(bucket, key, uploadId, tags);
 
             Method method = this.ossClientClz.getMethod("completeMultipartUpload", CompleteMultipartUploadRequestClz);
             Object ret = method.invoke(this.ossClient, completeMultipartUploadRequest);
@@ -295,13 +313,14 @@ public class OSSClientAgent {
                                        Long partSize,
                                        Long beginIndex,
                                        int partNumber,
-                                       File file) throws IOException, OSSException, ClientException {
+                                       File file,
+                                       Configuration conf) throws IOException, OSSException, ClientException {
         InputStream instream = null;
         try {
             instream = new FileInputStream(file);
             instream.skip(beginIndex);
 
-            Class UploadPartRequestClz = urlClassLoader.loadClass("com.aliyun.oss.model.UploadPartRequest");
+            Class UploadPartRequestClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.UploadPartRequest");
             Constructor cons = UploadPartRequestClz.getConstructor();
             Object uploadPartRequest = cons.newInstance();
             Method method0 = UploadPartRequestClz.getMethod("setBucketName", String.class);
@@ -342,10 +361,11 @@ public class OSSClientAgent {
                                                String dstKey,
                                                Long partSize,
                                                Long beginIndex,
-                                               int partNumber) throws IOException, OSSException,
+                                               int partNumber,
+                                               Configuration conf) throws IOException, OSSException,
             ClientException {
         try {
-            Class UploadPartCopyRequestClz = urlClassLoader.loadClass("com.aliyun.oss.model.UploadPartCopyRequest");
+            Class UploadPartCopyRequestClz = getUrlClassLoader(conf).loadClass("com.aliyun.oss.model.UploadPartCopyRequest");
             Constructor cons = UploadPartCopyRequestClz.getConstructor(String.class, String.class, String.class, String.class);
             Object uploadPartCopyRequest = cons.newInstance(srcBucket, srcKey, dstBucket, dstKey);
             Method method0 = UploadPartCopyRequestClz.getMethod("setBeginIndex", Long.class);
@@ -439,7 +459,7 @@ public class OSSClientAgent {
     }
 
     private static class ObjectMetadataDeserializer implements JsonDeserializer<ObjectMetadata> {
-        private DateFormat df = new SimpleDateFormat("MMM d, yyyy K:mm:ss a");
+        private DateFormat df = new SimpleDateFormat("MMM d, yyyy K:mm:ss a", Locale.ENGLISH);
 
         public ObjectMetadata deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) {
             ObjectMetadata objectMetadata = new ObjectMetadata();
@@ -479,12 +499,16 @@ public class OSSClientAgent {
         }
     }
 
-    private static URL getOSSDepsURL() throws Exception {
-        Configuration conf = new Configuration();
-        String ossDependency = conf.get("fs.oss.sdk.dependency.path");
-        if (ossDependency == null || ossDependency.isEmpty()) {
-            throw new Exception("Can not find oss sdk dependency, please set \"fs.oss.sdk.dependency.path\" first.");
+    private static URL getInternalDep(Configuration conf) throws Exception {
+        String internalDep = conf.get("fs.oss.sdk.dependency.path");
+        Boolean runLocal = conf.getBoolean("job.runlocal", false);
+        if ((internalDep == null || internalDep.isEmpty()) && !runLocal) {
+            throw new RuntimeException("Job dose not run locally, set \"fs.oss.sdk.dependency.path\" first please.");
+        } else if (internalDep == null || internalDep.isEmpty()) {
+            LOG.warn("\"job.runlocal\" set true.");
+            return null;
+        } else {
+            return new URL("file://" + internalDep);
         }
-        return new URL("file://"+ossDependency);
     }
 }

@@ -21,9 +21,8 @@ import com.aliyun.fs.oss.utils.OSSClientAgent;
 import com.aliyun.fs.oss.utils.Result;
 import com.aliyun.fs.oss.utils.Task;
 import com.aliyun.fs.oss.utils.TaskEngine;
-import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.model.UploadPartRequest;
 import com.aliyun.oss.model.UploadPartResult;
+import org.apache.hadoop.conf.Configuration;
 
 import java.io.*;
 
@@ -36,6 +35,7 @@ public class OSSPutTask extends Task {
     private Long beginIndex;
     private int partNumber;
     private File localFile;
+    private Configuration conf;
 
     public OSSPutTask(OSSClientAgent ossClient,
                        String uploadId,
@@ -44,7 +44,8 @@ public class OSSPutTask extends Task {
                        Long partSize,
                        Long beginIndex,
                        int partNumber,
-                       File file) {
+                       File file,
+                       Configuration conf) {
         this.ossClient = ossClient;
         this.uploadId = uploadId;
         this.bucket = bucket;
@@ -53,6 +54,7 @@ public class OSSPutTask extends Task {
         this.beginIndex = beginIndex;
         this.partNumber = partNumber;
         this.localFile = file;
+        this.conf = conf;
     }
 
     @Override
@@ -60,7 +62,7 @@ public class OSSPutTask extends Task {
         Result result = new Result();
         try {
             UploadPartResult uploadPartResult = ossClient.uploadPart(uploadId, bucket, key, partSize, beginIndex,
-                    partNumber, localFile);
+                    partNumber, localFile, conf);
             result.getModels().put("uploadPartResult", uploadPartResult);
             // TODO: fail?
             result.setSuccess(true);

@@ -202,7 +202,7 @@ public class NativeOssFileSystem extends FileSystem {
         exceptionToPolicyMap.put(OssException.class, basePolicy);
 
         RetryPolicy methodPolicy = RetryPolicies.retryByException(
-                RetryPolicies.retryUpToMaximumCountWithFixedSleep(10, 5000, TimeUnit.MILLISECONDS),
+                RetryPolicies.retryUpToMaximumCountWithFixedSleep(9, 5000, TimeUnit.MILLISECONDS),
                 exceptionToPolicyMap);
         Map<String, RetryPolicy> methodNameToPolicyMap =
                 new HashMap<String, RetryPolicy>();

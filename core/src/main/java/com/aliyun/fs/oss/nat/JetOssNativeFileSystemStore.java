@@ -131,11 +131,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 }
             } else {
                 if (!doesObjectExist(key)) {
-                    ossClient.appendObject(bucket, key, file, 0L);
+                    ossClient.appendObject(bucket, key, file, 0L, conf);
                 } else {
                     ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
                     Long preContentLength = objectMetadata.getContentLength();
-                    ossClient.appendObject(bucket, key, file, preContentLength);
+                    ossClient.appendObject(bucket, key, file, preContentLength, conf);
                 }
             }
         } catch (ServiceException e) {
@@ -190,7 +190,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 return null;
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
-            OSSObject object = ossClient.getObject(bucket, key, 0, objectMetadata.getContentLength());
+            OSSObject object = ossClient.getObject(bucket, key, 0, objectMetadata.getContentLength(), conf);
             return object.getObjectContent();
         } catch (ServiceException e) {
             handleServiceException(key, e);
@@ -206,7 +206,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             }
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
-            OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, fileSize-1);
+            OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, fileSize-1, conf);
             return object.getObjectContent();
         } catch (ServiceException e) {
             handleServiceException(key, e);
@@ -238,7 +238,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             listObjectsRequest.setMaxKeys(maxListingLength);
             listObjectsRequest.setPrefix(prefix);
 
-            ObjectListing listing = ossClient.listObjects(bucket, prefix, delimiter, maxListingLength, priorLastKey);
+            ObjectListing listing = ossClient.listObjects(bucket, prefix, delimiter, maxListingLength, priorLastKey, conf);
             List<OSSObjectSummary> objects = listing.getObjectSummaries();
 
             FileMetadata[] fileMetadata =
@@ -287,7 +287,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     public void purge(String prefix) throws IOException {
         try {
-            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix, null, null, null).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix, null, null, null, conf).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 ossClient.deleteObject(bucket, ossObjectSummary.getKey());
             }
@@ -300,7 +300,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         StringBuilder sb = new StringBuilder("OSS Native Filesystem, ");
         sb.append(bucket).append("\n");
         try {
-            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, null, null, null, null).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, null, null, null, null, conf).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 sb.append(ossObjectSummary.getKey()).append("\n");
             }
@@ -338,7 +338,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
     private void doMultipartCopy(String srcKey, String dstKey, Long contentLength) throws IOException {
         InitiateMultipartUploadResult initiateMultipartUploadResult =
-                ossClient.initiateMultipartUpload(bucket, dstKey);
+                ossClient.initiateMultipartUpload(bucket, dstKey, conf);
         String uploadId = initiateMultipartUploadResult.getUploadId();
         Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
         Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
@@ -353,7 +353,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             long skipBytes = partSize * i;
             long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
             OSSCopyTask ossCopyTask = new OSSCopyTask(
-                    ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1);
+                    ossClient, uploadId, bucket, bucket, srcKey, dstKey, size, skipBytes, i+1, conf);
             ossCopyTask.setUuid(i+"");
             tasks.add(ossCopyTask);
         }
@@ -372,13 +372,13 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             taskEngine.shutdown();
         }
 
-        ossClient.completeMultipartUpload(bucket, dstKey, uploadId, partETags);
+        ossClient.completeMultipartUpload(bucket, dstKey, uploadId, partETags, conf);
     }
 
     private void doMultipartPut(File file, String key) throws IOException {
         Long contentLength = file.length();
         InitiateMultipartUploadResult initiateMultipartUploadResult =
-                ossClient.initiateMultipartUpload(bucket, key);
+                ossClient.initiateMultipartUpload(bucket, key, conf);
         String uploadId = initiateMultipartUploadResult.getUploadId();
         Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
         Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
@@ -392,7 +392,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         for (int i = 0; i < partCount; i++) {
             long skipBytes = partSize * i;
             long size = partSize < contentLength - skipBytes ? partSize : contentLength - skipBytes;
-            OSSPutTask ossPutTask = new OSSPutTask(ossClient, uploadId, bucket, key, size, skipBytes, i+1, file);
+            OSSPutTask ossPutTask = new OSSPutTask(ossClient, uploadId, bucket, key, size, skipBytes, i+1, file, conf);
             ossPutTask.setUuid(i + "");
             tasks.add(ossPutTask);
         }
@@ -410,6 +410,6 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         } finally {
             taskEngine.shutdown();
         }
-        ossClient.completeMultipartUpload(bucket, key, uploadId, partETags);
+        ossClient.completeMultipartUpload(bucket, key, uploadId, partETags, conf);
     }
 }
