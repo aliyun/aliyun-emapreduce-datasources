@@ -21,9 +21,8 @@ import com.aliyun.fs.oss.utils.OSSClientAgent;
 import com.aliyun.fs.oss.utils.Result;
 import com.aliyun.fs.oss.utils.Task;
 import com.aliyun.fs.oss.utils.TaskEngine;
-import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.model.UploadPartCopyRequest;
 import com.aliyun.oss.model.UploadPartCopyResult;
+import org.apache.hadoop.conf.Configuration;
 
 public class OSSCopyTask extends Task {
     OSSClientAgent ossClient;
@@ -35,6 +34,7 @@ public class OSSCopyTask extends Task {
     private Long partSize;
     private Long beginIndex;
     private int partNumber;
+    private Configuration conf;
 
     public OSSCopyTask(OSSClientAgent ossClient,
                        String uploadId,
@@ -44,7 +44,8 @@ public class OSSCopyTask extends Task {
                        String dstKey,
                        Long partSize,
                        Long beginIndex,
-                       int partNumber) {
+                       int partNumber,
+                       Configuration conf) {
         this.ossClient = ossClient;
         this.uploadId = uploadId;
         this.srcBucket = srcBucket;
@@ -54,6 +55,7 @@ public class OSSCopyTask extends Task {
         this.partSize = partSize;
         this.partNumber = partNumber;
         this.beginIndex = beginIndex;
+        this.conf = conf;
     }
 
     @Override
@@ -61,7 +63,7 @@ public class OSSCopyTask extends Task {
         Result result = new Result();
         try {
             UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadId, srcBucket, dstBucket, srcKey,
-                    dstKey, partSize, beginIndex, partNumber);
+                    dstKey, partSize, beginIndex, partNumber, conf);
             result.getModels().put("uploadPartCopyResult", uploadPartCopyResult);
             // TODO: fail?
             result.setSuccess(true);
