@@ -154,11 +154,6 @@ public class NativeOssFileSystem extends FileSystem {
             closeInnerStream();
         }
 
-        /**
-         * Close the inner stream if not null. Even if an exception
-         * is raised during the close, the field is set to null
-         * @throws IOException if raised by the close() operation.
-         */
         private void closeInnerStream() throws IOException {
             if (in != null) {
                 try {
@@ -169,13 +164,6 @@ public class NativeOssFileSystem extends FileSystem {
             }
         }
 
-        /**
-         * Update inner stream with a new stream and position
-         * @param newStream new stream -must not be null
-         * @param newpos new position
-         * @throws IOException IO exception on a failure to close the existing
-         * stream.
-         */
         private synchronized void updateInnerStream(InputStream newStream, long newpos) throws IOException {
             Preconditions.checkNotNull(newStream, "Null newstream argument");
             closeInnerStream();
