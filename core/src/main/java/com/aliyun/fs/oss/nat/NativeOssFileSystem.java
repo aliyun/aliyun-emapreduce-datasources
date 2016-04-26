@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.aliyun.fs.oss.common.*;
 import com.aliyun.fs.oss.utils.Utils;
+import com.google.common.base.Preconditions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -49,43 +50,158 @@ public class NativeOssFileSystem extends FileSystem {
         private InputStream in;
         private final String key;
         private long pos = 0;
+        private long globalPos = 0;
+        private int cacheSize = 0;
+        private int cacheIdx = 0;
+        private byte[] readCache = new byte[16 * 1024 * 1024];
+        private long contentLength = 0;
 
-        public NativeOssFsInputStream(InputStream in, String key) {
+        public NativeOssFsInputStream(InputStream in, String key) throws IOException {
             this.in = in;
             this.key = key;
+            this.contentLength = store.retrieveMetadata(key).getLength();
         }
 
         @Override
         public synchronized int read() throws IOException {
-            int result = in.read();
-            if (result != -1) {
+            if (this.pos + 1 > this.globalPos && this.pos < this.contentLength) {
+                flushReadCache();
+            }
+
+            int result;
+            // still has no data, return -1
+            if (this.pos + 1 > globalPos) {
+                result = -1;
+            } else {
+                result = readCache[cacheIdx];
+                cacheIdx++;
                 pos++;
             }
+
             return result;
         }
         @Override
         public synchronized int read(byte[] b, int off, int len)
                 throws IOException {
 
-            int result = in.read(b, off, len);
-            if (result > 0) {
-                pos += result;
+            if (this.pos + len > this.globalPos && this.pos < this.contentLength) {
+                flushReadCache();
             }
+
+            int result = 0;
+            if (this.pos == this.globalPos) {
+                result = -1;
+            } else {
+                int i=0;
+                int j=off;
+                for (;cacheIdx<cacheSize && i<len; cacheIdx++, i++, j++) {
+                    result++;
+                    this.pos++;
+                    b[j] = readCache[cacheIdx];
+                }
+            }
+
+            return result;
+        }
+
+        private synchronized int flushReadCache() throws IOException {
+            int tries = 10;
+            int result = -1;
+            boolean retry = true;
+            int off = 0;
+            cacheIdx = 0;
+            cacheSize = 0;
+            seek(pos, true);
+
+            do {
+                try {
+                    result = in.read(readCache, off, readCache.length-off);
+                    if (result > 0) {
+                        off += result;
+                        globalPos = pos + off;
+                        cacheSize = off;
+                    } else if (result == -1) {
+                        break;
+                    }
+                    retry = off < readCache.length;
+                } catch (EOFException e0) {
+                    e0.printStackTrace();
+                    break;
+                } catch (Exception e1) {
+                    tries--;
+                    if (tries == 0) {
+                        throw new IOException(e1);
+                    }
+
+                    LOG.warn("Some exceptions occur in oss connection, try to reopen oss connection " +
+                            "at position '" + pos + "'");
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e2) {
+                        e2.printStackTrace();
+                    }
+                    seek(pos, true);
+                    off = 0;
+                }
+            } while (tries>0 && retry);
+
+            closeInnerStream();
             return result;
         }
 
         @Override
-        public void close() throws IOException {
-            in.close();
+        public synchronized void close() throws IOException {
+            closeInnerStream();
+        }
+
+        /**
+         * Close the inner stream if not null. Even if an exception
+         * is raised during the close, the field is set to null
+         * @throws IOException if raised by the close() operation.
+         */
+        private void closeInnerStream() throws IOException {
+            if (in != null) {
+                try {
+                    in.close();
+                } finally {
+                    in = null;
+                }
+            }
+        }
+
+        /**
+         * Update inner stream with a new stream and position
+         * @param newStream new stream -must not be null
+         * @param newpos new position
+         * @throws IOException IO exception on a failure to close the existing
+         * stream.
+         */
+        private synchronized void updateInnerStream(InputStream newStream, long newpos) throws IOException {
+            Preconditions.checkNotNull(newStream, "Null newstream argument");
+            closeInnerStream();
+            in = newStream;
+            this.pos = newpos;
+            this.globalPos = newpos;
+            this.cacheSize = 0;
+        }
+
+        private synchronized void seek(long newpos, boolean reopen) throws IOException {
+            if (newpos < 0) {
+                throw new EOFException("Cannot seek to a negative offset");
+            }
+            if (pos != newpos || reopen) {
+                // the seek is attempting to move the current position
+                LOG.info("Opening key '" + key + "' for reading at position '" + newpos + "'");
+                InputStream newStream = store.retrieve(key, newpos);
+                updateInnerStream(newStream, newpos);
+            }
         }
 
         @Override
-        public synchronized void seek(long pos) throws IOException {
-            in.close();
-            LOG.info("Opening key '" + key + "' for reading at position '" + pos + "'");
-            in = store.retrieve(key, pos);
-            this.pos = pos;
+        public synchronized void seek(long newpos) throws IOException {
+            seek(newpos, false);
         }
+
         @Override
         public synchronized long getPos() throws IOException {
             return pos;
