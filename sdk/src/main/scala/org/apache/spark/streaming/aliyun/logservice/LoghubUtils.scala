@@ -19,6 +19,7 @@ package org.apache.spark.streaming.aliyun.logservice
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.api.java.{JavaDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
 /**
@@ -150,5 +151,20 @@ object LoghubUtils {
           storageLevel)
       ))
     }
+  }
+
+  @Experimental
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      numReceivers: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint, numReceivers,
+      accessKeyId, accessKeySecret, storageLevel)
   }
 }
