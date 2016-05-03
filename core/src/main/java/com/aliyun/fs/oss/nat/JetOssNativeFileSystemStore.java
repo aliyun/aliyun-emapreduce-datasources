@@ -138,8 +138,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                     ossClient.appendObject(bucket, key, file, preContentLength, conf);
                 }
             }
-        } catch (ServiceException e) {
-            handleServiceException(e);
+        } catch (Exception e) {
+            handleException(e);
         } finally {
             if (in != null) {
                 try {
@@ -162,8 +162,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             File result = File.createTempFile("input-", ".empty", dir);
             ossClient.putObject(bucket, key, result);
             result.deleteOnExit();
-        } catch (ServiceException e) {
-            handleServiceException(e);
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 
@@ -175,7 +175,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             return new FileMetadata(key, objectMetadata.getContentLength(),
                     objectMetadata.getLastModified().getTime());
-        } catch (ServiceException e) {
+        } catch (Exception e) {
             // Following is brittle. Is there a better way?
             if (e.getMessage().contains("ResponseCode=404")) {
                 return null;
@@ -192,8 +192,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             OSSObject object = ossClient.getObject(bucket, key, 0, objectMetadata.getContentLength(), conf);
             return object.getObjectContent();
-        } catch (ServiceException e) {
-            handleServiceException(key, e);
+        } catch (Exception e) {
+            handleException(key, e);
             return null; //never returned - keep compiler happy
         }
     }
@@ -208,8 +208,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             long fileSize = objectMetadata.getContentLength();
             OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, fileSize-1, conf);
             return object.getObjectContent();
-        } catch (ServiceException e) {
-            handleServiceException(key, e);
+        } catch (Exception e) {
+            handleException(key, e);
             return null; //never returned - keep compiler happy
         }
     }
@@ -252,8 +252,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                 idx += 1;
             }
             return new PartialListing(listing.getNextMarker(), fileMetadata, listing.getCommonPrefixes().toArray(new String[0]));
-        } catch (ServiceException e) {
-            handleServiceException(e);
+        } catch (Exception e) {
+            handleException(e);
             return null; //never returned - keep compiler happy
         }
     }
@@ -261,8 +261,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     public void delete(String key) throws IOException {
         try {
             ossClient.deleteObject(bucket, key);
-        } catch (ServiceException e) {
-            handleServiceException(key, e);
+        } catch (Exception e) {
+            handleException(key, e);
         }
     }
 
@@ -280,19 +280,19 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                         ", size: " + contentLength);
                 doMultipartCopy(srcKey, dstKey, contentLength);
             }
-        } catch (ServiceException e) {
-            handleServiceException(srcKey, e);
+        } catch (Exception e) {
+            handleException(srcKey, e);
         }
     }
 
     public void purge(String prefix) throws IOException {
         try {
-            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix, null, null, null, conf).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, prefix).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 ossClient.deleteObject(bucket, ossObjectSummary.getKey());
             }
-        } catch (ServiceException e) {
-            handleServiceException(e);
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 
@@ -300,30 +300,29 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         StringBuilder sb = new StringBuilder("OSS Native Filesystem, ");
         sb.append(bucket).append("\n");
         try {
-            List<OSSObjectSummary> objects = ossClient.listObjects(bucket, null, null, null, null, conf).getObjectSummaries();
+            List<OSSObjectSummary> objects = ossClient.listObjects(bucket).getObjectSummaries();
             for(OSSObjectSummary ossObjectSummary: objects) {
                 sb.append(ossObjectSummary.getKey()).append("\n");
             }
-        } catch (ServiceException e) {
-            handleServiceException(e);
+        } catch (Exception e) {
+            handleException(e);
         }
         System.out.println(sb);
     }
 
-    private void handleServiceException(String key, ServiceException e) throws IOException {
-        if ("NoSuchKey".equals(e.getErrorCode())) {
+    private void handleException(String key, Exception e) throws IOException, OssException {
+        if (e instanceof ServiceException && "NoSuchKey".equals(((ServiceException) e).getErrorCode())) {
             throw new FileNotFoundException("Key '" + key + "' does not exist in OSS");
         } else {
-            handleServiceException(e);
+            handleException(e);
         }
         LOG.error(e);
     }
 
-    private void handleServiceException(ServiceException e) throws IOException {
+    private void handleException(Exception e) throws IOException, OssException {
         if (e.getCause() instanceof IOException) {
             throw (IOException) e.getCause();
-        }
-        else {
+        } else {
             throw new OssException(e);
         }
     }
