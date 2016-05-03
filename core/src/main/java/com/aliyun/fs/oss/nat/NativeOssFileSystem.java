@@ -19,12 +19,14 @@
 package com.aliyun.fs.oss.nat;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import com.aliyun.fs.oss.common.*;
 import com.aliyun.fs.oss.utils.Utils;
+import com.google.common.base.Preconditions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -44,48 +46,160 @@ public class NativeOssFileSystem extends FileSystem {
     public static final String PATH_DELIMITER = Path.SEPARATOR;
     public static final int OSS_MAX_LISTING_LENGTH = 1000;
 
-    private class NativeOssFsInputStream extends FSInputStream {
+    public class NativeOssFsInputStream extends FSInputStream {
 
-        private InputStream in;
+        InputStream in;
         private final String key;
-        private long pos = 0;
+        long pos = 0;
+        long globalPos = 0;
+        int cacheSize = 0;
+        int cacheIdx = 0;
+        byte[] readBuffer = new byte[bufferSize];
+        long contentLength = 0;
 
-        public NativeOssFsInputStream(InputStream in, String key) {
+        public NativeOssFsInputStream(InputStream in, String key) throws IOException {
             this.in = in;
             this.key = key;
+            this.contentLength = store.retrieveMetadata(key).getLength();
         }
 
         @Override
         public synchronized int read() throws IOException {
-            int result = in.read();
-            if (result != -1) {
+            if (this.pos + 1 > this.globalPos && this.pos < this.contentLength) {
+                flushReadCache();
+            }
+
+            int result;
+            // still has no data, return -1
+            if (this.pos + 1 > globalPos) {
+                result = -1;
+            } else {
+                result = readBuffer[cacheIdx];
+                cacheIdx++;
                 pos++;
             }
+
             return result;
         }
         @Override
         public synchronized int read(byte[] b, int off, int len)
                 throws IOException {
 
-            int result = in.read(b, off, len);
-            if (result > 0) {
-                pos += result;
+            if (b == null) {
+                throw new NullPointerException();
+            } else if (off < 0 || len < 0 || len > b.length - off) {
+                throw new IndexOutOfBoundsException();
+            } else if (len == 0) {
+                return 0;
             }
+
+            if (this.pos + len > this.globalPos && this.pos < this.contentLength) {
+                flushReadCache();
+            }
+
+            int result = 0;
+            if (this.pos == this.globalPos) {
+                result = -1;
+            } else {
+                int i=0;
+                int j=off;
+                for (;cacheIdx<cacheSize && i<len; cacheIdx++, i++, j++) {
+                    result++;
+                    this.pos++;
+                    b[j] = readBuffer[cacheIdx];
+                }
+            }
+
             return result;
         }
 
-        @Override
-        public void close() throws IOException {
-            in.close();
+        private synchronized int flushReadCache() throws IOException {
+            int tries = 10;
+            int result;
+            boolean retry = true;
+            int off = 0;
+            seek(pos, true);
+
+            do {
+                try {
+                    if (in == null) {
+                        throw new EOFException("Cannot read closed stream");
+                    }
+                    result = in.read(readBuffer, off, readBuffer.length-off);
+                    if (result > 0) {
+                        off += result;
+                        globalPos = pos + off;
+                        cacheSize = off;
+                    } else if (result == -1) {
+                        break;
+                    }
+                    retry = off < readBuffer.length;
+                } catch (EOFException e0) {
+                    throw e0;
+                } catch (Exception e1) {
+                    tries--;
+                    if (tries == 0) {
+                        throw new IOException(e1);
+                    }
+
+                    LOG.warn("Some exceptions occurred in oss connection, try to reopen oss connection " +
+                            "at position '" + pos + "'");
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e2) {
+                        LOG.warn(e2.getMessage());
+                    }
+                    seek(pos, true);
+                    off = 0;
+                }
+            } while (tries>0 && retry);
+
+            closeInnerStream();
+            return off;
         }
 
         @Override
-        public synchronized void seek(long pos) throws IOException {
-            in.close();
-            LOG.info("Opening key '" + key + "' for reading at position '" + pos + "'");
-            in = store.retrieve(key, pos);
-            this.pos = pos;
+        public synchronized void close() throws IOException {
+            closeInnerStream();
         }
+
+        void closeInnerStream() throws IOException {
+            if (in != null) {
+                try {
+                    in.close();
+                } finally {
+                    in = null;
+                }
+            }
+        }
+
+        synchronized void updateInnerStream(InputStream newStream, long newpos) throws IOException {
+            Preconditions.checkNotNull(newStream, "Null newstream argument");
+            closeInnerStream();
+            in = newStream;
+            this.pos = newpos;
+            this.globalPos = newpos;
+            this.cacheIdx = 0;
+            this.cacheSize = 0;
+        }
+
+        synchronized void seek(long newpos, boolean reopen) throws IOException {
+            if (newpos < 0) {
+                throw new EOFException("Cannot seek to a negative offset");
+            }
+            if (pos != newpos || reopen) {
+                // the seek is attempting to move the current position
+                LOG.info("Opening key '" + key + "' for reading at position '" + newpos + "'");
+                InputStream newStream = store.retrieve(key, newpos);
+                updateInnerStream(newStream, newpos);
+            }
+        }
+
+        @Override
+        public synchronized void seek(long newpos) throws IOException {
+            seek(newpos, false);
+        }
+
         @Override
         public synchronized long getPos() throws IOException {
             return pos;
@@ -163,7 +277,8 @@ public class NativeOssFileSystem extends FileSystem {
     }
 
     private URI uri;
-    private NativeFileSystemStore store;
+    private int bufferSize;
+    NativeFileSystemStore store;
     private Path workingDir = new Path(".");
 
     public NativeOssFileSystem() {
@@ -183,11 +298,18 @@ public class NativeOssFileSystem extends FileSystem {
         try {
             store.initialize(uri, conf);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn(e.getMessage());
             throw new IOException(e);
         }
         setConf(conf);
         this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
+        this.bufferSize = conf.getInt("fs.oss.readBuffer.size", 64 * 1024 * 1024);
+        // do not suggest to use too large buffer in case of GC issue or OOM.
+        if (this.bufferSize >= 256 * 1024 * 1024) {
+            LOG.warn("'fs.oss.readBuffer.size' is " + bufferSize + ", it's to large and system will suppress it down " +
+                    "to '268435456' automatically.");
+            this.bufferSize = 256 * 1024 * 1024;
+        }
     }
 
     private static NativeFileSystemStore createDefaultStore(Configuration conf) {
@@ -198,12 +320,12 @@ public class NativeOssFileSystem extends FileSystem {
                 conf.getLong("fs.oss.sleepTimeSeconds", 10), TimeUnit.SECONDS);
         Map<Class<? extends Exception>, RetryPolicy> exceptionToPolicyMap =
                 new HashMap<Class<? extends Exception>, RetryPolicy>();
+        // for reflection invoke.
+        exceptionToPolicyMap.put(InvocationTargetException.class, basePolicy);
         exceptionToPolicyMap.put(IOException.class, basePolicy);
         exceptionToPolicyMap.put(OssException.class, basePolicy);
 
-        RetryPolicy methodPolicy = RetryPolicies.retryByException(
-                RetryPolicies.retryUpToMaximumCountWithFixedSleep(9, 5000, TimeUnit.MILLISECONDS),
-                exceptionToPolicyMap);
+        RetryPolicy methodPolicy = RetryPolicies.retryByException(RetryPolicies.TRY_ONCE_THEN_FAIL, exceptionToPolicyMap);
         Map<String, RetryPolicy> methodNameToPolicyMap =
                 new HashMap<String, RetryPolicy>();
         methodNameToPolicyMap.put("storeFile", methodPolicy);
@@ -217,9 +339,7 @@ public class NativeOssFileSystem extends FileSystem {
         methodNameToPolicyMap.put("list", methodPolicy);
         methodNameToPolicyMap.put("delete", methodPolicy);
 
-        return (NativeFileSystemStore)
-                RetryProxy.create(NativeFileSystemStore.class, store,
-                        methodNameToPolicyMap);
+        return (NativeFileSystemStore) RetryProxy.create(NativeFileSystemStore.class, store, methodNameToPolicyMap);
     }
 
     private static String pathToKey(Path path) {
@@ -241,8 +361,7 @@ public class NativeOssFileSystem extends FileSystem {
     }
 
     @Override
-    public FSDataOutputStream append(Path f, int bufferSize,
-                                     Progressable progress) throws IOException {
+    public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
         Path absolutePath = makeAbsolute(f);
         String key = pathToKey(absolutePath);
         return new FSDataOutputStream(new NativeOssFsOutputStream(getConf(), store,
@@ -254,7 +373,7 @@ public class NativeOssFileSystem extends FileSystem {
                                      short replication, long blockSize, Progressable progress)
             throws IOException {
         if (exists(f) && !overwrite) {
-            throw new IOException("File already exists:"+f);
+            throw new IOException("File already exists: "+f);
         }
         Path absolutePath = makeAbsolute(f);
         String key = pathToKey(absolutePath);
