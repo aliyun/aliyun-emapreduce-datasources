@@ -67,14 +67,14 @@ public class OSSClientAgent {
                         if (SystemUtils.IS_OS_WINDOWS) {
                             cp = System.getProperty("java.class.path").split(";");
                             for (String entity : cp) {
-                                if(!entity.contains("log4j") || conf.getBoolean("job.runlocal", false)) {
+                                if(!entity.contains("log4j")) {
                                     urls.add(new URL("file:" + entity));
                                 }
                             }
                         } else {
                             cp = System.getProperty("java.class.path").split(":");
                             for (String entity : cp) {
-                                if(!entity.contains("log4j") || conf.getBoolean("job.runlocal", false)) {
+                                if(!entity.contains("log4j")) {
                                     urls.add(new URL("file://" + entity));
                                 }
                             }
