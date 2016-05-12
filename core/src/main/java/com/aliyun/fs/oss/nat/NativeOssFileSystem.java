@@ -57,8 +57,7 @@ public class NativeOssFileSystem extends FileSystem {
         byte[] readBuffer = new byte[bufferSize];
         long contentLength = 0;
 
-        public NativeOssFsInputStream(InputStream in, String key) throws IOException {
-            this.in = in;
+        public NativeOssFsInputStream(String key) throws IOException {
             this.key = key;
             this.contentLength = store.retrieveMetadata(key).getLength();
         }
@@ -113,7 +112,7 @@ public class NativeOssFileSystem extends FileSystem {
             return result;
         }
 
-        private synchronized int flushReadCache() throws IOException {
+        synchronized int flushReadCache() throws IOException {
             int tries = 10;
             int result;
             boolean retry = true;
@@ -143,7 +142,7 @@ public class NativeOssFileSystem extends FileSystem {
                     }
 
                     LOG.warn("Some exceptions occurred in oss connection, try to reopen oss connection " +
-                            "at position '" + pos + "'");
+                            "at position '" + pos + "', " + e1.getMessage());
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e2) {
@@ -167,6 +166,8 @@ public class NativeOssFileSystem extends FileSystem {
             if (in != null) {
                 try {
                     in.close();
+                } catch (Exception e) {
+                    // do nothing
                 } finally {
                     in = null;
                 }
@@ -190,7 +191,7 @@ public class NativeOssFileSystem extends FileSystem {
             if (pos != newpos || reopen) {
                 // the seek is attempting to move the current position
                 LOG.info("Opening key '" + key + "' for reading at position '" + newpos + "'");
-                InputStream newStream = store.retrieve(key, newpos);
+                InputStream newStream = store.retrieve(key, newpos, bufferSize+1024*1024);
                 updateInnerStream(newStream, newpos);
             }
         }
@@ -579,8 +580,7 @@ public class NativeOssFileSystem extends FileSystem {
         LOG.info("Opening '" + f + "' for reading");
         Path absolutePath = makeAbsolute(f);
         String key = pathToKey(absolutePath);
-        return new FSDataInputStream(new BufferedFSInputStream(
-                new NativeOssFsInputStream(store.retrieve(key), key), bufferSize));
+        return new FSDataInputStream(new BufferedFSInputStream(new NativeOssFsInputStream(key), bufferSize));
     }
 
     // rename() and delete() use this method to ensure that the parent directory

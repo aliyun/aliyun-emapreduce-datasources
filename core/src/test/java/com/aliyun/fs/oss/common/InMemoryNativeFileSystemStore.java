@@ -85,6 +85,11 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
         return new FileInputStream(file);
     }
 
+    @Override
+    public InputStream retrieve(String key, long byteRangeStart, long length) throws IOException {
+        return null;
+    }
+
     private File createTempFile() throws IOException {
         File dir = new File(conf.get("fs.oss.buffer.dir"));
         if (!dir.exists() && !dir.mkdirs()) {
