@@ -115,8 +115,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         this.maxSimplePutSize = conf.getLong("fs.oss.put.simple.max.byte", 64 * 1024 * 1024);
     }
 
-    public void storeFile(String key, File file, boolean append)
-            throws IOException {
+    public void storeFile(String key, File file, boolean append) throws IOException {
         BufferedInputStream in = null;
 
         try {
@@ -207,6 +206,28 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
             long fileSize = objectMetadata.getContentLength();
             OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, fileSize-1, conf);
+            return object.getObjectContent();
+        } catch (Exception e) {
+            handleException(key, e);
+            return null; //never returned - keep compiler happy
+        }
+    }
+
+    public InputStream retrieve(String key, long byteRangeStart, long length) throws IOException {
+        try {
+            if (!doesObjectExist(key)) {
+                return null;
+            }
+            ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
+            long fileSize = objectMetadata.getContentLength();
+            long end;
+            if (fileSize - 1 >= byteRangeStart + length) {
+                end = byteRangeStart + length;
+            } else {
+                end = fileSize - 1;
+            }
+
+            OSSObject object = ossClient.getObject(bucket, key, byteRangeStart, end, conf);
             return object.getObjectContent();
         } catch (Exception e) {
             handleException(key, e);

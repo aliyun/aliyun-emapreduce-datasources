@@ -40,6 +40,7 @@ public interface NativeFileSystemStore {
     FileMetadata retrieveMetadata(String key) throws IOException;
     InputStream retrieve(String key) throws IOException;
     InputStream retrieve(String key, long byteRangeStart) throws IOException;
+    InputStream retrieve(String key, long byteRangeStart, long length) throws IOException;
 
     PartialListing list(String prefix, int maxListingLength) throws IOException;
     PartialListing list(String prefix, int maxListingLength, String priorLastKey, boolean recursive)
