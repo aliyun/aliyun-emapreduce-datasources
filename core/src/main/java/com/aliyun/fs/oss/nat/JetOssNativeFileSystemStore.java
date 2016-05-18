@@ -479,19 +479,20 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                     _continue = false;
                 }
                 OSSPutTask ossPutTask = new OSSPutTask(ossClient, uploadId, bucket, key, size, skipBytes, t+1, file, conf);
-                ossPutTask.setUuid(t + "");
+                ossPutTask.setUuid(t+"");
                 tasks.add(ossPutTask);
                 j++;
                 t++;
             } while(_continue);
         }
 
+        int realPartCount = tasks.size();
         List<PartETag> partETags = new ArrayList<PartETag>();
         TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
         try {
             taskEngine.executeTask();
             Map<String, Object> responseMap = taskEngine.getResultMap();
-            for (int i = 0; i < partCount; i++) {
+            for (int i = 0; i < realPartCount; i++) {
                 UploadPartResult uploadPartResult = (UploadPartResult)
                         ((Result) responseMap.get(i+"")).getModels().get("uploadPartResult");
                 partETags.add(uploadPartResult.getPartETag());
