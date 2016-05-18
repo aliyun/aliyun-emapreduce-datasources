@@ -116,11 +116,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     }
 
     public void storeFile(String key, File file, boolean append) throws IOException {
-        BufferedInputStream in = null;
-
         try {
-            in = new BufferedInputStream(new FileInputStream(file));
-             if (!append) {
+            if (!append) {
                 Long fileLength = file.length();
                 if (fileLength < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
                     ossClient.putObject(bucket, key, file);
@@ -129,24 +126,30 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                     doMultipartPut(file, key);
                 }
             } else {
-                if (!doesObjectExist(key)) {
-                    ossClient.appendObject(bucket, key, file, 0L, conf);
-                } else {
-                    ObjectMetadata objectMetadata = ossClient.getObjectMetadata(bucket, key);
-                    Long preContentLength = objectMetadata.getContentLength();
-                    ossClient.appendObject(bucket, key, file, preContentLength, conf);
-                }
+                throw new IOException("'append' not supported.");
             }
         } catch (Exception e) {
             handleException(e);
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    // ignore
+        }
+    }
+
+    @Override
+    public void storeFiles(String key, List<File> files, boolean append) throws IOException {
+        try {
+            if (files.size() == 1 && files.get(0).length() < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
+                ossClient.putObject(bucket, key, files.get(0));
+            } else {
+                StringBuilder sb = new StringBuilder();
+                for(File file: files) {
+                    sb.append(file.getPath()).append(",");
                 }
+                int length = sb.toString().length();
+                sb.deleteCharAt(length-1);
+                LOG.info("using multipart upload for key " + key + ", block files: " + sb.toString());
+                doMultipartPut(files, key);
             }
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 
@@ -396,10 +399,11 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     }
 
     private void doMultipartPut(File file, String key) throws IOException {
-        Long contentLength = file.length();
         InitiateMultipartUploadResult initiateMultipartUploadResult =
                 ossClient.initiateMultipartUpload(bucket, key, conf);
         String uploadId = initiateMultipartUploadResult.getUploadId();
+
+        Long contentLength = file.length();
         Long minSplitSize = contentLength / numSplitsUpperLimit + 1;
         Long partSize = Math.max(Math.min(maxSplitSize, contentLength / numSplits), minSplitSize);
         int partCount = (int) (contentLength / partSize);
@@ -407,7 +411,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             partCount++;
         }
         LOG.info("multipart uploading, partCount" + partCount + ", partSize " + partSize);
-        List<PartETag> partETags = new ArrayList<PartETag>();
+
         List<Task> tasks = new ArrayList<Task>();
         for (int i = 0; i < partCount; i++) {
             long skipBytes = partSize * i;
@@ -416,6 +420,73 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             ossPutTask.setUuid(i + "");
             tasks.add(ossPutTask);
         }
+
+        List<PartETag> partETags = new ArrayList<PartETag>();
+        TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+        try {
+            taskEngine.executeTask();
+            Map<String, Object> responseMap = taskEngine.getResultMap();
+            for (int i = 0; i < partCount; i++) {
+                UploadPartResult uploadPartResult = (UploadPartResult)
+                        ((Result) responseMap.get(i+"")).getModels().get("uploadPartResult");
+                partETags.add(uploadPartResult.getPartETag());
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            taskEngine.shutdown();
+        }
+        ossClient.completeMultipartUpload(bucket, key, uploadId, partETags, conf);
+    }
+
+    private void doMultipartPut(List<File> files, String key) throws IOException {
+        InitiateMultipartUploadResult initiateMultipartUploadResult =
+                ossClient.initiateMultipartUpload(bucket, key, conf);
+        String uploadId = initiateMultipartUploadResult.getUploadId();
+
+        Long totalContentLength = 0L;
+        for(File file: files) {
+            totalContentLength += file.length();
+        }
+        Long minSplitSize = totalContentLength / numSplitsUpperLimit + 1;
+        Long partSize = Math.max(Math.min(maxSplitSize, totalContentLength / numSplits), minSplitSize);
+        int partCount = (int) (totalContentLength / partSize);
+        if (totalContentLength % partSize != 0) {
+            partCount++;
+        }
+        LOG.info("multipart uploading, partCount" + partCount + ", partSize " + partSize);
+
+        List<Task> tasks = new ArrayList<Task>();
+        int t = 0;
+        for(File file: files) {
+            Long contentLength = file.length();
+            boolean _continue;
+            int j = 0;
+            long skipBytes;
+            long size;
+            do{
+                skipBytes = partSize * j;
+                if(partSize < contentLength - skipBytes) {
+                    if(contentLength - (skipBytes + partSize) < 1024 * 1024) {
+                        size = contentLength - skipBytes;
+                        _continue = false;
+                    } else {
+                        size = partSize;
+                        _continue = true;
+                    }
+                } else {
+                    size = contentLength - skipBytes;
+                    _continue = false;
+                }
+                OSSPutTask ossPutTask = new OSSPutTask(ossClient, uploadId, bucket, key, size, skipBytes, t+1, file, conf);
+                ossPutTask.setUuid(t + "");
+                tasks.add(ossPutTask);
+                j++;
+                t++;
+            } while(_continue);
+        }
+
+        List<PartETag> partETags = new ArrayList<PartETag>();
         TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
         try {
             taskEngine.executeTask();
