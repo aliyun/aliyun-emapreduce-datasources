@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -35,6 +36,7 @@ public interface NativeFileSystemStore {
     void initialize(URI uri, Configuration conf) throws Exception;
 
     void storeFile(String key, File file, boolean append) throws IOException;
+    void storeFiles(String key, List<File> files, boolean append) throws IOException;
     void storeEmptyFile(String key) throws IOException;
 
     FileMetadata retrieveMetadata(String key) throws IOException;

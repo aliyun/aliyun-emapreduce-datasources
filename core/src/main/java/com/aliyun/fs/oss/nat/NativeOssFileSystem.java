@@ -215,22 +215,26 @@ public class NativeOssFileSystem extends FileSystem {
 
         private Configuration conf;
         private String key;
-        private File backupFile;
-        private OutputStream backupStream;
+        private File blockFile;
+        private OutputStream blockOutStream;
         private boolean closed;
         private boolean append;
+        private List<File> blockFiles = new ArrayList<File>();
+        private Long blockSize = 1073741824L;
+        private Long blockWritten = 0L;
+        private int blockId = 0;
 
         public NativeOssFsOutputStream(Configuration conf, NativeFileSystemStore store, String key,
                                        boolean append, Progressable progress, int bufferSize) throws IOException {
             this.conf = conf;
             this.key = key;
             this.append = append;
-            this.backupFile = newBackupFile();
-            LOG.info("OutputStream for key '" + key + "' writing to tempfile '" + this.backupFile + "'");
-            this.backupStream = new BufferedOutputStream(new FileOutputStream(backupFile));
+            this.blockFile = newBlockFile();
+            LOG.info("OutputStream for key '" + key + "' writing to tempfile '" + this.blockFile + "' for block " + blockId);
+            this.blockOutStream = new BufferedOutputStream(new FileOutputStream(blockFile));
         }
 
-        private File newBackupFile() throws IOException {
+        private File newBlockFile() throws IOException {
             File dir = Utils.getTempBufferDir(conf);
             if (!dir.mkdirs() && !dir.exists()) {
                 throw new IOException("Cannot create OSS buffer directory: " + dir);
@@ -241,8 +245,8 @@ public class NativeOssFileSystem extends FileSystem {
         }
 
         @Override
-        public void flush() throws IOException {
-            backupStream.flush();
+        public synchronized void flush() throws IOException {
+            blockOutStream.flush();
         }
 
         @Override
@@ -251,14 +255,20 @@ public class NativeOssFileSystem extends FileSystem {
                 return;
             }
 
-            backupStream.close();
+            blockOutStream.flush();
+            blockOutStream.close();
+            if (!blockFiles.contains(blockFile)) {
+                blockFiles.add(blockFile);
+            }
             LOG.info("OutputStream for key '" + key + "' closed. Now beginning upload");
 
             try {
-                store.storeFile(key, backupFile, append);
+                store.storeFiles(key, blockFiles, append);
             } finally {
-                if (!backupFile.delete()) {
-                    LOG.warn("Could not delete temporary OSS file: " + backupFile);
+                for(File blockFile: blockFiles) {
+                    if (blockFile.exists() && !blockFile.delete()) {
+                        LOG.warn("Could not delete temporary OSS file: " + blockFile);
+                    }
                 }
                 super.close();
                 closed = true;
@@ -267,13 +277,41 @@ public class NativeOssFileSystem extends FileSystem {
         }
 
         @Override
-        public void write(int b) throws IOException {
-            backupStream.write(b);
+        public synchronized void write(int b) throws IOException {
+            if (closed) {
+                throw new IOException("Stream closed");
+            }
+
+            blockOutStream.write(b);
+            blockWritten++;
+            if (blockWritten >= blockSize) {
+                flushData();
+                blockWritten = 0L;
+            }
         }
 
         @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            backupStream.write(b, off, len);
+        public synchronized void write(byte[] b, int off, int len) throws IOException {
+            if (closed) {
+                throw new IOException("Stream closed");
+            }
+
+            blockOutStream.write(b, off, len);
+            blockWritten += len;
+            if (blockWritten >= blockSize) {
+                flushData();
+                blockWritten = 0L;
+            }
+        }
+
+        private synchronized void flushData() throws IOException {
+            blockFiles.add(blockFile);
+            blockOutStream.flush();
+            blockOutStream.close();
+            blockFile = newBlockFile();
+            blockId++;
+            LOG.info("OutputStream for key '" + key + "' writing to tempfile '" + this.blockFile + "' for block " + blockId);
+            blockOutStream = new BufferedOutputStream(new FileOutputStream(blockFile));
         }
     }
 
@@ -330,6 +368,7 @@ public class NativeOssFileSystem extends FileSystem {
         Map<String, RetryPolicy> methodNameToPolicyMap =
                 new HashMap<String, RetryPolicy>();
         methodNameToPolicyMap.put("storeFile", methodPolicy);
+        methodNameToPolicyMap.put("storeFiles", methodPolicy);
         methodNameToPolicyMap.put("storeEmptyFile", methodPolicy);
         methodNameToPolicyMap.put("retrieveMetadata", methodPolicy);
         methodNameToPolicyMap.put("retrieve", methodPolicy);

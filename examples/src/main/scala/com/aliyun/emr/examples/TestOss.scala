@@ -23,33 +23,25 @@ import org.apache.spark.aliyun.oss.OssOps
 
 object TestOss {
   def main(args: Array[String]): Unit = {
-    if (args.length < 5) {
+    if (args.length < 2) {
       System.err.println(
-        """Usage: TestOss <accessKeyId> <accessKeySecret> <endpoint> <inputPath> <numPartition>
+        """Usage: TestOss <inputPath> <numPartition>
           |
           |Arguments:
           |
-          |    accessKeyId      Aliyun Access Key ID.
-          |    accessKeySecret  Aliyun Key Secret.
-          |    endpoint         Aliyun OSS endpoint.
-          |    inputPath        Aliyun OSS object path, supporting two modes: block-based and native.
-          |                     block-based: ossbfs://bucket/object/path
-          |                     native: oss://bucket/object/path
+          |    inputPath        Aliyun OSS object path, like: oss://accessKeyId:accessKeySecret@bucket.endpoint/path
           |    numPartitions    the number of RDD partitions.
           |
         """.stripMargin)
     }
 
-    val accessKeyId = args(0)
-    val accessKeySecret = args(1)
-    val endpoint = args(2)
-    val inputPath = args(3)
-    val numPartitions = args(4).toInt
+    val inputPath = args(1)
+    val numPartitions = args(2).toInt
 
     val conf = new SparkConf().setAppName("Test OSS Read")
     val sc = new SparkContext(conf)
 
-    val ossData = OssOps(sc, endpoint, accessKeyId, accessKeySecret).readOssFile(inputPath, numPartitions)
+    val ossData = sc.textFile(inputPath, numPartitions)
     println("The top 10 lines are:")
     ossData.top(10).foreach(println)
   }
