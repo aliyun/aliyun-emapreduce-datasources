@@ -467,7 +467,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             do{
                 skipBytes = partSize * j;
                 if(partSize < contentLength - skipBytes) {
-                    if(contentLength - (skipBytes + partSize) < 1024 * 1024) {
+                    if((contentLength - (skipBytes + partSize)) < 1024 * 1024) {
                         size = contentLength - skipBytes;
                         _continue = false;
                     } else {
