@@ -63,6 +63,11 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
         dataMap.put(key, out.toByteArray());
     }
 
+    @Override
+    public void storeFiles(String key, List<File> files, boolean append) throws IOException {
+
+    }
+
     public InputStream retrieve(String key) throws IOException {
         return retrieve(key, 0);
     }
@@ -83,6 +88,11 @@ public class InMemoryNativeFileSystemStore implements NativeFileSystemStore {
             }
         }
         return new FileInputStream(file);
+    }
+
+    @Override
+    public InputStream retrieve(String key, long byteRangeStart, long length) throws IOException {
+        return null;
     }
 
     private File createTempFile() throws IOException {
