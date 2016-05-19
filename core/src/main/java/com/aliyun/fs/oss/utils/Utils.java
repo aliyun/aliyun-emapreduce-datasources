@@ -27,6 +27,7 @@ import java.util.Random;
 
 public class Utils {
     static final Log LOG = LogFactory.getLog(Utils.class);
+    static final String loginUser = System.getProperty("user.name");
     public static synchronized File getTempBufferDir(Configuration conf) {
         String[] dataDirs = conf.get("dfs.datanode.data.dir", "file:///tmp/").split(",");
         double maxUsage = Double.MIN_VALUE;
@@ -56,7 +57,6 @@ public class Utils {
 
         String diskPath = new Path(dataDirs[idx].trim()).toUri().getPath();
         LOG.debug("choose oss buffer dir: "+diskPath);
-        return new File(diskPath, "data/oss");
-
+        return new File(diskPath, "data/"+loginUser+"/oss");
     }
 }
