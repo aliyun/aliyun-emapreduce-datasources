@@ -46,8 +46,8 @@ private[mns] class MnsPullingReceiver(
 
     workerThread = new Thread() {
       override def run(): Unit = {
-        try {
-          while (true) {
+        while (true) {
+          try {
             val batchPopMessage = queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
             import scala.collection.JavaConversions._
             if (batchPopMessage == null) {
@@ -61,23 +61,23 @@ private[mns] class MnsPullingReceiver(
               queue.batchDeleteMessage(receiptsToDelete)
               receiptsToDelete.clear()
             }
-          }
-        } catch {
-          case sex: ServiceException =>
-            log.error(s"[MNS Service Error]", sex)
-            throw new Exception(sex)
-          case cex: ClientException =>
-            log.error(s"[MNS Client Error]", cex)
-            throw new Exception(cex)
-          case ex: Throwable =>
-            log.error(s"[Error]", ex)
-            throw new Exception(ex)
-        } finally {
-          // Delete received message whatever.
-          queue.batchDeleteMessage(receiptsToDelete)
-          MnsPullingReceiver.client.synchronized {
-            if (MnsPullingReceiver.client != null) {
-              MnsPullingReceiver.client.close()
+          } catch {
+            case sex: ServiceException =>
+              log.error(s"[MNS Service Error]", sex)
+            case cex: ClientException =>
+              log.error(s"[MNS Client Error]", cex)
+            case ex: Throwable =>
+              log.error(s"[Error]", ex)
+          } finally {
+            // Delete received message whatever.
+            try {
+              if (receiptsToDelete.size() > 0) {
+                queue.batchDeleteMessage(receiptsToDelete)
+                receiptsToDelete.clear()
+              }
+            } catch {
+              case e: Exception =>
+                log.error(s"[Error] Failed to delete message", e);
             }
           }
         }
@@ -122,7 +122,7 @@ private[mns] object MnsPullingReceiver {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): MnsPullingReceiver = {
-    if (client != null) {
+    if (client == null) {
       val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
       client = account.getMNSClient
     }
