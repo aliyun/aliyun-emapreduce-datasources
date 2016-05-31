@@ -19,7 +19,6 @@ package org.apache.spark.streaming.aliyun.mns.pulling
 import com.aliyun.mns.model.Message
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.aliyun.mns.pulling.MnsPullingReceiver
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 
@@ -36,7 +35,7 @@ class MnsPullingInputDStream(
   val pollingWaitSeconds = _ssc.sc.getConf.getInt("spark.mns.pollingWait.seconds", 30)
 
   override def getReceiver(): Receiver[Array[Byte]] =
-    new MnsPullingReceiver(
+    MnsPullingReceiver(
       queueName,
       batchMsgSize,
       pollingWaitSeconds,

@@ -126,7 +126,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
                     doMultipartPut(file, key);
                 }
             } else {
-                throw new IOException("'append' not supported.");
+                throw new IOException("'append' op not supported.");
             }
         } catch (Exception e) {
             handleException(e);
@@ -136,17 +136,21 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     @Override
     public void storeFiles(String key, List<File> files, boolean append) throws IOException {
         try {
-            if (files.size() == 1 && files.get(0).length() < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
-                ossClient.putObject(bucket, key, files.get(0));
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for(File file: files) {
-                    sb.append(file.getPath()).append(",");
+            if (!append) {
+                if (files.size() == 1 && files.get(0).length() < Math.min(maxSimplePutSize, 512 * 1024 * 1024L)) {
+                    ossClient.putObject(bucket, key, files.get(0));
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    for (File file : files) {
+                        sb.append(file.getPath()).append(",");
+                    }
+                    int length = sb.toString().length();
+                    sb.deleteCharAt(length - 1);
+                    LOG.info("using multipart upload for key " + key + ", block files: " + sb.toString());
+                    doMultipartPut(files, key);
                 }
-                int length = sb.toString().length();
-                sb.deleteCharAt(length-1);
-                LOG.info("using multipart upload for key " + key + ", block files: " + sb.toString());
-                doMultipartPut(files, key);
+            } else {
+                throw new IOException("'append' op not supported.");
             }
         } catch (Exception e) {
             handleException(e);
