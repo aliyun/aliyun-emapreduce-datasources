@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.aliyun.odps
 
 import java.text.SimpleDateFormat
@@ -674,7 +673,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
     }
   }
 
-  private def getTableSchema(project: String, table: String, isPartition: Boolean): Array[(String, String)] =  {
+  def getTableSchema(project: String, table: String, isPartition: Boolean): Array[(String, String)] =  {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
@@ -691,7 +690,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
     })
   }
 
-  private def getColumnByName(project: String, table: String, name: String): (String, String) = {
+  def getColumnByName(project: String, table: String, name: String): (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val idx = schema.getColumnIndex(name)
@@ -706,7 +705,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
     (idx.toString, colType)
   }
 
-  private def getColumnByIdx(project: String, table: String, idx: Int): (String, String) = {
+  def getColumnByIdx(project: String, table: String, idx: Int): (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val column = schema.getColumn(idx)

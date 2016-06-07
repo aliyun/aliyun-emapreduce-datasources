@@ -168,3 +168,20 @@ object LoghubUtils {
       accessKeyId, accessKeySecret, storageLevel)
   }
 }
+
+class LoghubUtilsHelper {
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      numReceivers: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
+    LoghubUtils.createStream(jssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
+      numReceivers, accessKeyId, accessKeySecret, storageLevel)
+  }
+}
