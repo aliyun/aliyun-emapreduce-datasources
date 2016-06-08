@@ -18,71 +18,40 @@
 from py4j.protocol import Py4JJavaError
 from pyspark.storagelevel import StorageLevel
 from pyspark.streaming import DStream
-from pyspark.serializers import NoOpSerializer
+from pyspark.serializers import UTF8Deserializer
 
-__all__ = ['MnsUtils']
+__all__ = ['OnsUtils']
 
-def utf8_decoder(s):
-    """ Decode the unicode as UTF-8 """
-    if s is None:
-        return None
-    return s.decode('utf-8')
-
-class MnsUtils(object):
+class OnsUtils(object):
 
     @staticmethod
-    def createPullingStreamAsBytes(ssc, queueName, accessKeyId, accessKeySecret,
-                                   endpoint, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+    def createStreams(ssc, consumerId, topic, tags, accessKeyId, accessKeySecret,
+                             storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
         """
+        Create an input stream that pulls message from a Aliyun ONS stream.
         :param ssc: StreamingContext object.
-        :param queueName: The name of MNS queue.
+        :param consumerId: Name of a set of consumers.
+        :param topic: Which topic to subscribe.
+        :param tags: Which tag to subscribe.
         :param accessKeyId: Aliyun Access Key ID.
         :param accessKeySecret: Aliyun Access Key Secret.
-        :param endpoint: The endpoint of MNS service.
         :param storageLevel: RDD storage level.
         :return: A DStream object.
         """
+
         try:
             helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
-                .loadClass("org.apache.spark.streaming.aliyun.mns.MnsUtilsHelper")
+                .loadClass("org.apache.spark.streaming.aliyun.ons.OnsUtilsHelper")
             helper = helperClass.newInstance()
             jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
-            jstream = helper.createPullingStreamAsBytes(ssc._jssc, queueName, accessKeyId, accessKeySecret, endpoint, jlevel)
+            jstream = helper.createDefaultStreams(ssc._jssc, consumerId, topic, tags, accessKeyId, accessKeySecret, jlevel)
 
         except Py4JJavaError as e:
             # TODO: use --jar once it also work on driver
             if 'ClassNotFoundException' in str(e.java_exception):
-                MnsUtils._printErrorMsg()
+                OnsUtils._printErrorMsg()
             raise e
-        stream = DStream(jstream, ssc, NoOpSerializer())
-        return stream.map(lambda v: utf8_decoder(v))
-
-    @staticmethod
-    def createPullingStreamAsRawBytes(ssc, queueName, accessKeyId, accessKeySecret,
-                                      endpoint, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
-        """
-        :param ssc: StreamingContext object.
-        :param queueName: The name of MNS queue.
-        :param accessKeyId: Aliyun Access Key ID.
-        :param accessKeySecret: Aliyun Access Key Secret.
-        :param endpoint: The endpoint of MNS service.
-        :param storageLevel: RDD storage level.
-        :return: A DStream object.
-        """
-        try:
-            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
-                .loadClass("org.apache.spark.streaming.aliyun.mns.MnsUtilsHelper")
-            helper = helperClass.newInstance()
-            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
-            jstream = helper.createPullingStreamAsRawBytes(ssc._jssc, queueName, accessKeyId, accessKeySecret, endpoint, jlevel)
-
-        except Py4JJavaError as e:
-            # TODO: use --jar once it also work on driver
-            if 'ClassNotFoundException' in str(e.java_exception):
-                MnsUtils._printErrorMsg()
-            raise e
-        stream = DStream(jstream, ssc, NoOpSerializer())
-        return stream.map(lambda v: utf8_decoder(v))
+        return DStream(jstream, ssc, UTF8Deserializer())
 
     @staticmethod
     def _printErrorMsg():

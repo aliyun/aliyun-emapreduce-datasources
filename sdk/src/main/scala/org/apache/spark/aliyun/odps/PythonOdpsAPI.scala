@@ -81,7 +81,7 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def prepareColsTuple(cols: Array[Int], bytesCols: Array[Int], columnsLen: Int): Array[(Int, Int)] = {
-    // Èç¹ûcolÊÇ¿ÕÊı×é£¬ËµÃ÷Ñ¡ÔñÈ«²¿µÄÁĞ
+    // å¦‚æœcolæ˜¯ç©ºæ•°ç»„ï¼Œè¯´æ˜é€‰æ‹©å…¨éƒ¨çš„åˆ—
     val m1 = new mutable.HashMap[Int, Int]()
     val selectedCols = if (cols.length == 0) {
       Array.range(0, columnsLen)
@@ -90,7 +90,7 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
     }
     selectedCols.foreach(e => m1.put(e, 0))
 
-    // Èç¹ûbytesColsÊÇ¿ÕÊı×é£¬ËµÃ÷ËùÓĞ±»Ñ¡ÔñµÄÁĞ°´ÕÕString¶ÁÈ¡
+    // å¦‚æœbytesColsæ˜¯ç©ºæ•°ç»„ï¼Œè¯´æ˜æ‰€æœ‰è¢«é€‰æ‹©çš„åˆ—æŒ‰ç…§Stringè¯»å–
     val m2 = new mutable.HashMap[Int, Int]()
     val selectedBytesCols = if(bytesCols.length == 0){
       new Array[Int](0)
@@ -107,7 +107,7 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def readTransfer(colsTuple: Array[(Int, Int)])(record: Record, schema: TableSchema): Array[_] = {
-    // ¶ÁÈ¡±íÖĞµÄÃ¿Ò»ÁĞ×ª»»³ÉÒ»¸öÊı×é
+    // è¯»å–è¡¨ä¸­çš„æ¯ä¸€åˆ—è½¬æ¢æˆä¸€ä¸ªæ•°ç»„
     colsTuple.sortBy(_._1).map { e =>
       val idx = e._1
       val isBytes = e._2
@@ -124,7 +124,7 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def writeTransfer(colsTuple: Array[(Int, Int)])(elements: Array[_], record: Record, schema: TableSchema) {
-    // ¸ù¾İÊı¾İÀàĞÍ£¬Ğ´ÈëÃ¿Ò»ÁĞ
+    // æ ¹æ®æ•°æ®ç±»å‹ï¼Œå†™å…¥æ¯ä¸€åˆ—
     colsTuple.sortBy(_._1).zip(elements).foreach { t =>
       val idx = t._1._1
       val isBytes = t._1._2
@@ -198,8 +198,8 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
 }
 
 object PythonOdpsAPI {
-  // TODO: ¿ÉÒÔÔÚpython¶Ë¶ÔrddÏÈ½øĞĞÒ»´Îmap£¬°ÑdateTime×ª»»ÎªpythonµÄdatetime
-  // ÏÖÔÚµÄpython¶Ë´«ÈëµÄÊÇstring£¬¶Á³öµÄÒ²ÊÇstring
+  // TODO: å¯ä»¥åœ¨pythonç«¯å¯¹rddå…ˆè¿›è¡Œä¸€æ¬¡mapï¼ŒæŠŠdateTimeè½¬æ¢ä¸ºpythonçš„datetime
+  // ç°åœ¨çš„pythonç«¯ä¼ å…¥çš„æ˜¯stringï¼Œè¯»å‡ºçš„ä¹Ÿæ˜¯string
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 

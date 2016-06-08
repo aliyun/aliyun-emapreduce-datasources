@@ -18,15 +18,9 @@
 from py4j.protocol import Py4JJavaError
 from pyspark.storagelevel import StorageLevel
 from pyspark.streaming import DStream
-from pyspark.serializers import NoOpSerializer
+from pyspark.serializers import UTF8Deserializer
 
 __all__ = ['LoghubUtils']
-
-def utf8_decoder(s):
-    """ Decode the unicode as UTF-8 """
-    if s is None:
-        return None
-    return s.decode('utf-8')
 
 class LoghubUtils(object):
 
@@ -51,17 +45,48 @@ class LoghubUtils(object):
                 .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
             helper = helperClass.newInstance()
             jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
-            jstream = helper.createPullingStreamAsBytes(ssc._jssc, logServiceProject, logStoreName,
-                                                        loghubConsumerGroupName, loghubEndpoint, numReceivers,
-                                                        accessKeyId, accessKeySecret, jlevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, loghubEndpoint, numReceivers,
+                                          accessKeyId, accessKeySecret, jlevel)
 
         except Py4JJavaError as e:
             # TODO: use --jar once it also work on driver
             if 'ClassNotFoundException' in str(e.java_exception):
                 LoghubUtils._printErrorMsg()
             raise e
-        stream = DStream(jstream, ssc, NoOpSerializer())
-        return stream.map(lambda v: utf8_decoder(v))
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
+                      accessKeyId, accessKeySecret, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+        :param loghubEndpoint: The endpoint of loghub.
+        :param numReceivers: The number of receivers.
+        :param accessKeyId: Aliyun Access Key ID.
+        :param accessKeySecret: Aliyun Access Key Secret.s
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, loghubEndpoint,
+                                          accessKeyId, accessKeySecret, jlevel)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
 
     @staticmethod
     def _printErrorMsg():
