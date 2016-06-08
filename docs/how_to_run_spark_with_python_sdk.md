@@ -32,7 +32,7 @@ Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in py
 spark-submit --master local[4] --jars fastjson-1.1.30.jar,commons-validator-1.4.0.jar,
 emr-sdk_2.10-1.1.3-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar  
 --py-files loghub.py loghub-wordcount.py <logServiceProject> <logsStoreName> <logHubConsumerGroupName> 
-,loghubEndpoint> <numReceiver> <accessKeyId> <accessKeySecret>
+<loghubEndpoint> <numReceiver> <accessKeyId> <accessKeySecret>
 ```
 
 ## ODPS
