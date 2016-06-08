@@ -114,7 +114,7 @@ class OdpsOps():
         # file and read it back.
         tempFile = NamedTemporaryFile(delete=False, dir=self._sc._temp_dir)
         tempFile.close()
-        self._sc._writeToFile(iterator, tempFile.name)
+        self._api.writeToFile(iterator, tempFile.name)
         # Read the data into Python and deserialize it:
         with open(tempFile.name, 'rb') as tempFile:
             for item in PickleSerializer().load_stream(tempFile):

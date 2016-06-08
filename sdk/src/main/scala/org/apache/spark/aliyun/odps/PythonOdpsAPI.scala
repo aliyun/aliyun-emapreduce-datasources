@@ -17,6 +17,9 @@
  */
 package org.apache.spark.aliyun.odps
 
+import java.io.{FileOutputStream, DataOutputStream}
+
+import org.apache.spark.api.python.PythonRDD
 import org.apache.spark.{Logging, SparkException}
 import org.apache.spark.api.java.{JavaSparkContext, JavaRDD}
 import com.aliyun.odps.TableSchema
@@ -29,51 +32,56 @@ import scala.collection.JavaConversions._
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable
 
-class PythonOdpsAPI(@transient jsc: JavaSparkContext,
-                    accessKeyId: String,
-                    accessKeySecret: String,
-                    odpsUrl: String,
-                    tunnelUrl: String) extends Logging with Serializable {
+class PythonOdpsAPI(
+      @transient jsc: JavaSparkContext,
+      accessKeyId: String,
+      accessKeySecret: String,
+      odpsUrl: String,
+      tunnelUrl: String) extends Logging with Serializable {
 
   val odpsOps = OdpsOps(jsc.sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
 
-  def readTable(project: String,
-                table: String,
-                partition: String,
-                cols: Array[Int],
-                bytesCols: Array[Int],
-                batchSize: Int,
-                numPartition: Int): JavaRDD[Array[Byte]] = {
+  def readTable(
+      project: String,
+      table: String,
+      partition: String,
+      cols: Array[Int],
+      bytesCols: Array[Int],
+      batchSize: Int,
+      numPartition: Int): JavaRDD[Array[Byte]] = {
     val colsLen = odpsOps.getTableSchema(project, table, false).length
     val colsTuple = prepareColsTuple(cols, bytesCols, colsLen)
     val rdd = odpsOps.readTable(project, table, partition, readTransfer(colsTuple), numPartition)
     JavaRDD.fromRDD(serialize(rdd, batchSize))
   }
 
-  def readTable(project: String,
-                table: String,
-                cols: Array[Int],
-                bytesCols: Array[Int],
-                batchSize: Int,
-                numPartition: Int): JavaRDD[Array[Byte]] = {
+  def readTable(
+      project: String,
+      table: String,
+      cols: Array[Int],
+      bytesCols: Array[Int],
+      batchSize: Int,
+      numPartition: Int): JavaRDD[Array[Byte]] = {
     val colsLen = odpsOps.getTableSchema(project, table, false).length
     val colsTuple = prepareColsTuple(cols, bytesCols, colsLen)
     val rdd = odpsOps.readTable(project, table, readTransfer(colsTuple), numPartition)
     JavaRDD.fromRDD(serialize(rdd, batchSize))
   }
 
-  def saveToTable(project: String, table: String, partition: String,
-                  pyRdd: JavaRDD[Array[Byte]], cols: Array[Int], bytesCols: Array[Int],
-                  batched: Boolean, defaultCreatePartition: Boolean, isOverWrite: Boolean) {
+  def saveToTable(
+      project: String, table: String, partition: String,
+      pyRdd: JavaRDD[Array[Byte]], cols: Array[Int], bytesCols: Array[Int],
+      batched: Boolean, defaultCreatePartition: Boolean, isOverWrite: Boolean) {
     val colsLen = odpsOps.getTableSchema(project, table, false).length
     val colsTuple = prepareColsTuple(cols, bytesCols, colsLen)
     val rdd = deserialize(pyRdd, batched)
     odpsOps.saveToTable(project, table, partition, rdd, writeTransfer(colsTuple) _, defaultCreatePartition, isOverWrite)
   }
 
-  def saveToTable(project: String, table: String,
-                  pyRdd: JavaRDD[Array[Byte]], cols: Array[Int],
-                  bytesCols: Array[Int], batched: Boolean) {
+  def saveToTable(
+      project: String, table: String,
+      pyRdd: JavaRDD[Array[Byte]], cols: Array[Int],
+      bytesCols: Array[Int], batched: Boolean) {
     val colsLen = odpsOps.getTableSchema(project, table, false).length
     val colsTuple = prepareColsTuple(cols, bytesCols, colsLen)
     val rdd = deserialize(pyRdd, batched)
@@ -81,7 +89,6 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def prepareColsTuple(cols: Array[Int], bytesCols: Array[Int], columnsLen: Int): Array[(Int, Int)] = {
-    // 如果col是空数组，说明选择全部的列
     val m1 = new mutable.HashMap[Int, Int]()
     val selectedCols = if (cols.length == 0) {
       Array.range(0, columnsLen)
@@ -90,7 +97,6 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
     }
     selectedCols.foreach(e => m1.put(e, 0))
 
-    // 如果bytesCols是空数组，说明所有被选择的列按照String读取
     val m2 = new mutable.HashMap[Int, Int]()
     val selectedBytesCols = if(bytesCols.length == 0){
       new Array[Int](0)
@@ -107,7 +113,6 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def readTransfer(colsTuple: Array[(Int, Int)])(record: Record, schema: TableSchema): Array[_] = {
-    // 读取表中的每一列转换成一个数组
     colsTuple.sortBy(_._1).map { e =>
       val idx = e._1
       val isBytes = e._2
@@ -124,7 +129,6 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
   }
 
   private def writeTransfer(colsTuple: Array[(Int, Int)])(elements: Array[_], record: Record, schema: TableSchema) {
-    // 根据数据类型，写入每一列
     colsTuple.sortBy(_._1).zip(elements).foreach { t =>
       val idx = t._1._1
       val isBytes = t._1._2
@@ -195,21 +199,31 @@ class PythonOdpsAPI(@transient jsc: JavaSparkContext,
       unpickled.map(_.asInstanceOf[JList[_]].toList.toArray)
     }
   }
+
+  def writeToFile[T](items: java.util.Iterator[T], filename: String) {
+    import scala.collection.JavaConverters._
+    writeToFile(items.asScala, filename)
+  }
+
+  def writeToFile[T](items: Iterator[T], filename: String) {
+    val file = new DataOutputStream(new FileOutputStream(filename))
+    PythonRDD.writeIteratorToStream(items, file)
+    file.close()
+  }
 }
 
 object PythonOdpsAPI {
-  // TODO: 可以在python端对rdd先进行一次map，把dateTime转换为python的datetime
-  // 现在的python端传入的是string，读出的也是string
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 
 class PythonOdpsAPIHelper {
   
-  def createPythonOdpsAPI(@transient sc: JavaSparkContext,
-                          accessKeyId: String,
-                          accessKeySecret: String,
-                          odpsUrl: String,
-                          tunnelUrl: String): PythonOdpsAPI = {
+  def createPythonOdpsAPI(
+      @transient sc: JavaSparkContext,
+      accessKeyId: String,
+      accessKeySecret: String,
+      odpsUrl: String,
+      tunnelUrl: String): PythonOdpsAPI = {
     new PythonOdpsAPI(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
   }
 }
