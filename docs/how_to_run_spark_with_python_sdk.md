@@ -43,8 +43,8 @@ emr-sdk_2.10-1.1.3-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar
 4. download [**odps-sample.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/odps-sample.py);
 5. run the example, use
 ```
-   spark-submit --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.1.3-SNAPSHOT.jar,odps-sdk-commons-0.20.7-public.jar,
-   odps-sdk-core-0.20.7-public.jar --py-files odps.py  odps-sample.py <accessKeyId> <accessKeySecret> <project>
-   <table> <partition> <numPartitions>
+   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.1.3-SNAPSHOT.jar,
+   odps-sdk-commons-0.20.7-public.jar,odps-sdk-core-0.20.7-public.jar --py-files odps.py  
+   odps-sample.py <accessKeyId> <accessKeySecret> <project> <table> <partition> <numPartitions>
 ```
  
