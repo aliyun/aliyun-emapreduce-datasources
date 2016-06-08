@@ -188,4 +188,32 @@ object OnsUtils {
     createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel,
       (msg: Message) => func.call(msg))
   }
+
+  private def extractMessage(msg: Message): Array[Byte] = msg.toString.getBytes
+
+  @Experimental
+  def createDefaultStreams(
+      jssc: JavaStreamingContext,
+      consumerId: String,
+      topic: String,
+      tags: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, extractMessage _)
+  }
+}
+
+class OnsUtilsHelper {
+
+  def createDefaultStreams(
+      jssc: JavaStreamingContext,
+      consumerId: String,
+      topic: String,
+      tags: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    OnsUtils.createDefaultStreams(jssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel)
+  }
 }

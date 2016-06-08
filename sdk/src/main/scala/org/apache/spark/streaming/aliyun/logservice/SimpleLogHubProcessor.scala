@@ -42,11 +42,13 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
   }
 
   override def process(list: util.List[LogGroupData], iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
-    list.foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => process(group, log))
-    })
-    val ct = System.currentTimeMillis()
     try {
+      list.foreach(group => {
+        group.GetLogGroup().getLogsList.foreach(log => {
+          process(group, log)
+        })
+      })
+      val ct = System.currentTimeMillis()
       (ct - mLastCheckTime) > 60 * 1000 match {
         case true =>
           iLogHubCheckPointTracker.saveCheckPoint(true)

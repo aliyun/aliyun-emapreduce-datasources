@@ -239,3 +239,26 @@ object MnsUtils {
       storageLevel)
   }
 }
+
+class MnsUtilsHelper {
+
+  def createPullingStreamAsBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    MnsUtils.createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+  }
+
+  def createPullingStreamAsRawBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    MnsUtils.createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+  }
+}
