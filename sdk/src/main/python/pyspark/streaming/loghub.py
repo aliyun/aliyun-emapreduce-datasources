@@ -57,7 +57,7 @@ class LoghubUtils(object):
         return DStream(jstream, ssc, UTF8Deserializer())
 
     @staticmethod
-    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
+    def createStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
                       accessKeyId, accessKeySecret, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
         """
         :param ssc: StreamingContext object.
