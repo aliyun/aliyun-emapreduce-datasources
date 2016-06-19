@@ -16,6 +16,7 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
+import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
@@ -149,6 +150,106 @@ object LoghubUtils {
           accessKeyId,
           accessKeySecret,
           storageLevel)
+      ))
+    }
+  }
+
+  /**
+   * Create loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the `mLoghubCursorStartTime`.
+   * @return
+   */
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      new LoghubInputDStream(
+        ssc,
+        logServiceProject,
+        logStoreName,
+        loghubConsumerGroupName,
+        appId,
+        loghubEndpoint,
+        accessKeyId,
+        accessKeySecret,
+        storageLevel,
+        cursorPosition,
+        mLoghubCursorStartTime,
+        forceSpecial)
+    }
+  }
+
+  /**
+   * Create loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
+   *                                name will consumer specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the `mLoghubCursorStartTime`.
+   * @return
+   */
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      numReceivers: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): DStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
+        new LoghubInputDStream(
+          ssc,
+          logServiceProject,
+          logStoreName,
+          loghubConsumerGroupName,
+          appId,
+          loghubEndpoint,
+          accessKeyId,
+          accessKeySecret,
+          storageLevel,
+          cursorPosition,
+          mLoghubCursorStartTime,
+          forceSpecial)
       ))
     }
   }
