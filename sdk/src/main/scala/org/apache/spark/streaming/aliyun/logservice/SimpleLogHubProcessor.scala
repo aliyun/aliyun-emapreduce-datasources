@@ -49,7 +49,7 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
         })
       })
       val ct = System.currentTimeMillis()
-      (ct - mLastCheckTime) > 60 * 1000 match {
+      (ct - mLastCheckTime) > receiver.getBatchInterval match {
         case true =>
           iLogHubCheckPointTracker.saveCheckPoint(true)
           mLastCheckTime = ct

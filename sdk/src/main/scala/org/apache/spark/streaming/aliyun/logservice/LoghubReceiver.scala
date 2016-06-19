@@ -26,6 +26,7 @@ private[logservice] class LoghubReceiver(
     mConsumeInOrder: Boolean,
     mHeartBeatIntervalMillis: Long,
     dataFetchIntervalMillis: Long,
+    batchInterval: Long,
     logServiceProject: String,
     logStoreName: String,
     loghubConsumerGroupName: String,
@@ -33,7 +34,9 @@ private[logservice] class LoghubReceiver(
     loghubEndpoint: String,
     accessKeyId: String,
     accessKeySecret: String,
-    storageLevel: StorageLevel)
+    storageLevel: StorageLevel,
+    cursorPosition: LogHubCursorPosition,
+    mLoghubCursorStartTime: Int)
   extends Receiver[Array[Byte]](storageLevel) with Logging {
   receiver =>
 
@@ -41,10 +44,16 @@ private[logservice] class LoghubReceiver(
   private var worker: ClientWorker = null
 
   override def onStart(): Unit = {
-    val initCursor = LogHubCursorPosition.END_CURSOR
-    val config = new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
-      loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor, mHeartBeatIntervalMillis,
-      mConsumeInOrder)
+    val initCursor = cursorPosition
+    val config = if (!cursorPosition.toString.equals(LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
+      new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor, mHeartBeatIntervalMillis,
+        mConsumeInOrder)
+    } else {
+      new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, cursorPosition, mHeartBeatIntervalMillis,
+        mConsumeInOrder)
+    }
     config.setDataFetchIntervalMillis(dataFetchIntervalMillis)
 
     worker = new ClientWorker(new SimpleLogHubProcessorFactory(receiver), config)
@@ -69,4 +78,5 @@ private[logservice] class LoghubReceiver(
     }
   }
 
+  def getBatchInterval = this.batchInterval
 }
