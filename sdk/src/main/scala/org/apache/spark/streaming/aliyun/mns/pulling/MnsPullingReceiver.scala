@@ -123,8 +123,13 @@ private[mns] object MnsPullingReceiver {
       endpoint: String,
       storageLevel: StorageLevel): MnsPullingReceiver = {
     if (client == null) {
-      val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
-      client = account.getMNSClient
+      try {
+        val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
+        client = account.getMNSClient
+      } catch {
+        case e: Exception =>
+          throw new RuntimeException("can not initialize mns client", e)
+      }
     }
     new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, func, accessKeyId, accessKeySecret, endpoint,
       storageLevel)

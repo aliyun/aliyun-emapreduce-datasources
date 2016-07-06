@@ -667,7 +667,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String, accessKeySecret:
         case OdpsType.BIGINT => record.getBigint(idx)
         case OdpsType.DOUBLE => record.getDouble(idx)
         case OdpsType.BOOLEAN => record.getBoolean(idx)
-        case OdpsType.DATETIME => dateFormat.format(record.getDatetime(idx))
+        case OdpsType.DATETIME => new java.sql.Date(record.getDatetime(idx).getTime)
         case OdpsType.STRING => record.getString(idx)
       }
     }
