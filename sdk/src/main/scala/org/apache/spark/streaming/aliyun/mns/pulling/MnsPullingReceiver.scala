@@ -18,13 +18,16 @@ package org.apache.spark.streaming.aliyun.mns.pulling
 
 import java.util
 
-import com.aliyun.mns.client.{CloudAccount, CloudQueue, MNSClient}
 import com.aliyun.mns.common.{ClientException, ServiceException}
 import com.aliyun.mns.model.Message
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.aliyun.mns.adapter.{CloudQueueAgent, MNSAgentUtil, MNSClientAgent}
 import org.apache.spark.streaming.receiver.Receiver
 
+import scala.collection.JavaConversions._
+
+@SerialVersionUID(3559189311748262112L)
 private[mns] class MnsPullingReceiver(
     queueName: String,
     batchMsgSize: Int,
@@ -37,12 +40,12 @@ private[mns] class MnsPullingReceiver(
   extends Receiver[Array[Byte]](storageLevel) with Logging {
   receiver =>
 
-  private var workerThread: Thread = null
-  private var queue: CloudQueue = null
-  private val receiptsToDelete = new util.ArrayList[String]
+  @transient private var workerThread: Thread = null
+  @transient private var queue: CloudQueueAgent = null
+  private val receiptsToDelete = new util.ArrayList[String]()
 
   override def onStart(): Unit = {
-    queue = MnsPullingReceiver.client.getQueueRef(queueName)
+    queue = MnsPullingReceiver.getClient(accessKeyId, accessKeySecret, endpoint).getQueueRef(queueName)
 
     workerThread = new Thread() {
       override def run(): Unit = {
@@ -71,7 +74,7 @@ private[mns] class MnsPullingReceiver(
           } finally {
             // Delete received message whatever.
             try {
-              if (receiptsToDelete.size() > 0) {
+              if (receiptsToDelete != null && receiptsToDelete.size() > 0) {
                 queue.batchDeleteMessage(receiptsToDelete)
                 receiptsToDelete.clear()
               }
@@ -110,8 +113,23 @@ private[mns] class MnsPullingReceiver(
   }
 }
 
-private[mns] object MnsPullingReceiver {
-  var client: MNSClient = null
+private[mns] object MnsPullingReceiver extends Logging {
+  private var client: MNSClientAgent = null
+
+  def getClient(accessKeyId: String,
+                accessKeySecret: String,
+                endpoint: String): MNSClientAgent = {
+    if (client == null) {
+      try {
+        client = MNSAgentUtil.getMNSClientAgent(accessKeyId, accessKeySecret, endpoint)
+      } catch {
+        case e: Exception =>
+          throw new RuntimeException("can not initialize mns client", e)
+      }
+    }
+
+    client
+  }
 
   def apply(
       queueName: String,
@@ -122,10 +140,6 @@ private[mns] object MnsPullingReceiver {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): MnsPullingReceiver = {
-    if (client == null) {
-      val account: CloudAccount = new CloudAccount(accessKeyId, accessKeySecret, endpoint)
-      client = account.getMNSClient
-    }
     new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, func, accessKeyId, accessKeySecret, endpoint,
       storageLevel)
   }

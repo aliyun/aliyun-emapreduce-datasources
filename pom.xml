@@ -32,13 +32,12 @@
     </modules>
 
     <properties>
-        <spark.version>1.6.1</spark.version>
+        <spark.version>1.6.2</spark.version>
         <oss.sdk.version>2.2.0</oss.sdk.version>
         <odps.version>0.20.7-public</odps.version>
         <loghubb.client.version>0.6.4</loghubb.client.version>
-        <ons.version>1.1.8</ons.version>
-        <mns.version>1.1.2</mns.version>
-        <rocketmq.version>3.2.5</rocketmq.version>
+        <ons.version>1.2.3</ons.version>
+        <mns.version>1.1.5</mns.version>
         <hadoop.version>2.2.0</hadoop.version>
         <fastjson.version>1.1.38</fastjson.version>
         <guava.version>11.0.2</guava.version>
@@ -178,24 +177,6 @@
             </dependency>
 
             <dependency>
-                <groupId>com.alibaba.rocketmq</groupId>
-                <artifactId>rocketmq-client</artifactId>
-                <version>${rocketmq.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.alibaba.rocketmq</groupId>
-                <artifactId>rocketmq-common</artifactId>
-                <version>${rocketmq.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.alibaba.rocketmq</groupId>
-                <artifactId>rocketmq-remoting</artifactId>
-                <version>${rocketmq.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>com.aliyun.openservices</groupId>
                 <artifactId>loghub-client-lib</artifactId>
                 <version>${loghubb.client.version}</version>
@@ -212,6 +193,12 @@
                 <artifactId>hadoop-mapreduce-client-core</artifactId>
                 <version>${hadoop.version}</version>
                 <scope>provided</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>jdk.tools</groupId>
+                        <artifactId>jdk.tools</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
