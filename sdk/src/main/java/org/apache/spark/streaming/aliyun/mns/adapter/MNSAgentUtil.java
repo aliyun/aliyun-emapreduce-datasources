@@ -91,9 +91,9 @@ public class MNSAgentUtil {
         String deps = conf.get("fs.oss.sdk.dependency.path");
         Boolean runLocal = conf.getBoolean("job.runlocal", false);
         if ((deps == null || deps.isEmpty()) && !runLocal) {
-            throw new RuntimeException("Job dose not run locally, set \"fs.oss.sdk.dependency.path\" first please.");
+            throw new RuntimeException("Job dose not run locally, set 'fs.oss.sdk.dependency.path' first please.");
         } else if (deps == null || deps.isEmpty()) {
-            LOG.info("\"job.runlocal\" set true.");
+            LOG.info("'job.runlocal' set true.");
             return null;
         } else {
             return deps.split(",");

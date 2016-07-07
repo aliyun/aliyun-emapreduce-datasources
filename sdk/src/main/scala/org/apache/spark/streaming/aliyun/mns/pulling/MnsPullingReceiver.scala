@@ -75,7 +75,6 @@ private[mns] class MnsPullingReceiver(
             // Delete received message whatever.
             try {
               if (receiptsToDelete != null && receiptsToDelete.size() > 0) {
-                receiptsToDelete.foreach(e => println(new String(e.getBytes)))
                 queue.batchDeleteMessage(receiptsToDelete)
                 receiptsToDelete.clear()
               }
