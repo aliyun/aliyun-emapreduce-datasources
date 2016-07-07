@@ -82,21 +82,6 @@
             <groupId>com.aliyun.openservices</groupId>
             <artifactId>ons-api</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.rocketmq</groupId>
-            <artifactId>rocketmq-client</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.rocketmq</groupId>
-            <artifactId>rocketmq-common</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.rocketmq</groupId>
-            <artifactId>rocketmq-remoting</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
