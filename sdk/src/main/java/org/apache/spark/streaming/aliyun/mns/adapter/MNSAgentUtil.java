@@ -33,18 +33,20 @@ public class MNSAgentUtil {
 
     public static MNSClientAgent getMNSClientAgent(String accessKeyId,
                                                    String accessKeySecret,
-                                                   String endpoint) throws Exception {
+                                                   String endpoint,
+                                                   boolean runLocal) throws Exception {
         Configuration conf = new Configuration();
-        return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf);
+        return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf, runLocal);
     }
 
     @SuppressWarnings("unchecked")
     public static MNSClientAgent getMNSClientAgent(String accessKeyId,
                                                    String accessKeySecret,
                                                    String endpoint,
-                                                   Configuration conf) throws Exception {
-        Class cloudAccountClz = getUrlClassLoader(conf).loadClass("com.aliyun.mns.client.CloudAccount");
-        Class mnsClientClz = getUrlClassLoader(conf).loadClass("com.aliyun.mns.client.MNSClient");
+                                                   Configuration conf,
+                                                   boolean runLocal) throws Exception {
+        Class cloudAccountClz = getUrlClassLoader(conf, runLocal).loadClass("com.aliyun.mns.client.CloudAccount");
+        Class mnsClientClz = getUrlClassLoader(conf, runLocal).loadClass("com.aliyun.mns.client.MNSClient");
         Constructor cons = cloudAccountClz.getConstructor(String.class, String.class, String.class);
         Object cloudAccount = cons.newInstance(accessKeyId, accessKeySecret, endpoint);
         Method method = cloudAccountClz.getMethod("getMNSClient");
@@ -53,12 +55,12 @@ public class MNSAgentUtil {
     }
 
     @SuppressWarnings("unchecked")
-    private static URLClassLoader getUrlClassLoader(Configuration conf){
+    private static URLClassLoader getUrlClassLoader(Configuration conf, boolean runLocal){
         if(urlClassLoader == null){
             synchronized(MNSAgentUtil.class){
                 if(urlClassLoader == null){
                     try {
-                        String[] internalDep = getMNSClasses(conf);
+                        String[] internalDep = getMNSClasses(conf, runLocal);
                         ArrayList<URL> urls = new ArrayList<URL>();
                         if (internalDep != null) {
                             for(String dep: internalDep) {
@@ -87,9 +89,8 @@ public class MNSAgentUtil {
         return urlClassLoader;
     }
 
-    private static String[] getMNSClasses(Configuration conf) throws Exception {
+    private static String[] getMNSClasses(Configuration conf, boolean runLocal) throws Exception {
         String deps = conf.get("fs.oss.sdk.dependency.path");
-        Boolean runLocal = conf.getBoolean("job.runlocal", false);
         if ((deps == null || deps.isEmpty()) && !runLocal) {
             throw new RuntimeException("Job dose not run locally, set 'fs.oss.sdk.dependency.path' first please.");
         } else if (deps == null || deps.isEmpty()) {

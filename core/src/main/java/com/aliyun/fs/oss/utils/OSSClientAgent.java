@@ -27,10 +27,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -45,40 +42,19 @@ import java.util.*;
 
 public class OSSClientAgent {
     private static final Log LOG = LogFactory.getLog(OSSClientAgent.class);
-    private volatile static URLClassLoader urlClassLoader;
+    private URLClassLoader urlClassLoader;
     private Object ossClient;
     private Class ossClientClz;
     private Gson gson = new Gson();
+    private Configuration conf;
 
     @SuppressWarnings("unchecked")
-    private static URLClassLoader getUrlClassLoader(Configuration conf){
+    private URLClassLoader getUrlClassLoader(Configuration conf){
         if(urlClassLoader == null){
             synchronized(OSSClientAgent.class){
                 if(urlClassLoader == null){
                     try {
-                        String[] internalDep = getInternalDep(conf);
-                        ArrayList<URL> urls = new ArrayList<URL>();
-                        if (internalDep != null) {
-                            for(String dep: internalDep) {
-                                urls.add(new URL("file://" + dep));
-                            }
-                        }
-                        String[] cp;
-                        if (SystemUtils.IS_OS_WINDOWS) {
-                            cp = System.getProperty("java.class.path").split(";");
-                            for (String entity : cp) {
-                                if(!entity.contains("log4j")) {
-                                    urls.add(new URL("file:" + entity));
-                                }
-                            }
-                        } else {
-                            cp = System.getProperty("java.class.path").split(":");
-                            for (String entity : cp) {
-                                if(!entity.contains("log4j")) {
-                                    urls.add(new URL("file://" + entity));
-                                }
-                            }
-                        }
+                        List<URL> urls = geClassLoaderURLs(conf);
                         urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
                     } catch (Exception e) {
                         throw new RuntimeException("Can not initialize OSS URLClassLoader, " + e.getMessage());
@@ -97,6 +73,7 @@ public class OSSClientAgent {
         Object clientConfiguration = initializeOSSClientConfig(conf, ClientConfigurationClz);
         Constructor cons = this.ossClientClz.getConstructor(String.class, String.class, String.class, ClientConfigurationClz);
         this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret, clientConfiguration);
+        this.conf = conf;
     }
 
     @SuppressWarnings("unchecked")
@@ -107,6 +84,7 @@ public class OSSClientAgent {
         Object clientConfiguration = initializeOSSClientConfig(conf, ClientConfigurationClz);
         Constructor cons = ossClientClz.getConstructor(String.class, String.class, String.class, String.class, ClientConfigurationClz);
         this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret, securityToken, clientConfiguration);
+        this.conf = conf;
     }
 
     @SuppressWarnings("unchecked")
@@ -539,16 +517,55 @@ public class OSSClientAgent {
         }
     }
 
-    private static String[] getInternalDep(Configuration conf) throws Exception {
-        String internalDep = conf.get("fs.oss.sdk.dependency.path");
+    private static List<URL> geClassLoaderURLs(Configuration conf) throws Exception {
+        String dependPath = conf.get("fs.oss.sdk.dependency.path");
+        String[] sdkDeps = null;
         Boolean runLocal = conf.getBoolean("job.runlocal", false);
-        if ((internalDep == null || internalDep.isEmpty()) && !runLocal) {
+        if ((dependPath == null || dependPath.isEmpty()) && !runLocal) {
             throw new RuntimeException("Job dose not run locally, set \"fs.oss.sdk.dependency.path\" first please.");
-        } else if (internalDep == null || internalDep.isEmpty()) {
+        } else if (dependPath == null || dependPath.isEmpty()) {
             LOG.info("\"job.runlocal\" set true.");
-            return null;
         } else {
-            return internalDep.split(",");
+            sdkDeps = dependPath.split(",");
         }
+
+        ArrayList<URL> urls = new ArrayList<URL>();
+        if (sdkDeps != null) {
+            for(String dep: sdkDeps) {
+                urls.add(new URL("file://" + dep));
+            }
+        }
+        String[] cp;
+        if (SystemUtils.IS_OS_WINDOWS) {
+            cp = System.getProperty("java.class.path").split(";");
+            for (String entity : cp) {
+                if(!entity.contains("log4j") || conf.getBoolean("job.runlocal", false)) {
+                    urls.add(new URL("file:" + entity));
+                }
+            }
+        } else {
+            cp = System.getProperty("java.class.path").split(":");
+            for (String entity : cp) {
+                if(!entity.contains("log4j") || conf.getBoolean("job.runlocal", false)) {
+                    urls.add(new URL("file://" + entity));
+                }
+            }
+        }
+
+        return urls;
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (urlClassLoader != null) {
+            try {
+                LOG.info("Closing the OSS URLClassLoader");
+                urlClassLoader.close();
+            } catch (IOException e) {
+                LOG.warn("Could not close properly the OSS URLClassLoader");
+            }
+        }
+
+        super.finalize();
     }
 }

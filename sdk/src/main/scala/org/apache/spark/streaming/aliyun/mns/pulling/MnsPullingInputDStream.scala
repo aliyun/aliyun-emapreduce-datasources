@@ -21,6 +21,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
+import org.apache.spark.util.SerializableConfiguration
 
 class MnsPullingInputDStream(
     @transient _ssc: StreamingContext,
@@ -33,6 +34,8 @@ class MnsPullingInputDStream(
   extends ReceiverInputDStream[Array[Byte]](_ssc){
   val batchMsgSize = _ssc.sc.getConf.getInt("spark.mns.batchMsg.size", 16)
   val pollingWaitSeconds = _ssc.sc.getConf.getInt("spark.mns.pollingWait.seconds", 30)
+  val confBroadcast = new SerializableConfiguration(_ssc.sc.hadoopConfiguration)
+  val runLocal = _ssc.sc.hadoopConfiguration.getBoolean("job.runlocal", false)
 
   override def getReceiver(): Receiver[Array[Byte]] =
     MnsPullingReceiver(
@@ -43,5 +46,6 @@ class MnsPullingInputDStream(
       accessKeyId,
       accessKeySecret,
       endpoint,
-      storageLevel)
+      storageLevel,
+      runLocal)
 }
