@@ -21,9 +21,7 @@ package com.aliyun.fs.oss.nat;
 import com.aliyun.fs.oss.common.FileMetadata;
 import com.aliyun.fs.oss.common.NativeFileSystemStore;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,6 +54,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
     private OSSClientAgent ossClient;
     private String bucket;
     private int numCopyThreads;
+    private int numPutThreads;
     private int maxSplitSize;
     private int numSplits;
 
@@ -108,11 +107,12 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         } else {
             this.ossClient = new OSSClientAgent(endpoint, accessKeyId, accessKeySecret, securityToken, conf);
         }
-        this.numCopyThreads = conf.getInt("fs.oss.multipart.thread.number", 5);
+        this.numCopyThreads = conf.getInt("fs.oss.uploadPartCopy.thread.number", 10);
+        this.numPutThreads = conf.getInt("fs.oss.uploadPart.thread.number", 5);
         this.maxSplitSize = conf.getInt("fs.oss.multipart.split.max.byte", 5 * 1024 * 1024);
-        this.numSplits = conf.getInt("fs.oss.multipart.split.number", numCopyThreads);
+        this.numSplits = conf.getInt("fs.oss.multipart.split.number", 10);
         this.maxSimpleCopySize = conf.getLong("fs.oss.copy.simple.max.byte", 64 * 1024 * 1024L);
-        this.maxSimplePutSize = conf.getLong("fs.oss.put.simple.max.byte", 64 * 1024 * 1024);
+        this.maxSimplePutSize = conf.getLong("fs.oss.put.simple.max.byte", 5 * 1024 * 1024);
     }
 
     public void storeFile(String key, File file, boolean append) throws IOException {
@@ -426,7 +426,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         }
 
         List<PartETag> partETags = new ArrayList<PartETag>();
-        TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+        TaskEngine taskEngine = new TaskEngine(tasks, numPutThreads, numPutThreads);
         try {
             taskEngine.executeTask();
             Map<String, Object> responseMap = taskEngine.getResultMap();
@@ -492,7 +492,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
         int realPartCount = tasks.size();
         List<PartETag> partETags = new ArrayList<PartETag>();
-        TaskEngine taskEngine = new TaskEngine(tasks, numCopyThreads, numCopyThreads);
+        TaskEngine taskEngine = new TaskEngine(tasks, numPutThreads, numPutThreads);
         try {
             taskEngine.executeTask();
             Map<String, Object> responseMap = taskEngine.getResultMap();

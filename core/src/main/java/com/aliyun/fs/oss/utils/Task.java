@@ -17,6 +17,8 @@
  */
 package com.aliyun.fs.oss.utils;
 
+import java.io.IOException;
+
 public abstract class Task implements Runnable {
 
     private TaskEngine taskEngine;
@@ -39,10 +41,14 @@ public abstract class Task implements Runnable {
 
     @Override
     public void run() {
-        execute(taskEngine);
+        try {
+            execute(taskEngine);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         taskEngine.registerResponse(uuid, response);
         taskEngine.reportCompleted();
     }
 
-    public abstract void execute(TaskEngine engineRef);
+    public abstract void execute(TaskEngine engineRef) throws IOException;
 }

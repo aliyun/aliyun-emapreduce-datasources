@@ -51,7 +51,7 @@ private[logservice] class LoghubReceiver(
         mConsumeInOrder)
     } else {
       new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
-        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, cursorPosition, mHeartBeatIntervalMillis,
+        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, mLoghubCursorStartTime, mHeartBeatIntervalMillis,
         mConsumeInOrder)
     }
     config.setDataFetchIntervalMillis(dataFetchIntervalMillis)

@@ -20,10 +20,13 @@ import java.util
 
 import com.aliyun.mns.common.{ClientException, ServiceException}
 import com.aliyun.mns.model.Message
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.Logging
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.aliyun.mns.adapter.{CloudQueueAgent, MNSAgentUtil, MNSClientAgent}
 import org.apache.spark.streaming.receiver.Receiver
+import org.apache.spark.util.SerializableConfiguration
 
 import scala.collection.JavaConversions._
 
@@ -36,7 +39,8 @@ private[mns] class MnsPullingReceiver(
     accessKeyId: String,
     accessKeySecret: String,
     endpoint: String,
-    storageLevel: StorageLevel)
+    storageLevel: StorageLevel,
+    runLocal: Boolean)
   extends Receiver[Array[Byte]](storageLevel) with Logging {
   receiver =>
 
@@ -45,7 +49,7 @@ private[mns] class MnsPullingReceiver(
   private val receiptsToDelete = new util.ArrayList[String]()
 
   override def onStart(): Unit = {
-    queue = MnsPullingReceiver.getClient(accessKeyId, accessKeySecret, endpoint).getQueueRef(queueName)
+    queue = MnsPullingReceiver.getClient(accessKeyId, accessKeySecret, endpoint, runLocal).getQueueRef(queueName)
 
     workerThread = new Thread() {
       override def run(): Unit = {
@@ -118,10 +122,11 @@ private[mns] object MnsPullingReceiver extends Logging {
 
   def getClient(accessKeyId: String,
                 accessKeySecret: String,
-                endpoint: String): MNSClientAgent = {
+                endpoint: String,
+                runLocal: Boolean): MNSClientAgent = {
     if (client == null) {
       try {
-        client = MNSAgentUtil.getMNSClientAgent(accessKeyId, accessKeySecret, endpoint)
+        client = MNSAgentUtil.getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, runLocal)
       } catch {
         case e: Exception =>
           throw new RuntimeException("can not initialize mns client", e)
@@ -139,8 +144,9 @@ private[mns] object MnsPullingReceiver extends Logging {
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
-      storageLevel: StorageLevel): MnsPullingReceiver = {
+      storageLevel: StorageLevel,
+      runLocal: Boolean): MnsPullingReceiver = {
     new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, func, accessKeyId, accessKeySecret, endpoint,
-      storageLevel)
+      storageLevel, runLocal)
   }
 }
