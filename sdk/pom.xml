@@ -157,6 +157,7 @@
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
+                            <include>com.aliyun.mns:aliyun-sdk-mns</include>
                             <include>org.aspectj:aspectjrt</include>
                             <include>com.github.scopt:scopt_${scala.binary.version}</include>
                             <include>org.jdom:jdom</include>
@@ -171,6 +172,10 @@
                             <include>net.sf.ezmorph:ezmorph</include>
                             <include>commons-validator:commons-validator</include>
                             <include>mysql:mysql-connector-java</include>
+                            <include>org.apache.httpcomponents:httpcore</include>
+                            <include>org.apache.httpcomponents:httpclient</include>
+                            <include>org.apache.httpcomponents:httpcore-nio</include>
+                            <include>org.apache.httpcomponents:httpasyncclient</include>
                         </includes>
                     </artifactSet>
                 </configuration>
