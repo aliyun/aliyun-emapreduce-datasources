@@ -553,16 +553,12 @@ public class BufferReader {
     }
 
     private void progressPrint() {
-        long hasRead = pos + realContentSize;
+        long hasRead = pos + realContentSize - instreamStart;
         double currentProgress = hasRead >= lengthToFetch ? 1.0d : (double) hasRead / lengthToFetch;
         if (currentProgress - lastProgress >= 0.1 || currentProgress == 1.0d) {
             BigDecimal b = new BigDecimal(currentProgress);
             LOG.info("Current progress of reading '" + key + " ["+instreamStart+":...]' is " + b.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
             lastProgress = currentProgress;
-        }
-
-        if (currentProgress == 1.0d) {
-            taskEngine.shutdown();
         }
     }
 }
