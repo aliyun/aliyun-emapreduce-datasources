@@ -4,32 +4,32 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>com.aliyun.emr</groupId>
-        <artifactId>emr_2.10</artifactId>
+        <artifactId>emr_${scala.binary.version}</artifactId>
         <version>1.1.3</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-sdk_2.10</artifactId>
+    <artifactId>emr-sdk_${scala.binary.version}</artifactId>
     <packaging>jar</packaging>
     <name>Aliyun Spark SDK</name>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.10</artifactId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.10</artifactId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.10</artifactId>
+            <artifactId>spark-streaming_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -65,7 +65,7 @@
 
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.10</artifactId>
+            <artifactId>scalatest_${scala.binary.version}</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -150,16 +150,15 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/shaded/emr-sdk_2.10-${project.version}.jar</outputFile>
+                    <outputFile>${project.build.directory}/shaded/emr-sdk_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
                             <include>com.aliyun.emr:emr-core</include>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
-                            <include>com.aliyun.mns:aliyun-sdk-mns</include>
                             <include>org.aspectj:aspectjrt</include>
-                            <include>com.github.scopt:scopt_2.10</include>
+                            <include>com.github.scopt:scopt_${scala.binary.version}</include>
                             <include>org.jdom:jdom</include>
                             <include>com.aliyun.openservices:ons-client</include>
                             <include>com.aliyun.openservices:ons-api</include>
@@ -172,10 +171,6 @@
                             <include>net.sf.ezmorph:ezmorph</include>
                             <include>commons-validator:commons-validator</include>
                             <include>mysql:mysql-connector-java</include>
-                            <include>org.apache.httpcomponents:httpcore</include>
-                            <include>org.apache.httpcomponents:httpclient</include>
-                            <include>org.apache.httpcomponents:httpcore-nio</include>
-                            <include>org.apache.httpcomponents:httpasyncclient</include>
                         </includes>
                     </artifactSet>
                 </configuration>
