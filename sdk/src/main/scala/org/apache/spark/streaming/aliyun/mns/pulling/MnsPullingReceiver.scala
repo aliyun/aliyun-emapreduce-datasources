@@ -35,12 +35,12 @@ private[mns] class MnsPullingReceiver(
     queueName: String,
     batchMsgSize: Int,
     pollingWaitSeconds: Int,
-    func: Message => Array[Byte],
     accessKeyId: String,
     accessKeySecret: String,
     endpoint: String,
     storageLevel: StorageLevel,
-    runLocal: Boolean)
+    runLocal: Boolean,
+    asRawByte: Boolean)
   extends Receiver[Array[Byte]](storageLevel) with Logging {
   receiver =>
 
@@ -50,6 +50,11 @@ private[mns] class MnsPullingReceiver(
 
   override def onStart(): Unit = {
     queue = MnsPullingReceiver.getClient(accessKeyId, accessKeySecret, endpoint, runLocal).getQueueRef(queueName)
+    val func: Message => Array[Byte] = if (asRawByte) {
+      message => message.getMessageBodyAsRawBytes
+    } else {
+      message => message.getMessageBodyAsBytes
+    }
 
     workerThread = new Thread() {
       override def run(): Unit = {
@@ -140,13 +145,13 @@ private[mns] object MnsPullingReceiver extends Logging {
       queueName: String,
       batchMsgSize: Int,
       pollingWaitSeconds: Int,
-      func: Message => Array[Byte],
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel,
-      runLocal: Boolean): MnsPullingReceiver = {
-    new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, func, accessKeyId, accessKeySecret, endpoint,
-      storageLevel, runLocal)
+      runLocal: Boolean,
+      asRawByte: Boolean): MnsPullingReceiver = {
+    new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, accessKeyId, accessKeySecret, endpoint,
+      storageLevel, runLocal, asRawByte)
   }
 }

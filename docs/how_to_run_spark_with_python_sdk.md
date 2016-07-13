@@ -30,7 +30,7 @@ Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in py
 5. run the example, use 
 ```
 spark-submit --master local[4] --jars fastjson-1.1.30.jar,commons-validator-1.4.0.jar,
-emr-sdk_2.10-1.1.3-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar  
+emr-sdk_2.10-1.1.3.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar  
 --py-files loghub.py loghub-wordcount.py <logServiceProject> <logsStoreName> <logHubConsumerGroupName> 
 <loghubEndpoint> <numReceiver> <accessKeyId> <accessKeySecret>
 ```
@@ -43,8 +43,7 @@ emr-sdk_2.10-1.1.3-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar
 4. download [**odps-sample.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/odps-sample.py);
 5. run the example, use
 ```
-   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.1.3-SNAPSHOT.jar,
+   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.1.3.jar,
    odps-sdk-commons-0.20.7-public.jar,odps-sdk-core-0.20.7-public.jar --py-files odps.py  
    odps-sample.py <accessKeyId> <accessKeySecret> <project> <table> <partition> <numPartitions>
 ```
- 

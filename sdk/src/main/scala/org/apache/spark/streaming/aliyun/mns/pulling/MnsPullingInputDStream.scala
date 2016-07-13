@@ -26,11 +26,11 @@ import org.apache.spark.util.SerializableConfiguration
 class MnsPullingInputDStream(
     @transient _ssc: StreamingContext,
     queueName: String,
-    func: Message => Array[Byte],
     accessKeyId: String,
     accessKeySecret: String,
     endpoint: String,
-    storageLevel: StorageLevel)
+    storageLevel: StorageLevel,
+    asRawByte: Boolean)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
   val batchMsgSize = _ssc.sc.getConf.getInt("spark.mns.batchMsg.size", 16)
   val pollingWaitSeconds = _ssc.sc.getConf.getInt("spark.mns.pollingWait.seconds", 30)
@@ -42,10 +42,10 @@ class MnsPullingInputDStream(
       queueName,
       batchMsgSize,
       pollingWaitSeconds,
-      func,
       accessKeyId,
       accessKeySecret,
       endpoint,
       storageLevel,
-      runLocal)
+      runLocal,
+      asRawByte)
 }
