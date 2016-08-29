@@ -36,6 +36,8 @@ import com.aliyun.fs.oss.common.PartialListing;
 import com.aliyun.fs.oss.utils.*;
 import com.aliyun.fs.oss.utils.task.OSSCopyTask;
 import com.aliyun.fs.oss.utils.task.OSSPutTask;
+import com.aliyun.ms.MetaClient;
+import com.aliyun.ms.utils.EndpointEnum;
 import com.aliyun.oss.ServiceException;
 import com.aliyun.oss.model.*;
 import org.apache.commons.lang.StringUtils;
@@ -67,6 +69,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
         if (uri.getHost() == null) {
             throw new IllegalArgumentException("Invalid hostname in URI " + uri);
         }
+
+        // 1. try to get accessKeyId, accessJeySecret, securityToken, endpoint from OSS URI.
         String userInfo = uri.getUserInfo();
         if (userInfo != null) {
             String[] ossCredentials  = userInfo.split(":");
@@ -88,6 +92,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
             endpoint = host.substring(host.indexOf(".") + 1);
         }
 
+        // 2. try to get accessKeyId, accessJeySecret, securityToken, endpoint from configuration.
         if (accessKeyId == null) {
             accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
         }
@@ -100,6 +105,27 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore{
 
         if (endpoint == null) {
             endpoint = conf.getTrimmed("fs.oss.endpoint");
+        }
+
+        // 3. try to get accessKeyId, accessJeySecret, securityToken, endpoint from metaservice.
+        LOG.debug("Try to get accessKeyId, accessJeySecret, securityToken, endpoint from metaservice.");
+        if (accessKeyId == null || accessKeySecret == null) {
+            accessKeyId = MetaClient.getRoleAccessKeyId();
+            accessKeySecret = MetaClient.getRoleAccessKeySecret();
+            securityToken = MetaClient.getRoleSecurityToken();
+
+            if (StringUtils.isEmpty(accessKeyId) || StringUtils.isEmpty(accessKeySecret) ||
+                    StringUtils.isEmpty(securityToken)) {
+                throw new IllegalArgumentException("AccessKeyId/AccessKeySecret/SecurityToken is not available, you " +
+                        "can set them in OSS URI");
+            }
+        }
+
+        if (endpoint == null) {
+            endpoint = EndpointEnum.getEndpoint("oss", MetaClient.getClusterRegionName(), MetaClient.getClusterNetworkType());
+            if (endpoint == null) {
+                throw new IllegalArgumentException("Can not find any suitable endpoint, you can set it in OSS URI");
+            }
         }
 
         if (securityToken == null) {

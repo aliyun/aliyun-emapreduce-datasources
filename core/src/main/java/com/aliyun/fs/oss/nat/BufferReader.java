@@ -27,6 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import java.io.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -44,7 +45,7 @@ public class BufferReader {
     private Configuration conf;
     private int bufferSize;
     private String key;
-    private byte[] buffer;
+    private byte[] buffer = null;
     private Task[] readers;
     private int[] splitContentSize;
     private AtomicInteger halfReading = new AtomicInteger(0);
@@ -70,6 +71,9 @@ public class BufferReader {
         this.key = key;
         this.conf = conf;
         this.algorithmVersion = algorithmVersion;
+        if (store.retrieveMetadata(key).getLength() < 5 * 1024 * 1024) {
+            this.algorithmVersion = 2;
+        }
         prepareBeforeFetch();
     }
 
@@ -85,7 +89,9 @@ public class BufferReader {
                 this.bufferSize = (int) Math.pow(2, power);
             }
 
-            this.buffer = new byte[bufferSize];
+            if (buffer == null) {
+                buffer = new byte[bufferSize];
+            }
             this.concurrentStreams = conf.getInt("fs.oss.reader.concurrent.number", 4);
             if ((Math.log(concurrentStreams) / Math.log(2)) != 0) {
                 int power = (int) Math.ceil(Math.log(concurrentStreams) / Math.log(2));
@@ -127,6 +133,9 @@ public class BufferReader {
             }
         } catch (IOException e) {
             LOG.error("Failed to close input stream.", e);
+        } finally {
+            System.gc();
+            buffer = null;
         }
     }
 
@@ -155,6 +164,7 @@ public class BufferReader {
 
                     // read data from buffer half-0
                     if (pos >= fileContentLength) {
+                        close();
                         return -1;
                     } else if (cacheIdx < realContentSize) {
                         int ret = buffer[cacheIdx];
@@ -189,6 +199,7 @@ public class BufferReader {
 
                     // read data from buffer half-1
                     if (pos >= fileContentLength) {
+                        close();
                         return -1;
                     } else if (cacheIdx < realContentSize) {
                         int ret = buffer[bufferSize / 2 + cacheIdx];
@@ -238,6 +249,7 @@ public class BufferReader {
                     // read data from buffer half-0
                     int size = 0;
                     if (pos >= fileContentLength) {
+                        close();
                         return -1;
                     } else if (cacheIdx < realContentSize) {
                         for (int i = 0; i < len && cacheIdx < realContentSize; i++) {
@@ -276,6 +288,7 @@ public class BufferReader {
                     // read data from buffer half-1
                     int size = 0;
                     if (pos >= fileContentLength) {
+                        close();
                         return -1;
                     } else if (cacheIdx < realContentSize) {
                         for (int i = 0; i < len && cacheIdx < realContentSize; i++) {

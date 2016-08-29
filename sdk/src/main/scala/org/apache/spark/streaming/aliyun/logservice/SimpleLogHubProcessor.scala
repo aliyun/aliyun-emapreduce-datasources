@@ -23,10 +23,11 @@ import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
+import org.apache.spark.Logging
 
 import scala.collection.JavaConversions._
 
-class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
+class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor with Logging {
   private var mShardId: Int = 0
   private var mLastCheckTime = 0L
   private val __TIME__ = "__time__"
@@ -79,7 +80,8 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor {
       receiver.store(obj.toJSONString.getBytes)
     } catch {
       case e: Exception =>
-        e.printStackTrace()
+        logError("Failed to store data.", e)
+        throw e
     }
   }
 }

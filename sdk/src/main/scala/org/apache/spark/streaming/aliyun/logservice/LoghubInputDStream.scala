@@ -41,7 +41,7 @@ class LoghubInputDStream(
   val mHeartBeatIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.heartbeat.interval.millis", 30000L)
   val dataFetchIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
   val batchInterval = _ssc.graph.batchDuration.milliseconds
-  lazy val slsClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+  @transient lazy val slsClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
 
   if (forceSpecial && cursorPosition.toString.equals(LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
     try {
@@ -49,6 +49,7 @@ class LoghubInputDStream(
     } catch {
       case e: Exception =>
         logError(s"Failed to delete consumer group, ${e.getMessage}", e)
+        throw e
     }
   }
 
