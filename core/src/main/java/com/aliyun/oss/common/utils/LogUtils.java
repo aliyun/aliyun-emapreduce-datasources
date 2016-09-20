@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,6 @@
 package com.aliyun.oss.common.utils;
 
 import com.aliyun.oss.OSSErrorCode;
-import com.aliyun.oss.ServiceException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -28,24 +27,26 @@ import java.util.List;
 import static com.aliyun.oss.internal.OSSConstants.LOGGER_PACKAGE_NAME;
 
 public class LogUtils {
-    private static final Log log = LogFactory.getLog(LOGGER_PACKAGE_NAME);
+  private static final Log log = LogFactory.getLog(LOGGER_PACKAGE_NAME);
 
-    // Set logger level to INFO specially if reponse error code is 404 in order to
-    // prevent from dumping a flood of logs when trying access to none-existent resources.
-    private static List<String> errorCodeFilterList = new ArrayList<String>();
-    static {
-        errorCodeFilterList.add(OSSErrorCode.NO_SUCH_BUCKET);
-        errorCodeFilterList.add(OSSErrorCode.NO_SUCH_UPLOAD);
-        errorCodeFilterList.add(OSSErrorCode.NO_SUCH_CORS_CONFIGURATION);
-        errorCodeFilterList.add(OSSErrorCode.NO_SUCH_WEBSITE_CONFIGURATION);
-        errorCodeFilterList.add(OSSErrorCode.NO_SUCH_LIFECYCLE);
-    }
+  // Set logger level to INFO specially if reponse error code is 404 in order to
+  // prevent from dumping a flood of logs when trying access to none-existent
+  // resources.
+  private static List<String> errorCodeFilterList = new ArrayList<String>();
 
-    public static Log getLog() {
-        return log;
-    }
+  static {
+    errorCodeFilterList.add(OSSErrorCode.NO_SUCH_BUCKET);
+    errorCodeFilterList.add(OSSErrorCode.NO_SUCH_UPLOAD);
+    errorCodeFilterList.add(OSSErrorCode.NO_SUCH_CORS_CONFIGURATION);
+    errorCodeFilterList.add(OSSErrorCode.NO_SUCH_WEBSITE_CONFIGURATION);
+    errorCodeFilterList.add(OSSErrorCode.NO_SUCH_LIFECYCLE);
+  }
 
-    public static <ExType> void logException(String messagePrefix, ExType ex) {
-        //TODO: do nothing
-    }
+  public static Log getLog() {
+    return log;
+  }
+
+  public static <ExType> void logException(String messagePrefix, ExType ex) {
+    //TODO: do nothing
+  }
 }

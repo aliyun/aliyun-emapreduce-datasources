@@ -19,20 +19,21 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util
 
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.log.common.LogGroupData
+import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
 import org.apache.spark.Logging
 
 import scala.collection.JavaConversions._
 
-class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor with Logging {
-  private var mShardId: Int = 0
-  private var mLastCheckTime = 0L
+class SimpleLogHubProcessor(receiver: LoghubReceiver)
+    extends ILogHubProcessor with Logging {
   private val __TIME__ = "__time__"
   private val __TOPIC__ = "__topic__"
   private val __SOURCE__ = "__source__"
+  private var mShardId: Int = 0
+  private var mLastCheckTime = 0L
 
   override def shutdown(iLogHubCheckPointTracker: ILogHubCheckPointTracker): Unit = {
     iLogHubCheckPointTracker.saveCheckPoint(true)
@@ -42,7 +43,8 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver) extends ILogHubProcessor w
     this.mShardId = mShardId
   }
 
-  override def process(list: util.List[LogGroupData], iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
+  override def process(list: util.List[LogGroupData],
+      iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
     try {
       list.foreach(group => {
         group.GetLogGroup().getLogsList.foreach(log => {

@@ -53,8 +53,9 @@ object LoghubUtils {
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
-   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
-   *                                name will consumer specific logStore together.
+   * @param loghubConsumerGroupName The group name of loghub consumer.
+    *       All consumer process which has the same group name will consumer
+    *       specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
    * @param accessKeyId The Aliyun Access Key Id.
    * @param accessKeySecret The Aliyun Access Key Secret.
@@ -116,8 +117,9 @@ object LoghubUtils {
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
-   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
-   *                                name will consumer specific logStore together.
+   * @param loghubConsumerGroupName The group name of loghub consumer.
+   *        All consumer process which has the same group name will consumer
+   *        specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
    * @param numReceivers The number of receivers.
    * @param accessKeyId The Aliyun Access Key Id.
@@ -159,15 +161,17 @@ object LoghubUtils {
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
-   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
-   *                                name will consumer specific logStore together.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
    * @param accessKeyId The Aliyun Access Key Id.
    * @param accessKeySecret The Aliyun Access Key Secret.
    * @param storageLevel Storage level to use for storing the received objects.
    * @param cursorPosition Set user defined cursor type.
    * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
-   * @param forceSpecial Whether to force to set consume position as the `mLoghubCursorStartTime`.
+   * @param forceSpecial Whether to force to set consume position as the
+   *        `mLoghubCursorStartTime`.
    * @return
    */
   @Experimental
@@ -207,8 +211,9 @@ object LoghubUtils {
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
-   * @param loghubConsumerGroupName The group name of loghub consumer. All consumer process which has the same group
-   *                                name will consumer specific logStore together.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
    * @param loghubEndpoint The endpoint of loghub.
    * @param numReceivers The number of receivers.
    * @param accessKeyId The Aliyun Access Key Id.
@@ -216,7 +221,8 @@ object LoghubUtils {
    * @param storageLevel Storage level to use for storing the received objects.
    * @param cursorPosition Set user defined cursor type.
    * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
-   * @param forceSpecial Whether to force to set consume position as the `mLoghubCursorStartTime`.
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
    * @return
    */
   @Experimental
@@ -264,8 +270,9 @@ object LoghubUtils {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint, accessKeyId,
-      accessKeySecret, storageLevel)
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
+      storageLevel)
   }
 
   @Experimental
@@ -279,8 +286,9 @@ object LoghubUtils {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
-    createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint, numReceivers,
-      accessKeyId, accessKeySecret, storageLevel)
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, numReceivers, accessKeyId,
+      accessKeySecret, storageLevel)
   }
 }
 
@@ -295,8 +303,9 @@ class LoghubUtilsHelper {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    LoghubUtils.createStream(jssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
-      accessKeyId, accessKeySecret, storageLevel)
+    LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
+      storageLevel)
   }
 
   def createStream(
@@ -309,7 +318,8 @@ class LoghubUtilsHelper {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
-    LoghubUtils.createStream(jssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
-      numReceivers, accessKeyId, accessKeySecret, storageLevel)
+    LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, numReceivers, accessKeyId,
+      accessKeySecret, storageLevel)
   }
 }

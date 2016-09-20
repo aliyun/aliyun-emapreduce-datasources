@@ -45,13 +45,17 @@ private[logservice] class LoghubReceiver(
 
   override def onStart(): Unit = {
     val initCursor = cursorPosition
-    val config = if (!cursorPosition.toString.equals(LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
-      new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
-        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, initCursor, mHeartBeatIntervalMillis,
-        mConsumeInOrder)
+    val config = if (!cursorPosition.toString.equals(
+      LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
+      new LogHubConfig(loghubConsumerGroupName,
+        s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+        loghubEndpoint, logServiceProject, logStoreName, accessKeyId,
+        accessKeySecret, initCursor, mHeartBeatIntervalMillis, mConsumeInOrder)
     } else {
-      new LogHubConfig(loghubConsumerGroupName, s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
-        loghubEndpoint, logServiceProject, logStoreName, accessKeyId, accessKeySecret, mLoghubCursorStartTime, mHeartBeatIntervalMillis,
+      new LogHubConfig(loghubConsumerGroupName,
+        s"$loghubConsumerGroupName-$loghubInstanceNameBase-$streamId",
+        loghubEndpoint, logServiceProject, logStoreName, accessKeyId,
+        accessKeySecret, mLoghubCursorStartTime, mHeartBeatIntervalMillis,
         mConsumeInOrder)
     }
     config.setDataFetchIntervalMillis(dataFetchIntervalMillis)

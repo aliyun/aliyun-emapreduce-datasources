@@ -35,14 +35,18 @@ import org.apache.spark.rdd.RDD
  *   Simplified OSS URI: oss://bucket/path
  *
  *   like:
- *      oss://kj7aY*******UYx6:AiNMAlxz*************1PxaPaL8t@aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
+ *      oss://kj7aY*******UYx6:AiNMAlxz*************1PxaPaL8t
+  *      @aBucket.oss-cn-hangzhou-internal.aliyuncs.com/fileA
  *      oss://aBucket/fileA
  *
- *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint in SparkConf, like:
+ *   In simplified way, you need to config accessKeyId/accessKeySecret/endpoint
+  *   in SparkConf, like:
  *      SparkConf conf = new SparkConf()
  *      conf.set("spark.hadoop.fs.oss.accessKeyId", "kj7aY*******UYx6")
- *      conf.set("spark.hadoop.fs.oss.accessKeySecret", "AiNMAlxz*************1PxaPaL8t")
- *      conf.set("spark.hadoop.fs.oss.endpoint", "http://oss-cn-hangzhou-internal.aliyuncs.com")
+ *      conf.set("spark.hadoop.fs.oss.accessKeySecret",
+  *      "AiNMAlxz*************1PxaPaL8t")
+ *      conf.set("spark.hadoop.fs.oss.endpoint",
+  *      "http://oss-cn-hangzhou-internal.aliyuncs.com")
  * }}}
  */
 class OssOps(
@@ -57,7 +61,8 @@ class OssOps(
    * Read data from OSS.
    * {{{
    *   OssOps ossOps = ...
-   *   JavaRDD[T] javaRdd = ossOps.readOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
+   *   JavaRDD[T] javaRdd = ossOps.readOssFileWithJava(
+    *   "oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
    * }}}
    * @since 1.0.5
    * @deprecated Use JavaSparkContext.textFile("oss://...") instead.
@@ -76,7 +81,8 @@ class OssOps(
    * {{{
    *   OssOps ossOps = ...
    *   JavaRDD[T] javaRdd = ...
-   *   ossOps.saveToOssFileWithJava("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", javaRdd)
+   *   ossOps.saveToOssFileWithJava("oss://[accessKeyId:accessKeySecret@]
+    *   bucket[.endpoint]/path", javaRdd)
    * }}}
    * @since 1.0.5
    * @deprecated Use JavaRDD.saveAsTextFile("oss://...") instead.
@@ -93,7 +99,8 @@ class OssOps(
    * Read data from OSS.
    * {{{
    *   val ossOps: OssOps = ...
-   *   val javaRdd: JavaRDD[T] = ossOps.readOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
+   *   val javaRdd: JavaRDD[T] = ossOps.readOssFile(
+    *   "oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", 2)
    * }}}
    * @since 1.0.5
    * @deprecated Use SparkContext.textFile("oss://...") instead.
@@ -104,7 +111,8 @@ class OssOps(
   def readOssFile(
       path: String,
       minPartitions: Int): RDD[String] = {
-    new OssRDD(sc, path, minPartitions, endpoint, accessKeyId, accessKeySecret, securityToken)
+    new OssRDD(sc, path, minPartitions, endpoint, accessKeyId, accessKeySecret,
+      securityToken)
   }
 
   /**
@@ -112,7 +120,8 @@ class OssOps(
    * {{{
    *   val ossOps: OssOps = ...
    *   val rdd: RDD[T] = ...
-   *   ossOps.saveToOssFile("oss://[accessKeyId:accessKeySecret@]bucket[.endpoint]/path", rdd)
+   *   ossOps.saveToOssFile("oss://[accessKeyId:accessKeySecret@]
+    *   bucket[.endpoint]/path", rdd)
    * }}}
    * @since 1.0.5
    * @deprecated Use RDD.saveAsTextFile("oss://...") instead.
@@ -154,7 +163,8 @@ class OssOps(
     fs.initialize(filePath.toUri, hadoopConfiguration)
     // We need to delete the old file first, and then write.
     fs.delete(filePath)
-    val serializedHadoopConf = new SerializableWritable[Configuration](hadoopConfiguration)
+    val serializedHadoopConf =
+      new SerializableWritable[Configuration](hadoopConfiguration)
     def writeToFile(context: TaskContext, iter: Iterator[T]) {
       val conf = serializedHadoopConf.value
       val tmpPath = new Path(path + "/part-" + context.partitionId())
@@ -183,12 +193,13 @@ class OssOps(
 
 object OssOps {
 
-  def apply(sc: SparkContext, endpoint: String, accessKeyId: String, accessKeySecret: String): OssOps = {
+  def apply(sc: SparkContext, endpoint: String, accessKeyId: String,
+      accessKeySecret: String): OssOps = {
     new OssOps(sc, endpoint, accessKeyId, accessKeySecret)
   }
 
-  def apply(sc: SparkContext, endpoint: String, accessKeyId: String, accessKeySecret: String, securityToken: String)
-    : OssOps = {
+  def apply(sc: SparkContext, endpoint: String, accessKeyId: String,
+      accessKeySecret: String, securityToken: String): OssOps = {
     new OssOps(sc, endpoint, accessKeyId, accessKeySecret, Some(securityToken))
   }
 }

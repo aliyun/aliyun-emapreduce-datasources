@@ -80,17 +80,20 @@ class OssRDD(
     hadoopConf
   }
 
-  val serializableHadoopConf = new SerializableWritable[Configuration](hadoopConfiguration)
+  val serializableHadoopConf =
+    new SerializableWritable[Configuration](hadoopConfiguration)
 
   /** Implemented by subclasses to compute a given partition. */
-  override def compute(theSplit: Partition, context: TaskContext): Iterator[String] = {
+  override def compute(theSplit: Partition, context: TaskContext):
+      Iterator[String] = {
     val conf = serializableHadoopConf.value
     val iter = new NextIterator[String] {
       val split = theSplit.asInstanceOf[OssPartition]
       logInfo("Input split: " + split.inputSplit)
       val ossInputUtils = new OssInputUtils(conf)
       val reader = ossInputUtils.getOssRecordReader(split.inputSplit.value, conf)
-      val inputMetrics = context.taskMetrics.getInputMetricsForReadMethod(DataReadMethod.Hadoop)
+      val inputMetrics =
+        context.taskMetrics.getInputMetricsForReadMethod(DataReadMethod.Hadoop)
 
       val key: LongWritable = reader.createKey()
       val value: Text = reader.createValue()
@@ -117,10 +120,12 @@ class OssRDD(
             inputMetrics.incBytesRead(split.inputSplit.value.getLength)
           } catch  {
             case e: java.io.IOException =>
-              logWarning("Unable to get input size to set InputMetrics for task", e)
+              logWarning("Unable to get input size to set InputMetrics for task",
+                e)
           }
         } catch {
-          case e: Exception => logWarning("Exception in RecordReader.close()", e)
+          case e: Exception => logWarning("Exception in RecordReader.close()",
+            e)
         }
       }
     }
@@ -129,8 +134,9 @@ class OssRDD(
   }
 
   /**
-   * Implemented by subclasses to return the set of partitions in this RDD. This method will only
-   * be called once, so it is safe to implement a time-consuming computation in it.
+   * Implemented by subclasses to return the set of partitions in this RDD.
+    * This method will only be called once, so it is safe to implement a
+    * time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = {
     val ossInputUtils = new OssInputUtils(hadoopConfiguration)

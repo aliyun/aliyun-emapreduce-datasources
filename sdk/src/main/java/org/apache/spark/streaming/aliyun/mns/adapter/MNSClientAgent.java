@@ -22,35 +22,37 @@ import java.lang.reflect.Method;
 import java.net.URLClassLoader;
 
 public class MNSClientAgent {
-    private static Gson gson = new Gson();
-    private Class mnsClientClz;
-    private Object mnsClient;
-    private URLClassLoader urlClassLoader;
+  private static Gson gson = new Gson();
+  private Class mnsClientClz;
+  private Object mnsClient;
+  private URLClassLoader urlClassLoader;
 
-    public MNSClientAgent(Object mnsClient, Class mnsClientClz, URLClassLoader classLoader) {
-        this.mnsClientClz = mnsClientClz;
-        this.mnsClient = mnsClient;
-        this.urlClassLoader = classLoader;
-    }
+  public MNSClientAgent(Object mnsClient, Class mnsClientClz,
+      URLClassLoader classLoader) {
+    this.mnsClientClz = mnsClientClz;
+    this.mnsClient = mnsClient;
+    this.urlClassLoader = classLoader;
+  }
 
-    @SuppressWarnings("unchecked")
-    public CloudQueueAgent getQueueRef(String queueName) throws Exception {
-        Method method = mnsClientClz.getMethod("getQueueRef", String.class);
-        Object cloudQueue = method.invoke(mnsClient, queueName);
-        Class cloudQueueClz = urlClassLoader.loadClass("com.aliyun.mns.client.CloudQueue");
-        return new CloudQueueAgent(cloudQueue, cloudQueueClz, urlClassLoader);
-    }
+  @SuppressWarnings("unchecked")
+  public CloudQueueAgent getQueueRef(String queueName) throws Exception {
+    Method method = mnsClientClz.getMethod("getQueueRef", String.class);
+    Object cloudQueue = method.invoke(mnsClient, queueName);
+    Class cloudQueueClz =
+        urlClassLoader.loadClass("com.aliyun.mns.client.CloudQueue");
+    return new CloudQueueAgent(cloudQueue, cloudQueueClz, urlClassLoader);
+  }
 
-    @SuppressWarnings("unchecked")
-    public boolean isOpen() throws Exception {
-        Method method = mnsClientClz.getMethod("isOpen");
-        Object ret = method.invoke(mnsClient);
-        return  gson.fromJson(gson.toJson(ret), Boolean.class);
-    }
+  @SuppressWarnings("unchecked")
+  public boolean isOpen() throws Exception {
+    Method method = mnsClientClz.getMethod("isOpen");
+    Object ret = method.invoke(mnsClient);
+    return gson.fromJson(gson.toJson(ret), Boolean.class);
+  }
 
-    @SuppressWarnings("unchecked")
-    public void close() throws Exception {
-        Method method = mnsClientClz.getMethod("close");
-        method.invoke(mnsClient);
-    }
+  @SuppressWarnings("unchecked")
+  public void close() throws Exception {
+    Method method = mnsClientClz.getMethod("close");
+    method.invoke(mnsClient);
+  }
 }
