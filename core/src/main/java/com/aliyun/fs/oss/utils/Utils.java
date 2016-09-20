@@ -20,48 +20,24 @@ package com.aliyun.fs.oss.utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.LocalDirAllocator;
 
 import java.io.File;
-import java.util.Random;
+import java.io.IOException;
 
 public class Utils {
   static final Log LOG = LogFactory.getLog(Utils.class);
   static final String loginUser = System.getProperty("user.name");
+  static final String BUFFER_DIR_KEY = "dfs.datanode.data.dir";
+  static final LocalDirAllocator dirAlloc =
+      new LocalDirAllocator(BUFFER_DIR_KEY);
 
-  public static synchronized File getTempBufferDir(Configuration conf) {
-    String[] dataDirs =
-        conf.get("dfs.datanode.data.dir", "file:///tmp/").split(",");
-    double maxUsage = Double.MIN_VALUE;
-    int n = 0;
-    for (int i = 0; i < dataDirs.length; i++) {
-      File file = new File(new Path(dataDirs[i].trim()).toUri().getPath());
-      double diskUsage = 1.0 * (file.getTotalSpace() - file.getFreeSpace())
-          / file.getTotalSpace();
-      if (diskUsage > maxUsage) {
-        n = i;
-        maxUsage = diskUsage;
-      }
-    }
-
-    // skip the disk whose free space is most not enough, and pick one
-    // randomly from the last disks.
-    int idx;
-    if (dataDirs.length == 1) {
-      idx = 0;
-    } else {
-      while (true) {
-        int i = Math.abs(new Random(System.currentTimeMillis()).nextInt())
-            % dataDirs.length;
-        if (i != n) {
-          idx = i;
-          break;
-        }
-      }
-    }
-
-    String diskPath = new Path(dataDirs[idx].trim()).toUri().getPath();
-    LOG.debug("choose oss buffer dir: " + diskPath);
-    return new File(diskPath, "data/" + loginUser + "/oss");
+  public static synchronized File getTempBufferDir(Configuration conf)
+      throws IOException {
+    File tmpFile = dirAlloc.createTmpFileForWrite("output-",
+        LocalDirAllocator.SIZE_UNKNOWN, conf);
+    String dir = tmpFile.toPath().getParent().toUri().getPath();
+    LOG.debug("choose oss buffer dir: " + dir);
+    return new File(dir, "data/" + loginUser + "/oss");
   }
 }
