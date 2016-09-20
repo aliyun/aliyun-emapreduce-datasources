@@ -37,18 +37,25 @@ class LoghubInputDStream(
     mLoghubCursorStartTime: Int,
     forceSpecial: Boolean)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
-  val mConsumeInOrder = _ssc.sc.getConf.getBoolean("spark.logservice.fetch.inOrder", true)
-  val mHeartBeatIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.heartbeat.interval.millis", 30000L)
-  val dataFetchIntervalMillis = _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
+  val mConsumeInOrder =
+    _ssc.sc.getConf.getBoolean("spark.logservice.fetch.inOrder", true)
+  val mHeartBeatIntervalMillis =
+    _ssc.sc.getConf.getLong("spark.logservice.heartbeat.interval.millis", 30000L)
+  val dataFetchIntervalMillis =
+    _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
   val batchInterval = _ssc.graph.batchDuration.milliseconds
-  lazy val slsClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+  @transient lazy val slsClient =
+    new Client(loghubEndpoint, accessKeyId, accessKeySecret)
 
-  if (forceSpecial && cursorPosition.toString.equals(LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
+  if (forceSpecial && cursorPosition.toString.equals(
+    LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
     try {
-      slsClient.DeleteConsumerGroup(logServiceProject, logStoreName, loghubConsumerGroupName)
+      slsClient.DeleteConsumerGroup(logServiceProject, logStoreName,
+        loghubConsumerGroupName)
     } catch {
       case e: Exception =>
         logError(s"Failed to delete consumer group, ${e.getMessage}", e)
+        throw e
     }
   }
 
@@ -70,15 +77,16 @@ class LoghubInputDStream(
       mLoghubCursorStartTime)
 
   def this(@transient _ssc: StreamingContext,
-           logServiceProject: String,
-           logStoreName: String,
-           loghubConsumerGroupName: String,
-           loghubInstanceNameBase: String,
-           loghubEndpoint: String,
-           accessKeyId: String,
-           accessKeySecret: String,
-           storageLevel: StorageLevel) = {
-    this(_ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubInstanceNameBase, loghubEndpoint,
-      accessKeyId, accessKeySecret, storageLevel, LogHubCursorPosition.END_CURSOR, -1, false)
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubInstanceNameBase: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel) = {
+    this(_ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+      loghubInstanceNameBase, loghubEndpoint, accessKeyId, accessKeySecret,
+      storageLevel, LogHubCursorPosition.END_CURSOR, -1, false)
   }
 }

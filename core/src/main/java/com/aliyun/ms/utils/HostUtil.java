@@ -15,35 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.aliyun.ms.utils;
 
-package com.aliyun.fs.oss.common;
-
-import java.io.Serializable;
-
-/**
- * Holds metadata about a block of data being stored in a {@link FileSystemStore}.
- */
-public class Block implements Serializable {
-  private long id;
-
-  private long length;
-
-  public Block(long id, long length) {
-    this.id = id;
-    this.length = length;
-  }
-
-  public long getId() {
-    return id;
-  }
-
-  public long getLength() {
-    return length;
-  }
-
-  @Override
-  public String toString() {
-    return "Block[" + id + ", " + length + "]";
-  }
+public class HostUtil {
 
 }

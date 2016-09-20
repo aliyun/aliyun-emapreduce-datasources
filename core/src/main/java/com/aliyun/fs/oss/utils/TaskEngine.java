@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,49 +20,53 @@ package com.aliyun.fs.oss.utils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class TaskEngine {
-    private ExecutorService executorService;
+  private ExecutorService executorService;
 
-    private CountDownLatch unCompletedTask;
+  private CountDownLatch unCompletedTask;
 
-    private List<Task> taskList;
+  private List<Task> taskList;
 
-    private Map<String,Object> resultMap = new HashMap<String,Object>();
+  private Map<String, Object> resultMap = new HashMap<String, Object>();
 
-    public TaskEngine(List<Task> taskList, int coreSize, int maxSize) {
-        this.taskList = taskList;
-        unCompletedTask = new CountDownLatch(taskList.size());
-        executorService = new ThreadPoolExecutor(coreSize, maxSize, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
+  public TaskEngine(List<Task> taskList, int coreSize, int maxSize) {
+    this.taskList = taskList;
+    unCompletedTask = new CountDownLatch(taskList.size());
+    executorService = new ThreadPoolExecutor(coreSize, maxSize, 60L,
+        TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+  }
+
+  public void reportCompleted() {
+    unCompletedTask.countDown();
+  }
+
+  public synchronized void registerResponse(String key, Object value) {
+    resultMap.put(key, value);
+  }
+
+  public Map<String, Object> getResultMap() throws InterruptedException {
+    unCompletedTask.await();
+    return resultMap;
+  }
+
+  public void executeTask() {
+    for (Task task : taskList) {
+      task.setTaskEngine(this);
+      executorService.execute(task);
     }
+  }
 
-    public void reportCompleted() {
-        unCompletedTask.countDown();
+  public void shutdown() {
+    this.executorService.shutdown();
+    for (; ; ) {
+      if (this.executorService.isTerminated())
+        break;
     }
-
-    public synchronized void registerResponse(String key,Object value) {
-        resultMap.put(key,value);
-    }
-
-    public Map<String, Object> getResultMap() throws InterruptedException {
-        unCompletedTask.await();
-        return resultMap;
-    }
-
-    public void executeTask() {
-        for(Task task : taskList) {
-            task.setTaskEngine(this);
-            executorService.execute(task);
-        }
-    }
-
-    public void shutdown() {
-        this.executorService.shutdown();
-        for(;;) {
-            if(this.executorService.isTerminated())
-                break;
-        }
-    }
+  }
 }

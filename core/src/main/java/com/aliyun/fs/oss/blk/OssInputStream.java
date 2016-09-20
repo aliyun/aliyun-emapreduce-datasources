@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,17 +18,17 @@
 
 package com.aliyun.fs.oss.blk;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-
 import com.aliyun.fs.oss.common.Block;
 import com.aliyun.fs.oss.common.FileSystemStore;
 import com.aliyun.fs.oss.common.INode;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.hadoop.fs.FileSystem;
+
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 @Deprecated
 public class OssInputStream extends FSInputStream {
@@ -53,12 +53,12 @@ public class OssInputStream extends FSInputStream {
 
   @Deprecated
   public OssInputStream(Configuration conf, FileSystemStore store,
-                       INode inode) {
+                        INode inode) {
     this(conf, store, inode, null);
   }
 
   public OssInputStream(Configuration conf, FileSystemStore store,
-                       INode inode, FileSystem.Statistics stats) {
+                        INode inode, FileSystem.Statistics stats) {
 
     this.store = store;
     this.stats = stats;
@@ -88,7 +88,8 @@ public class OssInputStream extends FSInputStream {
   }
 
   @Override
-  public synchronized boolean seekToNewSource(long targetPos) throws IOException {
+  public synchronized boolean seekToNewSource(long targetPos)
+      throws IOException {
     return false;
   }
 
@@ -114,7 +115,8 @@ public class OssInputStream extends FSInputStream {
   }
 
   @Override
-  public synchronized int read(byte buf[], int off, int len) throws IOException {
+  public synchronized int read(byte buf[], int off, int len)
+      throws IOException {
     if (closed) {
       throw new IOException("Stream closed");
     }
@@ -155,7 +157,7 @@ public class OssInputStream extends FSInputStream {
     }
     if (targetBlock < 0) {
       throw new IOException(
-              "Impossible situation: could not find target position " + target);
+          "Impossible situation: could not find target position " + target);
     }
     long offsetIntoBlock = target - targetBlockStart;
 

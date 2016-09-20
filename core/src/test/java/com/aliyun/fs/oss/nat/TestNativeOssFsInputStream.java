@@ -41,7 +41,7 @@ public class TestNativeOssFsInputStream extends TestCase {
     @Override
     protected void setUp() throws IOException {
         conf = new Configuration();
-        conf.set("job.runlocal", "true");
+        conf.set("mapreduce.job.run-local", "true");
         conf.set("fs.oss.endpoint", "endpoint");
         conf.set("fs.oss.accessKeyId", "accessKeyId");
         conf.set("fs.oss.accessKeySecret", "accessKeySecret");

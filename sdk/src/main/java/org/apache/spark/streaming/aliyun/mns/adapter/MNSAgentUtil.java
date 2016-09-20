@@ -28,76 +28,81 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 
 public class MNSAgentUtil {
-    private static final Log LOG = LogFactory.getLog(MNSAgentUtil.class);
-    private volatile static URLClassLoader urlClassLoader;
+  private static final Log LOG = LogFactory.getLog(MNSAgentUtil.class);
+  private volatile static URLClassLoader urlClassLoader;
 
-    public static MNSClientAgent getMNSClientAgent(String accessKeyId,
-                                                   String accessKeySecret,
-                                                   String endpoint,
-                                                   boolean runLocal) throws Exception {
-        Configuration conf = new Configuration();
-        return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf, runLocal);
-    }
+  public static MNSClientAgent getMNSClientAgent(String accessKeyId,
+      String accessKeySecret, String endpoint, boolean runLocal)
+      throws Exception {
+    Configuration conf = new Configuration();
+    return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf, runLocal);
+  }
 
-    @SuppressWarnings("unchecked")
-    public static MNSClientAgent getMNSClientAgent(String accessKeyId,
-                                                   String accessKeySecret,
-                                                   String endpoint,
-                                                   Configuration conf,
-                                                   boolean runLocal) throws Exception {
-        Class cloudAccountClz = getUrlClassLoader(conf, runLocal).loadClass("com.aliyun.mns.client.CloudAccount");
-        Class mnsClientClz = getUrlClassLoader(conf, runLocal).loadClass("com.aliyun.mns.client.MNSClient");
-        Constructor cons = cloudAccountClz.getConstructor(String.class, String.class, String.class);
-        Object cloudAccount = cons.newInstance(accessKeyId, accessKeySecret, endpoint);
-        Method method = cloudAccountClz.getMethod("getMNSClient");
-        Object mnsClient = method.invoke(cloudAccount);
-        return new MNSClientAgent(mnsClient, mnsClientClz, urlClassLoader);
-    }
+  @SuppressWarnings("unchecked")
+  public static MNSClientAgent getMNSClientAgent(String accessKeyId,
+      String accessKeySecret, String endpoint, Configuration conf,
+      boolean runLocal) throws Exception {
+    Class cloudAccountClz = getUrlClassLoader(conf, runLocal)
+        .loadClass("com.aliyun.mns.client.CloudAccount");
+    Class mnsClientClz = getUrlClassLoader(conf, runLocal)
+        .loadClass("com.aliyun.mns.client.MNSClient");
+    Constructor cons = cloudAccountClz
+        .getConstructor(String.class, String.class, String.class);
+    Object cloudAccount =
+        cons.newInstance(accessKeyId, accessKeySecret, endpoint);
+    Method method = cloudAccountClz.getMethod("getMNSClient");
+    Object mnsClient = method.invoke(cloudAccount);
+    return new MNSClientAgent(mnsClient, mnsClientClz, urlClassLoader);
+  }
 
-    @SuppressWarnings("unchecked")
-    private static URLClassLoader getUrlClassLoader(Configuration conf, boolean runLocal){
-        if(urlClassLoader == null){
-            synchronized(MNSAgentUtil.class){
-                if(urlClassLoader == null){
-                    try {
-                        String[] internalDep = getMNSClasses(conf, runLocal);
-                        ArrayList<URL> urls = new ArrayList<URL>();
-                        if (internalDep != null) {
-                            for(String dep: internalDep) {
-                                urls.add(new URL("file://" + dep));
-                            }
-                        }
-                        String[] cp;
-                        if (SystemUtils.IS_OS_WINDOWS) {
-                            cp = System.getProperty("java.class.path").split(";");
-                            for (String entity : cp) {
-                                urls.add(new URL("file:" + entity));
-                            }
-                        } else {
-                            cp = System.getProperty("java.class.path").split(":");
-                            for (String entity : cp) {
-                                urls.add(new URL("file://" + entity));
-                            }
-                        }
-                        urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Can not initialize MNS URLClassLoader, " + e.getMessage());
-                    }
-                }
+  @SuppressWarnings("unchecked")
+  private static URLClassLoader getUrlClassLoader(Configuration conf,
+      boolean runLocal) {
+    if (urlClassLoader == null) {
+      synchronized (MNSAgentUtil.class) {
+        if (urlClassLoader == null) {
+          try {
+            String[] internalDep = getMNSClasses(conf, runLocal);
+            ArrayList<URL> urls = new ArrayList<URL>();
+            if (internalDep != null) {
+              for (String dep : internalDep) {
+                urls.add(new URL("file://" + dep));
+              }
             }
+            String[] cp;
+            if (SystemUtils.IS_OS_WINDOWS) {
+              cp = System.getProperty("java.class.path").split(";");
+              for (String entity : cp) {
+                urls.add(new URL("file:" + entity));
+              }
+            } else {
+              cp = System.getProperty("java.class.path").split(":");
+              for (String entity : cp) {
+                urls.add(new URL("file://" + entity));
+              }
+            }
+            urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
+          } catch (Exception e) {
+            throw new RuntimeException("Can not initialize MNS " +
+                "URLClassLoader, " + e.getMessage());
+          }
         }
-        return urlClassLoader;
+      }
     }
+    return urlClassLoader;
+  }
 
-    private static String[] getMNSClasses(Configuration conf, boolean runLocal) throws Exception {
-        String deps = conf.get("fs.oss.sdk.dependency.path");
-        if ((deps == null || deps.isEmpty()) && !runLocal) {
-            throw new RuntimeException("Job dose not run locally, set 'fs.oss.sdk.dependency.path' first please.");
-        } else if (deps == null || deps.isEmpty()) {
-            LOG.info("'job.runlocal' set true.");
-            return null;
-        } else {
-            return deps.split(",");
-        }
+  private static String[] getMNSClasses(Configuration conf, boolean runLocal)
+      throws Exception {
+    String deps = conf.get("fs.oss.sdk.dependency.path");
+    if ((deps == null || deps.isEmpty()) && !runLocal) {
+      throw new RuntimeException("Job dose not run locally, set " +
+          "'fs.oss.sdk.dependency.path' first please.");
+    } else if (deps == null || deps.isEmpty()) {
+      LOG.info("'mapreduce.job.run-local' set true.");
+      return null;
+    } else {
+      return deps.split(",");
     }
+  }
 }

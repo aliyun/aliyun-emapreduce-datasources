@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,77 +23,72 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Result {
-    public static Result FAIL = new Result(false, "FAIL");
+  public static Result FAIL = new Result(false, "FAIL");
+  private boolean isSuccess = true;
+  private String errorMsg;
+  private String errorCode;
+  private String desc;
+  private Map<String, Object> models = new HashMap<String, Object>();
 
-    public Result() {
-    }
+  public Result() {
+  }
 
-    public Result(boolean isSuccess, String errorMsg) {
-        this.isSuccess = isSuccess;
-        this.errorMsg = errorMsg;
-    }
+  public Result(boolean isSuccess, String errorMsg) {
+    this.isSuccess = isSuccess;
+    this.errorMsg = errorMsg;
+  }
 
-    private boolean isSuccess = true;
+  public boolean isSuccess() {
+    return isSuccess;
+  }
 
-    private String errorMsg;
+  public void setSuccess(boolean isSuccess) {
+    this.isSuccess = isSuccess;
+  }
 
-    private String errorCode;
+  public String getErrorMsg() {
+    return errorMsg;
+  }
 
-    private String desc;
+  public void setErrorMsg(String... msgList) {
+    this.errorMsg = Joiner.on(" ").join(msgList);
+  }
 
-    private Map<String,Object> models = new HashMap<String, Object>();
+  public void setErrorMsg(String errorMsg) {
+    this.errorMsg = errorMsg;
+  }
 
-    public boolean isSuccess() {
-        return isSuccess;
-    }
+  public Map<String, Object> getModels() {
+    return models;
+  }
 
-    public void setSuccess(boolean isSuccess) {
-        this.isSuccess = isSuccess;
-    }
+  public void setModels(Map<String, Object> models) {
+    this.models = models;
+  }
 
-    public String getErrorMsg() {
-        return errorMsg;
-    }
+  public void addModel(String key, Object value) {
+    models.put(key, value);
+  }
 
-    public void setErrorMsg(String errorMsg) {
-        this.errorMsg = errorMsg;
-    }
+  public String getErrorCode() {
+    return errorCode;
+  }
 
-    public void setErrorMsg(String ... msgList) {
-        this.errorMsg = Joiner.on(" ").join(msgList);
-    }
+  public void setErrorCode(String errorCode) {
+    this.errorCode = errorCode;
+  }
 
-    public Map<String, Object> getModels() {
-        return models;
-    }
+  public String getDesc() {
+    return desc;
+  }
 
-    public void setModels(Map<String, Object> models) {
-        this.models = models;
-    }
+  public void setDesc(String desc) {
+    this.desc = desc;
+  }
 
-    public void addModel(String key, Object value) {
-        models.put(key, value);
-    }
-
-    public String getErrorCode() {
-        return errorCode;
-    }
-
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
-    }
-
-    public String getDesc() {
-        return desc;
-    }
-
-    public void setDesc(String desc) {
-        this.desc = desc;
-    }
-
-    public void setErrorCode(String errorCode, String errorMsg) {
-        this.isSuccess = false;
-        this.errorCode = errorCode;
-        this.errorMsg = errorMsg;
-    }
+  public void setErrorCode(String errorCode, String errorMsg) {
+    this.isSuccess = false;
+    this.errorCode = errorCode;
+    this.errorMsg = errorMsg;
+  }
 }

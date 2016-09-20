@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,46 +18,54 @@
 
 package com.aliyun.fs.oss.common;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 /**
  * A facility for storing and retrieving {@link INode}s and {@link Block}s.
  */
 public interface FileSystemStore {
 
-    void initialize(URI uri, Configuration conf) throws IOException;
-    String getVersion() throws IOException;
+  void initialize(URI uri, Configuration conf) throws IOException;
 
-    void storeINode(Path path, INode inode) throws IOException;
-    void storeBlock(Block block, File file) throws IOException;
+  String getVersion() throws IOException;
 
-    boolean inodeExists(Path path) throws IOException;
-    boolean blockExists(long blockId) throws IOException;
+  void storeINode(Path path, INode inode) throws IOException;
 
-    INode retrieveINode(Path path) throws IOException;
-    File retrieveBlock(Block block, long byteRangeStart) throws IOException;
+  void storeBlock(Block block, File file) throws IOException;
 
-    void deleteINode(Path path) throws IOException;
-    void deleteBlock(Block block) throws IOException;
+  boolean inodeExists(Path path) throws IOException;
 
-    Set<Path> listSubPaths(Path path) throws IOException;
-    Set<Path> listDeepSubPaths(Path path) throws IOException;
+  boolean blockExists(long blockId) throws IOException;
 
-    /**
-     * Delete everything. Used for testing.
-     * @throws IOException
-     */
-    void purge() throws IOException;
+  INode retrieveINode(Path path) throws IOException;
 
-    /**
-     * Diagnostic method to dump all INodes to the console.
-     * @throws IOException
-     */
-    void dump() throws IOException;
+  File retrieveBlock(Block block, long byteRangeStart) throws IOException;
+
+  void deleteINode(Path path) throws IOException;
+
+  void deleteBlock(Block block) throws IOException;
+
+  Set<Path> listSubPaths(Path path) throws IOException;
+
+  Set<Path> listDeepSubPaths(Path path) throws IOException;
+
+  /**
+   * Delete everything. Used for testing.
+   *
+   * @throws IOException
+   */
+  void purge() throws IOException;
+
+  /**
+   * Diagnostic method to dump all INodes to the console.
+   *
+   * @throws IOException
+   */
+  void dump() throws IOException;
 }

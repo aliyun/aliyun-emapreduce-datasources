@@ -30,7 +30,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    *
    * <h4>Examples</h4>
    * <blockquote>
-   * <table border=0 cellspacing=3 cellpadding=0 summary="Examples of checking ODPS table and partition existence">
+   * <table border=0 cellspacing=3 cellpadding=0 summary="Examples of checking
+    * ODPS table and partition existence">
    *     <tr bgcolor="#ccccff">
    *         <th align=left>Type of ODPS table
    *         <th align=left>Table exist
@@ -102,9 +103,9 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return Success or not.
    */
   def dropPartition(
-       project: String,
-       table: String,
-       pname: String): Boolean = {
+      project: String,
+      table: String,
+      pname: String): Boolean = {
     try {
       val (_, partitionE) = checkTableAndPartition(project, table, pname)
       if(!partitionE)
@@ -115,7 +116,8 @@ class OdpsUtils(odps: Odps) extends Logging{
       true
     } catch {
       case e: OdpsException =>
-        logError("somethings wrong happens when delete partition " + pname + " of " + table + ".")
+        logError("somethings wrong happens when delete partition " + pname +
+          " of " + table + ".")
         logError(e.getMessage)
         return false
     }
@@ -128,8 +130,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return Success or not.
    */
   def dropTable(
-     project: String,
-     table: String): Boolean = {
+      project: String,
+      table: String): Boolean = {
     try {
       val (tableE, _) = checkTableAndPartition(project, table, "random")
       if(!tableE)
@@ -153,16 +155,17 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return Success or not.
    */
   def createPartition(
-     project: String,
-     table: String,
-     pname: String): Boolean = {
+      project: String,
+      table: String,
+      pname: String): Boolean = {
     val partitionSpec_ = new PartitionSpec(pname)
     val (tableE, partitionE) = checkTableAndPartition(project, table, pname)
     if(!tableE) {
       logWarning("table " + table + " do not exist, FAILED.")
       return false
     } else if(partitionE) {
-      logWarning("table " + table + " partition " + pname + " exist, no need to create.")
+      logWarning("table " + table + " partition " + pname + " exist, " +
+        "no need to create.")
       return true
     }
 
@@ -170,7 +173,8 @@ class OdpsUtils(odps: Odps) extends Logging{
       odps.tables().get(table).createPartition(partitionSpec_)
     } catch {
       case e: OdpsException =>
-        logError("somethings wrong happens when create table " + table + " partition " + pname + ".")
+        logError("somethings wrong happens when create table " + table +
+          " partition " + pname + ".")
         return false
     }
 
@@ -184,7 +188,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param isPartition Is partition column or not.
    * @return
    */
-  def getTableSchema(project: String, table: String, isPartition: Boolean): Array[(String, String)] =  {
+  def getTableSchema(project: String, table: String, isPartition: Boolean):
+      Array[(String, String)] =  {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
@@ -208,7 +213,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param name The name of specific column.
    * @return Column index and type.
    */
-  def getColumnByName(project: String, table: String, name: String): (String, String) = {
+  def getColumnByName(project: String, table: String, name: String):
+      (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val idx = schema.getColumnIndex(name)
@@ -230,7 +236,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param idx The index of specific column.
    * @return Column name and type.
    */
-  def getColumnByIdx(project: String, table: String, idx: Int): (String, String) = {
+  def getColumnByIdx(project: String, table: String, idx: Int):
+      (String, String) = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val column = schema.getColumn(idx)
@@ -269,7 +276,8 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param table The name of ODPS table.
    * @return All partition [[PartitionSpec]]
    */
-  def getAllPartitionSpecs(table: String, project: String = null): Iterator[PartitionSpec] = {
+  def getAllPartitionSpecs(table: String, project: String = null):
+      Iterator[PartitionSpec] = {
     if(project != null)
       odps.setDefaultProject(project)
     odps.tables().get(table).getPartitions.toArray(new Array[Partition](0))
@@ -278,7 +286,8 @@ class OdpsUtils(odps: Odps) extends Logging{
 }
 
 object OdpsUtils {
-  def apply(accessKeyId: String, accessKeySecret: String, odpsUrl: String): OdpsUtils = {
+  def apply(accessKeyId: String, accessKeySecret: String, odpsUrl: String):
+      OdpsUtils = {
     val account = new AliyunAccount(accessKeyId, accessKeySecret)
     val odps = new Odps(account)
     odps.setEndpoint(odpsUrl)

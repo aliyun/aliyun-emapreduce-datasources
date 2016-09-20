@@ -25,27 +25,32 @@ import java.net.URLClassLoader;
 import java.util.List;
 
 public class CloudQueueAgent {
-    private Object cloudQueue;
-    private Class cloudQueueClz;
-    private Gson gson = new Gson();
-    private URLClassLoader urlClassLoader;
+  private Object cloudQueue;
+  private Class cloudQueueClz;
+  private Gson gson = new Gson();
+  private URLClassLoader urlClassLoader;
 
-    public CloudQueueAgent(Object cloudQueue, Class cloudQueueClz, URLClassLoader classLoader) {
-        this.cloudQueue = cloudQueue;
-        this.cloudQueueClz = cloudQueueClz;
-        this.urlClassLoader = classLoader;
-    }
+  public CloudQueueAgent(Object cloudQueue, Class cloudQueueClz,
+      URLClassLoader classLoader) {
+    this.cloudQueue = cloudQueue;
+    this.cloudQueueClz = cloudQueueClz;
+    this.urlClassLoader = classLoader;
+  }
 
-    @SuppressWarnings("unchecked")
-    public List<Message> batchPopMessage(int batchMsgSize, int pollingWaitSeconds) throws Exception {
-        Method method = cloudQueueClz.getMethod("batchPopMessage", Integer.TYPE, Integer.TYPE);
-        Object ret = method.invoke(cloudQueue, batchMsgSize, pollingWaitSeconds);
-        return gson.fromJson(gson.toJson(ret), new TypeToken<List<Message>>(){}.getType());
-    }
+  @SuppressWarnings("unchecked")
+  public List<Message> batchPopMessage(int batchMsgSize, int pollingWaitSeconds)
+      throws Exception {
+    Method method =
+        cloudQueueClz.getMethod("batchPopMessage", Integer.TYPE, Integer.TYPE);
+    Object ret = method.invoke(cloudQueue, batchMsgSize, pollingWaitSeconds);
+    return gson.fromJson(gson.toJson(ret), new TypeToken<List<Message>>() {
+    }.getType());
+  }
 
-    @SuppressWarnings("unchecked")
-    public void batchDeleteMessage(List<String> receiptsToDelete) throws Exception {
-        Method method = cloudQueueClz.getMethod("batchDeleteMessage", List.class);
-        method.invoke(cloudQueue, receiptsToDelete);
-    }
+  @SuppressWarnings("unchecked")
+  public void batchDeleteMessage(List<String> receiptsToDelete)
+      throws Exception {
+    Method method = cloudQueueClz.getMethod("batchDeleteMessage", List.class);
+    method.invoke(cloudQueue, receiptsToDelete);
+  }
 }
