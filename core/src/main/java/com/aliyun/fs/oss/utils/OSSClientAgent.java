@@ -114,28 +114,33 @@ public class OSSClientAgent {
   private boolean updateOSSClient(Exception e) {
     if (e instanceof InvocationTargetException) {
       Throwable t = ((InvocationTargetException) e).getTargetException();
-      if (t.getMessage().contains(OSS_STS_SECURITY_TOKEN_EXPIRED_MESSAGE) ||
-          t.getMessage().contains(OSS_INVALID_ACCESS_KEY_ID_MESSAGE)) {
-        String accessKeyId = MetaClient.getRoleAccessKeyId();
-        String accessKeySecret = MetaClient.getRoleAccessKeySecret();
-        String securityToken = MetaClient.getRoleSecurityToken();
-        String endpoint =
-            EndpointEnum.getEndpoint("oss", MetaClient.getClusterRegionName(),
-                MetaClient.getClusterNetworkType());
-        try {
-          Class ClientConfigurationClz = ResourceLoader.getInstance()
-              .getUrlClassLoader(conf)
-              .loadClass("com.aliyun.oss.ClientConfiguration");
-          Object clientConfiguration =
-              initializeOSSClientConfig(conf, ClientConfigurationClz);
-          Constructor cons = ossClientClz.getConstructor(String.class,
-              String.class, String.class, String.class, ClientConfigurationClz);
-          this.ossClient = cons.newInstance(endpoint, accessKeyId,
-              accessKeySecret, securityToken, clientConfiguration);
-          return true;
-        } catch (Exception e1) {
-          return false;
-        }
+      // TODO: check specific error code and try again.
+      // Following are some error code which we should catch:
+      // 1. SecurityTokenExpired
+      // 2. InvalidAccessKeyId
+      // However, OSS server often returns some confused error code
+      // which dose not illustrate real cause, like 'InvalidAccessKeyId'.
+      // So currently, try again in case of whatever error.
+      LOG.warn("Meet error and try again.");
+      LOG.warn(t);
+      String accessKeyId = MetaClient.getRoleAccessKeyId();
+      String accessKeySecret = MetaClient.getRoleAccessKeySecret();
+      String securityToken = MetaClient.getRoleSecurityToken();
+      String endpoint = EndpointEnum.getEndpoint("oss",
+          MetaClient.getClusterRegionName(), MetaClient.getClusterNetworkType());
+      try {
+        Class ClientConfigurationClz = ResourceLoader.getInstance()
+            .getUrlClassLoader(conf)
+            .loadClass("com.aliyun.oss.ClientConfiguration");
+        Object clientConfiguration =
+            initializeOSSClientConfig(conf, ClientConfigurationClz);
+        Constructor cons = ossClientClz.getConstructor(String.class, String.class,
+            String.class, String.class, ClientConfigurationClz);
+        this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret,
+            securityToken, clientConfiguration);
+        return true;
+      } catch (Exception e1) {
+        return false;
       }
     }
 
@@ -614,8 +619,10 @@ public class OSSClientAgent {
                                      Long beginIndex,
                                      int partNumber,
                                      File file,
-                                     Configuration conf) throws IOException, ServiceException, ClientException {
-    return uploadPart(uploadId, bucket, key, partSize, beginIndex, partNumber, file, conf, true);
+                                     Configuration conf)
+      throws IOException, ServiceException, ClientException {
+    return uploadPart(uploadId, bucket, key, partSize, beginIndex, partNumber,
+        file, conf, true);
   }
 
   @SuppressWarnings("unchecked")
@@ -668,7 +675,8 @@ public class OSSClientAgent {
   }
 
   @SuppressWarnings("unchecked")
-  private Object initializeOSSClientConfig(Configuration conf, Class ClientConfigurationClz)
+  private Object initializeOSSClientConfig(Configuration conf,
+      Class ClientConfigurationClz)
       throws IOException, ServiceException, ClientException {
     try {
       Constructor cons = ClientConfigurationClz.getConstructor();
