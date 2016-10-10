@@ -260,9 +260,15 @@ In this section, we will demonstrate how to comsume Loghub data in Spark Streami
     ssc.awaitTermination()
 ```
 
+## TableStore support
+
+* [HadoopMR on TableStore](docs/HadoopMR-on-TableStore.md)
+* [Spark on TableStore](docs/Spark-on-TableStore.md)
+* [Hive/SparkSQL on TableStore](docs/Hive-SparkSQL-on-TableStore.md)
+
 ## Future Work
 
-- Support more Aliyun base service, like OTS and so on.
+- Support more Aliyun base service
 - Support more friendly code migration.
 
 ## License
