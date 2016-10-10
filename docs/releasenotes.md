@@ -1,3 +1,9 @@
+## v1.3.0
+
+- [New Feature]: TableStore as data source for HadoopMR/Spark/Hive/SparkSQL
+
+## v1.2.0
+
 ## v1.0.5
 
 - [Improvement]: Modify `LoghubUtils` interface, and optimize the input parameters.
@@ -7,7 +13,7 @@
 
 ## v1.0.4
 
-- [Bug Fix]: Fix the dependency comflict of guava, degrade guava to 11.0.2
+- [Bug Fix]: Fix the dependency conflict of guava, degrade guava to 11.0.2
 - [Improvement]: Support >5GB output of task
 
 ## v1.0.3
