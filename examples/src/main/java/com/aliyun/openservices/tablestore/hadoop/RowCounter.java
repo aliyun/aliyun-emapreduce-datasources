@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.aliyun.openservices.tablestore.hadoop;
 
 import java.io.IOException;
@@ -25,9 +43,9 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 
 public class RowCounter {
     private static String endpoint;
-    private static String akId;
-    private static String akSecret;
-    private static String stsToken;
+    private static String accessKeyId;
+    private static String accessKeySecret;
+    private static String securityToken;
     private static String instance;
     private static String table;
     private static String outputPath;
@@ -65,11 +83,11 @@ public class RowCounter {
             if (args[i].equals("--endpoint")) {
                 endpoint = args[i+1];
                 i += 2;
-            } else if (args[i].equals("--ak-id")) {
-                akId = args[i+1];
+            } else if (args[i].equals("--access-key-id")) {
+                accessKeyId = args[i+1];
                 i += 2;
-            } else if (args[i].equals("--ak-secret")) {
-                akSecret = args[i+1];
+            } else if (args[i].equals("--access-key-secret")) {
+                accessKeySecret = args[i+1];
                 i += 2;
             } else if (args[i].equals("--instance")) {
                 instance = args[i+1];
@@ -77,8 +95,8 @@ public class RowCounter {
             } else if (args[i].equals("--table")) {
                 table = args[i+1];
                 i += 2;
-            } else if (args[i].equals("--sts")) {
-                stsToken = args[i+1];
+            } else if (args[i].equals("--security-token")) {
+                securityToken = args[i+1];
                 i += 2;
             } else if (args[i].equals("--output")) {
                 outputPath = args[i+1];
@@ -91,18 +109,20 @@ public class RowCounter {
     }
 
     private static SyncClient getOTSClient() {
-        Credential cred = new Credential(akId, akSecret, stsToken);
+        Credential cred = new Credential(accessKeyId, accessKeySecret, securityToken);
         Endpoint ep;
         if (instance == null) {
             ep = new Endpoint(endpoint);
         } else {
             ep = new Endpoint(endpoint, instance);
         }
-        if (cred.stsToken == null) {
-            return new SyncClient(ep.endpoint, cred.akId, cred.akSecret, ep.instance);
+        if (cred.securityToken == null) {
+            return new SyncClient(
+                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
         } else {
-            return new SyncClient(ep.endpoint, cred.akId, cred.akSecret, ep.instance,
-                                  cred.stsToken);
+            return new SyncClient(
+                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
+                cred.securityToken);
         }
     }
 
@@ -134,9 +154,9 @@ public class RowCounter {
 
     private static void printUsage() {
         System.err.println("Usage: RowCounter [options]");
-        System.err.println("--ak-id\t\taccess-key id");
-        System.err.println("--ak-secret\taccess-key secret");
-        System.err.println("--sts\t(optional) STS token");
+        System.err.println("--access-key-id\t\taccess-key id");
+        System.err.println("--access-key-secret\taccess-key secret");
+        System.err.println("--security-token\t(optional) security token");
         System.err.println("--endpoint\tendpoint");
         System.err.println("--instance\tinstance name");
         System.err.println("--table\ttable name");
@@ -149,8 +169,8 @@ public class RowCounter {
             System.exit(1);
         }
         if (endpoint == null ||
-            akId == null ||
-            akSecret == null ||
+            accessKeyId == null ||
+            accessKeySecret == null ||
             table == null ||
             outputPath == null)
         {
@@ -167,10 +187,10 @@ public class RowCounter {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(LongWritable.class);
         job.setInputFormatClass(TableStoreInputFormat.class);
-        if (stsToken == null) {
-            TableStoreInputFormat.setCredential(job, akId, akSecret);
+        if (securityToken == null) {
+            TableStoreInputFormat.setCredential(job, accessKeyId, accessKeySecret);
         } else {
-            TableStoreInputFormat.setCredential(job, akId, akSecret, stsToken);
+            TableStoreInputFormat.setCredential(job, accessKeyId, accessKeySecret, securityToken);
         }
         if (instance == null) {
             TableStoreInputFormat.setEndpoint(job, endpoint);

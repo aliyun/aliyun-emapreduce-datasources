@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.aliyun.openservices.tablestore.hadoop;
 
 import java.util.Collections;
@@ -34,23 +52,23 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
     
     public static void setCredential(
         JobContext job,
-        String ak_id,
-        String ak_secret)
+        String accessKeyId,
+        String accessKeySecret)
     {
         setCredential(
             job.getConfiguration(),
-            new Credential(ak_id, ak_secret, null));
+            new Credential(accessKeyId, accessKeySecret, null));
     }
 
     public static void setCredential(
         JobContext job,
-        String ak_id,
-        String ak_secret,
-        String stsToken)
+        String accessKeyId,
+        String accessKeySecret,
+        String securityToken)
     {
         setCredential(
             job.getConfiguration(),
-            new Credential(ak_id, ak_secret, stsToken));
+            new Credential(accessKeyId, accessKeySecret, securityToken));
     }
 
     public static void setCredential(
@@ -253,11 +271,11 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
             conf.get(Credential.kTableStoreCredential));
         Endpoint ep = Endpoint.deserialize(
             conf.get(Endpoint.kTableStoreEndpoint));
-        if (cred.stsToken == null) {
-            return new SyncClient(ep.endpoint, cred.akId, cred.akSecret, ep.instance);
+        if (cred.securityToken == null) {
+            return new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
         } else {
-            return new SyncClient(ep.endpoint, cred.akId, cred.akSecret, ep.instance,
-                                  cred.stsToken);
+            return new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
+                                  cred.securityToken);
         }
     }
 

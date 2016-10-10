@@ -101,7 +101,7 @@ Essentially, `job.setInputFormatClass(TableStoreInputFormat.class)` sets TableSt
 Besides this statement, we have to let `TableStoreInputFormat` know who wants to access which tables.
 * `TableStoreInputFormat.setEndpoint()` sets the [endpoint](https://help.aliyun.com/document_detail/27285.html?spm=5176.doc27281.6.109.8I57sZ).
 * `TableStoreInputFormat.setCredential()` sets the [credential](https://help.aliyun.com/document_detail/27296.html?spm=5176.doc27360.6.136.3FDlzl).
-  + `setCredential()` supports [STS token](https://help.aliyun.com/document_detail/27360.html?spm=5176.doc27296.6.236.4AFNPp) as well.
+  + `setCredential()` supports [Security Token](https://help.aliyun.com/document_detail/27360.html?spm=5176.doc27296.6.236.4AFNPp) as well.
 * `TableStoreInputFormat.addCriteria()` can be invoked many times,
   each time adds a [`RangeRowQueryCriteria`](https://help.aliyun.com/document_detail/43017.html?spm=5176.doc27360.6.208.RgVtBA) object.
   + We can set [filters](https://help.aliyun.com/document_detail/43029.html?spm=5176.doc43017.6.210.98IWE3) and columns-to-get to filter rows and columns in server-side.

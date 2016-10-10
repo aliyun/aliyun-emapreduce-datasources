@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.aliyun.openservices.tablestore.hadoop;
 
 import java.io.DataInput;
@@ -13,18 +31,18 @@ import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 public class Credential implements Writable {
     public static final String kTableStoreCredential = "TABLESTORE_CREDENTIAL";
     
-    public String akId;
-    public String akSecret;
-    public String stsToken;
+    public String accessKeyId;
+    public String accessKeySecret;
+    public String securityToken;
 
     public Credential() {
     }
-    public Credential(String akId, String akSecret, String stsToken) {
-        Preconditions.checkNotNull(akId, "akId should not be null.");
-        Preconditions.checkNotNull(akSecret, "akSecret should not be null.");
-        this.akId = akId;
-        this.akSecret = akSecret;
-        this.stsToken = stsToken;
+    public Credential(String accessKeyId, String accessKeySecret, String securityToken) {
+        Preconditions.checkNotNull(accessKeyId, "accessKeyId should not be null.");
+        Preconditions.checkNotNull(accessKeySecret, "accessKeySecret should not be null.");
+        this.accessKeyId = accessKeyId;
+        this.accessKeySecret = accessKeySecret;
+        this.securityToken = securityToken;
     }
 
     @Override
@@ -36,27 +54,27 @@ public class Credential implements Writable {
             return false;
         }
         Credential a = (Credential) obj;
-        if (!this.akId.equals(a.akId)) {
+        if (!this.accessKeyId.equals(a.accessKeyId)) {
             return false;
         }
-        if (!this.akSecret.equals(a.akSecret)) {
+        if (!this.accessKeySecret.equals(a.accessKeySecret)) {
             return false;
         }
-        if (this.stsToken == null) {
-            return a.stsToken == null;
+        if (this.securityToken == null) {
+            return a.securityToken == null;
         } else {
-            return this.stsToken.equals(a.stsToken);
+            return this.securityToken.equals(a.securityToken);
         }
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.CREDENTIAL);
-        out.writeUTF(akId);
-        out.writeUTF(akSecret);
-        if (stsToken != null) {
-            out.writeByte(WritableConsts.CREDENTIAL_STS_TOKEN);
-            out.writeUTF(stsToken);
+        out.writeUTF(accessKeyId);
+        out.writeUTF(accessKeySecret);
+        if (securityToken != null) {
+            out.writeByte(WritableConsts.CREDENTIAL_SECURITY_TOKEN);
+            out.writeUTF(securityToken);
         }
     }
 
@@ -66,14 +84,14 @@ public class Credential implements Writable {
         if (tag != WritableConsts.CREDENTIAL) {
             throw new IOException("broken input stream");
         }
-        akId = null;
-        akSecret = null;
-        stsToken = null;
-        akId = in.readUTF();
-        akSecret = in.readUTF();
-        byte tagSts = nextTag(in);
-        if (tagSts == WritableConsts.CREDENTIAL_STS_TOKEN) {
-            stsToken = in.readUTF();
+        accessKeyId = null;
+        accessKeySecret = null;
+        securityToken = null;
+        accessKeyId = in.readUTF();
+        accessKeySecret = in.readUTF();
+        byte tagSecurityToken = nextTag(in);
+        if (tagSecurityToken == WritableConsts.CREDENTIAL_SECURITY_TOKEN) {
+            securityToken = in.readUTF();
         }
     }
 

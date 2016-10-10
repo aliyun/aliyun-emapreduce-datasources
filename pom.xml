@@ -34,12 +34,13 @@
     <properties>
         <spark.version>1.6.2</spark.version>
         <oss.sdk.version>2.2.0</oss.sdk.version>
-        <tablestore.sdk.version>4.0.0</tablestore.sdk.version>
+        <tablestore.sdk.version>4.1.0</tablestore.sdk.version>
         <odps.version>0.20.7-public</odps.version>
         <loghubb.client.version>0.6.4</loghubb.client.version>
         <ons.version>1.2.3</ons.version>
         <mns.version>1.1.5</mns.version>
         <hadoop.version>2.2.0</hadoop.version>
+        <hive.version>2.0.1</hive.version>
         <fastjson.version>1.1.38</fastjson.version>
         <guava.version>11.0.2</guava.version>
         <scalatest.version>2.2.1</scalatest.version>
@@ -214,6 +215,32 @@
                 <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-auth</artifactId>
+                <version>${hadoop.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-annotations</artifactId>
+                <version>${hadoop.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-serde</artifactId>
+                <version>${hive.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-exec</artifactId>
+                <version>${hive.version}</version>
             </dependency>
 
             <dependency>

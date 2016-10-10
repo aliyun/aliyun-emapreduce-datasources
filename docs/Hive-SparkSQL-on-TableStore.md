@@ -93,9 +93,9 @@ Whistler        Gwen    bird    NULL    1997-12-09      NULL
 
     The table name in TableStore.
 
-  + `tablestore.access_key_id`, `tablestore.access_key_secret` (required) and `tablestore.sts_token` (optional)
+  + `tablestore.access_key_id`, `tablestore.access_key_secret` (required) and `tablestore.security_token` (optional)
 
-    [credential](https://help.aliyun.com/document_detail/27296.html?spm=5176.doc27360.6.136.3FDlzl) and [STS token](https://help.aliyun.com/document_detail/27360.html?spm=5176.doc27296.6.236.4AFNPp).
+    [credential](https://help.aliyun.com/document_detail/27296.html?spm=5176.doc27360.6.136.3FDlzl) and [Security Token](https://help.aliyun.com/document_detail/27360.html?spm=5176.doc27296.6.236.4AFNPp).
 
 ### Data type conversion
 
