@@ -126,8 +126,9 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
 
         TableStoreInputSplit tsSplit = (TableStoreInputSplit) split;
         scan = tsSplit.getRangeRowQueryCriteria();
-        logger.info("table: {} start: {} end: {}",
+        logger.info("table: {} columns-to-get: {} start: {} end: {}",
             scan.getTableName(),
+            scan.getColumnsToGet(),
             scan.getInclusiveStartPrimaryKey().toString(),
             scan.getExclusiveEndPrimaryKey().toString());
         results = ots.createRangeIterator(new RangeIteratorParameter(scan));
