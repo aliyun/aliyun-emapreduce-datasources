@@ -41,6 +41,8 @@ We have to create an external table in Hive/SparkSQL to let them known the exist
 CREATE EXTERNAL TABLE pet
   (name STRING, owner STRING, species STRING, sex STRING, birth STRING, death STRING)
   STORED BY 'com.aliyun.openservices.tablestore.hive.TableStoreStorageHandler'
+  WITH SERDEPROPERTIES(
+    "tablestore.columns.mapping"="name,owner,species,sex,birth,death")
   TBLPROPERTIES (
     "tablestore.endpoint"="YourEndpoint",
     "tablestore.access_key_id"="YourAccessKeyId",
@@ -74,9 +76,9 @@ Whistler        Gwen    bird    NULL    1997-12-09      NULL
 * `WITH SERDEPROPERTIES`
   + `tablestore.columns.mapping` (optional)
 
-    By default, field names of external tables are the same as column names (names of primary key columns or attributes) in TableStore.
+    By default, field names of external tables (in lower case by rules of Hive) are the same as column names (names of primary key columns or attributes) in TableStore.
     Sometimes, we need them to be different (for examples, dealing with case-sensitivity or charsets).
-    We can then set `tablestore.columns.mapping`, which is a comma-separated string, each item is a column name.
+    We can then set `tablestore.columns.mapping`, which is a comma-separated string, each item is a column name, in the same order of fields.
     Please notice: don't leave blank before or after comma.
 
 * `TBLPROPERTIES`

@@ -19,8 +19,12 @@
 package com.aliyun.openservices.tablestore.hadoop;
 
 import java.io.DataInput;
+import java.io.ObjectInput;
 import java.io.DataOutput;
+import java.io.ObjectOutput;
 import java.io.IOException;
+import java.io.EOFException;
+import java.io.Externalizable;
 import org.apache.hadoop.io.WritableComparable;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
@@ -28,7 +32,7 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyType;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable> {
+public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable>, Externalizable {
     private PrimaryKey primaryKey = null;
 
     public PrimaryKeyWritable() {
@@ -133,6 +137,17 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         Preconditions.checkNotNull(primaryKey, "The primary key should not be null.");
         Preconditions.checkNotNull(o.primaryKey, "The primary key should not be null.");
         return primaryKey.compareTo(o.primaryKey);
+    }
+
+    public void readExternal(ObjectInput in)
+        throws IOException,
+               ClassNotFoundException
+    {
+        this.readFields(in);
+    }
+
+    public void writeExternal(ObjectOutput out) throws IOException {
+        this.write(out);
     }
 }
 

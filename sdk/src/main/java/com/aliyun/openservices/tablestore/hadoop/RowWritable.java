@@ -19,16 +19,19 @@
 package com.aliyun.openservices.tablestore.hadoop;
 
 import java.io.DataInput;
+import java.io.ObjectInput;
 import java.io.DataOutput;
+import java.io.ObjectOutput;
 import java.io.IOException;
 import java.io.EOFException;
+import java.io.Externalizable;
 import org.apache.hadoop.io.Writable;
 import com.alicloud.openservices.tablestore.model.Row;
 import com.alicloud.openservices.tablestore.model.Column;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class RowWritable implements Writable {
+public class RowWritable implements Writable, Externalizable {
     private Row row = null;
 
     public RowWritable() {
@@ -79,6 +82,17 @@ public class RowWritable implements Writable {
         RowWritable w = new RowWritable();
         w.readFields(in);
         return w;
+    }
+
+    public void readExternal(ObjectInput in)
+        throws IOException,
+               ClassNotFoundException
+    {
+        this.readFields(in);
+    }
+
+    public void writeExternal(ObjectOutput out) throws IOException {
+        this.write(out);
     }
 }
 
