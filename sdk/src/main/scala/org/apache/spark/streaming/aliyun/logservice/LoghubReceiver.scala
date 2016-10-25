@@ -16,7 +16,6 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-import com.aliyun.openservices.loghub.client.ClientWorker
 import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition}
 import org.apache.spark.Logging
 import org.apache.spark.storage.StorageLevel
