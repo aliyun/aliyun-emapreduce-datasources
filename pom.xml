@@ -34,12 +34,14 @@
     <properties>
         <spark.version>1.6.2</spark.version>
         <oss.sdk.version>2.3.0</oss.sdk.version>
+        <tablestore.sdk.version>4.1.0</tablestore.sdk.version>
         <odps.version>0.20.7-public</odps.version>
         <loghubb.client.version>0.6.5</loghubb.client.version>
         <ons.version>1.2.6</ons.version>
         <mns.version>1.1.7.1</mns.version>
         <hadoop.version>2.2.0</hadoop.version>
         <fastjson.version>1.2.17</fastjson.version>
+        <hive.version>2.0.1</hive.version>
         <guava.version>11.0.2</guava.version>
         <scalatest.version>2.2.1</scalatest.version>
         <junit.version>4.8.2</junit.version>
@@ -144,6 +146,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>tablestore</artifactId>
+                <version>${tablestore.sdk.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.aliyun.odps</groupId>
                 <artifactId>odps-sdk-core</artifactId>
                 <version>${odps.version}</version>
@@ -207,6 +215,32 @@
                 <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-auth</artifactId>
+                <version>${hadoop.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-annotations</artifactId>
+                <version>${hadoop.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-serde</artifactId>
+                <version>${hive.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hive</groupId>
+                <artifactId>hive-exec</artifactId>
+                <version>${hive.version}</version>
             </dependency>
 
             <dependency>
