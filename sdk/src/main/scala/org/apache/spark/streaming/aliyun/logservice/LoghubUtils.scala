@@ -62,7 +62,6 @@ object LoghubUtils {
    * @param storageLevel Storage level to use for storing the received objects.
    * @return
    */
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -84,6 +83,29 @@ object LoghubUtils {
         loghubEndpoint,
         accessKeyId,
         accessKeySecret,
+        storageLevel)
+    }
+  }
+
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      new LoghubInputDStream(
+        ssc,
+        logServiceProject,
+        logStoreName,
+        loghubConsumerGroupName,
+        appId,
+        null,
+        null,
+        null,
         storageLevel)
     }
   }
@@ -127,7 +149,6 @@ object LoghubUtils {
    * @param storageLevel Storage level to use for storing the received objects.
    * @return
    */
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -156,6 +177,32 @@ object LoghubUtils {
     }
   }
 
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
+        new LoghubInputDStream(
+          ssc,
+          logServiceProject,
+          logStoreName,
+          loghubConsumerGroupName,
+          appId,
+          null,
+          null,
+          null,
+          storageLevel)
+      ))
+    }
+  }
+
   /**
    * Create loghub [[DStream]].
    * @param ssc StreamingContext.
@@ -174,7 +221,6 @@ object LoghubUtils {
    *        `mLoghubCursorStartTime`.
    * @return
    */
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -206,6 +252,35 @@ object LoghubUtils {
     }
   }
 
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      new LoghubInputDStream(
+        ssc,
+        logServiceProject,
+        logStoreName,
+        loghubConsumerGroupName,
+        appId,
+        null,
+        null,
+        null,
+        storageLevel,
+        cursorPosition,
+        mLoghubCursorStartTime,
+        forceSpecial)
+    }
+  }
+
   /**
    * Create loghub [[DStream]].
    * @param ssc StreamingContext.
@@ -225,7 +300,6 @@ object LoghubUtils {
    *                     `mLoghubCursorStartTime`.
    * @return
    */
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -262,6 +336,37 @@ object LoghubUtils {
 
   @Experimental
   def createStream(
+      ssc: StreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): DStream[Array[Byte]] = {
+    ssc.withNamedScope("loghub stream") {
+      // Implicitly, we use applicationId to be the base name of loghub instance.
+      val appId = ssc.sc.applicationId
+      ssc.union(Array.tabulate(numReceivers)(e => e).map(t =>
+        new LoghubInputDStream(
+          ssc,
+          logServiceProject,
+          logStoreName,
+          loghubConsumerGroupName,
+          appId,
+          null,
+          null,
+          null,
+          storageLevel,
+          cursorPosition,
+          mLoghubCursorStartTime,
+          forceSpecial)
+      ))
+    }
+  }
+
+  def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
       logStoreName: String,
@@ -281,6 +386,16 @@ object LoghubUtils {
       logServiceProject: String,
       logStoreName: String,
       loghubConsumerGroupName: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, storageLevel)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
       loghubEndpoint: String,
       numReceivers: Int,
       accessKeyId: String,
@@ -289,6 +404,18 @@ object LoghubUtils {
     createStream(jssc.ssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, loghubEndpoint, numReceivers, accessKeyId,
       accessKeySecret, storageLevel)
+  }
+
+  @Experimental
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, numReceivers, storageLevel)
   }
 }
 
@@ -308,6 +435,17 @@ class LoghubUtilsHelper {
       storageLevel)
   }
 
+  @Experimental
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, storageLevel)
+  }
+
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -321,5 +459,17 @@ class LoghubUtilsHelper {
     LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, loghubEndpoint, numReceivers, accessKeyId,
       accessKeySecret, storageLevel)
+  }
+
+  @Experimental
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel): JavaDStream[Array[Byte]] = {
+    LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, numReceivers, storageLevel)
   }
 }

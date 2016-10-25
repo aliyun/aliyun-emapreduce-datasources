@@ -16,6 +16,8 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
+import com.aliyun.ms.MetaClient
+import com.aliyun.ms.utils.EndpointEnum
 import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import org.apache.spark.storage.StorageLevel
@@ -29,9 +31,9 @@ class LoghubInputDStream(
     logStoreName: String,
     loghubConsumerGroupName: String,
     loghubInstanceNameBase: String,
-    loghubEndpoint: String,
-    accessKeyId: String,
-    accessKeySecret: String,
+    var loghubEndpoint: String,
+    var accessKeyId: String,
+    var accessKeySecret: String,
     storageLevel: StorageLevel,
     cursorPosition: LogHubCursorPosition,
     mLoghubCursorStartTime: Int,
@@ -44,8 +46,26 @@ class LoghubInputDStream(
   val dataFetchIntervalMillis =
     _ssc.sc.getConf.getLong("spark.logservice.fetch.interval.millis", 200L)
   val batchInterval = _ssc.graph.batchDuration.milliseconds
+  var securityToken: String = null
   @transient lazy val slsClient =
-    new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+    if (accessKeyId == null || accessKeySecret == null) {
+      accessKeyId = MetaClient.getRoleAccessKeyId
+      accessKeySecret = MetaClient.getRoleAccessKeySecret
+      securityToken = MetaClient.getRoleSecurityToken
+      loghubEndpoint = if (loghubEndpoint == null) {
+        val region = MetaClient.getClusterRegionName
+        val nType = MetaClient.getClusterNetworkType
+        val endpointBase = EndpointEnum.getEndpoint("log", region, nType)
+        s"$logServiceProject.$endpointBase"
+      } else {
+        loghubEndpoint
+      }
+      val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+      client.SetSecurityToken(securityToken)
+      client
+    } else {
+      new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+    }
 
   if (forceSpecial && cursorPosition.toString.equals(
     LogHubCursorPosition.SPECIAL_TIMER_CURSOR.toString)) {
@@ -54,8 +74,25 @@ class LoghubInputDStream(
         loghubConsumerGroupName)
     } catch {
       case e: Exception =>
-        logError(s"Failed to delete consumer group, ${e.getMessage}", e)
-        throw e
+        // In case of expired token
+        if (securityToken != null) {
+          try {
+            accessKeyId = MetaClient.getRoleAccessKeyId
+            accessKeySecret = MetaClient.getRoleAccessKeySecret
+            securityToken = MetaClient.getRoleSecurityToken
+            val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
+            client.SetSecurityToken(securityToken)
+            client.DeleteConsumerGroup(logServiceProject, logStoreName,
+              loghubConsumerGroupName)
+          } catch {
+            case e: Exception =>
+              logError(s"Failed to delete consumer group, ${e.getMessage}", e)
+              throw e
+          }
+        } else {
+          logError(s"Failed to delete consumer group, ${e.getMessage}", e)
+          throw e
+        }
     }
   }
 
