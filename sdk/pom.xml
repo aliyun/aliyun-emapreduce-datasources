@@ -134,6 +134,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+        </dependency>
+
+        <dependency>
           <groupId>com.aliyun.openservices</groupId>
           <artifactId>tablestore</artifactId>
         </dependency>
@@ -167,7 +172,6 @@
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-auth</artifactId>
         </dependency>
-
     </dependencies>
 
     <build>
