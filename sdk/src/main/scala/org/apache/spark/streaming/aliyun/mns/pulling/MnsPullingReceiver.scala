@@ -18,17 +18,11 @@ package org.apache.spark.streaming.aliyun.mns.pulling
 
 import java.util
 
-import com.aliyun.mns.common.{ClientException, ServiceException}
 import com.aliyun.mns.model.Message
-import org.apache.hadoop.conf.Configuration
 import org.apache.spark.Logging
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.aliyun.mns.adapter.{CloudQueueAgent, MNSAgentUtil, MNSClientAgent}
 import org.apache.spark.streaming.receiver.Receiver
-import org.apache.spark.util.SerializableConfiguration
-
-import scala.collection.JavaConversions._
 
 @SerialVersionUID(3559189311748262112L)
 private[mns] class MnsPullingReceiver(

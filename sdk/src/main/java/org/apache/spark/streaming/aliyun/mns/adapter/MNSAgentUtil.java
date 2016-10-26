@@ -88,13 +88,6 @@ public class MNSAgentUtil {
       String endpoint) throws Exception{
     if (e instanceof InvocationTargetException) {
       Throwable t = ((InvocationTargetException) e).getTargetException();
-      // TODO: check specific error code and try again.
-      // Following are some error code which we should catch:
-      // 1. SecurityTokenExpired
-      // 2. InvalidAccessKeyId
-      // However, OSS server often returns some confused error code
-      // which dose not illustrate real cause, like 'InvalidAccessKeyId'.
-      // So currently, try again in case of whatever error.
       if (t.getMessage()
           .contains("The AccessKey Id you provided is not exist.")) {
         LOG.warn(t.getMessage() + " Try to get AK information from MetaService");

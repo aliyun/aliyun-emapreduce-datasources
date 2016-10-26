@@ -43,7 +43,7 @@ public class ResourceLoader {
     String[] sdkDeps = null;
     if ((dependPath == null || dependPath.isEmpty()) && !runLocal) {
       throw new RuntimeException("Job dose not run locally, set " +
-          "\"fs.oss.core.dependency.path\" first please.");
+          "\"fs.oss.sdk.dependency.path\" first please.");
     } else if (dependPath == null || dependPath.isEmpty()) {
       LOG.info("\"mapreduce.job.run-local\" set true.");
     } else {
@@ -80,7 +80,7 @@ public class ResourceLoader {
         List<URL> urls = geClassLoaderURLs(conf, runLocal);
         urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
       } catch (Exception e) {
-        throw new RuntimeException("Can not initialize OSS URLClassLoader, " +
+        throw new RuntimeException("Can not initialize MNS URLClassLoader, " +
             e.getMessage());
       }
     }
