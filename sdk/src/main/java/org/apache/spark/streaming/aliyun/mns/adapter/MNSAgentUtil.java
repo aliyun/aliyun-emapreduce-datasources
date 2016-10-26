@@ -16,35 +16,44 @@
  */
 package org.apache.spark.streaming.aliyun.mns.adapter;
 
-import org.apache.commons.lang.SystemUtils;
+import com.aliyun.ms.MetaClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
 
 public class MNSAgentUtil {
   private static final Log LOG = LogFactory.getLog(MNSAgentUtil.class);
-  private volatile static URLClassLoader urlClassLoader;
 
   public static MNSClientAgent getMNSClientAgent(String accessKeyId,
       String accessKeySecret, String endpoint, boolean runLocal)
       throws Exception {
     Configuration conf = new Configuration();
-    return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf, runLocal);
+    if (accessKeyId == null || accessKeySecret == null) {
+      String stsAccessKeyId = MetaClient.getRoleAccessKeyId();
+      String stsAccessKeySecret = MetaClient.getRoleAccessKeySecret();
+      String securityToken = MetaClient.getRoleSecurityToken();
+      return getMNSClientAgent(stsAccessKeyId, stsAccessKeySecret, securityToken,
+          endpoint, conf, runLocal);
+    } else {
+      return getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, conf,
+          runLocal);
+    }
   }
 
   @SuppressWarnings("unchecked")
   public static MNSClientAgent getMNSClientAgent(String accessKeyId,
       String accessKeySecret, String endpoint, Configuration conf,
       boolean runLocal) throws Exception {
-    Class cloudAccountClz = getUrlClassLoader(conf, runLocal)
+    URLClassLoader classLoader = ResourceLoader.getInstance()
+        .getUrlClassLoader(conf, runLocal);
+    Class cloudAccountClz = classLoader
         .loadClass("com.aliyun.mns.client.CloudAccount");
-    Class mnsClientClz = getUrlClassLoader(conf, runLocal)
+    Class mnsClientClz = classLoader
         .loadClass("com.aliyun.mns.client.MNSClient");
     Constructor cons = cloudAccountClz
         .getConstructor(String.class, String.class, String.class);
@@ -52,57 +61,69 @@ public class MNSAgentUtil {
         cons.newInstance(accessKeyId, accessKeySecret, endpoint);
     Method method = cloudAccountClz.getMethod("getMNSClient");
     Object mnsClient = method.invoke(cloudAccount);
-    return new MNSClientAgent(mnsClient, mnsClientClz, urlClassLoader);
+    return new MNSClientAgent(mnsClient, mnsClientClz, endpoint, classLoader);
   }
 
   @SuppressWarnings("unchecked")
-  private static URLClassLoader getUrlClassLoader(Configuration conf,
-      boolean runLocal) {
-    if (urlClassLoader == null) {
-      synchronized (MNSAgentUtil.class) {
-        if (urlClassLoader == null) {
+  public static MNSClientAgent getMNSClientAgent(String accessKeyId,
+       String accessKeySecret, String securityToken, String endpoint,
+       Configuration conf, boolean runLocal) throws Exception {
+    URLClassLoader classLoader = ResourceLoader.getInstance()
+        .getUrlClassLoader(conf, runLocal);
+    Class cloudAccountClz = classLoader
+        .loadClass("com.aliyun.mns.client.CloudAccount");
+    Class mnsClientClz = classLoader
+        .loadClass("com.aliyun.mns.client.MNSClient");
+    Constructor cons = cloudAccountClz
+        .getConstructor(String.class, String.class, String.class, String.class);
+    Object cloudAccount =
+        cons.newInstance(accessKeyId, accessKeySecret, endpoint, securityToken);
+    Method method = cloudAccountClz.getMethod("getMNSClient");
+    Object mnsClient = method.invoke(cloudAccount);
+    return new MNSClientAgent(mnsClient, mnsClientClz, endpoint, classLoader);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Object updateMNSClient(Exception e, URLClassLoader classLoader,
+      String endpoint) throws Exception{
+    if (e instanceof InvocationTargetException) {
+      Throwable t = ((InvocationTargetException) e).getTargetException();
+      if (t.getMessage()
+          .contains("The AccessKey Id you provided is not exist.")) {
+        LOG.warn(t.getMessage() + " Try to get AK information from MetaService");
+        String accessKeyId = MetaClient.getRoleAccessKeyId();
+        String accessKeySecret = MetaClient.getRoleAccessKeySecret();
+        String securityToken = MetaClient.getRoleSecurityToken();
+        try {
+          Class cloudAccountClz = classLoader
+              .loadClass("com.aliyun.mns.client.CloudAccount");
+          Class mnsClientClz = classLoader
+              .loadClass("com.aliyun.mns.client.MNSClient");
+          Constructor cons = cloudAccountClz
+              .getConstructor(String.class, String.class, String.class,
+                  String.class);
+          Object cloudAccount =
+              cons.newInstance(accessKeyId, accessKeySecret, endpoint,
+                  securityToken);
+          Method method = cloudAccountClz.getMethod("getMNSClient");
+          Object mnsClient = method.invoke(cloudAccount);
+          MNSClientAgent mnsClientAgent = new MNSClientAgent(mnsClient,
+              mnsClientClz, endpoint, classLoader);
           try {
-            String[] internalDep = getMNSClasses(conf, runLocal);
-            ArrayList<URL> urls = new ArrayList<URL>();
-            if (internalDep != null) {
-              for (String dep : internalDep) {
-                urls.add(new URL("file://" + dep));
-              }
-            }
-            String[] cp;
-            if (SystemUtils.IS_OS_WINDOWS) {
-              cp = System.getProperty("java.class.path").split(";");
-              for (String entity : cp) {
-                urls.add(new URL("file:" + entity));
-              }
-            } else {
-              cp = System.getProperty("java.class.path").split(":");
-              for (String entity : cp) {
-                urls.add(new URL("file://" + entity));
-              }
-            }
-            urlClassLoader = new URLClassLoader(urls.toArray(new URL[0]), null);
-          } catch (Exception e) {
-            throw new RuntimeException("Can not initialize MNS " +
-                "URLClassLoader, " + e.getMessage());
+            // Test ths MNSClient works or not.
+            mnsClientAgent.isOpen();
+            return mnsClient;
+          } catch (Exception e1) {
+            LOG.warn(e1);
+            return null;
           }
+        } catch (Exception e2) {
+          LOG.warn(e2);
+          return null;
         }
       }
     }
-    return urlClassLoader;
-  }
 
-  private static String[] getMNSClasses(Configuration conf, boolean runLocal)
-      throws Exception {
-    String deps = conf.get("fs.oss.sdk.dependency.path");
-    if ((deps == null || deps.isEmpty()) && !runLocal) {
-      throw new RuntimeException("Job dose not run locally, set " +
-          "'fs.oss.sdk.dependency.path' first please.");
-    } else if (deps == null || deps.isEmpty()) {
-      LOG.info("'mapreduce.job.run-local' set true.");
-      return null;
-    } else {
-      return deps.split(",");
-    }
+    return null;
   }
 }

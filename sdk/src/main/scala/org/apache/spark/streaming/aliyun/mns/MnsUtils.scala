@@ -16,6 +16,7 @@
  */
 package org.apache.spark.streaming.aliyun.mns
 
+import org.apache.spark.annotation.Experimental
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.aliyun.mns.pulling.MnsPullingInputDStream
@@ -35,7 +36,8 @@ object MnsUtils {
     *
     *    val conf = new SparkConf().setAppName("Test MNS")
     *    val ssc = new StreamingContext(conf, Milliseconds(2000))
-    *    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename, accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+    *    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename,
+    *      accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
     * }}}
     * @param ssc StreamingContext.
     * @param queueName The name of MNS queue.
@@ -53,7 +55,20 @@ object MnsUtils {
       endpoint: String,
       storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
     ssc.withNamedScope("mns stream as bytes") {
-      new MnsPullingInputDStream(ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel, false)
+      new MnsPullingInputDStream(ssc, queueName, accessKeyId, accessKeySecret,
+        endpoint, storageLevel, false)
+    }
+  }
+
+  @Experimental
+  def createPullingStreamAsBytes(
+      ssc: StreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("mns stream as bytes") {
+      new MnsPullingInputDStream(ssc, queueName, null, null, endpoint,
+        storageLevel, false)
     }
   }
 
@@ -66,7 +81,8 @@ object MnsUtils {
    *
    *    val conf = new SparkConf().setAppName("Test MNS")
    *    val ssc = new StreamingContext(conf, Milliseconds(2000))
-   *    val mnsStream = MnsUtils.createPullingStreamAsRawBytes(ssc, queuename, accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+   *    val mnsStream = MnsUtils.createPullingStreamAsRawBytes(ssc, queuename,
+   *      accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
    * }}}
    * @param ssc StreamingContext.
    * @param queueName The name of MNS queue.
@@ -84,7 +100,20 @@ object MnsUtils {
       endpoint: String,
       storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
     ssc.withNamedScope("mns stream as raw bytes") {
-      new MnsPullingInputDStream(ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel, true)
+      new MnsPullingInputDStream(ssc, queueName, accessKeyId, accessKeySecret,
+        endpoint, storageLevel, true)
+    }
+  }
+
+  @Experimental
+  def createPullingStreamAsRawBytes(
+      ssc: StreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("mns stream as raw bytes") {
+      new MnsPullingInputDStream(ssc, queueName, null, null, endpoint,
+        storageLevel, true)
     }
   }
 
@@ -96,7 +125,8 @@ object MnsUtils {
    *    String endpoint = "http://184*********815.mns-test.aliyuncs.com:1234";
    *
    *    JavaStreamingContext jssc = ...;
-   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils.createPullingStreamAsBytes(
+   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils
+   *      .createPullingStreamAsBytes(
    *        jssc,
    *        queuename,
    *        accesskeyId,
@@ -119,7 +149,18 @@ object MnsUtils {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+    createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret,
+      endpoint, storageLevel)
+  }
+
+  @Experimental
+  def createPullingStreamAsBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createPullingStreamAsBytes(jssc.ssc, queueName, null, null, endpoint,
+      storageLevel)
   }
 
   /**
@@ -130,7 +171,8 @@ object MnsUtils {
    *    String endpoint = "http://184*********815.mns-test.aliyuncs.com:1234";
    *
    *    JavaStreamingContext jssc = ...;
-   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils.createPullingStreamAsRawBytes(
+   *    JavaReceiverInputDStream<Byte[]> mnsStream = MnsUtils
+   *      .createPullingStreamAsRawBytes(
    *        jssc,
    *        queuename,
    *        accesskeyId,
@@ -153,7 +195,18 @@ object MnsUtils {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+    createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId,
+      accessKeySecret, endpoint, storageLevel)
+  }
+
+  @Experimental
+  def createPullingStreamAsRawBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    createPullingStreamAsRawBytes(jssc.ssc, queueName, null, null, endpoint,
+      storageLevel)
   }
 }
 
@@ -166,9 +219,21 @@ class MnsUtilsHelper {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    MnsUtils.createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+    MnsUtils.createPullingStreamAsBytes(jssc.ssc, queueName, accessKeyId,
+      accessKeySecret, endpoint, storageLevel)
   }
 
+  @Experimental
+  def createPullingStreamAsBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    MnsUtils.createPullingStreamAsBytes(jssc.ssc, queueName, null, null,
+      endpoint, storageLevel)
+  }
+
+  @Experimental
   def createPullingStreamAsRawBytes(
       jssc: JavaStreamingContext,
       queueName: String,
@@ -176,6 +241,16 @@ class MnsUtilsHelper {
       accessKeySecret: String,
       endpoint: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    MnsUtils.createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId, accessKeySecret, endpoint, storageLevel)
+    MnsUtils.createPullingStreamAsRawBytes(jssc.ssc, queueName, accessKeyId,
+      accessKeySecret, endpoint, storageLevel)
+  }
+
+  def createPullingStreamAsRawBytes(
+      jssc: JavaStreamingContext,
+      queueName: String,
+      endpoint: String,
+      storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
+    MnsUtils.createPullingStreamAsRawBytes(jssc.ssc, queueName, null, null,
+      endpoint, storageLevel)
   }
 }
