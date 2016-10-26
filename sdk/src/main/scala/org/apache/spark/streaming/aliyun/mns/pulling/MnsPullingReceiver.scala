@@ -49,7 +49,9 @@ private[mns] class MnsPullingReceiver(
   private val receiptsToDelete = new util.ArrayList[String]()
 
   override def onStart(): Unit = {
-    queue = MnsPullingReceiver.getClient(accessKeyId, accessKeySecret, endpoint, runLocal).getQueueRef(queueName)
+    queue = MnsPullingReceiver
+        .getClient(accessKeyId, accessKeySecret, endpoint, runLocal)
+        .getQueueRef(queueName)
     val func: Message => Array[Byte] = if (asRawByte) {
       message => message.getMessageBodyAsRawBytes
     } else {
@@ -60,7 +62,8 @@ private[mns] class MnsPullingReceiver(
       override def run(): Unit = {
         while (true) {
           try {
-            val batchPopMessage = queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
+            val batchPopMessage =
+              queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
             import scala.collection.JavaConversions._
             if (batchPopMessage == null) {
               log.warn("batch get nothing, wait for 5 seconds.")
@@ -74,12 +77,9 @@ private[mns] class MnsPullingReceiver(
               receiptsToDelete.clear()
             }
           } catch {
-            case sex: ServiceException =>
-              log.error(s"[MNS Service Error]", sex)
-            case cex: ClientException =>
-              log.error(s"[MNS Client Error]", cex)
             case ex: Throwable =>
-              log.error(s"[Error]", ex)
+              log.error(s"[MnsPullingReceiver Error]", ex)
+              throw ex
           } finally {
             // Delete received message whatever.
             try {
@@ -89,7 +89,11 @@ private[mns] class MnsPullingReceiver(
               }
             } catch {
               case e: Exception =>
-                log.error(s"[Error] Failed to delete message", e);
+                log.error(s"[Error] Failed to delete message, try again.", e)
+                if (receiptsToDelete != null && receiptsToDelete.size() > 0) {
+                  queue.batchDeleteMessage(receiptsToDelete)
+                  receiptsToDelete.clear()
+                }
             }
           }
         }
@@ -108,9 +112,11 @@ private[mns] class MnsPullingReceiver(
 
     if (workerThread != null) {
       MnsPullingReceiver.client.synchronized {
-        if (MnsPullingReceiver.client != null && MnsPullingReceiver.client.isOpen) {
-          MnsPullingReceiver.client.close()
-          MnsPullingReceiver.client = null
+        var client = MnsPullingReceiver
+            .getClient(accessKeyId, accessKeySecret, endpoint, runLocal)
+        if (client != null && client.isOpen) {
+          client.close()
+          client = null
           Thread.sleep(5 * 1000)
         }
       }
@@ -123,7 +129,7 @@ private[mns] class MnsPullingReceiver(
 }
 
 private[mns] object MnsPullingReceiver extends Logging {
-  private var client: MNSClientAgent = null
+  private var client: MNSClientAgent = _
 
   def getClient(accessKeyId: String,
                 accessKeySecret: String,
@@ -131,7 +137,8 @@ private[mns] object MnsPullingReceiver extends Logging {
                 runLocal: Boolean): MNSClientAgent = {
     if (client == null) {
       try {
-        client = MNSAgentUtil.getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, runLocal)
+        client = MNSAgentUtil
+            .getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, runLocal)
       } catch {
         case e: Exception =>
           throw new RuntimeException("can not initialize mns client", e)
@@ -151,7 +158,7 @@ private[mns] object MnsPullingReceiver extends Logging {
       storageLevel: StorageLevel,
       runLocal: Boolean,
       asRawByte: Boolean): MnsPullingReceiver = {
-    new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds, accessKeyId, accessKeySecret, endpoint,
-      storageLevel, runLocal, asRawByte)
+    new MnsPullingReceiver(queueName, batchMsgSize, pollingWaitSeconds,
+      accessKeyId, accessKeySecret, endpoint, storageLevel, runLocal, asRawByte)
   }
 }

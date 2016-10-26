@@ -32,10 +32,14 @@ class MnsPullingInputDStream(
     storageLevel: StorageLevel,
     asRawByte: Boolean)
   extends ReceiverInputDStream[Array[Byte]](_ssc){
-  val batchMsgSize = _ssc.sc.getConf.getInt("spark.mns.batchMsg.size", 16)
-  val pollingWaitSeconds = _ssc.sc.getConf.getInt("spark.mns.pollingWait.seconds", 30)
-  val confBroadcast = new SerializableConfiguration(_ssc.sc.hadoopConfiguration)
-  val runLocal = _ssc.sc.hadoopConfiguration.getBoolean("mapreduce.job.run-local", false)
+  val batchMsgSize =
+    _ssc.sc.getConf.getInt("spark.mns.batchMsg.size", 16)
+  val pollingWaitSeconds =
+    _ssc.sc.getConf.getInt("spark.mns.pollingWait.seconds", 30)
+  val confBroadcast =
+    new SerializableConfiguration(_ssc.sc.hadoopConfiguration)
+  val runLocal =
+    _ssc.sc.hadoopConfiguration.getBoolean("mapreduce.job.run-local", false)
 
   override def getReceiver(): Receiver[Array[Byte]] =
     MnsPullingReceiver(

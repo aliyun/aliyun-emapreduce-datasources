@@ -27,30 +27,82 @@ import java.util.List;
 public class CloudQueueAgent {
   private Object cloudQueue;
   private Class cloudQueueClz;
+  private String endpoint;
+  private String queueName;
   private Gson gson = new Gson();
   private URLClassLoader urlClassLoader;
 
   public CloudQueueAgent(Object cloudQueue, Class cloudQueueClz,
-      URLClassLoader classLoader) {
+      String endpoint, String queueName, URLClassLoader classLoader) {
     this.cloudQueue = cloudQueue;
     this.cloudQueueClz = cloudQueueClz;
+    this.endpoint = endpoint;
+    this.queueName = queueName;
     this.urlClassLoader = classLoader;
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<Message> batchPopMessage(int batchMsgSize, int pollingWaitSeconds,
+      boolean retry) throws Exception {
+    try {
+      Method method =
+          cloudQueueClz.getMethod("batchPopMessage", Integer.TYPE, Integer.TYPE);
+      Object ret = method.invoke(cloudQueue, batchMsgSize, pollingWaitSeconds);
+      return gson.fromJson(gson.toJson(ret), new TypeToken<List<Message>>() {
+      }.getType());
+    } catch (Exception e) {
+      if (retry) {
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
+            urlClassLoader, endpoint);
+        if (mnsClient != null) {
+          Class mnsClientClz = urlClassLoader
+              .loadClass("com.aliyun.mns.client.MNSClient");
+          Method method = mnsClientClz.getMethod("getQueueRef", String.class);
+          cloudQueue = method.invoke(mnsClient, queueName);
+          return batchPopMessage(batchMsgSize, pollingWaitSeconds, false);
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   @SuppressWarnings("unchecked")
   public List<Message> batchPopMessage(int batchMsgSize, int pollingWaitSeconds)
       throws Exception {
-    Method method =
-        cloudQueueClz.getMethod("batchPopMessage", Integer.TYPE, Integer.TYPE);
-    Object ret = method.invoke(cloudQueue, batchMsgSize, pollingWaitSeconds);
-    return gson.fromJson(gson.toJson(ret), new TypeToken<List<Message>>() {
-    }.getType());
+    return batchPopMessage(batchMsgSize, pollingWaitSeconds, true);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void batchDeleteMessage(List<String> receiptsToDelete, boolean retry)
+      throws Exception {
+    try {
+      Method method = cloudQueueClz.getMethod("batchDeleteMessage", List.class);
+      method.invoke(cloudQueue, receiptsToDelete);
+    } catch (Exception e) {
+      if (retry) {
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
+            urlClassLoader, endpoint);
+        if (mnsClient != null) {
+          Class mnsClientClz = urlClassLoader
+              .loadClass("com.aliyun.mns.client.MNSClient");
+          Method method = mnsClientClz.getMethod("getQueueRef", String.class);
+          cloudQueue = method.invoke(mnsClient, queueName);
+          batchDeleteMessage(receiptsToDelete, false);
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   @SuppressWarnings("unchecked")
   public void batchDeleteMessage(List<String> receiptsToDelete)
       throws Exception {
-    Method method = cloudQueueClz.getMethod("batchDeleteMessage", List.class);
-    method.invoke(cloudQueue, receiptsToDelete);
+    batchDeleteMessage(receiptsToDelete, true);
   }
 }
