@@ -22,7 +22,7 @@ import java.io.EOFException
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
-import com.aliyun.odps.tunnel.{DataTunnel, DownloadSession}
+import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
@@ -75,9 +75,9 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
       val odps = new Odps(account)
       odps.setDefaultProject(project)
       odps.setEndpoint(odpsUrl)
-      val tunnel = new DataTunnel(odps)
+      val tunnel = new TableTunnel(odps)
       tunnel.setEndpoint(tunnelUrl)
-      var downloadSession: DownloadSession = null
+      var downloadSession: TableTunnel#DownloadSession = null
       if(part.equals("Non-Partitioned"))
         downloadSession = tunnel.createDownloadSession(project, table)
       else {
@@ -133,9 +133,9 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
     val odps = new Odps(account)
     odps.setDefaultProject(project)
     odps.setEndpoint(odpsUrl)
-    val tunnel = new DataTunnel(odps)
+    val tunnel = new TableTunnel(odps)
     tunnel.setEndpoint(tunnelUrl)
-    var downloadSession: DownloadSession = null
+    var downloadSession: TableTunnel#DownloadSession = null
     if(part.equals("Non-Partitioned"))
       downloadSession = tunnel.createDownloadSession(project, table)
     else {
