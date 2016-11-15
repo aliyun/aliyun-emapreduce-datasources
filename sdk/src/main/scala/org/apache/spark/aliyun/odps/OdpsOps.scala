@@ -70,7 +70,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table, which job are reading.
    * @param partition The name of partition, when job is reading a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param transfer A function for transferring ODPS table to
    *        [[org.apache.spark.api.java.JavaRDD]]. We apply the function to all
    *        [[com.aliyun.odps.data.Record]] of table.
@@ -151,7 +151,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
    * @param partition The name of partition, when job is writing a
-   *         `Partitioned Table`, like pt='xxx'.
+   *         `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be
    *        written into a ODPS table.
    * @param transfer A function for transferring
@@ -193,7 +193,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
    * @param partition The name of partition, when job is writing a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be
    *        written into a ODPS table.
    * @param transfer A function for transferring
@@ -237,7 +237,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table to which the job is writing.
    * @param partition The name of partition, when job is writing a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param javaRdd A [[org.apache.spark.api.java.JavaRDD]] which will be written
    *        into a ODPS table.
    * @param transfer A function for transferring
@@ -318,7 +318,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
    * @param partition The name of partition, when job is reading a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param transfer A function for transferring ODPS table to
    *        [[org.apache.spark.rdd.RDD]]. We apply the function to all
    *        [[com.aliyun.odps.data.Record]] of table.
@@ -391,7 +391,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table, which job is reading.
    * @param partition The name of partition, when job is reading a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param cols Implying to load which columns
    * @param numPartition The number of RDD partition, implying the concurrency
    *        to read ODPS table.
@@ -461,7 +461,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table, which job is writing.
    * @param partition The name of partition, when job is writing a
-   *        `Partitioned Table`, like pt='xxx'.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param rdd A [[org.apache.spark.rdd.RDD]] which will be written into a
    *        ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.rdd.RDD]]
@@ -493,7 +493,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * @param project The name of ODPS project.
    * @param table The name of table, which job is writing.
    * @param partition The name of partition, when job is writing a
-   *        `Partitioned Table`.
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param rdd A [[org.apache.spark.rdd.RDD]] which will be written into a
    *        ODPS table.
    * @param transfer A function for transferring [[org.apache.spark.rdd.RDD]]
@@ -527,8 +527,8 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
    * }}}
    * @param project The name of ODPS project.
    * @param table The name of table, which job is writing.
-   * @param partition The name of partition, when job is writing a Partitioned
-   *        Table, lie pt='xxx'.
+   * @param partition The name of partition, when job is writing a
+   *        `Partitioned Table`, like pt='xxx',ds='yyy'.
    * @param rdd A org.apache.spark.rdd.RDD which will be written into a ODPS table.
    * @param transfer A function for transferring org.apache.spark.rdd.RDD to
    *        ODPS table. We apply the function to all elements of RDD.
