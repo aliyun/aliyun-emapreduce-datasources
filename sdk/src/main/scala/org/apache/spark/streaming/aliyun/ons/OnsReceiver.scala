@@ -25,7 +25,7 @@ import com.aliyun.openservices.ons.api.Message
 import com.aliyun.openservices.ons.api.MessageListener
 import com.aliyun.openservices.ons.api.PropertyKeyConst
 import com.aliyun.openservices.ons.api.impl.ONSFactoryImpl
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 

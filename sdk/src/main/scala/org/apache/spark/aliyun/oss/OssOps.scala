@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark._
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 
 /**
@@ -172,8 +173,7 @@ class OssOps(
       fs.initialize(tmpPath.toUri, conf)
       val out = fs.create(tmpPath)
       var recordsWritten = 0L
-      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
-      context.taskMetrics.outputMetrics = Some(outputMetrics)
+      val outputMetrics = context.taskMetrics.outputMetrics
 
       while(iter.hasNext) {
         val value = iter.next()

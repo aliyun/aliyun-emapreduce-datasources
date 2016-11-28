@@ -19,7 +19,7 @@ package org.apache.spark.streaming.aliyun.mns.pulling
 import java.util
 
 import com.aliyun.mns.model.Message
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.aliyun.mns.adapter.{CloudQueueAgent, MNSAgentUtil, MNSClientAgent}
 import org.apache.spark.streaming.receiver.Receiver

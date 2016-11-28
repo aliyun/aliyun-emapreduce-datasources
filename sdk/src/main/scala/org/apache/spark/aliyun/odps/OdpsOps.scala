@@ -27,11 +27,11 @@ import com.aliyun.odps.{Column, Odps, OdpsException, OdpsType, Partition, Partit
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function.{Function2 => JFunction2, Function3 => JFunction3}
-import org.apache.spark.executor.{DataWriteMethod, OutputMetrics}
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{StructField, _}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.{Logging, SparkContext, TaskContext}
+import org.apache.spark.{SparkContext, TaskContext}
 
 import scala.reflect.ClassTag
 
@@ -585,8 +585,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
 
       // for odps metrics monitor
       var recordsWritten = 0L
-      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
-      context.taskMetrics.outputMetrics = Some(outputMetrics)
+      val outputMetrics = context.taskMetrics.outputMetrics
 
       while (iter.hasNext) {
         val value = iter.next()
@@ -657,8 +656,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
 
       // for odps metrics monitor
       var recordsWritten = 0L
-      val outputMetrics = new OutputMetrics(DataWriteMethod.Hadoop)
-      context.taskMetrics.outputMetrics = Some(outputMetrics)
+      val outputMetrics = context.taskMetrics.outputMetrics
 
       while (iter.hasNext) {
         val value = iter.next()

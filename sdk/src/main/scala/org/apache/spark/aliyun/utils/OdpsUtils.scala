@@ -21,7 +21,7 @@ package org.apache.spark.aliyun.utils
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.task.SQLTask
 import com.aliyun.odps.{Partition, _}
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 
 class OdpsUtils(odps: Odps) extends Logging{
 
@@ -68,7 +68,6 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
    * @param pname The name of ODPS table partition, if partitioned table.
-   * @returns
    */
   def checkTableAndPartition(
       project: String,

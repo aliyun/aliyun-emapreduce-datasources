@@ -17,19 +17,23 @@
  */
 package org.apache.spark.aliyun.odps
 
-import java.io.{FileOutputStream, DataOutputStream}
+import java.io.{DataOutputStream, FileOutputStream}
 
 import org.apache.spark.api.python.PythonRDD
-import org.apache.spark.{Logging, SparkException}
-import org.apache.spark.api.java.{JavaSparkContext, JavaRDD}
+import org.apache.spark.SparkException
+import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.OdpsType
-import net.razorvine.pickle.{Unpickler, Pickler}
+import net.razorvine.pickle.{Pickler, Unpickler}
 import java.text.SimpleDateFormat
 import java.util.{List => JList}
+
+import org.apache.spark.internal.Logging
+
 import scala.collection.JavaConversions._
 import org.apache.spark.rdd.RDD
+
 import scala.collection.mutable
 
 class PythonOdpsAPI(

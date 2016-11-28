@@ -17,9 +17,11 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition}
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
+
+import scala.reflect.classTag
 
 private[logservice] class LoghubReceiver(
     mConsumeInOrder: Boolean,
@@ -36,7 +38,7 @@ private[logservice] class LoghubReceiver(
     storageLevel: StorageLevel,
     cursorPosition: LogHubCursorPosition,
     mLoghubCursorStartTime: Int)
-  extends Receiver[Array[Byte]](storageLevel) with Logging {
+  extends Receiver(storageLevel)(classTag[Array[Byte]]) with Logging {
   receiver =>
 
   private var workerThread: Thread = null

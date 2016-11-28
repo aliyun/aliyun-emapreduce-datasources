@@ -26,10 +26,9 @@ import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.hadoop.mapred.FileSplit
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
-
-import scala.reflect.ClassTag
 
 class OssPartition(
     rddId: Int,
@@ -92,8 +91,7 @@ class OssRDD(
       logInfo("Input split: " + split.inputSplit)
       val ossInputUtils = new OssInputUtils(conf)
       val reader = ossInputUtils.getOssRecordReader(split.inputSplit.value, conf)
-      val inputMetrics =
-        context.taskMetrics.getInputMetricsForReadMethod(DataReadMethod.Hadoop)
+      val inputMetrics = context.taskMetrics.inputMetrics
 
       val key: LongWritable = reader.createKey()
       val value: Text = reader.createValue()

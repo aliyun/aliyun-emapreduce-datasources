@@ -26,6 +26,7 @@ import com.aliyun.odps.tunnel.{DataTunnel, DownloadSession}
 import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
 
@@ -85,10 +86,10 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
         downloadSession = tunnel.createDownloadSession(project, table, partitionSpec)
       }
       val reader = downloadSession.openRecordReader(split.start, split.count)
-      val inputMetrics = context.taskMetrics.getInputMetricsForReadMethod(DataReadMethod.Hadoop)
+      val inputMetrics = context.taskMetrics.inputMetrics
 
-      context.addOnCompleteCallback {
-        () => closeIfNeeded()
+      context.addTaskCompletionListener {
+        context => closeIfNeeded()
       }
 
       override def getNext() = {

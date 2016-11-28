@@ -23,7 +23,7 @@ import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 
 import scala.collection.JavaConversions._
 
@@ -78,7 +78,6 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver)
       log.getContentsList.foreach(content => {
         obj.put(content.getKey, content.getValue)
       })
-
       receiver.store(obj.toJSONString.getBytes)
     } catch {
       case e: Exception =>

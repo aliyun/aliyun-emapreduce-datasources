@@ -2,8 +2,9 @@ package org.apache.spark.aliyun.odps
 
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record
-import org.apache.spark.{LocalSparkContext, Logging, SparkContext}
+import org.apache.spark.{LocalSparkContext, SparkContext}
 import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.internal.Logging
 import org.scalatest.FunSuite
 
 class OdpsRDDSuite extends FunSuite with LocalSparkContext with Logging {
