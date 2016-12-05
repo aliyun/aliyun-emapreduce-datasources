@@ -18,76 +18,63 @@
 
 package com.aliyun.openservices.tablestore.hadoop;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.io.DataInput;
-import java.io.ObjectInput;
 import java.io.DataOutput;
+import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.IOException;
-import java.io.EOFException;
 import java.io.Externalizable;
+
 import org.apache.hadoop.io.Writable;
-import com.alicloud.openservices.tablestore.model.Row;
-import com.alicloud.openservices.tablestore.model.Column;
+
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
+import com.alicloud.openservices.tablestore.model.Column;
+import com.alicloud.openservices.tablestore.model.RowChange;
+import com.alicloud.openservices.tablestore.model.RowDeleteChange;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class RowWritable implements Writable, Externalizable {
-    private Row row = null;
+public class RowDeleteChangeWritable implements Writable, Externalizable {
+    private RowDeleteChange delRow;
 
-    public RowWritable() {
+    public RowDeleteChangeWritable() {
     }
 
-    public RowWritable(Row row) {
-        Preconditions.checkNotNull(row, "row should not be null.");
-        this.row = row;
+    public RowDeleteChangeWritable(RowDeleteChange delRow) {
+        Preconditions.checkNotNull(delRow, "delRow must be nonnull.");
+        this.delRow = delRow;
     }
 
-    public Row getRow() {
-        return row;
-    }
-
-    public void setRow(Row row) {
-        Preconditions.checkNotNull(row, "row should not be null.");
-        this.row = row;
+    public RowDeleteChange getRowDeleteChange() {
+        return delRow;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        Preconditions.checkNotNull(row, "column should not be null.");
-        out.writeByte(WritableConsts.ROW);
-        new PrimaryKeyWritable(row.getPrimaryKey()).write(out);
-        Column[] cols = row.getColumns();
-        out.writeInt(cols.length);
-        for(int i = 0; i < cols.length; ++i) {
-            new ColumnWritable(cols[i]).write(out);
-        }
+        out.writeUTF(delRow.getTableName());
+        new PrimaryKeyWritable(delRow.getPrimaryKey()).write(out);
+        new ConditionWritable(delRow.getCondition()).write(out);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        byte tagRow = in.readByte();
-        if (tagRow != WritableConsts.ROW) {
-            throw new IOException("broken input stream");
-        }
+        String tableName = in.readUTF();
         PrimaryKey pkey = PrimaryKeyWritable.read(in).getPrimaryKey();
-        int sz = in.readInt();
-        Column[] cols = new Column[sz];
-        for(int i = 0; i < sz; ++i) {
-            cols[i] = ColumnWritable.read(in).getColumn();
-        }
-        row = new Row(pkey, cols);
+        RowDeleteChange delRow = new RowDeleteChange(tableName, pkey);
+        delRow.setCondition(ConditionWritable.read(in).getCondition());
+        this.delRow = delRow;
     }
 
-    public static RowWritable read(DataInput in) throws IOException {
-        RowWritable w = new RowWritable();
+    public static RowDeleteChangeWritable read(DataInput in) throws IOException {
+        RowDeleteChangeWritable w = new RowDeleteChangeWritable();
         w.readFields(in);
         return w;
     }
 
     @Override
     public void readExternal(ObjectInput in)
-        throws IOException,
-               ClassNotFoundException
+        throws IOException, ClassNotFoundException
     {
         this.readFields(in);
     }
@@ -97,4 +84,3 @@ public class RowWritable implements Writable, Externalizable {
         this.write(out);
     }
 }
-

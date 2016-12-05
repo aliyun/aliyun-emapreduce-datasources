@@ -40,6 +40,7 @@ import com.alicloud.openservices.tablestore.model.Direction;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.model.DescribeTableRequest;
 import com.alicloud.openservices.tablestore.model.DescribeTableResponse;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
 import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
 import com.aliyun.openservices.tablestore.hadoop.RowWritable;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
@@ -62,8 +63,7 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         logger.debug("columns to get: {}", columns);
         List<org.apache.hadoop.mapreduce.InputSplit> splits;
         try {
-            ots = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .newOtsClient(dest);
+            ots = TableStore.newOtsClient(dest);
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .addCriteria(
                     dest,
@@ -98,8 +98,7 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                     from.get(TableStoreConsts.ACCESS_KEY_ID),
                     from.get(TableStoreConsts.ACCESS_KEY_SECRET),
                     from.get(TableStoreConsts.SECURITY_TOKEN));
-            com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setCredential(to, cred);
+            TableStore.setCredential(to, cred);
         }
         {
             String endpoint = from.get(TableStoreConsts.ENDPOINT);
@@ -112,8 +111,7 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                 ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
                     endpoint, instance);
             }
-            com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setEndpoint(to, ep);
+            TableStore.setEndpoint(to, ep);
         }
         return to;
     }

@@ -32,8 +32,6 @@ import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class MultiCriteria implements Writable {
-    public static final String kTableStoreCriteria = "TABLESTORE_CRITERIA";
-
     private List<RangeRowQueryCriteria> criteria = new ArrayList<RangeRowQueryCriteria>();
 
     public MultiCriteria() {

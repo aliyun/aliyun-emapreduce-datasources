@@ -64,19 +64,21 @@ public class WritableConsts {
     public static final byte FILTER_NOT = 80;
     public static final byte FILTER_AND = 83;
     public static final byte FILTER_OR = 85;
-    // public static final byte x = 86;
-    // public static final byte x = 89;
-    // public static final byte x = 90;
-    // public static final byte x = 92;
-    // public static final byte x = 95;
-    // public static final byte x = 96;
-    // public static final byte x = 99;
-    // public static final byte x = 101;
-    // public static final byte x = 102;
-    // public static final byte x = 105;
-    // public static final byte x = 106;
-    // public static final byte x = 108;
-    // public static final byte x = 111;
+
+    public static final byte BATCH_WRITE = 86;
+    public static final byte PUT_ROW = 89;
+    public static final byte DELETE_ROW = 90;
+    public static final byte UPDATE_ROW = 92;
+    public static final byte UPDATE_ROW_DATA = 95;
+    public static final byte UPDATE_ROW_DELETE_ONE_VERSION = 96;
+    public static final byte UPDATE_ROW_DELETE_ALL_VERSIONS = 99;
+
+    public static final byte CONDITION = 101;
+    public static final byte ROW_CONDITION_IGNORE = 102;
+    public static final byte ROW_CONDITION_EXPECT_EXIST = 105;
+    public static final byte ROW_CONDITION_EXPECT_NOT_EXIST = 106;
+    public static final byte COLUMN_CONDITION_NONE = 108;
+    public static final byte COLUMN_CONDITION_PRESENT = 111;
     // public static final byte x = 113;
     // public static final byte x = 114;
     // public static final byte x = 116;

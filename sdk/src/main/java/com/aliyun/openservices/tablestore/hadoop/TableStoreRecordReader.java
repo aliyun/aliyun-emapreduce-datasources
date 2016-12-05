@@ -99,13 +99,13 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
 
         Credential cred;
         {
-            String in = cfg.get(Credential.kTableStoreCredential);
+            String in = cfg.get(TableStore.CREDENTIAL);
             Preconditions.checkNotNull(in, "Must set \"TABLESTORE_CREDENTIAL\"");
             cred = Credential.deserialize(in);
         }
         Endpoint ep;
         {
-            String in = cfg.get(Endpoint.kTableStoreEndpoint);
+            String in = cfg.get(TableStore.ENDPOINT);
             Preconditions.checkNotNull(in, "Must set \"TABLESTORE_ENDPOINT\"");
             ep = Endpoint.deserialize(in);
         }

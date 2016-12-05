@@ -38,6 +38,7 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 import com.aliyun.openservices.tablestore.hadoop.Credential;
 import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
 import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
 import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
 import com.aliyun.openservices.tablestore.hadoop.RowWritable;
@@ -147,19 +148,17 @@ public class RowCounter {
         }
 
         SparkConf sparkConf = new SparkConf().setAppName("RowCounter");
-        JavaSparkContext sc = new JavaSparkContext(sparkConf);
-
-        Configuration hadoopConf = new Configuration();
-        TableStoreInputFormat.setCredential(
-            hadoopConf,
-            new Credential(accessKeyId, accessKeySecret, securityToken));
-        Endpoint ep = (instance == null)
-            ? new Endpoint(endpoint)
-            : new Endpoint(endpoint, instance);
-        TableStoreInputFormat.setEndpoint(hadoopConf, ep);
-        TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
-
+        JavaSparkContext sc = null;
         try {
+            sc = new JavaSparkContext(sparkConf);
+            Configuration hadoopConf = new Configuration();
+            TableStore.setCredential(
+                hadoopConf,
+                new Credential(accessKeyId, accessKeySecret, securityToken));
+            Endpoint ep = new Endpoint(endpoint, instance);
+            TableStore.setEndpoint(hadoopConf, ep);
+            TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
+
             JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
                 hadoopConf,
                 TableStoreInputFormat.class,
@@ -168,7 +167,9 @@ public class RowCounter {
             System.out.println(
                 new Formatter().format("TOTAL: %d", rdd.count()).toString());
         } finally {
-            sc.close();
+            if (sc != null) {
+                sc.close();
+            }
         }
     }
 }
