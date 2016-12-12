@@ -37,7 +37,6 @@ object OnsUtils {
    *    val subExpression = "*"
    *    val accessKeyId = "kj7aY*******UYx6"
    *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
-   *    val accessKeySecret = ""
    *
    *    def func: Message => Array[Byte] = msg => msg.getBody
    *
@@ -88,7 +87,6 @@ object OnsUtils {
    *    val consumerIdTopicTags = Array(("ConsumerID1", "sample-topic1", "*"))
    *    val accessKeyId = "kj7aY*******UYx6"
    *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
-   *    val accessKeySecret = ""
    *
    *    def func: Message => Array[Byte] = msg => msg.getBody
    *
@@ -142,7 +140,6 @@ object OnsUtils {
    *    String subExpression = "*";
    *    String accessKeyId = "kj7aY*******UYx6";
    *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
-   *    String accessKeySecret = "";
    *
    *    static class ReadMessage implements Function<Message, Byte[]> {
    *        @Override
