@@ -78,6 +78,8 @@ public class ClientWorker implements Runnable {
 
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
       this.mClient.SetSecurityToken(securityToken);
+    } else {
+      this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
     }
 
     this.mLogHubClientAdapter = new LogHubClientAdapter(
