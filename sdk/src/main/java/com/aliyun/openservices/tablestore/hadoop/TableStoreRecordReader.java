@@ -43,8 +43,7 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
     private Iterator<Row> results;
     private long rowCounter;
     
-    @Override
-    public void close() {
+    @Override public void close() {
         if (ots != null) {
             ots.shutdown();
             ots = null;
@@ -56,23 +55,19 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
         rowCounter = 0;
     }
 
-    @Override
-    public PrimaryKeyWritable getCurrentKey() {
+    @Override public PrimaryKeyWritable getCurrentKey() {
         return new PrimaryKeyWritable(currentKey);
     }
 
-    @Override
-    public RowWritable getCurrentValue() {
+    @Override public RowWritable getCurrentValue() {
         return new RowWritable(currentValue);
     }
 
-    @Override
-    public float getProgress() {
+    @Override public float getProgress() {
         return 0;
     }
 
-    @Override
-    public boolean nextKeyValue() {
+    @Override public boolean nextKeyValue() {
         if (!results.hasNext()) {
             logger.info("total rows: {}", rowCounter);
             return false;
@@ -86,8 +81,7 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
         return true;
     }
 
-    @Override
-    public void initialize(InputSplit split, TaskAttemptContext ctx) {
+    @Override public void initialize(InputSplit split, TaskAttemptContext ctx) {
         initialize(split, ctx.getConfiguration());
     }
 

@@ -38,22 +38,17 @@ import com.alicloud.openservices.tablestore.SyncClientInterface;
 public class TableStoreOutputFormat implements OutputFormat<Writable, BatchWriteWritable> {
     private static Logger logger = LoggerFactory.getLogger(TableStoreOutputFormat.class);
 
-    @Override
-    public RecordWriter<Writable, BatchWriteWritable> getRecordWriter(
-        FileSystem ignored,
-        JobConf job,
-        String name,
-        Progressable progress)
-        throws IOException
-    {
+    @Override public RecordWriter<Writable, BatchWriteWritable> getRecordWriter(
+        FileSystem ignored, JobConf job, String name, Progressable progress)
+        throws IOException {
         String table = job.get(TableStoreConsts.TABLE_NAME);
         Configuration conf = translateConfig(job);
         SyncClientInterface ots = TableStore.newOtsClient(conf);
         final org.apache.hadoop.mapreduce.RecordWriter<Writable, BatchWriteWritable> writer =
             new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordWriter(ots, table);
         return new org.apache.hadoop.mapred.RecordWriter<Writable, BatchWriteWritable>() {
-            @Override
-            public void write(Writable any, BatchWriteWritable rows) throws IOException {
+            @Override public void write(Writable any, BatchWriteWritable rows)
+                throws IOException {
                 try {
                     writer.write(any, rows);
                 } catch(InterruptedException ex) {
@@ -61,8 +56,7 @@ public class TableStoreOutputFormat implements OutputFormat<Writable, BatchWrite
                 }
             }
 
-            @Override
-            public void close(Reporter reporter) throws IOException {
+            @Override public void close(Reporter reporter) throws IOException {
                 try {
                     writer.close(null);
                 } catch(InterruptedException ex) {
@@ -72,12 +66,8 @@ public class TableStoreOutputFormat implements OutputFormat<Writable, BatchWrite
         };
     }
 
-    @Override
-    public void checkOutputSpecs(
-        FileSystem ignored,
-        JobConf job)
-        throws IOException
-    {
+    @Override public void checkOutputSpecs(FileSystem ignored, JobConf job)
+        throws IOException {
         Configuration dest = translateConfig(job);
         com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat.checkTable(dest);
     }

@@ -51,8 +51,7 @@ public class RowWritable implements Writable, Externalizable {
         this.row = row;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(row, "column should not be null.");
         out.writeByte(WritableConsts.ROW);
         new PrimaryKeyWritable(row.getPrimaryKey()).write(out);
@@ -63,8 +62,7 @@ public class RowWritable implements Writable, Externalizable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tagRow = in.readByte();
         if (tagRow != WritableConsts.ROW) {
             throw new IOException("broken input stream");
@@ -84,16 +82,12 @@ public class RowWritable implements Writable, Externalizable {
         return w;
     }
 
-    @Override
-    public void readExternal(ObjectInput in)
-        throws IOException,
-               ClassNotFoundException
-    {
+    @Override public void readExternal(ObjectInput in)
+        throws IOException, ClassNotFoundException {
         this.readFields(in);
     }
 
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    @Override public void writeExternal(ObjectOutput out) throws IOException {
         this.write(out);
     }
 }

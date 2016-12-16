@@ -32,8 +32,7 @@ public class TableStoreInputSplit implements InputSplit, Writable {
     }
 
     public TableStoreInputSplit(
-        com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit delegated)
-    {
+        com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit delegated) {
         this.delegated = delegated;
     }
 
@@ -41,8 +40,7 @@ public class TableStoreInputSplit implements InputSplit, Writable {
         return this.delegated;
     }
 
-    @Override
-    public long getLength() throws IOException {
+    @Override public long getLength() throws IOException {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
         try {
             return this.delegated.getLength();
@@ -52,8 +50,7 @@ public class TableStoreInputSplit implements InputSplit, Writable {
         }
     }
 
-    @Override
-    public String[] getLocations() throws IOException {
+    @Override public String[] getLocations() throws IOException {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
         try {
             return this.delegated.getLocations();
@@ -63,16 +60,14 @@ public class TableStoreInputSplit implements InputSplit, Writable {
         }
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
         this.delegated.write(out);
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
-        this.delegated = com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit
-            .read(in);
+    @Override public void readFields(DataInput in) throws IOException {
+        this.delegated =
+            com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit.read(in);
     }
 }
 

@@ -55,10 +55,8 @@ public static void main(String[] args) {
         TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
 
         JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
-                hadoopConf,
-                TableStoreInputFormat.class,
-                PrimaryKeyWritable.class,
-                RowWritable.class);
+                hadoopConf, TableStoreInputFormat.class,
+                PrimaryKeyWritable.class, RowWritable.class);
         System.out.println(
             new Formatter().format("TOTAL: %d", rdd.count()).toString());
     } finally {
@@ -74,11 +72,11 @@ If you prefer to scala, please replace `JavaSparkContext` to `SparkContext` and 
 Let it run.
 
 ```
-$ bin/spark-submit --master local --jars emr-sdk_2.10-1.3.0.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
+$ bin/spark-submit --master local --jars emr-sdk_2.10-1.3.1-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
 TOTAL: 9
 ```
 
 FYI,
 * for more details about `TableStoreInputFormat`, please refer to (HadoopMR-on-TableStore.md).
-* in emr-examples_2.10-1.3.0.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
+* in emr-examples_2.10-1.3.1-SNAPSHOT.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
 

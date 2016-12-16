@@ -42,8 +42,7 @@ public class ColumnWritable implements Writable {
         return column;
     }
     
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(column, "column should not be null.");
         if (column.hasSetTimestamp()) {
             out.writeByte(WritableConsts.COLUMN_WITH_TIMESTAMP);
@@ -57,8 +56,7 @@ public class ColumnWritable implements Writable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tagColumn = in.readByte();
         if (tagColumn == WritableConsts.COLUMN_WITHOUT_TIMESTAMP) {
             String name = in.readUTF();

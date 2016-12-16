@@ -146,36 +146,25 @@ public class TableStoreOutputFormatExample {
 
     public static class OwnerMapper
       extends Mapper<PrimaryKeyWritable, RowWritable, Text, MapWritable> {
-        @Override
-        public void map(
-            PrimaryKeyWritable key, RowWritable row, Context context)
-            throws IOException, InterruptedException {
-            PrimaryKeyColumn pet = key
-                .getPrimaryKey()
-                .getPrimaryKeyColumn("name");
+        @Override public void map(PrimaryKeyWritable key, RowWritable row,
+            Context context) throws IOException, InterruptedException {
+            PrimaryKeyColumn pet = key.getPrimaryKey().getPrimaryKeyColumn("name");
             Column owner = row.getRow().getLatestColumn("owner");
             Column species = row.getRow().getLatestColumn("species");
             MapWritable m = new MapWritable();
-            m.put(
-                new Text(pet.getValue().asString()),
+            m.put(new Text(pet.getValue().asString()),
                 new Text(species.getValue().asString()));
-            context.write(
-                new Text(owner.getValue().asString()),
-                m);
+            context.write(new Text(owner.getValue().asString()), m);
         }
     }
 
     public static class IntoTableReducer
       extends Reducer<Text,MapWritable,Text,BatchWriteWritable> {
 
-        @Override
-        public void reduce(
-            Text owner, Iterable<MapWritable> pets, Context context)
-            throws IOException, InterruptedException {
+        @Override public void reduce(Text owner, Iterable<MapWritable> pets,
+            Context context) throws IOException, InterruptedException {
             List<PrimaryKeyColumn> pkeyCols = new ArrayList<PrimaryKeyColumn>();
-            pkeyCols.add(
-                new PrimaryKeyColumn(
-                    "owner",
+            pkeyCols.add(new PrimaryKeyColumn("owner",
                     PrimaryKeyValue.fromString(owner.toString())));
             PrimaryKey pkey = new PrimaryKey(pkeyCols);
             List<Column> attrs = new ArrayList<Column>();
@@ -183,9 +172,7 @@ public class TableStoreOutputFormatExample {
                 for(Map.Entry<Writable, Writable> pet: petMap.entrySet()) {
                     Text name = (Text) pet.getKey();
                     Text species = (Text) pet.getValue();
-                    attrs.add(
-                        new Column(
-                            name.toString(),
+                    attrs.add(new Column(name.toString(),
                             ColumnValue.fromString(species.toString())));
                 }
             }
@@ -203,12 +190,8 @@ public class TableStoreOutputFormatExample {
             printUsage();
             System.exit(1);
         }
-        if (endpoint == null ||
-            accessKeyId == null ||
-            accessKeySecret == null ||
-            inputTable == null ||
-            outputTable == null)
-        {
+        if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
+            inputTable == null || outputTable == null) {
             printUsage();
             System.exit(1);
         }

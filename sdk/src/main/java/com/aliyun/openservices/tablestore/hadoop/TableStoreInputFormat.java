@@ -56,11 +56,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret)
-    {
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret) {
         TableStore.setCredential(job, accessKeyId, accessKeySecret);
     }
 
@@ -69,12 +66,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret,
-        String securityToken)
-    {
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret, String securityToken) {
         TableStore.setCredential(job, accessKeyId, accessKeySecret, securityToken);
     }
 
@@ -83,10 +76,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        Configuration conf,
-        Credential cred)
-    {
+    public static void setCredential(Configuration conf, Credential cred) {
         TableStore.setCredential(conf, cred);
     }
 
@@ -95,10 +85,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      *
      * Same as TableStore.setEndpoint().
      */
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint)
-    {
+    public static void setEndpoint(JobContext job, String endpoint) {
         TableStore.setEndpoint(job, endpoint);
     }
 
@@ -107,11 +94,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      *
      * Same as TableStore.setEndpoint().
      */
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint,
-        String instance)
-    {
+    public static void setEndpoint(JobContext job, String endpoint, String instance) {
         TableStore.setEndpoint(job, endpoint, instance);
     }
 
@@ -167,12 +150,9 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         conf.unset(CRITERIA);
     }
     
-    @Override
-    public RecordReader<PrimaryKeyWritable, RowWritable> createRecordReader(
-        InputSplit split,
-        TaskAttemptContext context)
-        throws IOException,
-               InterruptedException {
+    @Override public RecordReader<PrimaryKeyWritable, RowWritable> createRecordReader(
+        InputSplit split, TaskAttemptContext context)
+        throws IOException, InterruptedException {
         TableStoreRecordReader rdr = new TableStoreRecordReader();
         rdr.initialize(split, context);
         return rdr;
@@ -180,8 +160,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
 
     @Override
     public List<InputSplit> getSplits(JobContext job)
-        throws IOException, InterruptedException
-    {
+        throws IOException, InterruptedException {
         Configuration conf = job.getConfiguration();
         SyncClientInterface ots = TableStore.newOtsClient(conf);
         try {
@@ -194,7 +173,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
     /**
      * for internal usage only
      */
-    public static List<InputSplit> getSplits(Configuration conf, SyncClientInterface ots) {
+    public static List<InputSplit> getSplits(Configuration conf,
+        SyncClientInterface ots) {
         List<RangeRowQueryCriteria> scans = getScans(conf);
         logger.info("{} scans", scans.size());
         Set<String> tables = collectTables(scans);
@@ -251,8 +231,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         return scans;
     }
 
-    private static Set<String> collectTables(List<RangeRowQueryCriteria> scans)
-    {
+    private static Set<String> collectTables(List<RangeRowQueryCriteria> scans) {
         Set<String> res = new HashSet<String>();
         for(RangeRowQueryCriteria s: scans) {
             String tbl = s.getTableName();
@@ -261,10 +240,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         return res;
     }
 
-    private static Map<String, List<PrimaryKey>> fetchSplits(
-        SyncClientInterface ots,
-        Set<String> tables)
-    {
+    private static Map<String, List<PrimaryKey>> fetchSplits(SyncClientInterface ots,
+        Set<String> tables) {
         Map<String, List<PrimaryKey>> res = new HashMap<String, List<PrimaryKey>>();
         for(String tbl: tables) {
             if (res.containsKey(tbl)) {
@@ -284,7 +261,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
                     PrimaryKeyColumn[] newCols = new PrimaryKeyColumn[schema.size()];
                     System.arraycopy(cols, 0, newCols, 0, cols.length);
                     for(int i = cols.length; i < schema.size(); ++i) {
-                        newCols[i] = new PrimaryKeyColumn(schema.get(i).getName(), PrimaryKeyValue.INF_MIN);
+                        newCols[i] = new PrimaryKeyColumn(
+                            schema.get(i).getName(), PrimaryKeyValue.INF_MIN);
                     }
                     pkeys.add(new PrimaryKey(newCols));
                 }

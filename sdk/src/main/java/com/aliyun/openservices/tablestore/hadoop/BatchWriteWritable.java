@@ -52,8 +52,7 @@ public class BatchWriteWritable implements Writable, Externalizable {
         return this.changes;
     }
     
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.BATCH_WRITE);
         out.writeInt(this.changes.size());
         for(int i = 0; i < this.changes.size(); ++i) {
@@ -74,8 +73,7 @@ public class BatchWriteWritable implements Writable, Externalizable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tagBatchWrite = in.readByte();
         if (tagBatchWrite != WritableConsts.BATCH_WRITE) {
             throw new IOException("broken input stream");
@@ -103,15 +101,12 @@ public class BatchWriteWritable implements Writable, Externalizable {
         return w;
     }
 
-    @Override
-    public void readExternal(ObjectInput in)
-        throws IOException, ClassNotFoundException
-    {
+    @Override public void readExternal(ObjectInput in)
+        throws IOException, ClassNotFoundException {
         this.readFields(in);
     }
 
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    @Override public void writeExternal(ObjectOutput out) throws IOException {
         this.write(out);
     }
 }

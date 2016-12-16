@@ -50,15 +50,13 @@ public class RowCounter {
     private static String table;
     private static String outputPath;
     
-    public static class RowCounterMapper
-      extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable>{
+    public static class RowCounterMapper 
+      extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable> {
         private final static Text agg = new Text("TOTAL");
         private final static LongWritable one = new LongWritable(1);
 
-        @Override
-        public void map(
-            PrimaryKeyWritable key, RowWritable value, Context context)
-            throws IOException, InterruptedException {
+        @Override public void map(PrimaryKeyWritable key, RowWritable value,
+            Context context) throws IOException, InterruptedException {
             context.write(agg, one);
         }
     }
@@ -66,10 +64,8 @@ public class RowCounter {
     public static class IntSumReducer
       extends Reducer<Text,LongWritable,Text,LongWritable> {
 
-        @Override
-        public void reduce(
-            Text key, Iterable<LongWritable> values, Context context)
-            throws IOException, InterruptedException {
+        @Override public void reduce(Text key, Iterable<LongWritable> values,
+            Context context) throws IOException, InterruptedException {
             long sum = 0;
             for (LongWritable val : values) {
                 sum += val.get();
@@ -168,12 +164,8 @@ public class RowCounter {
             printUsage();
             System.exit(1);
         }
-        if (endpoint == null ||
-            accessKeyId == null ||
-            accessKeySecret == null ||
-            table == null ||
-            outputPath == null)
-        {
+        if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
+            table == null || outputPath == null) {
             printUsage();
             System.exit(1);
         }
