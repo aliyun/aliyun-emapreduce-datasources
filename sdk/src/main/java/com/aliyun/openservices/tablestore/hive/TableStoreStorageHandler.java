@@ -33,29 +33,20 @@ import org.apache.hadoop.hive.ql.plan.TableDesc;
 public class TableStoreStorageHandler extends DefaultStorageHandler {
     private static Logger logger = LoggerFactory.getLogger(TableStoreStorageHandler.class);
     
-    @Override
-    public Class<? extends org.apache.hadoop.mapred.InputFormat> getInputFormatClass()
-    {
+    @Override public Class<? extends org.apache.hadoop.mapred.InputFormat> getInputFormatClass() {
         return TableStoreInputFormat.class;
     }
 
-    @Override
-    public Class<? extends org.apache.hadoop.mapred.OutputFormat> getOutputFormatClass()
-    {
+    @Override public Class<? extends org.apache.hadoop.mapred.OutputFormat> getOutputFormatClass() {
         return TableStoreOutputFormat.class;
     }
 
-    @Override
-    public Class<? extends SerDe> getSerDeClass()
-    {
+    @Override public Class<? extends SerDe> getSerDeClass() {
         return TableStoreSerDe.class;
     }
 
-    @Override
-    public void configureInputJobProperties(
-        TableDesc tableDesc,
-        Map<String,String> jobProperties)
-    {
+    @Override public void configureInputJobProperties(TableDesc tableDesc,
+        Map<String,String> jobProperties) {
         Properties props = tableDesc.getProperties();
         logger.debug("TableDesc: {}", props);
         for(String key: TableStoreConsts.REQUIRES) {
@@ -70,11 +61,8 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         }
     }
 
-    private static String copyToMap(
-        Map<String, String> to,
-        Properties from,
-        String key)
-    {
+    private static String copyToMap(Map<String, String> to, Properties from,
+        String key) {
         String val = from.getProperty(key);
         if (val != null) {
             to.put(key, val);
@@ -82,27 +70,18 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         return val;
     }
     
-    @Override
-    public void configureOutputJobProperties(
-        TableDesc tableDesc,
-        Map<String,String> jobProperties)
-    {
+    @Override public void configureOutputJobProperties(TableDesc tableDesc,
+        Map<String,String> jobProperties) {
         configureInputJobProperties(tableDesc, jobProperties);
     }
 
-    @Override
-    public void configureTableJobProperties(
-        TableDesc tableDesc,
-        Map<String,String> jobProperties)
-    {
+    @Override public void configureTableJobProperties(TableDesc tableDesc,
+        Map<String,String> jobProperties) {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public void configureJobConf(
-        TableDesc tableDesc,
-        org.apache.hadoop.mapred.JobConf jobConf)
-    {
+    @Override public void configureJobConf(TableDesc tableDesc,
+        org.apache.hadoop.mapred.JobConf jobConf) {
         Properties from = tableDesc.getProperties();
         logger.debug("TableDesc: {}", from);
         logger.debug("job conf: {}", jobConf);

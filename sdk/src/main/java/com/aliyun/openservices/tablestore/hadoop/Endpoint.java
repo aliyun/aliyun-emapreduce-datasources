@@ -40,9 +40,11 @@ public class Endpoint implements Writable {
 
     public Endpoint() {
     }
+
     public Endpoint(String endpoint) {
         this(endpoint, null);
     }
+
     public Endpoint(String endpoint, String instance) {
         Preconditions.checkNotNull(endpoint, "endpoint should not be null.");
         this.endpoint = endpoint;
@@ -58,8 +60,7 @@ public class Endpoint implements Writable {
         }
     }
 
-    @Override
-    public boolean equals(Object obj) {
+    @Override public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
@@ -76,15 +77,13 @@ public class Endpoint implements Writable {
         return true;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.ENDPOINT);
         out.writeUTF(endpoint);
         out.writeUTF(instance);
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tag = in.readByte();
         if (tag != WritableConsts.ENDPOINT) {
             throw new IOException("broken input stream");

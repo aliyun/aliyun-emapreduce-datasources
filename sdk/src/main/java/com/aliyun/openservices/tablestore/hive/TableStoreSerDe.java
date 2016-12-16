@@ -77,22 +77,13 @@ public class TableStoreSerDe extends AbstractSerDe {
     private Properties tableProperties;
     private TableMeta tableMeta;
 
-    @Override
-    public void initialize(
-        Configuration conf,
-        Properties tableProps,
-        Properties partProps)
-        throws SerDeException
-    {
+    @Override public void initialize(Configuration conf, Properties tableProps,
+        Properties partProps) throws SerDeException {
         initialize(conf, tableProps);
     }
 
-    @Override
-    public void initialize(
-        org.apache.hadoop.conf.Configuration conf,
-        Properties props)
-        throws SerDeException
-    {
+    @Override public void initialize(Configuration conf, Properties props)
+        throws SerDeException {
         logger.debug("table properties: {}", props);
         if (!"TRUE".equals(props.getProperty("EXTERNAL"))) {
             logger.error("only external table are supported so far: {}", props.getProperty("EXTERNAL"));
@@ -131,18 +122,12 @@ public class TableStoreSerDe extends AbstractSerDe {
                 this.columnTypes));
     }
 
-    @Override
-    public Class<? extends org.apache.hadoop.io.Writable> getSerializedClass()
-    {
+    @Override public Class<? extends org.apache.hadoop.io.Writable> getSerializedClass() {
         return BatchWriteWritable.class;
     }
 
-    @Override
-    public org.apache.hadoop.io.Writable serialize(
-        Object obj,
-        ObjectInspector objInspector)
-        throws SerDeException
-    {
+    @Override public org.apache.hadoop.io.Writable serialize(Object obj,
+        ObjectInspector objInspector) throws SerDeException {
         if (objInspector.getCategory() != ObjectInspector.Category.STRUCT) {
             throw new SerDeException(getClass().toString()
                 + " can only serialize struct types, but we got: "
@@ -201,16 +186,12 @@ public class TableStoreSerDe extends AbstractSerDe {
         return batch;
     }
 
-    @Override
-    public SerDeStats getSerDeStats()
-    {
+    @Override public SerDeStats getSerDeStats() {
         return null;
     }
 
-    @Override
-    public Object deserialize(org.apache.hadoop.io.Writable blob)
-        throws SerDeException
-    {
+    @Override public Object deserialize(org.apache.hadoop.io.Writable blob) 
+        throws SerDeException {
         if (!(blob instanceof RowWritable)) {
             logger.error("deserialization expects {} but {} is given: {}",
                 RowWritable.class.getName(),
@@ -235,35 +216,27 @@ public class TableStoreSerDe extends AbstractSerDe {
         return res;
     }
 
-    @Override
-    public ObjectInspector getObjectInspector() throws SerDeException
-    {
+    @Override public ObjectInspector getObjectInspector() throws SerDeException {
         return this.inspector;
     }
 
     /**
      * for testing only
      */
-    public List<TypeInfo> getColumnTypes()
-    {
+    public List<TypeInfo> getColumnTypes() {
         return this.columnTypes;
     }
 
     /**
      * for testing only
      */
-    public List<String> getColumnNames()
-    {
+    public List<String> getColumnNames() {
         return this.columnNames;
     }
 
-    private static Object extractHiveValue(
-        PrimaryKey pkey,
-        Map<String, NavigableMap<Long, ColumnValue>> attrs,
-        String name,
-        PrimitiveTypeInfo type)
-        throws SerDeException
-    {
+    private static Object extractHiveValue(PrimaryKey pkey,
+        Map<String, NavigableMap<Long, ColumnValue>> attrs, String name,
+        PrimitiveTypeInfo type) throws SerDeException {
         PrimaryKeyColumn pkCol = pkey.getPrimaryKeyColumn(name);
         if (pkCol != null) {
             PrimaryKeyValue val = pkCol.getValue();
@@ -283,10 +256,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                 case FLOAT:
                     return (float) val.asLong();
                 default:
-                    logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                        name,
-                        type.getPrimitiveCategory(),
-                        val.getType());
+                    logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                        pkey, name, type.getPrimitiveCategory(), val.getType());
                     throw new SerDeException("data type mismatch");
                 }
             case STRING:
@@ -294,10 +265,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                 case STRING:
                     return val.asString();
                 default:
-                    logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                        name,
-                        type.getPrimitiveCategory(),
-                        val.getType());
+                    logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                        pkey, name, type.getPrimitiveCategory(), val.getType());
                     throw new SerDeException("data type mismatch");
                 }
             case BINARY:
@@ -305,16 +274,13 @@ public class TableStoreSerDe extends AbstractSerDe {
                 case BINARY:
                     return val.asBinary();
                 default:
-                    logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                        name,
-                        type.getPrimitiveCategory(),
-                        val.getType());
+                    logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                        pkey, name, type.getPrimitiveCategory(), val.getType());
                     throw new SerDeException("data type mismatch");
                 }
             default:
-                logger.error("unknown data type on deserializing. column: {}, value: {}",
-                    name,
-                    pkCol);
+                logger.error("unknown data type on deserializing. row: {}, column: {}, value: {}",
+                    pkey, name, pkCol);
                 throw new SerDeException("unknown data type of primary key");
             }
         } else {
@@ -339,10 +305,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                     case FLOAT:
                         return (float) val.asLong();
                     default:
-                        logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                            name,
-                            type.getPrimitiveCategory(),
-                            val.getType());
+                        logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                            pkey, name, type.getPrimitiveCategory(), val.getType());
                         throw new SerDeException("data type mismatch");
                     }
                 case DOUBLE:
@@ -360,10 +324,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                     case FLOAT:
                         return (float) val.asDouble();
                     default:
-                        logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                            name,
-                            type.getPrimitiveCategory(),
-                            val.getType());
+                        logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                            pkey, name, type.getPrimitiveCategory(), val.getType());
                         throw new SerDeException("data type mismatch");
                     }
                 case STRING:
@@ -371,10 +333,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                     case STRING:
                         return val.asString();
                     default:
-                        logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                            name,
-                            type.getPrimitiveCategory(),
-                            val.getType());
+                        logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                            pkey, name, type.getPrimitiveCategory(), val.getType());
                         throw new SerDeException("data type mismatch");
                     }
                 case BINARY:
@@ -382,10 +342,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                     case BINARY:
                         return val.asBinary();
                     default:
-                        logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                            name,
-                            type.getPrimitiveCategory(),
-                            val.getType());
+                        logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                            pkey, name, type.getPrimitiveCategory(), val.getType());
                         throw new SerDeException("data type mismatch");
                     }
                 case BOOLEAN:
@@ -393,16 +351,13 @@ public class TableStoreSerDe extends AbstractSerDe {
                     case BOOLEAN:
                         return val.asBoolean();
                     default:
-                        logger.error("data type mismatch. column: {}, expect: {} real: {}",
-                            name,
-                            type.getPrimitiveCategory(),
-                            val.getType());
+                        logger.error("data type mismatch. row: {}, column: {}, expect: {} real: {}",
+                            pkey, name, type.getPrimitiveCategory(), val.getType());
                         throw new SerDeException("data type mismatch");
                     }
                 default:
-                    logger.error("unknown data type on deserializing. column: {}, value: {}",
-                        name,
-                        val);
+                    logger.error("unknown data type on deserializing. row: {}, column: {}, value: {}",
+                        pkey, name, val);
                     throw new SerDeException("unknown data type of primary key");
                 }
             } else {
@@ -462,9 +417,7 @@ public class TableStoreSerDe extends AbstractSerDe {
         default: {
             logger.error(
                 "TableStore column name: {}, JAVA type: {}, Hive type: {}",
-                field.name,
-                obj.getClass().getName(),
-                priInsp.getPrimitiveCategory());
+                field.name, obj.getClass().getName(), priInsp.getPrimitiveCategory());
             throw new SerDeException(
                 "Unsupported Hive type: " + priInsp.getPrimitiveCategory());
         }

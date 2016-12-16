@@ -44,8 +44,7 @@ public class RangeRowQueryCriteriaWritable implements Writable {
         return criteria;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(criteria, "criteria should not be null.");
         Preconditions.checkNotNull(
             criteria.getTableName(),
@@ -106,8 +105,7 @@ public class RangeRowQueryCriteriaWritable implements Writable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tagCriteria = in.readByte();
         if (tagCriteria != WritableConsts.GETRANGE_ROW_QUERY_CRITERIA) {
             throw new IOException("broken input stream");
@@ -162,8 +160,7 @@ public class RangeRowQueryCriteriaWritable implements Writable {
     private byte nextTag(DataInput in) throws IOException {
         try {
             return in.readByte();
-        }
-        catch(EOFException ex) {
+        } catch(EOFException ex) {
             return 0;
         }
     }

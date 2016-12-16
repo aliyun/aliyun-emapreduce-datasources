@@ -44,11 +44,8 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret)
-    {
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret) {
         TableStore.setCredential(job, accessKeyId, accessKeySecret);
     }
 
@@ -57,12 +54,8 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret,
-        String securityToken)
-    {
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret, String securityToken) {
         TableStore.setCredential(job, accessKeyId, accessKeySecret, securityToken);
     }
 
@@ -71,10 +64,7 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
      *
      * Same as TableStore.setCredential().
      */
-    public static void setCredential(
-        Configuration conf,
-        Credential cred)
-    {
+    public static void setCredential(Configuration conf, Credential cred) {
         TableStore.setCredential(conf, cred);
     }
 
@@ -83,10 +73,7 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
      *
      * Same as TableStore.setEndpoint().
      */
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint)
-    {
+    public static void setEndpoint(JobContext job, String endpoint) {
         TableStore.setEndpoint(job, endpoint);
     }
 
@@ -95,11 +82,7 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
      *
      * Same as TableStore.setEndpoint().
      */
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint,
-        String instance)
-    {
+    public static void setEndpoint(JobContext job, String endpoint, String instance) {
         TableStore.setEndpoint(job, endpoint, instance);
     }
 
@@ -115,36 +98,26 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
     /**
      * Set a table in TableStore as data sink.
      */
-    public static void setOutputTable(
-        JobContext job,
-        String outputTable)
-    {
+    public static void setOutputTable(JobContext job, String outputTable) {
         setOutputTable(job.getConfiguration(), outputTable);
     }
 
     /**
      * Set a table in TableStore as data sink.
      */
-    public static void setOutputTable(
-        Configuration conf,
-        String outputTable)
-    {
+    public static void setOutputTable(Configuration conf, String outputTable) {
         Preconditions.checkNotNull(outputTable, "Output table must be nonnull.");
         conf.set(OUTPUT_TABLE, outputTable);
     }
 
 
-    @Override
-    public void checkOutputSpecs(JobContext job)
-        throws IOException, InterruptedException
-    {
+    @Override public void checkOutputSpecs(JobContext job)
+        throws IOException, InterruptedException {
         Configuration conf = job.getConfiguration();
         checkTable(conf);
     }
 
-    public static void checkTable(Configuration conf)
-        throws IOException
-    {
+    public static void checkTable(Configuration conf) throws IOException {
         String outputTable = conf.get(OUTPUT_TABLE);
         Preconditions.checkNotNull(outputTable, "Output table must be nonnull.");
         SyncClientInterface ots = TableStore.newOtsClient(conf);
@@ -161,50 +134,43 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
         }
     }
 
-    @Override
-    public OutputCommitter getOutputCommitter(TaskAttemptContext context)
+    @Override public OutputCommitter getOutputCommitter(TaskAttemptContext context)
         throws IOException, InterruptedException {
         return new OutputCommitter() {
-            @Override
-            public void abortJob(JobContext jobContext, org.apache.hadoop.mapreduce.JobStatus.State state) {
+            @Override public void abortJob(JobContext jobContext,
+                org.apache.hadoop.mapreduce.JobStatus.State state) {
             }
 
-            @Override
-            public void abortTask(TaskAttemptContext taskContext) {
+            @Override public void abortTask(TaskAttemptContext taskContext) {
             }
 
-            @Override
-            public void commitJob(JobContext jobContext) {
+            @Override public void commitJob(JobContext jobContext) {
             }
 
-            @Override
-            public void commitTask(TaskAttemptContext taskContext) {
+            @Override public void commitTask(TaskAttemptContext taskContext) {
             }
 
-            @Override
-            public boolean needsTaskCommit(TaskAttemptContext taskContext) throws IOException {
+            @Override public boolean needsTaskCommit(
+                TaskAttemptContext taskContext) throws IOException {
                 return false;
             }
 
-            @Override
-            public void recoverTask(TaskAttemptContext taskContext) throws IOException {
+            @Override public void recoverTask(
+                TaskAttemptContext taskContext) throws IOException {
             }
 
-            @Override
-            public void setupJob(JobContext jobContext) throws IOException {
+            @Override public void setupJob(JobContext jobContext)
+                throws IOException {
             }
 
-            @Override
-            public void setupTask(TaskAttemptContext taskContext) throws IOException {
+            @Override public void setupTask(TaskAttemptContext taskContext)
+                throws IOException {
             }
         };
     }
 
-    @Override
-    public RecordWriter<Writable, BatchWriteWritable>
-        getRecordWriter(TaskAttemptContext context)
-        throws IOException, InterruptedException
-    {
+    @Override public RecordWriter<Writable, BatchWriteWritable> getRecordWriter(
+        TaskAttemptContext context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
         String outputTable = conf.get(OUTPUT_TABLE);
         SyncClientInterface ots = TableStore.newOtsClient(conf);

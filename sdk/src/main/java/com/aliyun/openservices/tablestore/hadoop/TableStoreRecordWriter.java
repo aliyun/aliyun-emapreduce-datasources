@@ -64,8 +64,7 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
         this.rowCounter = 0;
     }
     
-    @Override
-    public void write(Writable _, BatchWriteWritable batch) {
+    @Override public void write(Writable _, BatchWriteWritable batch) {
         List<RowChange> rows = batch.getRowChanges();
         for(RowChange row: rows) {
             waitingRows.addLast(row);
@@ -75,8 +74,7 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
         }
     }
 
-    @Override
-    public void close(TaskAttemptContext ctx) {
+    @Override public void close(TaskAttemptContext ctx) {
         for(;!waitingRows.isEmpty();) {
             rowCounter += batchWrite();
         }
@@ -123,8 +121,8 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
         Set<Integer> detectDupRows = new HashSet<Integer>();
         for(int rowCnt = 0; rowCnt < batchSize && !waitingRows.isEmpty(); ++rowCnt) {
             RowChange row = waitingRows.pollFirst();
-            int hash = (row.getTableName().hashCode() * 1327144901
-                + row.getPrimaryKey().hashCode()) % 2147483647;
+            int hash = row.getTableName().hashCode() * 1327144901
+                + row.getPrimaryKey().hashCode();
             if (detectDupRows.contains(hash)) {
                 break;
             }
@@ -150,7 +148,8 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
         }
         if (!failed.isEmpty()) {
             Error err = failed.get(0).getError();
-            throw new TableStoreException(err.getMessage(), null, err.getCode(), resp.getRequestId(), 0);
+            throw new TableStoreException(
+                err.getMessage(), null, err.getCode(), resp.getRequestId(), 0);
         }
     }
 }

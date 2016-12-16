@@ -87,12 +87,11 @@ public class RowCounter {
             ep = new Endpoint(endpoint, instance);
         }
         if (cred.securityToken == null) {
-            return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
+            return new SyncClient(ep.endpoint, cred.accessKeyId,
+                cred.accessKeySecret, ep.instance);
         } else {
-            return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
-                cred.securityToken);
+            return new SyncClient(ep.endpoint, cred.accessKeyId,
+                cred.accessKeySecret, ep.instance, cred.securityToken);
         }
     }
 
@@ -138,11 +137,8 @@ public class RowCounter {
             printUsage();
             System.exit(1);
         }
-        if (endpoint == null ||
-            accessKeyId == null ||
-            accessKeySecret == null ||
-            table == null)
-        {
+        if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
+            table == null) {
             printUsage();
             System.exit(1);
         }
@@ -160,9 +156,7 @@ public class RowCounter {
             TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
 
             JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
-                hadoopConf,
-                TableStoreInputFormat.class,
-                PrimaryKeyWritable.class,
+                hadoopConf, TableStoreInputFormat.class, PrimaryKeyWritable.class,
                 RowWritable.class);
             System.out.println(
                 new Formatter().format("TOTAL: %d", rdd.count()).toString());

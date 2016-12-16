@@ -32,10 +32,8 @@ public class RowCounter {
         private final static Text agg = new Text("TOTAL");
         private final static LongWritable one = new LongWritable(1);
 
-        @Override
-        public void map(
-            PrimaryKeyWritable key, RowWritable value, Context context)
-            throws IOException, InterruptedException {
+        @Override public void map(PrimaryKeyWritable key, RowWritable value, 
+            Context context) throws IOException, InterruptedException {
             context.write(agg, one);
         }
     }
@@ -43,10 +41,8 @@ public class RowCounter {
     public static class IntSumReducer
       extends Reducer<Text,LongWritable,Text,LongWritable> {
 
-        @Override
-        public void reduce(
-            Text key, Iterable<LongWritable> values, Context context)
-            throws IOException, InterruptedException {
+        @Override public void reduce(Text key, Iterable<LongWritable> values, 
+            Context context) throws IOException, InterruptedException {
             long sum = 0;
             for (LongWritable val : values) {
                 sum += val.get();
@@ -115,7 +111,7 @@ OK, let the program run.
 
 ```
 $ rm -rf out
-$ HADOOP_CLASSPATH=emr-sdk_2.10-1.4.0-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
+$ HADOOP_CLASSPATH=emr-sdk_2.10-1.3.1-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
 ...
 $ find out -type f
 out/_SUCCESS
@@ -144,36 +140,25 @@ Precisely speaking, in each row, the primary key is owner's name and each attrib
 ```java
 public static class OwnerMapper
   extends Mapper<PrimaryKeyWritable, RowWritable, Text, MapWritable> {
-    @Override
-    public void map(
-        PrimaryKeyWritable key, RowWritable row, Context context)
-        throws IOException, InterruptedException {
-        PrimaryKeyColumn pet = key
-            .getPrimaryKey()
-            .getPrimaryKeyColumn("name");
+    @Override public void map(PrimaryKeyWritable key, RowWritable row, 
+        Context context) throws IOException, InterruptedException {
+        PrimaryKeyColumn pet = key.getPrimaryKey().getPrimaryKeyColumn("name");
         Column owner = row.getRow().getLatestColumn("owner");
         Column species = row.getRow().getLatestColumn("species");
         MapWritable m = new MapWritable();
-        m.put(
-            new Text(pet.getValue().asString()),
+        m.put(new Text(pet.getValue().asString()),
             new Text(species.getValue().asString()));
-        context.write(
-            new Text(owner.getValue().asString()),
-            m);
+        context.write(new Text(owner.getValue().asString()), m);
     }
 }
 
 public static class IntoTableReducer
   extends Reducer<Text,MapWritable,Text,BatchWriteWritable> {
 
-    @Override
-    public void reduce(
-        Text owner, Iterable<MapWritable> pets, Context context)
-        throws IOException, InterruptedException {
+    @Override public void reduce(Text owner, Iterable<MapWritable> pets, 
+        Context context) throws IOException, InterruptedException {
         List<PrimaryKeyColumn> pkeyCols = new ArrayList<PrimaryKeyColumn>();
-        pkeyCols.add(
-            new PrimaryKeyColumn(
-                "owner",
+        pkeyCols.add(new PrimaryKeyColumn("owner",
                 PrimaryKeyValue.fromString(owner.toString())));
         PrimaryKey pkey = new PrimaryKey(pkeyCols);
         List<Column> attrs = new ArrayList<Column>();
@@ -181,9 +166,7 @@ public static class IntoTableReducer
             for(Map.Entry<Writable, Writable> pet: petMap.entrySet()) {
                 Text name = (Text) pet.getKey();
                 Text species = (Text) pet.getValue();
-                attrs.add(
-                    new Column(
-                        name.toString(),
+                attrs.add(new Column(name.toString(),
                         ColumnValue.fromString(species.toString())));
             }
         }
@@ -194,7 +177,6 @@ public static class IntoTableReducer
         context.write(owner, batch);
     }
 }
-
 
 public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
