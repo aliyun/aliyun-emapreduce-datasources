@@ -87,7 +87,7 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         TableDesc tableDesc,
         Map<String,String> jobProperties)
     {
-        throw new UnsupportedOperationException();
+        configureInputJobProperties(tableDesc, jobProperties);
     }
 
     @Override
@@ -130,5 +130,11 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .setEndpoint(jobConf, ep);
         }
-   }
+        {
+            String table = from.getProperty(TableStoreConsts.TABLE_NAME);
+            com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
+                .setOutputTable(jobConf, table);
+        }
+    }
+
 }

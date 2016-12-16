@@ -29,8 +29,6 @@ import org.apache.hadoop.io.Writable;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class Credential implements Writable {
-    public static final String kTableStoreCredential = "TABLESTORE_CREDENTIAL";
-    
     public String accessKeyId;
     public String accessKeySecret;
     public String securityToken;

@@ -18,76 +18,75 @@
 
 package com.aliyun.openservices.tablestore.hadoop;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.io.DataInput;
-import java.io.ObjectInput;
 import java.io.DataOutput;
+import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.IOException;
-import java.io.EOFException;
 import java.io.Externalizable;
+
 import org.apache.hadoop.io.Writable;
-import com.alicloud.openservices.tablestore.model.Row;
-import com.alicloud.openservices.tablestore.model.Column;
+
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
+import com.alicloud.openservices.tablestore.model.Column;
+import com.alicloud.openservices.tablestore.model.RowChange;
+import com.alicloud.openservices.tablestore.model.RowPutChange;
+import com.alicloud.openservices.tablestore.model.Condition;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class RowWritable implements Writable, Externalizable {
-    private Row row = null;
+public class RowPutChangeWritable implements Writable, Externalizable {
+    private RowPutChange putRow;
 
-    public RowWritable() {
+    public RowPutChangeWritable() {
     }
 
-    public RowWritable(Row row) {
-        Preconditions.checkNotNull(row, "row should not be null.");
-        this.row = row;
+    public RowPutChangeWritable(RowPutChange putRow) {
+        Preconditions.checkNotNull(putRow, "putRow must be nonnull.");
+        this.putRow = putRow;
     }
 
-    public Row getRow() {
-        return row;
-    }
-
-    public void setRow(Row row) {
-        Preconditions.checkNotNull(row, "row should not be null.");
-        this.row = row;
+    public RowPutChange getRowPutChange() {
+        return this.putRow;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        Preconditions.checkNotNull(row, "column should not be null.");
-        out.writeByte(WritableConsts.ROW);
-        new PrimaryKeyWritable(row.getPrimaryKey()).write(out);
-        Column[] cols = row.getColumns();
-        out.writeInt(cols.length);
-        for(int i = 0; i < cols.length; ++i) {
-            new ColumnWritable(cols[i]).write(out);
+        out.writeUTF(putRow.getTableName());
+        new PrimaryKeyWritable(putRow.getPrimaryKey()).write(out);
+        new ConditionWritable(putRow.getCondition()).write(out);
+        List<Column> cols = putRow.getColumnsToPut();
+        out.writeInt(cols.size());
+        for(Column col: cols) {
+            new ColumnWritable(col).write(out);
         }
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        byte tagRow = in.readByte();
-        if (tagRow != WritableConsts.ROW) {
-            throw new IOException("broken input stream");
-        }
+        String tableName = in.readUTF();
         PrimaryKey pkey = PrimaryKeyWritable.read(in).getPrimaryKey();
-        int sz = in.readInt();
-        Column[] cols = new Column[sz];
-        for(int i = 0; i < sz; ++i) {
-            cols[i] = ColumnWritable.read(in).getColumn();
+
+        RowPutChange putRow = new RowPutChange(tableName, pkey);
+        putRow.setCondition(ConditionWritable.read(in).getCondition());
+        int attrSz = in.readInt();
+        for(int j = 0; j < attrSz; ++j) {
+            putRow.addColumn(ColumnWritable.read(in).getColumn());
         }
-        row = new Row(pkey, cols);
+
+        this.putRow = putRow;
     }
 
-    public static RowWritable read(DataInput in) throws IOException {
-        RowWritable w = new RowWritable();
+    public static RowPutChangeWritable read(DataInput in) throws IOException {
+        RowPutChangeWritable w = new RowPutChangeWritable();
         w.readFields(in);
         return w;
     }
 
     @Override
     public void readExternal(ObjectInput in)
-        throws IOException,
-               ClassNotFoundException
+        throws IOException, ClassNotFoundException
     {
         this.readFields(in);
     }
@@ -97,4 +96,3 @@ public class RowWritable implements Writable, Externalizable {
         this.write(out);
     }
 }
-

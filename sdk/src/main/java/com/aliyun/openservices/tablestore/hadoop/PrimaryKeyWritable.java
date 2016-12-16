@@ -139,6 +139,7 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         return primaryKey.compareTo(o.primaryKey);
     }
 
+    @Override
     public void readExternal(ObjectInput in)
         throws IOException,
                ClassNotFoundException
@@ -146,6 +147,7 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         this.readFields(in);
     }
 
+    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         this.write(out);
     }

@@ -19,24 +19,57 @@
 package com.aliyun.openservices.tablestore.hive;
 
 import java.io.IOException;
-import org.apache.hadoop.util.Progressable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordWriter;
-import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
-import com.aliyun.openservices.tablestore.hadoop.RowWritable;
+import org.apache.hadoop.mapred.Reporter;
 
-public class TableStoreOutputFormat implements OutputFormat<PrimaryKeyWritable, RowWritable> {
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
+import com.aliyun.openservices.tablestore.hadoop.BatchWriteWritable;
+import com.alicloud.openservices.tablestore.SyncClientInterface;
+
+public class TableStoreOutputFormat implements OutputFormat<Writable, BatchWriteWritable> {
+    private static Logger logger = LoggerFactory.getLogger(TableStoreOutputFormat.class);
+
     @Override
-    public RecordWriter<PrimaryKeyWritable, RowWritable> getRecordWriter(
+    public RecordWriter<Writable, BatchWriteWritable> getRecordWriter(
         FileSystem ignored,
         JobConf job,
         String name,
         Progressable progress)
         throws IOException
     {
-        throw new UnsupportedOperationException();
+        String table = job.get(TableStoreConsts.TABLE_NAME);
+        Configuration conf = translateConfig(job);
+        SyncClientInterface ots = TableStore.newOtsClient(conf);
+        final org.apache.hadoop.mapreduce.RecordWriter<Writable, BatchWriteWritable> writer =
+            new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordWriter(ots, table);
+        return new org.apache.hadoop.mapred.RecordWriter<Writable, BatchWriteWritable>() {
+            @Override
+            public void write(Writable any, BatchWriteWritable rows) throws IOException {
+                try {
+                    writer.write(any, rows);
+                } catch(InterruptedException ex) {
+                    throw new IOException("interrupted");
+                }
+            }
+
+            @Override
+            public void close(Reporter reporter) throws IOException {
+                try {
+                    writer.close(null);
+                } catch(InterruptedException ex) {
+                    throw new IOException("interrupted");
+                }
+            }
+        };
     }
 
     @Override
@@ -45,7 +78,39 @@ public class TableStoreOutputFormat implements OutputFormat<PrimaryKeyWritable, 
         JobConf job)
         throws IOException
     {
-        throw new UnsupportedOperationException();
+        Configuration dest = translateConfig(job);
+        com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat.checkTable(dest);
     }
+
+    private static Configuration translateConfig(Configuration from) {
+        Configuration to = new Configuration();
+        {
+            com.aliyun.openservices.tablestore.hadoop.Credential cred =
+                new com.aliyun.openservices.tablestore.hadoop.Credential(
+                    from.get(TableStoreConsts.ACCESS_KEY_ID),
+                    from.get(TableStoreConsts.ACCESS_KEY_SECRET),
+                    from.get(TableStoreConsts.SECURITY_TOKEN));
+            TableStore.setCredential(to, cred);
+        }
+        {
+            String endpoint = from.get(TableStoreConsts.ENDPOINT);
+            String instance = from.get(TableStoreConsts.INSTANCE);
+            com.aliyun.openservices.tablestore.hadoop.Endpoint ep;
+            if (instance == null) {
+                ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
+                    endpoint);
+            } else {
+                ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
+                    endpoint, instance);
+            }
+            TableStore.setEndpoint(to, ep);
+        }
+        {
+            com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
+                .setOutputTable(to, from.get(TableStoreConsts.TABLE_NAME));
+        }
+        return to;
+    }
+
 }
 
