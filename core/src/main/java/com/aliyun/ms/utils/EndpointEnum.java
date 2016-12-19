@@ -55,6 +55,29 @@ public enum EndpointEnum {
   OSS_AP_SOUTHEAST_1_VPC("oss", "ap-southeast-1", "vpc",
       "vpc100-oss-ap-southeast-1.aliyuncs.com"),
 
+  // LogService Endpoint
+  LOG_CN_HANGZHOU_CLASSICAL("log", "cn-hangzhou", "classical",
+    "cn-hangzhou-intranet.log.aliyuncs.com"),
+  LOG_CN_SHANGHAI_CLASSICAL("log", "cn-shanghai", "classical",
+    "cn-shanghai-intranet.log.aliyuncs.com"),
+  LOG_CN_QINGDAO_CLASSICAL("log", "cn-qingdao", "classical",
+    "cn-qingdao-intranet.log.aliyuncs.com"),
+  LOG_CN_BEIJING_CLASSICAL("log", "cn-beijing", "classical",
+    "cn-beijing-intranet.log.aliyuncs.com"),
+  LOG_CN_SHENZHEN_CLASSICAL("log", "cn-shenzhen", "classical",
+    "cn-shenzhen-intranet.log.aliyuncs.com"),
+
+  LOG_CN_HANGZHOU_VPC("log", "cn-hangzhou", "vpc",
+    "cn-hangzhou-vpc.log.aliyuncs.com"),
+  LOG_CN_SHANGHAI_VPC("log", "cn-shanghai", "vpc",
+    "cn-shanghai-vpc.log.aliyuncs.com"),
+  LOG_CN_QINGDAO_VPC("log", "cn-qingdao", "vpc",
+    "cn-qingdao-vpc.log.aliyuncs.com"),
+  LOG_CN_BEIJING_VPC("log", "cn-beijing", "vpc",
+    "cn-beijing-vpc.log.aliyuncs.com"),
+  LOG_CN_SHENZHEN_VPC("log", "cn-shenzhen", "vpc",
+    "cn-shenzhen-vpc.log.aliyuncs.com"),
+
   ILLEGAL_ENDPOINT("illegal", "illegal", "illegal", "illegal");
 
   private String productCode;

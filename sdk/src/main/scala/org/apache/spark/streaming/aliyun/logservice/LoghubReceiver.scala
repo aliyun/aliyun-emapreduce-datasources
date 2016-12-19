@@ -38,7 +38,7 @@ private[logservice] class LoghubReceiver(
     storageLevel: StorageLevel,
     cursorPosition: LogHubCursorPosition,
     mLoghubCursorStartTime: Int)
-  extends Receiver(storageLevel)(classTag[Array[Byte]]) with Logging {
+  extends Receiver[Array[Byte]](storageLevel) with Logging {
   receiver =>
 
   private var workerThread: Thread = null
