@@ -1,8 +1,21 @@
 # Hive/SparkSQL on TableStore
 
-## TableStore as Data Source
+## Command-Line Interface
 
-### Prepare a table in TableStore
+### Hive CLI
+
+```
+$ HADOOP_HOME=YourHadoopDir HADOOP_CLASSPATH=emr-sdk_2.10-1.3.1-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar:joda-time-2.9.4.jar bin/hive
+```
+
+### SparkSQL CLI
+
+```
+$ bin/spark-sql --master local --jars emr-sdk_2.10-1.3.1-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar
+```
+
+
+## Prepare `pet` table in TableStore
 
 Let us prepare a `pet` table as an example (which is picked from [MySQL](http://dev.mysql.com/doc/refman/5.7/en/selecting-all.html))
 
@@ -18,24 +31,9 @@ Let us prepare a `pet` table as an example (which is picked from [MySQL](http://
 | Slim     | Benny  | snake   | m    | 1996-04-29 |        |
 | Puffball | Diane  | hamster | f    | 1999-03-30 |        |
 
-where `name` is the only primary key.
-As TableStore is schema-free, we do not need to (and should not) write blank cells to the `pet` table.
+First,  we have to prepare an empty `pet` table whose primary key is `name` of string type.
 
-### Start Hive CLI
-
-```
-$ HADOOP_HOME=YourHadoopDir HADOOP_CLASSPATH=emr-sdk_2.10-1.3.0.jar:tablestore-4.1.0-jar-with-dependencies.jar:joda-time-2.9.4.jar bin/hive
-```
-
-### Start SparkSQL CLI
-
-```
-$ bin/spark-sql --master local --jars emr-sdk_2.10-1.3.0.jar,tablestore-4.1.0-jar-with-dependencies.jar
-```
-
-### Create an external table in Hive/SparkSQL
-
-We have to create an external table in Hive/SparkSQL to let them known the existence of `pet` table in TableStore.
+Second, we create an external table in Hive/SparkSQL.
 
 ```
 CREATE EXTERNAL TABLE pet
@@ -49,6 +47,29 @@ CREATE EXTERNAL TABLE pet
     "tablestore.access_key_secret"="YourAccessKeySecret",
     "tablestore.table.name"="pet");
 ```
+
+Third, we insert data into this external table.
+
+```
+INSERT INTO pet VALUES("Fluffy", "Harold", "cat", "f", "1993-02-04", null);
+INSERT INTO pet VALUES("Claws", "Gwen", "cat", "m", "1994-03-17", null);
+INSERT INTO pet VALUES("Buffy", "Harold", "dog", "f", "1989-05-13", null);
+INSERT INTO pet VALUES("Fang", "Benny", "dog", "m", "1990-08-27", null);
+INSERT INTO pet VALUES("Bowser", "Diane", "dog", "m", "1979-08-31", "1995-07-29");
+INSERT INTO pet VALUES("Chirpy", "Gwen", "bird", "f", "1998-09-11", null);
+INSERT INTO pet VALUES("Whistler", "Gwen", "bird", null, "1997-12-09", null);
+INSERT INTO pet VALUES("Slim", "Benny", "snake", "m", "1996-04-29", null);
+INSERT INTO pet VALUES("Puffball", "Diane", "hamster", "f", "1999-03-30", null);
+```
+
+Insertion into TableStore is updating related rows rather than replacing them.
+So one can map some columns of a table in TableStore to one Hive/SparkSQL table and the others to another Hive/SparkSQL table.
+
+TableStore is an internet-scale NoSQL database.
+As most of large-scale NoSQL database, TableStore does not support transactions.
+Because of lack of transactions, Hive `delete from` and `update from` are not applicable on TableStore tables.
+
+### Query tables
 
 Then we can query this `pet` table.
 

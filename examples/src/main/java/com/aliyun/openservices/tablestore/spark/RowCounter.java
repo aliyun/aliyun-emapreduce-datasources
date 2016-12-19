@@ -38,6 +38,7 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 import com.aliyun.openservices.tablestore.hadoop.Credential;
 import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
 import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
 import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
 import com.aliyun.openservices.tablestore.hadoop.RowWritable;
@@ -86,12 +87,11 @@ public class RowCounter {
             ep = new Endpoint(endpoint, instance);
         }
         if (cred.securityToken == null) {
-            return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
+            return new SyncClient(ep.endpoint, cred.accessKeyId,
+                cred.accessKeySecret, ep.instance);
         } else {
-            return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
-                cred.securityToken);
+            return new SyncClient(ep.endpoint, cred.accessKeyId,
+                cred.accessKeySecret, ep.instance, cred.securityToken);
         }
     }
 
@@ -137,38 +137,33 @@ public class RowCounter {
             printUsage();
             System.exit(1);
         }
-        if (endpoint == null ||
-            accessKeyId == null ||
-            accessKeySecret == null ||
-            table == null)
-        {
+        if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
+            table == null) {
             printUsage();
             System.exit(1);
         }
 
         SparkConf sparkConf = new SparkConf().setAppName("RowCounter");
-        JavaSparkContext sc = new JavaSparkContext(sparkConf);
-
-        Configuration hadoopConf = new Configuration();
-        TableStoreInputFormat.setCredential(
-            hadoopConf,
-            new Credential(accessKeyId, accessKeySecret, securityToken));
-        Endpoint ep = (instance == null)
-            ? new Endpoint(endpoint)
-            : new Endpoint(endpoint, instance);
-        TableStoreInputFormat.setEndpoint(hadoopConf, ep);
-        TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
-
+        JavaSparkContext sc = null;
         try {
-            JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
+            sc = new JavaSparkContext(sparkConf);
+            Configuration hadoopConf = new Configuration();
+            TableStore.setCredential(
                 hadoopConf,
-                TableStoreInputFormat.class,
-                PrimaryKeyWritable.class,
+                new Credential(accessKeyId, accessKeySecret, securityToken));
+            Endpoint ep = new Endpoint(endpoint, instance);
+            TableStore.setEndpoint(hadoopConf, ep);
+            TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
+
+            JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
+                hadoopConf, TableStoreInputFormat.class, PrimaryKeyWritable.class,
                 RowWritable.class);
             System.out.println(
                 new Formatter().format("TOTAL: %d", rdd.count()).toString());
         } finally {
-            sc.close();
+            if (sc != null) {
+                sc.close();
+            }
         }
     }
 }

@@ -41,8 +41,7 @@ public class ColumnValueWritable implements Writable {
         return columnValue;
     }
     
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(columnValue, "columnValue should not be null.");
         out.writeByte(WritableConsts.COLUMN_VALUE);
         switch(columnValue.getType()) {
@@ -79,8 +78,7 @@ public class ColumnValueWritable implements Writable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte columnValueTag = in.readByte();
         if (columnValueTag != WritableConsts.COLUMN_VALUE) {
             throw new IOException("broken input stream");

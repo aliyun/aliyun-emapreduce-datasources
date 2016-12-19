@@ -43,24 +43,26 @@ public static void main(String[] args) {
     JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
     Configuration hadoopConf = new Configuration();
-    TableStoreInputFormat.setCredential(
-        hadoopConf,
-        new Credential("YourAccessKeyId", "YourAccessKeySecret"));
-    TableStoreInputFormat.setEndpoint(
-        hadoopConf,
-        new Endpoint("YourEndpoint"));
-    TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
-
+    JavaSparkContext sc = null;
     try {
+        sc = new JavaSparkContext(sparkConf);
+        Configuration hadoopConf = new Configuration();
+        TableStore.setCredential(
+                hadoopConf,
+                new Credential(accessKeyId, accessKeySecret, securityToken));
+        Endpoint ep = new Endpoint(endpoint, instance);
+        TableStore.setEndpoint(hadoopConf, ep);
+        TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
+
         JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
-            hadoopConf,
-            TableStoreInputFormat.class,
-            PrimaryKeyWritable.class,
-            RowWritable.class);
+                hadoopConf, TableStoreInputFormat.class,
+                PrimaryKeyWritable.class, RowWritable.class);
         System.out.println(
             new Formatter().format("TOTAL: %d", rdd.count()).toString());
     } finally {
-        sc.close();
+        if (sc != null) {
+            sc.close();
+        }
     }
 }
 ```
@@ -70,11 +72,11 @@ If you prefer to scala, please replace `JavaSparkContext` to `SparkContext` and 
 Let it run.
 
 ```
-$ bin/spark-submit --master local --jars emr-sdk_2.10-1.3.0.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
+$ bin/spark-submit --master local --jars emr-sdk_2.10-1.3.1-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
 TOTAL: 9
 ```
 
 FYI,
 * for more details about `TableStoreInputFormat`, please refer to (HadoopMR-on-TableStore.md).
-* in emr-examples_2.10-1.3.0.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
+* in emr-examples_2.10-1.3.1-SNAPSHOT.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
 

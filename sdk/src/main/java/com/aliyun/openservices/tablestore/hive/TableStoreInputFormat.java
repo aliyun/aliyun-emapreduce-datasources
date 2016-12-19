@@ -40,6 +40,7 @@ import com.alicloud.openservices.tablestore.model.Direction;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.model.DescribeTableRequest;
 import com.alicloud.openservices.tablestore.model.DescribeTableResponse;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
 import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
 import com.aliyun.openservices.tablestore.hadoop.RowWritable;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
@@ -47,12 +48,8 @@ import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, RowWritable> {
     private static Logger logger = LoggerFactory.getLogger(TableStoreInputFormat.class);
 
-    @Override
-    public InputSplit[] getSplits(
-        JobConf job,
-        int numSplits)
-        throws IOException
-    {
+    @Override public InputSplit[] getSplits(JobConf job, int numSplits)
+        throws IOException {
         Configuration dest = translateConfig(job);
         SyncClientInterface ots = null;
         String columns = job.get(TableStoreConsts.COLUMNS_MAPPING);
@@ -62,16 +59,12 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         logger.debug("columns to get: {}", columns);
         List<org.apache.hadoop.mapreduce.InputSplit> splits;
         try {
-            ots = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .newOtsClient(dest);
+            ots = TableStore.newOtsClient(dest);
+            TableMeta meta = fetchTableMeta(ots,
+                job.get(TableStoreConsts.TABLE_NAME));
+            RangeRowQueryCriteria criteria = fetchCriteria(meta, columns);
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .addCriteria(
-                    dest,
-                    fetchCriteria(
-                        fetchTableMeta(
-                            ots,
-                            job.get(TableStoreConsts.TABLE_NAME)),
-                        columns));
+                .addCriteria(dest, criteria);
             splits = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .getSplits(dest, ots);
         } finally {
@@ -98,8 +91,7 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                     from.get(TableStoreConsts.ACCESS_KEY_ID),
                     from.get(TableStoreConsts.ACCESS_KEY_SECRET),
                     from.get(TableStoreConsts.SECURITY_TOKEN));
-            com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setCredential(to, cred);
+            TableStore.setCredential(to, cred);
         }
         {
             String endpoint = from.get(TableStoreConsts.ENDPOINT);
@@ -112,14 +104,12 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                 ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
                     endpoint, instance);
             }
-            com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setEndpoint(to, ep);
+            TableStore.setEndpoint(to, ep);
         }
         return to;
     }
 
-    private static RangeRowQueryCriteria fetchCriteria(TableMeta meta, String strColumns)
-    {
+    private static RangeRowQueryCriteria fetchCriteria(TableMeta meta, String strColumns) {
         RangeRowQueryCriteria res = new RangeRowQueryCriteria(meta.getTableName());
         res.setMaxVersions(1);
         List<PrimaryKeyColumn> lower = new ArrayList<PrimaryKeyColumn>();
@@ -134,22 +124,14 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         return res;
     }
 
-    private static TableMeta fetchTableMeta(
-        SyncClientInterface ots,
-        String table)
-    {
+    private static TableMeta fetchTableMeta(SyncClientInterface ots, String table) {
         DescribeTableResponse resp = ots.describeTable(
             new DescribeTableRequest(table));
         return resp.getTableMeta();
     }
 
-    @Override
-    public RecordReader<PrimaryKeyWritable, RowWritable> getRecordReader(
-        InputSplit split,
-        JobConf job,
-        Reporter reporter)
-        throws IOException
-    {
+    @Override public RecordReader<PrimaryKeyWritable, RowWritable> getRecordReader(
+        InputSplit split, JobConf job, Reporter reporter) throws IOException {
         Preconditions.checkNotNull(split, "split must be nonnull");
         Preconditions.checkNotNull(job, "job must be nonnull");
         Preconditions.checkArgument(
@@ -162,8 +144,8 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
             new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader();
         rdr.initialize(tsSplit.getDelegated(), conf);
         return new RecordReader<PrimaryKeyWritable, RowWritable>() {
-            @Override
-            public boolean next(PrimaryKeyWritable key, RowWritable value) throws IOException {
+            @Override public boolean next(PrimaryKeyWritable key,
+                RowWritable value) throws IOException {
                 boolean next = rdr.nextKeyValue();
                 if (next) {
                     key.setPrimaryKey(rdr.getCurrentKey().getPrimaryKey());
@@ -172,28 +154,23 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                 return next;
             }
 
-            @Override
-            public PrimaryKeyWritable createKey() {
+            @Override public PrimaryKeyWritable createKey() {
                 return new PrimaryKeyWritable();
             }
 
-            @Override
-            public RowWritable createValue() {
+            @Override public RowWritable createValue() {
                 return new RowWritable();
             }
 
-            @Override
-            public long getPos() throws IOException {
+            @Override public long getPos() throws IOException {
                 return 0;
             }
 
-            @Override
-            public void close() throws IOException {
+            @Override public void close() throws IOException {
                 rdr.close();
             }
 
-            @Override
-            public float getProgress() throws IOException {
+            @Override public float getProgress() throws IOException {
                 return rdr.getProgress();
             }
         };

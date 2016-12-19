@@ -35,7 +35,6 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import com.alicloud.openservices.tablestore.SyncClientInterface;
-import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
@@ -48,66 +47,83 @@ import com.alicloud.openservices.tablestore.model.DescribeTableResponse;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWritable> {
+    static final String CRITERIA = "TABLESTORE_CRITERIA";
+
     private static final Logger logger = LoggerFactory.getLogger(TableStoreInputFormat.class);
     
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret)
-    {
-        setCredential(
-            job.getConfiguration(),
-            new Credential(accessKeyId, accessKeySecret, null));
+    /**
+     * Set access-key id/secret into a JobContext.
+     *
+     * Same as TableStore.setCredential().
+     */
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret) {
+        TableStore.setCredential(job, accessKeyId, accessKeySecret);
     }
 
-    public static void setCredential(
-        JobContext job,
-        String accessKeyId,
-        String accessKeySecret,
-        String securityToken)
-    {
-        setCredential(
-            job.getConfiguration(),
-            new Credential(accessKeyId, accessKeySecret, securityToken));
+    /**
+     * Set access-key id/secret and security token into a JobContext.
+     *
+     * Same as TableStore.setCredential().
+     */
+    public static void setCredential(JobContext job, String accessKeyId,
+        String accessKeySecret, String securityToken) {
+        TableStore.setCredential(job, accessKeyId, accessKeySecret, securityToken);
     }
 
-    public static void setCredential(
-        Configuration conf,
-        Credential cred)
-    {
-        conf.set(Credential.kTableStoreCredential, cred.serialize());
+    /**
+     * Set credential(access-key id/secret and security token) into a Configuration.
+     *
+     * Same as TableStore.setCredential().
+     */
+    public static void setCredential(Configuration conf, Credential cred) {
+        TableStore.setCredential(conf, cred);
     }
 
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint)
-    {
-        setEndpoint(job.getConfiguration(), new Endpoint(endpoint));
+    /**
+     * Set an endpoint of TableStore into a JobContext.
+     *
+     * Same as TableStore.setEndpoint().
+     */
+    public static void setEndpoint(JobContext job, String endpoint) {
+        TableStore.setEndpoint(job, endpoint);
     }
 
-    public static void setEndpoint(
-        JobContext job,
-        String endpoint,
-        String instance)
-    {
-        setEndpoint(job.getConfiguration(), new Endpoint(endpoint, instance));
+    /**
+     * Set both an endpoint and an instance name into a JobContext.
+     *
+     * Same as TableStore.setEndpoint().
+     */
+    public static void setEndpoint(JobContext job, String endpoint, String instance) {
+        TableStore.setEndpoint(job, endpoint, instance);
     }
 
+    /**
+     * Set both an endpoint and an instance name into a JobContext.
+     *
+     * Same as TableStore.setEndpoint().
+     */
     public static void setEndpoint(Configuration conf, Endpoint ep) {
-        conf.set(Endpoint.kTableStoreEndpoint, ep.serialize());
+        TableStore.setEndpoint(conf, ep);
     }
 
+    /**
+     * Add a RangeRowQueryCriteria object as data source.
+     */
     public static void addCriteria(JobContext job, RangeRowQueryCriteria criteria) {
         Preconditions.checkNotNull(job, "job must be nonnull");
         addCriteria(job.getConfiguration(), criteria);
     }
 
+    /**
+     * Add a RangeRowQueryCriteria object as data source.
+     */
     public static void addCriteria(Configuration conf, RangeRowQueryCriteria criteria) {
         Preconditions.checkNotNull(criteria, "criteria must be nonnull");
         Preconditions.checkArgument(
             criteria.getDirection() == Direction.FORWARD,
             "criteria must be forward");
-        String cur = conf.get(MultiCriteria.kTableStoreCriteria);
+        String cur = conf.get(CRITERIA);
         MultiCriteria cri = null;
         if (cur == null) {
             cri = new MultiCriteria();
@@ -115,15 +131,28 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
             cri = MultiCriteria.deserialize(cur);
         }
         cri.addCriteria(criteria);
-        conf.set(MultiCriteria.kTableStoreCriteria, cri.serialize());
+        conf.set(CRITERIA, cri.serialize());
+    }
+
+    /**
+     * Clear TableStore data sources.
+     */
+    public static void clearCriteria(JobContext job) {
+        Preconditions.checkNotNull(job, "job must be nonnull");
+        clearCriteria(job.getConfiguration());
     }
     
-    @Override
-    public RecordReader<PrimaryKeyWritable, RowWritable> createRecordReader(
-        InputSplit split,
-        TaskAttemptContext context)
-        throws IOException,
-               InterruptedException {
+    /**
+     * Clear TableStore data sources.
+     */
+    public static void clearCriteria(Configuration conf) {
+        Preconditions.checkNotNull(conf, "conf must be nonnull");
+        conf.unset(CRITERIA);
+    }
+    
+    @Override public RecordReader<PrimaryKeyWritable, RowWritable> createRecordReader(
+        InputSplit split, TaskAttemptContext context)
+        throws IOException, InterruptedException {
         TableStoreRecordReader rdr = new TableStoreRecordReader();
         rdr.initialize(split, context);
         return rdr;
@@ -131,10 +160,9 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
 
     @Override
     public List<InputSplit> getSplits(JobContext job)
-        throws IOException, InterruptedException
-    {
+        throws IOException, InterruptedException {
         Configuration conf = job.getConfiguration();
-        SyncClientInterface ots = newOtsClient(conf);
+        SyncClientInterface ots = TableStore.newOtsClient(conf);
         try {
             return getSplits(conf, ots);
         } finally {
@@ -145,7 +173,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
     /**
      * for internal usage only
      */
-    public static List<InputSplit> getSplits(Configuration conf, SyncClientInterface ots) {
+    public static List<InputSplit> getSplits(Configuration conf,
+        SyncClientInterface ots) {
         List<RangeRowQueryCriteria> scans = getScans(conf);
         logger.info("{} scans", scans.size());
         Set<String> tables = collectTables(scans);
@@ -190,7 +219,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
     }
 
     private static List<RangeRowQueryCriteria> getScans(Configuration conf) {
-        String cur = conf.get(MultiCriteria.kTableStoreCriteria);
+        String cur = conf.get(CRITERIA);
         MultiCriteria cri = null;
         if (cur == null) {
             cri = new MultiCriteria();
@@ -202,8 +231,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         return scans;
     }
 
-    private static Set<String> collectTables(List<RangeRowQueryCriteria> scans)
-    {
+    private static Set<String> collectTables(List<RangeRowQueryCriteria> scans) {
         Set<String> res = new HashSet<String>();
         for(RangeRowQueryCriteria s: scans) {
             String tbl = s.getTableName();
@@ -212,10 +240,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         return res;
     }
 
-    private static Map<String, List<PrimaryKey>> fetchSplits(
-        SyncClientInterface ots,
-        Set<String> tables)
-    {
+    private static Map<String, List<PrimaryKey>> fetchSplits(SyncClientInterface ots,
+        Set<String> tables) {
         Map<String, List<PrimaryKey>> res = new HashMap<String, List<PrimaryKey>>();
         for(String tbl: tables) {
             if (res.containsKey(tbl)) {
@@ -235,7 +261,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
                     PrimaryKeyColumn[] newCols = new PrimaryKeyColumn[schema.size()];
                     System.arraycopy(cols, 0, newCols, 0, cols.length);
                     for(int i = cols.length; i < schema.size(); ++i) {
-                        newCols[i] = new PrimaryKeyColumn(schema.get(i).getName(), PrimaryKeyValue.INF_MIN);
+                        newCols[i] = new PrimaryKeyColumn(
+                            schema.get(i).getName(), PrimaryKeyValue.INF_MIN);
                     }
                     pkeys.add(new PrimaryKey(newCols));
                 }
@@ -260,22 +287,6 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
             return pos;
         } else {
             return -pos - 1;
-        }
-    }
-
-    /**
-     * for internal usage only
-     */
-    public static SyncClientInterface newOtsClient(Configuration conf) {
-        Credential cred = Credential.deserialize(
-            conf.get(Credential.kTableStoreCredential));
-        Endpoint ep = Endpoint.deserialize(
-            conf.get(Endpoint.kTableStoreEndpoint));
-        if (cred.securityToken == null) {
-            return new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
-        } else {
-            return new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
-                                  cred.securityToken);
         }
     }
 

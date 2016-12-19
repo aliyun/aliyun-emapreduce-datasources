@@ -29,14 +29,13 @@ import org.apache.hadoop.io.Writable;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class Credential implements Writable {
-    public static final String kTableStoreCredential = "TABLESTORE_CREDENTIAL";
-    
     public String accessKeyId;
     public String accessKeySecret;
     public String securityToken;
 
     public Credential() {
     }
+
     public Credential(String accessKeyId, String accessKeySecret, String securityToken) {
         Preconditions.checkNotNull(accessKeyId, "accessKeyId should not be null.");
         Preconditions.checkNotNull(accessKeySecret, "accessKeySecret should not be null.");
@@ -45,8 +44,7 @@ public class Credential implements Writable {
         this.securityToken = securityToken;
     }
 
-    @Override
-    public boolean equals(Object obj) {
+    @Override public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
@@ -67,8 +65,7 @@ public class Credential implements Writable {
         }
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.CREDENTIAL);
         out.writeUTF(accessKeyId);
         out.writeUTF(accessKeySecret);
@@ -78,8 +75,7 @@ public class Credential implements Writable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tag = in.readByte();
         if (tag != WritableConsts.CREDENTIAL) {
             throw new IOException("broken input stream");
