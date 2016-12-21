@@ -45,6 +45,7 @@ public class WritableConsts {
     public static final byte GETRANGE_BACKWARDS = 46;
     public static final byte GETRANGE_START_PKEY = 48;
     public static final byte GETRANGE_END_PKEY = 51;
+    public static final byte GETRANGE_FINISH = 113;
 
     public static final byte CREDENTIAL = 53;
     public static final byte CREDENTIAL_SECURITY_TOKEN = 54;
@@ -79,7 +80,6 @@ public class WritableConsts {
     public static final byte ROW_CONDITION_EXPECT_NOT_EXIST = 106;
     public static final byte COLUMN_CONDITION_NONE = 108;
     public static final byte COLUMN_CONDITION_PRESENT = 111;
-    // public static final byte x = 113;
     // public static final byte x = 114;
     // public static final byte x = 116;
     // public static final byte x = 119;
