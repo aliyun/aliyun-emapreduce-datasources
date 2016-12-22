@@ -8,5 +8,4 @@ CREATE EXTERNAL TABLE pet
     "tablestore.table.name"="pet");
 SELECT * FROM pet;
 SELECT * FROM pet WHERE birth > "1995-01-01";
--- on executing the following, Hive crashes, but SparkSQL passes
 SELECT count(*) FROM pet;

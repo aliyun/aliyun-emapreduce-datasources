@@ -103,6 +103,7 @@ public class RangeRowQueryCriteriaWritable implements Writable {
         if (criteria.hasSetFilter()) {
             new FilterWritable(criteria.getFilter()).write(out);
         }
+        out.writeByte(WritableConsts.GETRANGE_FINISH);
     }
 
     @Override public void readFields(DataInput in) throws IOException {
@@ -114,7 +115,7 @@ public class RangeRowQueryCriteriaWritable implements Writable {
         criteria = new RangeRowQueryCriteria(tblName);
 
         while(true) {
-            byte tag = nextTag(in);
+            byte tag = in.readByte();
             if (tag == WritableConsts.GETRANGE_COLUMNS_TO_GET) {
                 int sz = in.readInt();
                 for(int i = 0; i < sz; ++i) {
@@ -146,6 +147,9 @@ public class RangeRowQueryCriteriaWritable implements Writable {
             } else if (tag == WritableConsts.FILTER) {
                 criteria.setFilter(FilterWritable.readFilter(in));
             } else {
+                if (tag != WritableConsts.GETRANGE_FINISH) {
+                    throw new IOException("broken input stream");
+                }
                 break;
             }
         }
@@ -155,14 +159,6 @@ public class RangeRowQueryCriteriaWritable implements Writable {
         RangeRowQueryCriteriaWritable w = new RangeRowQueryCriteriaWritable();
         w.readFields(in);
         return w;
-    }
-
-    private byte nextTag(DataInput in) throws IOException {
-        try {
-            return in.readByte();
-        } catch(EOFException ex) {
-            return 0;
-        }
     }
 }
 

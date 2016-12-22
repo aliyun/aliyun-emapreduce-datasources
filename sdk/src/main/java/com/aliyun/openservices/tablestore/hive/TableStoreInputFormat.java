@@ -23,13 +23,20 @@ import java.util.ArrayList;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.hive.serde.serdeConstants;
+import org.apache.hadoop.hive.shims.ShimLoader;
+
 import com.alicloud.openservices.tablestore.SyncClientInterface;
 import com.alicloud.openservices.tablestore.model.TableMeta;
 import com.alicloud.openservices.tablestore.model.PrimaryKeySchema;
@@ -74,10 +81,13 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
             }
         }
         InputSplit[] res = new InputSplit[splits.size()];
+        JobContext jobContext = ShimLoader.getHadoopShims().newJobContext(new Job(job));
+        Path [] tablePaths = FileInputFormat.getInputPaths(jobContext);
         int i = 0;
         for(org.apache.hadoop.mapreduce.InputSplit split: splits) {
             res[i] = new TableStoreInputSplit(
-                (com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit) split);
+                (com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit) split,
+                tablePaths[0]);
             ++i;
         }
         return res;
@@ -136,10 +146,16 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         Preconditions.checkNotNull(job, "job must be nonnull");
         Preconditions.checkArgument(
             split instanceof TableStoreInputSplit,
-            "split must be one of " + TableStoreInputSplit.class.getName());
+            "split must be an instance of " + TableStoreInputSplit.class.getName());
         TableStoreInputSplit tsSplit = (TableStoreInputSplit) split;
-
-        Configuration conf = translateConfig(job);
+        Configuration conf;
+        if (isHiveConfiguration(job)) {
+            // map task, such as 'select *'
+            conf = translateConfig(job);
+        } else {
+            // reduce task, such as 'select count(*)'
+            conf = job;
+        }
         final com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader rdr =
             new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader();
         rdr.initialize(tsSplit.getDelegated(), conf);
@@ -174,5 +190,10 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                 return rdr.getProgress();
             }
         };
+    }
+
+    private boolean isHiveConfiguration(Configuration conf) {
+        String endpoint = conf.get(TableStoreConsts.ENDPOINT);
+        return endpoint != null;
     }
 }
