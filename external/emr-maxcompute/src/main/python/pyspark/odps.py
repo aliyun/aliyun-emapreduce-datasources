@@ -127,17 +127,17 @@ ________________________________________________________________________________
 
   E-MapReduce SDK's libraries not found in class path. Try one of the following.
 
-  1. Include the 'emr-sdk' library and its dependencies with in the
+  1. Include the 'emr-maxcompute_2.10' library and its dependencies with in the
      spark-submit command as
 
-     $ bin/spark-submit --packages com.aliyun.emr:emr-sdk_2.10:%s ...
+     $ bin/spark-submit --packages com.aliyun.emr:emr-maxcompute_2.10:%s ...
 
   2. Download the JAR of the artifact from Maven Central http://search.maven.org/,
-     Group Id = com.aliyun.emr, Artifact Id = emr-sdk_2.10, Version = %s.
+     Group Id = com.aliyun.emr, Artifact Id = emr-maxcompute_2.10, Version = %s.
      Then, include the jar in the spark-submit command as
 
-     $ bin/spark-submit --jars <emr-sdk_2.10-%s.jar> ...
+     $ bin/spark-submit --jars <emr-maxcompute_2.10-%s.jar> ...
 
 ________________________________________________________________________________________________
 
-""" % ('1.2.0', '1.2.0', '1.2.0'))
+""" % ('1.4.0-SNAPSHOT', '1.4.0-SNAPSHOT', '1.4.0-SNAPSHOT'))
