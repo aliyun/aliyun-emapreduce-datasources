@@ -111,7 +111,7 @@ OK, let the program run.
 
 ```
 $ rm -rf out
-$ HADOOP_CLASSPATH=emr-sdk_2.10-1.3.1-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
+$ HADOOP_CLASSPATH=emr-tablestore-1.4.0-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
 ...
 $ find out -type f
 out/_SUCCESS

@@ -36,6 +36,8 @@
     </modules>
 
     <properties>
+        <scala.version>2.10.4</scala.version>
+        <scala.binary.version>2.10</scala.binary.version>
         <spark.version>1.6.2</spark.version>
         <oss.sdk.version>2.3.0</oss.sdk.version>
         <tablestore.sdk.version>4.1.0</tablestore.sdk.version>
@@ -300,6 +302,12 @@
                 <artifactId>okhttp</artifactId>
                 <version>${okhttp3.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>jline</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -497,39 +505,6 @@
             </plugins>
         </pluginManagement>
     </build>
-    <profiles>
-        <profile>
-            <id>scala-2.10</id>
-            <activation>
-                <property><name>!scala-2.11</name></property>
-            </activation>
-            <properties>
-                <scala.version>2.10.4</scala.version>
-                <scala.binary.version>2.10</scala.binary.version>
-                <jline.version>${scala.version}</jline.version>
-                <jline.groupid>org.scala-lang</jline.groupid>
-            </properties>
-            <dependencyManagement>
-                <dependencies>
-                    <dependency>
-                        <groupId>${jline.groupid}</groupId>
-                        <artifactId>jline</artifactId>
-                        <version>${jline.version}</version>
-                    </dependency>
-                </dependencies>
-            </dependencyManagement>
-        </profile>
-        <profile>
-            <id>scala-2.11</id>
-            <activation>
-                <property><name>scala-2.11</name></property>
-            </activation>
-            <properties>
-                <scala.version>2.11.7</scala.version>
-                <scala.binary.version>2.11</scala.binary.version>
-            </properties>
-        </profile>
-    </profiles>
     <distributionManagement>
         <snapshotRepository>
             <id>oss</id>

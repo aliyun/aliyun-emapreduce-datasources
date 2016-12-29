@@ -16,6 +16,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
@@ -25,12 +31,6 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming_${scala.binary.version}</artifactId>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -65,26 +65,6 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <configuration>
-                    <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/shaded/emr-sdk_${scala.binary.version}-${project.version}.jar</outputFile>
-                    <artifactSet>
-                        <includes>
-                        </includes>
-                    </artifactSet>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
