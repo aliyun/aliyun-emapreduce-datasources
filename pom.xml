@@ -7,7 +7,7 @@
     <version>1.4.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
-    <name>Aliyun EMR</name>
+    <name>Aliyun E-MapReduce Root</name>
     <description>Hadoop/Spark on Aliyun, supporting interactions with Aliyun's base services.</description>
     <url>http://www.aliyun.com/product/emapreduce</url>
 
