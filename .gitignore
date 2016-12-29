@@ -1,7 +1,10 @@
 .idea/
 core/target/
-emr-sdk/target/
+external/emr-ons/target/
+external/emr-mns/target/
+external/emr-maxcompute/target/
+external/emr-logservice/target/
+external/emr-tablestore/target/
 examples/target/
 *.iml
-sdk/target/
 log.txt

@@ -20,7 +20,7 @@
 
 #### Use SDK in Eclipse project directly
 
-- copy `emr-sdk_2.10-1.2.0.jar` to your project
+- copy sdk jar to your project
 - right click Eclipse project -> Properties -> Java Build Path -> Add JARs
 - choose and import the sdk
 - you can use the sdk in your Eclipse project
@@ -30,8 +30,38 @@
 ```
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-sdk_2.10</artifactId>
-            <version>1.2.0</version>
+            <artifactId>emr-maxcompute_2.11</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-logservice_2.11</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-tablestore</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-ons_2.11</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-mns_2.11</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-core</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
         </dependency>
 
 ```

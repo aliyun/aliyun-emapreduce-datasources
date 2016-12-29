@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.aliyun.emr</groupId>
         <artifactId>emr_2.11</artifactId>
-        <version>1.3.1</version>
+        <version>1.4.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
 
     <artifactId>emr-examples_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Aliyun Spark Examples</name>
+    <name>Aliyun E-MapReduce Examples</name>
 
     <dependencies>
         <dependency>
@@ -36,7 +36,31 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-sdk_${scala.binary.version}</artifactId>
+            <artifactId>emr-maxcompute_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-logservice_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-tablestore</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-mns_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-ons_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -127,7 +151,11 @@
                     <outputFile>${project.build.directory}/shaded/emr-examples_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
-                            <include>com.aliyun.emr:emr-sdk_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-maxcompute_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-tablestore</include>
+                            <include>com.aliyun.emr:emr-logservice_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-ons_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-mns_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-core</include>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>

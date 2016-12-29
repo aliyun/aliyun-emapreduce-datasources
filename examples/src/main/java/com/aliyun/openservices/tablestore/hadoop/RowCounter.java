@@ -21,16 +21,16 @@ package com.aliyun.openservices.tablestore.hadoop;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.model.DescribeTableRequest;
@@ -41,6 +41,13 @@ import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 
+import org.apache.spark.aliyun.tablestore.hadoop.Credential;
+import org.apache.spark.aliyun.tablestore.hadoop.Endpoint;
+import org.apache.spark.aliyun.tablestore.hadoop.PrimaryKeyWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.RowWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStore;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStoreInputFormat;
+
 public class RowCounter {
     private static String endpoint;
     private static String accessKeyId;
@@ -49,16 +56,14 @@ public class RowCounter {
     private static String instance;
     private static String table;
     private static String outputPath;
-    
+
     public static class RowCounterMapper
-      extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable>{
+      extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable> {
         private final static Text agg = new Text("TOTAL");
         private final static LongWritable one = new LongWritable(1);
 
-        @Override
-        public void map(
-            PrimaryKeyWritable key, RowWritable value, Context context)
-            throws IOException, InterruptedException {
+        @Override public void map(PrimaryKeyWritable key, RowWritable value,
+                                  Context context) throws IOException, InterruptedException {
             context.write(agg, one);
         }
     }
@@ -66,10 +71,8 @@ public class RowCounter {
     public static class IntSumReducer
       extends Reducer<Text,LongWritable,Text,LongWritable> {
 
-        @Override
-        public void reduce(
-            Text key, Iterable<LongWritable> values, Context context)
-            throws IOException, InterruptedException {
+        @Override public void reduce(Text key, Iterable<LongWritable> values,
+                                     Context context) throws IOException, InterruptedException {
             long sum = 0;
             for (LongWritable val : values) {
                 sum += val.get();
@@ -77,7 +80,7 @@ public class RowCounter {
             context.write(key, new LongWritable(sum));
         }
     }
-    
+
     private static boolean parseArgs(String[] args) {
         for(int i = 0; i < args.length;) {
             if (args[i].equals("--endpoint")) {
@@ -118,11 +121,11 @@ public class RowCounter {
         }
         if (cred.securityToken == null) {
             return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
+              ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
         } else {
             return new SyncClient(
-                ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
-                cred.securityToken);
+              ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance,
+              cred.securityToken);
         }
     }
 
@@ -130,7 +133,7 @@ public class RowCounter {
         SyncClient ots = getOTSClient();
         try {
             DescribeTableResponse resp = ots.describeTable(
-                new DescribeTableRequest(table));
+              new DescribeTableRequest(table));
             return resp.getTableMeta();
         } finally {
             ots.shutdown();
@@ -168,12 +171,8 @@ public class RowCounter {
             printUsage();
             System.exit(1);
         }
-        if (endpoint == null ||
-            accessKeyId == null ||
-            accessKeySecret == null ||
-            table == null ||
-            outputPath == null)
-        {
+        if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
+          table == null || outputPath == null) {
             printUsage();
             System.exit(1);
         }
@@ -187,19 +186,13 @@ public class RowCounter {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(LongWritable.class);
         job.setInputFormatClass(TableStoreInputFormat.class);
-        if (securityToken == null) {
-            TableStoreInputFormat.setCredential(job, accessKeyId, accessKeySecret);
-        } else {
-            TableStoreInputFormat.setCredential(job, accessKeyId, accessKeySecret, securityToken);
-        }
-        if (instance == null) {
-            TableStoreInputFormat.setEndpoint(job, endpoint);
-        } else {
-            TableStoreInputFormat.setEndpoint(job, endpoint, instance);
-        }
+
+        TableStore.setCredential(job, accessKeyId, accessKeySecret, securityToken);
+        TableStore.setEndpoint(job, endpoint, instance);
         TableStoreInputFormat.addCriteria(job, fetchCriteria());
         FileOutputFormat.setOutputPath(job, new Path(outputPath));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
+
 

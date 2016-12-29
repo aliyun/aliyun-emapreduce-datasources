@@ -19,7 +19,6 @@ package com.aliyun.emr.examples
 
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record
-import org.apache.spark.aliyun.oss.OssOps
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.aliyun.odps.OdpsOps
@@ -62,7 +61,7 @@ object WordCount {
         conf.set("spark.hadoop.fs.oss.accessKeySecret", accessKeySecret)
         conf.set("spark.hadoop.fs.oss.endpoint", endpoint)
         val sc = new SparkContext(conf)
-        OssOps(sc, endpoint, accessKeyId, accessKeySecret).readOssFile(inputPath, numPartition)
+        sc.textFile(inputPath, numPartition)
 
       case "hdfs" =>
         if (args.length < 3) {
