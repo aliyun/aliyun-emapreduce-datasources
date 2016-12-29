@@ -21,16 +21,16 @@ package com.aliyun.openservices.tablestore.hadoop;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.model.DescribeTableRequest;
@@ -40,6 +40,13 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeySchema;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
+
+import org.apache.spark.aliyun.tablestore.hadoop.Credential;
+import org.apache.spark.aliyun.tablestore.hadoop.Endpoint;
+import org.apache.spark.aliyun.tablestore.hadoop.PrimaryKeyWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.RowWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStore;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStoreInputFormat;
 
 public class RowCounter {
     private static String endpoint;

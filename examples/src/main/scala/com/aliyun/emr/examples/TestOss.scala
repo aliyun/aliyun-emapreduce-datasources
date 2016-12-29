@@ -19,7 +19,6 @@
 package com.aliyun.emr.examples
 
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.aliyun.oss.OssOps
 
 object TestOss {
   def main(args: Array[String]): Unit = {

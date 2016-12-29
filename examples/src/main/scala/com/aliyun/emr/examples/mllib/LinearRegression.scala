@@ -18,16 +18,11 @@
 package com.aliyun.emr.examples.mllib
 
 import _root_.scopt.OptionParser
-import org.apache.log4j.{Level, Logger}
-import org.apache.spark.aliyun.oss.OssOps
-import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.optimization.L1Updater
 import org.apache.spark.mllib.optimization.SimpleUpdater
 import org.apache.spark.mllib.optimization.SquaredL2Updater
-import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD
 import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkContext, SparkConf}
 
 object LinearRegression {

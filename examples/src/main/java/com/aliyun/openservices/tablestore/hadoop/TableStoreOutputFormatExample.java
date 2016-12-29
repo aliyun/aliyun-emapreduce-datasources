@@ -23,6 +23,15 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Collections;
+
+import org.apache.spark.aliyun.tablestore.hadoop.BatchWriteWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.Credential;
+import org.apache.spark.aliyun.tablestore.hadoop.Endpoint;
+import org.apache.spark.aliyun.tablestore.hadoop.PrimaryKeyWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.RowWritable;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStore;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStoreInputFormat;
+import org.apache.spark.aliyun.tablestore.hadoop.TableStoreOutputFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +42,6 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.MapWritable;
-
-import com.aliyun.openservices.tablestore.hadoop.BatchWriteWritable;
 
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
@@ -159,7 +166,7 @@ public class TableStoreOutputFormatExample {
     }
 
     public static class IntoTableReducer
-      extends Reducer<Text,MapWritable,Text,BatchWriteWritable> {
+      extends Reducer<Text, MapWritable, Text, BatchWriteWritable> {
 
         @Override public void reduce(Text owner, Iterable<MapWritable> pets,
             Context context) throws IOException, InterruptedException {
