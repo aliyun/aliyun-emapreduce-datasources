@@ -417,6 +417,20 @@ object LoghubUtils {
     createStream(jssc.ssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, numReceivers, storageLevel)
   }
+
+  def createDirectStream(
+      ssc: StreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: Map[String, String],
+      mode: LogHubCursorPosition): DStream[String] = {
+    new DirectLoghubInputDStream(ssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams, mode)
+  }
 }
 
 class LoghubUtilsHelper {
