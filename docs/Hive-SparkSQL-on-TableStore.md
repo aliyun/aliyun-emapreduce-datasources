@@ -5,13 +5,13 @@
 ### Hive CLI
 
 ```
-$ HADOOP_HOME=YourHadoopDir HADOOP_CLASSPATH=emr-sdk_2.10-1.3.1-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar:joda-time-2.9.4.jar bin/hive
+$ HADOOP_HOME=YourHadoopDir HADOOP_CLASSPATH=emr-sdk_2.10-1.3.2.jar:tablestore-4.1.0-jar-with-dependencies.jar:joda-time-2.9.4.jar bin/hive
 ```
 
 ### SparkSQL CLI
 
 ```
-$ bin/spark-sql --master local --jars emr-sdk_2.10-1.3.1-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar
+$ bin/spark-sql --master local --jars emr-sdk_2.10-1.3.2.jar,tablestore-4.1.0-jar-with-dependencies.jar
 ```
 
 

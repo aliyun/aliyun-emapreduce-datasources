@@ -20,7 +20,7 @@
 
 #### Use SDK in Eclipse project directly
 
-- copy `emr-sdk_2.10-1.3.1.jar` to your project
+- copy `emr-sdk_2.10-1.3.2.jar` to your project
 - right click Eclipse project -> Properties -> Java Build Path -> Add JARs
 - choose and import the sdk
 - you can use the sdk in your Eclipse project
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-sdk_2.10</artifactId>
-            <version>1.3.1</version>
+            <version>1.3.2</version>
         </dependency>
 
 ```
