@@ -46,8 +46,7 @@ public class FilterWritable implements Writable {
         return filter;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(filter, "filter must be nonnull.");
         out.write(WritableConsts.FILTER);
         write(out, filter);
@@ -122,8 +121,7 @@ public class FilterWritable implements Writable {
         }
     }
     
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tag = in.readByte();
         if (tag != WritableConsts.FILTER) {
             throw new IOException("broken input stream");
@@ -143,8 +141,7 @@ public class FilterWritable implements Writable {
     }
 
     private static ColumnValueFilter readColumnValueFilter(DataInput in, byte tag)
-        throws IOException
-    {
+        throws IOException {
         if (tag == WritableConsts.FILTER_SINGLE_COLUMN) {
             byte opTag = in.readByte();
             SingleColumnValueFilter.CompareOperator op;

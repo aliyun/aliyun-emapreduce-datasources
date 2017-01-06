@@ -47,24 +47,20 @@ public class TableStoreInputSplit extends InputSplit implements Writable {
      * @return The length of the split.
      * @see org.apache.hadoop.mapreduce.InputSplit#getLength()
      */
-    @Override
-    public long getLength() throws IOException, InterruptedException {
+    @Override public long getLength() throws IOException, InterruptedException {
         return 0;
     }
 
-    @Override
-    public String[] getLocations() throws IOException, InterruptedException {
+    @Override public String[] getLocations() throws IOException, InterruptedException {
         return new String[] {};
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(criteria, "criteria should not be null.");
         new RangeRowQueryCriteriaWritable(criteria).write(out);
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         criteria = RangeRowQueryCriteriaWritable.read(in).getRangeRowQueryCriteria();
     }
 

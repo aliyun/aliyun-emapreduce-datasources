@@ -21,19 +21,28 @@ package com.aliyun.openservices.tablestore.hive;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.FileSplit;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class TableStoreInputSplit implements InputSplit, Writable {
+public class TableStoreInputSplit extends FileSplit implements InputSplit, Writable {
+    private static final Logger logger = LoggerFactory.getLogger(TableStoreInputSplit.class);
     private com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit delegated;
 
     public TableStoreInputSplit() {
+        super(null, 0, 0, (String[]) null);
     }
 
     public TableStoreInputSplit(
-        com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit delegated)
-    {
+        com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit delegated,
+        Path path) {
+        super(path, 0, 0, (String[]) null);
         this.delegated = delegated;
     }
 
@@ -41,19 +50,20 @@ public class TableStoreInputSplit implements InputSplit, Writable {
         return this.delegated;
     }
 
-    @Override
-    public long getLength() throws IOException {
+    @Override public long getLength() {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
         try {
             return this.delegated.getLength();
-        } catch (InterruptedException ex) {
+        } catch(IOException ex) {
+            // intend to do nothing
+            return 0;
+        } catch(InterruptedException ex) {
             // intend to do nothing
             return 0;
         }
     }
 
-    @Override
-    public String[] getLocations() throws IOException {
+    @Override public String[] getLocations() throws IOException {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
         try {
             return this.delegated.getLocations();
@@ -63,16 +73,17 @@ public class TableStoreInputSplit implements InputSplit, Writable {
         }
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(this.delegated, "delegated should not be null.");
+        Preconditions.checkNotNull(getPath(), "path should not be null.");
+        super.write(out);
         this.delegated.write(out);
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
-        this.delegated = com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit
-            .read(in);
+    @Override public void readFields(DataInput in) throws IOException {
+        super.readFields(in);
+        this.delegated =
+            com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit.read(in);
     }
 }
 

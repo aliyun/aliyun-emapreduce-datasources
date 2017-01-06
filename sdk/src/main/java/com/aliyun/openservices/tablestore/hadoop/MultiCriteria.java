@@ -32,8 +32,6 @@ import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class MultiCriteria implements Writable {
-    public static final String kTableStoreCriteria = "TABLESTORE_CRITERIA";
-
     private List<RangeRowQueryCriteria> criteria = new ArrayList<RangeRowQueryCriteria>();
 
     public MultiCriteria() {
@@ -47,8 +45,7 @@ public class MultiCriteria implements Writable {
         this.criteria.add(criteria);
     }
 
-    @Override
-    public boolean equals(Object obj) {
+    @Override public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
@@ -59,8 +56,7 @@ public class MultiCriteria implements Writable {
         return this.criteria.equals(a.criteria);
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.MULTI_CRITERIA);
         out.writeInt(criteria.size());
         for(RangeRowQueryCriteria c: criteria) {
@@ -68,8 +64,7 @@ public class MultiCriteria implements Writable {
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tag = in.readByte();
         if (tag != WritableConsts.MULTI_CRITERIA) {
             throw new IOException("broken input stream");

@@ -21,16 +21,21 @@ package com.aliyun.openservices.tablestore.hadoop;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Collections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.MapWritable;
+
+import com.aliyun.openservices.tablestore.hadoop.BatchWriteWritable;
+
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
 import com.alicloud.openservices.tablestore.model.DescribeTableRequest;
@@ -40,40 +45,20 @@ import com.alicloud.openservices.tablestore.model.PrimaryKeySchema;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
+import com.alicloud.openservices.tablestore.model.RowPutChange;
+import com.alicloud.openservices.tablestore.model.Column;
+import com.alicloud.openservices.tablestore.model.ColumnValue;
 
-public class RowCounter {
+public class TableStoreOutputFormatExample {
+    private static final Logger logger = LoggerFactory.getLogger(TableStoreOutputFormatExample.class);
     private static String endpoint;
     private static String accessKeyId;
     private static String accessKeySecret;
     private static String securityToken;
     private static String instance;
-    private static String table;
-    private static String outputPath;
-    
-    public static class RowCounterMapper 
-      extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable> {
-        private final static Text agg = new Text("TOTAL");
-        private final static LongWritable one = new LongWritable(1);
+    private static String inputTable;
+    private static String outputTable;
 
-        @Override public void map(PrimaryKeyWritable key, RowWritable value,
-            Context context) throws IOException, InterruptedException {
-            context.write(agg, one);
-        }
-    }
-
-    public static class IntSumReducer
-      extends Reducer<Text,LongWritable,Text,LongWritable> {
-
-        @Override public void reduce(Text key, Iterable<LongWritable> values,
-            Context context) throws IOException, InterruptedException {
-            long sum = 0;
-            for (LongWritable val : values) {
-                sum += val.get();
-            }
-            context.write(key, new LongWritable(sum));
-        }
-    }
-    
     private static boolean parseArgs(String[] args) {
         for(int i = 0; i < args.length;) {
             if (args[i].equals("--endpoint")) {
@@ -88,20 +73,31 @@ public class RowCounter {
             } else if (args[i].equals("--instance")) {
                 instance = args[i+1];
                 i += 2;
-            } else if (args[i].equals("--table")) {
-                table = args[i+1];
+            } else if (args[i].equals("--input-table")) {
+                inputTable = args[i+1];
                 i += 2;
             } else if (args[i].equals("--security-token")) {
                 securityToken = args[i+1];
                 i += 2;
-            } else if (args[i].equals("--output")) {
-                outputPath = args[i+1];
+            } else if (args[i].equals("--output-table")) {
+                outputTable = args[i+1];
                 i += 2;
             } else {
                 return false;
             }
         }
         return true;
+    }
+
+    private static void printUsage() {
+        System.err.println("Usage: RowCounter [options]");
+        System.err.println("--access-key-id\t\taccess-key id");
+        System.err.println("--access-key-secret\taccess-key secret");
+        System.err.println("--security-token\t(optional) security token");
+        System.err.println("--endpoint\tendpoint");
+        System.err.println("--instance\tinstance name");
+        System.err.println("--input-table\tinput table name, which must be a \"pet\" table. See docs about TableStoreOutputFormat for details.");
+        System.err.println("--output-table\tinput table name, which must be a \"owner-pet\" table. See docs about TableStoreOutputFormat for details.");
     }
 
     private static SyncClient getOTSClient() {
@@ -126,7 +122,7 @@ public class RowCounter {
         SyncClient ots = getOTSClient();
         try {
             DescribeTableResponse resp = ots.describeTable(
-                new DescribeTableRequest(table));
+                new DescribeTableRequest(inputTable));
             return resp.getTableMeta();
         } finally {
             ots.shutdown();
@@ -135,7 +131,7 @@ public class RowCounter {
 
     private static RangeRowQueryCriteria fetchCriteria() {
         TableMeta meta = fetchTableMeta();
-        RangeRowQueryCriteria res = new RangeRowQueryCriteria(table);
+        RangeRowQueryCriteria res = new RangeRowQueryCriteria(inputTable);
         res.setMaxVersions(1);
         List<PrimaryKeyColumn> lower = new ArrayList<PrimaryKeyColumn>();
         List<PrimaryKeyColumn> upper = new ArrayList<PrimaryKeyColumn>();
@@ -148,16 +144,46 @@ public class RowCounter {
         return res;
     }
 
-    private static void printUsage() {
-        System.err.println("Usage: RowCounter [options]");
-        System.err.println("--access-key-id\t\taccess-key id");
-        System.err.println("--access-key-secret\taccess-key secret");
-        System.err.println("--security-token\t(optional) security token");
-        System.err.println("--endpoint\tendpoint");
-        System.err.println("--instance\tinstance name");
-        System.err.println("--table\ttable name");
-        System.err.println("--output\tdirectory to place outputs. this directory must be nonexistent.");
+    public static class OwnerMapper
+      extends Mapper<PrimaryKeyWritable, RowWritable, Text, MapWritable> {
+        @Override public void map(PrimaryKeyWritable key, RowWritable row,
+            Context context) throws IOException, InterruptedException {
+            PrimaryKeyColumn pet = key.getPrimaryKey().getPrimaryKeyColumn("name");
+            Column owner = row.getRow().getLatestColumn("owner");
+            Column species = row.getRow().getLatestColumn("species");
+            MapWritable m = new MapWritable();
+            m.put(new Text(pet.getValue().asString()),
+                new Text(species.getValue().asString()));
+            context.write(new Text(owner.getValue().asString()), m);
+        }
     }
+
+    public static class IntoTableReducer
+      extends Reducer<Text,MapWritable,Text,BatchWriteWritable> {
+
+        @Override public void reduce(Text owner, Iterable<MapWritable> pets,
+            Context context) throws IOException, InterruptedException {
+            List<PrimaryKeyColumn> pkeyCols = new ArrayList<PrimaryKeyColumn>();
+            pkeyCols.add(new PrimaryKeyColumn("owner",
+                    PrimaryKeyValue.fromString(owner.toString())));
+            PrimaryKey pkey = new PrimaryKey(pkeyCols);
+            List<Column> attrs = new ArrayList<Column>();
+            for(MapWritable petMap: pets) {
+                for(Map.Entry<Writable, Writable> pet: petMap.entrySet()) {
+                    Text name = (Text) pet.getKey();
+                    Text species = (Text) pet.getValue();
+                    attrs.add(new Column(name.toString(),
+                            ColumnValue.fromString(species.toString())));
+                }
+            }
+            RowPutChange putRow = new RowPutChange(outputTable, pkey)
+                .addColumns(attrs);
+            BatchWriteWritable batch = new BatchWriteWritable();
+            batch.addRowChange(putRow);
+            context.write(owner, batch);
+        }
+    }
+
 
     public static void main(String[] args) throws Exception {
         if (!parseArgs(args)) {
@@ -165,26 +191,24 @@ public class RowCounter {
             System.exit(1);
         }
         if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
-            table == null || outputPath == null) {
+            inputTable == null || outputTable == null) {
             printUsage();
             System.exit(1);
         }
 
         Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "row count");
-        job.setJarByClass(RowCounter.class);
-        job.setMapperClass(RowCounterMapper.class);
-        job.setCombinerClass(IntSumReducer.class);
-        job.setReducerClass(IntSumReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(LongWritable.class);
+        Job job = Job.getInstance(conf, TableStoreOutputFormatExample.class.getName());
+        job.setMapperClass(OwnerMapper.class);
+        job.setReducerClass(IntoTableReducer.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(MapWritable.class);
         job.setInputFormatClass(TableStoreInputFormat.class);
+        job.setOutputFormatClass(TableStoreOutputFormat.class);
 
         TableStore.setCredential(job, accessKeyId, accessKeySecret, securityToken);
         TableStore.setEndpoint(job, endpoint, instance);
         TableStoreInputFormat.addCriteria(job, fetchCriteria());
-        FileOutputFormat.setOutputPath(job, new Path(outputPath));
+        TableStoreOutputFormat.setOutputTable(job, outputTable);
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
-

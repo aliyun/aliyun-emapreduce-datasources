@@ -52,8 +52,7 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         this.primaryKey = pkey;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         Preconditions.checkNotNull(primaryKey, "primaryKey should not be null.");
         PrimaryKeyColumn[] cs = primaryKey.getPrimaryKeyColumns();
         out.writeByte(WritableConsts.PRIMARY_KEY);
@@ -84,8 +83,7 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         }
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte pkeyTag = in.readByte();
         if (pkeyTag != WritableConsts.PRIMARY_KEY) {
             throw new IOException("broken input stream");
@@ -132,21 +130,18 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
         return w;
     }
 
-    @Override
-    public int compareTo(PrimaryKeyWritable o) {
+    @Override public int compareTo(PrimaryKeyWritable o) {
         Preconditions.checkNotNull(primaryKey, "The primary key should not be null.");
         Preconditions.checkNotNull(o.primaryKey, "The primary key should not be null.");
         return primaryKey.compareTo(o.primaryKey);
     }
 
-    public void readExternal(ObjectInput in)
-        throws IOException,
-               ClassNotFoundException
-    {
+    @Override public void readExternal(ObjectInput in)
+        throws IOException, ClassNotFoundException {
         this.readFields(in);
     }
 
-    public void writeExternal(ObjectOutput out) throws IOException {
+    @Override public void writeExternal(ObjectOutput out) throws IOException {
         this.write(out);
     }
 }

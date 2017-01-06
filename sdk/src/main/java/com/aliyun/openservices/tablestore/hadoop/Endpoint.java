@@ -33,8 +33,6 @@ import org.apache.hadoop.io.Writable;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class Endpoint implements Writable {
-    public static final String kTableStoreEndpoint = "TABLESTORE_ENDPOINT";
-
     public String endpoint;
     public String instance;
 
@@ -42,25 +40,27 @@ public class Endpoint implements Writable {
 
     public Endpoint() {
     }
+
     public Endpoint(String endpoint) {
-        Preconditions.checkNotNull(endpoint, "endpoint should not be null.");
-        this.endpoint = endpoint;
-        Matcher m = kInstPattern.matcher(endpoint);
-        Preconditions.checkArgument(
-            m.matches(), "cannot parse instance from endpoint: " + endpoint);
-        Preconditions.checkArgument(
-            m.groupCount() == 2, "cannot parse instance from endpoint: " + endpoint);
-        this.instance = m.group(2);
-    }
-    public Endpoint(String endpoint, String instance) {
-        Preconditions.checkNotNull(endpoint, "endpoint should not be null.");
-        Preconditions.checkNotNull(instance, "instance should not be null.");
-        this.endpoint = endpoint;
-        this.instance = instance;
+        this(endpoint, null);
     }
 
-    @Override
-    public boolean equals(Object obj) {
+    public Endpoint(String endpoint, String instance) {
+        Preconditions.checkNotNull(endpoint, "endpoint should not be null.");
+        this.endpoint = endpoint;
+        if (instance != null) {
+            this.instance = instance;
+        } else {
+            Matcher m = kInstPattern.matcher(endpoint);
+            Preconditions.checkArgument(
+                m.matches(), "cannot parse instance from endpoint: " + endpoint);
+            Preconditions.checkArgument(
+                m.groupCount() == 2, "cannot parse instance from endpoint: " + endpoint);
+            this.instance = m.group(2);
+        }
+    }
+
+    @Override public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
@@ -77,15 +77,13 @@ public class Endpoint implements Writable {
         return true;
     }
 
-    @Override
-    public void write(DataOutput out) throws IOException {
+    @Override public void write(DataOutput out) throws IOException {
         out.writeByte(WritableConsts.ENDPOINT);
         out.writeUTF(endpoint);
         out.writeUTF(instance);
     }
 
-    @Override
-    public void readFields(DataInput in) throws IOException {
+    @Override public void readFields(DataInput in) throws IOException {
         byte tag = in.readByte();
         if (tag != WritableConsts.ENDPOINT) {
             throw new IOException("broken input stream");
