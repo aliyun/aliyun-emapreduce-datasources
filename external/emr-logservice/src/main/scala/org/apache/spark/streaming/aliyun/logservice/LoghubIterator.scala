@@ -28,7 +28,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
-    zKClient: ZkClient,
+    zkClient: ZkClient,
     mClient: Client,
     project: String,
     logStore: String,
@@ -57,8 +57,7 @@ class LoghubIterator(
   def checkHasNext(): Boolean = {
     val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zKClient, s"$checkpointDir/commit/$shardId.shard", nextCursor)
-      zKClient.close()
+      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$shardId.shard", nextCursor)
     }
 
     hasNext
@@ -84,7 +83,7 @@ class LoghubIterator(
       logData.clear()
       logData = null
     } catch {
-      case e: Exception => logWarning("Exception in RecordReader.close()", e)
+      case e: Exception => logWarning("Exception when close LoghubIterator.", e)
     }
   }
 

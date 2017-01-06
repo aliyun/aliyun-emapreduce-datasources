@@ -40,38 +40,14 @@ class LoghubRDD(
     zkParams: Map[String, String],
     shardOffsets: ArrayBuffer[(Int, String, String)],
     checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
-  val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost：8121")
-  val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-  val zkConnectionTimeoutMs =
-    zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
-  @transient var mClient: Client = _
-  @transient var zkClient: ZkClient = _
+  @transient var mClient: Client =
+    LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
+  @transient var zkClient: ZkClient =
+    LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
 
   private def initialize(): Unit = {
-    zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
-    zkClient.setZkSerializer(new ZkSerializer() {
-      override def serialize(data: scala.Any): Array[Byte] = {
-        try {
-          data.asInstanceOf[String].getBytes("UTF-8")
-        } catch {
-          case e: UnsupportedEncodingException =>
-            null
-        }
-      }
-
-      override def deserialize(bytes: Array[Byte]): AnyRef = {
-        if (bytes == null) {
-          return null
-        }
-        try {
-          new String(bytes, "UTF-8")
-        } catch {
-          case e: UnsupportedEncodingException =>
-            null
-        }
-      }
-    })
-    mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+    mClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
+    zkClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
   }
 
   @DeveloperApi
@@ -92,8 +68,6 @@ class LoghubRDD(
   override protected def getPartitions: Array[Partition] = {
     val rate = sc.getConf.get("spark.streaming.loghub.maxRatePerShard", "10000").toInt
     val count = rate * duration / 1000
-    val mClient = new Client(endpoint, accessKeyId, accessKeySecret)
-
     shardOffsets.map(p =>
       new ShardPartition(id, p._1, count, project, logStore,
         accessKeyId, accessKeySecret, endpoint, p._2, p._3)
@@ -113,5 +87,60 @@ class LoghubRDD(
       val endCursor: String) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def index: Int = shardId
+  }
+}
+
+object LoghubRDD extends Logging {
+  private var zkClient: ZkClient = null
+  private var mClient: Client = null
+
+  def getClient(zkParams: Map[String, String], accessKeyId: String, accessKeySecret: String,
+      endpoint: String): (ZkClient, Client) = {
+    if (zkClient == null || mClient == null) {
+      val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost：2181")
+      val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
+      val zkConnectionTimeoutMs =
+        zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
+
+      zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
+      zkClient.setZkSerializer(new ZkSerializer() {
+        override def serialize(data: scala.Any): Array[Byte] = {
+          try {
+            data.asInstanceOf[String].getBytes("UTF-8")
+          } catch {
+            case e: UnsupportedEncodingException =>
+              null
+          }
+        }
+
+        override def deserialize(bytes: Array[Byte]): AnyRef = {
+          if (bytes == null) {
+            return null
+          }
+          try {
+            new String(bytes, "UTF-8")
+          } catch {
+            case e: UnsupportedEncodingException =>
+              null
+          }
+        }
+      })
+
+      mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+    }
+
+    (zkClient, mClient)
+  }
+
+  override def finalize(): Unit = {
+    super.finalize()
+    try {
+      if (zkClient != null) {
+        zkClient.close()
+        zkClient = null
+      }
+    } catch {
+      case e: Exception => logWarning("Exception when close zkClient.", e)
+    }
   }
 }
