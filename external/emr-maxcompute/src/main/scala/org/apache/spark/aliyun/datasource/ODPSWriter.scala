@@ -55,12 +55,12 @@ class ODPSWriter(
     val isPartitionTable = odpsUtils.isPartitionTable(table, project)
 
     if (isPartitionTable && partitionSpec == null) {
-      sys.error(s"when $project.$table use partitionBy, you should not provide option 'partitionSpec'")
+      sys.error(s"when $project.$table is a partition table, you should provide option 'partitionSpec'")
     }
 
     val shouldUpload = {
       if (saveMode == SaveMode.ErrorIfExists && tableExists) {
-        sys.error(s"$project.$table already exists and SaveMode is ErrorIfExists")
+        sys.error(s"$project.$table ${if(isPartitionTable) partitionSpec else ""} already exists and SaveMode is ErrorIfExists")
       } else if (saveMode == SaveMode.Ignore && tableExists) {
         log.info(s"Table ${project}.$table already exists and SaveMode is Ignore, No data saved")
         return
@@ -78,21 +78,6 @@ class ODPSWriter(
     }
 
     if (shouldUpload) {
-      val uploadSession = if (isPartitionTable) {
-        val parExists = odpsUtils.partitionExist(partitionSpec, table, project)
-        if (!parExists && defaultCreate) {
-          odpsUtils.createPartition(project, table, partitionSpec)
-        } else if (!parExists && !defaultCreate) {
-          sys.error("save to partition table, while partition is not exists, maybe you could set option 'allowCreatNewPartition' to true")
-        }
-        val parSpec = new PartitionSpec(partitionSpec)
-        tunnel.createUploadSession(project, table, parSpec)
-      } else {
-        tunnel.createUploadSession(project, table)
-      }
-
-      val uploadId = uploadSession.getId
-
       def writeToFile(schema: StructType, iter: Iterator[Row]) {
         val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
         val odps_ = new Odps(account_)
@@ -102,9 +87,9 @@ class ODPSWriter(
         tunnel_.setEndpoint(tunnelUrl)
         val uploadSession_ = if (isPartitionTable) {
           val parSpec = new PartitionSpec(partitionSpec)
-          tunnel_.getUploadSession(project, table, parSpec, uploadId)
+          tunnel_.createUploadSession(project, table, parSpec)
         } else {
-          tunnel_.getUploadSession(project, table, uploadId)
+          tunnel_.createUploadSession(project, table)
         }
 
         val writer = uploadSession_.openRecordWriter(TaskContext.get.partitionId)
@@ -142,10 +127,8 @@ class ODPSWriter(
         iterator =>
           writeToFile(dataSchema, iterator)
       }
-
-      val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))
-      uploadSession.commit(arr)
     }
+
   }
 
 }
