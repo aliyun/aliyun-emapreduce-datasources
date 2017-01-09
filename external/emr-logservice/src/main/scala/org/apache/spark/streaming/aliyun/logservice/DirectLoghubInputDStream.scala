@@ -25,8 +25,9 @@ import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint}
 import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
-import com.aliyun.openservices.loghub.client.exceptions.{LogHubCheckPointException, LogHubClientWorkerException}
+import com.aliyun.openservices.loghub.client.exceptions.LogHubClientWorkerException
 import org.I0Itec.zkclient.ZkClient
+import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
@@ -128,10 +129,13 @@ class DirectLoghubInputDStream(
       } finally {
         // Do nothing.
       }
-      if (CollectionUtils.isEmpty(checkPoints)) {
-        throw new LogHubCheckPointException("fail to get shard checkpoint")
+      val checkpoint = if (CollectionUtils.isEmpty(checkPoints)) {
+        logWarning(s"Can not find any checkpoint for specific consumer group $mConsumerGroup")
+        null
+      } else {
+        checkPoints.get(0).getCheckPoint
       }
-      val checkpoint = checkPoints.get(0).getCheckPoint
+
       val nextCursor = if (StringUtils.isNoneEmpty(checkpoint)) {
         checkpoint
       } else {
@@ -214,14 +218,21 @@ class DirectLoghubInputDStream(
   def commitAll(): Unit = {
     if (doCommit) {
       import scala.collection.JavaConversions._
-      zkClient.getChildren(s"$checkpointDir/commit").foreach(child => {
-        val data: String = zkClient.readData(s"$checkpointDir/commit/$child")
-        val shardId = child.substring(0, child.indexOf(".")).toInt
-        mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
-        DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$child", data)
-      })
-
-      doCommit = false
+      try {
+        zkClient.getChildren(s"$checkpointDir/commit").foreach(child => {
+          val data: String = zkClient.readData(s"$checkpointDir/commit/$child")
+          val shardId = child.substring(0, child.indexOf(".")).toInt
+          log.info(s"Updating checkpoint $data for shard $shardId to consumer group $mConsumerGroup")
+          mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
+          DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$child", data)
+        })
+        doCommit = false
+      } catch {
+        case e: ZkNoNodeException =>
+          logWarning("If this is the first time to run, it is fine to not find any commit data in " +
+            "zookeeper.")
+          doCommit = false
+      }
     }
   }
 
