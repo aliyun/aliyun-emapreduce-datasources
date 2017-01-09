@@ -38,15 +38,15 @@
     <properties>
         <scala.version>2.11.7</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.0.2</spark.version>
-        <oss.sdk.version>2.3.0</oss.sdk.version>
+        <spark.version>2.1.0</spark.version>
+        <oss.sdk.version>2.4.0</oss.sdk.version>
         <tablestore.sdk.version>4.1.0</tablestore.sdk.version>
-        <odps.version>0.23.3-public</odps.version>
-        <loghubb.client.version>0.6.6</loghubb.client.version>
-        <ons.version>1.2.6</ons.version>
-        <mns.version>1.1.7.1</mns.version>
+        <odps.version>0.24.0-public</odps.version>
+        <loghubb.client.version>0.6.7</loghubb.client.version>
+        <ons.version>1.2.7.Final</ons.version>
+        <mns.version>1.1.8</mns.version>
         <hadoop.version>2.2.0</hadoop.version>
-        <fastjson.version>1.2.17</fastjson.version>
+        <fastjson.version>1.2.23</fastjson.version>
         <hive.version>2.0.1</hive.version>
         <guava.version>11.0.2</guava.version>
         <scalatest.version>2.2.1</scalatest.version>
@@ -77,28 +77,28 @@
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-core_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-sql_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-streaming_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-mllib_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <!-- Explicit listing of transitive deps that are shaded. Otherwise, odd compiler crashes. -->
@@ -106,31 +106,31 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-server</artifactId>
                 <version>${eclipse.jetty}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-plus</artifactId>
                 <version>${eclipse.jetty}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-util</artifactId>
                 <version>${eclipse.jetty}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-http</artifactId>
                 <version>${eclipse.jetty}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-servlet</artifactId>
                 <version>${eclipse.jetty}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
             <!-- End of shaded deps. -->
 
@@ -208,7 +208,7 @@
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-mapreduce-client-core</artifactId>
                 <version>${hadoop.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
                 <exclusions>
                     <exclusion>
                         <groupId>jdk.tools</groupId>
@@ -221,21 +221,21 @@
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-auth</artifactId>
                 <version>${hadoop.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-annotations</artifactId>
                 <version>${hadoop.version}</version>
-                <!--scope>provided</scope-->
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
