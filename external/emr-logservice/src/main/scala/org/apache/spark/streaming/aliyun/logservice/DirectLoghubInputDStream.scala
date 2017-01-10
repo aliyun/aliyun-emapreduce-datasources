@@ -62,12 +62,13 @@ class DirectLoghubInputDStream(
     zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
+  @transient private var rescheduleTimes = Array.empty[Long]
 
   override def start(): Unit = {
     checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
     val props = new Properties()
     zkParams.foreach(param => props.put(param._1, param._2))
-    val autoCommit = zkParams.getOrElse("enable.auto.commit", "true").toBoolean
+    val autoCommit = zkParams.getOrElse("enable.auto.commit", "false").toBoolean
     require(checkpointDir.nonEmpty || autoCommit, "Enable auto commit by setting " +
       "\"enable.auto.commit=true\" or enable checkpoint.")
     if (!autoCommit) {
@@ -165,14 +166,9 @@ class DirectLoghubInputDStream(
   override def compute(validTime: Time): Option[RDD[String]] = {
     COMMIT_LOCK.synchronized {
       val shardOffsets = new ArrayBuffer[(Int, String, String)]()
-      val restart = {
-        val originalStartTime = graph.zeroTime.milliseconds
-        val period = graph.batchDuration.milliseconds
-        val gap = System.currentTimeMillis() - originalStartTime
-        val runTime = math.floor(gap.toDouble / period).toLong * period + originalStartTime
-        validTime.milliseconds < runTime
-      }
-      val rdd = if (doCommit && !restart) {
+      rescheduleTimes.foreach(println)
+      val rdd = if (doCommit && !rescheduleTimes.contains(validTime.milliseconds)) {
+        println(s"in compute at ${validTime.milliseconds}")
         commitAll()
         import scala.collection.JavaConversions._
         mClient.ListShard(project, logStore).GetShards().foreach(shard => {
@@ -203,6 +199,7 @@ class DirectLoghubInputDStream(
         s"shardId: ${p._1}\t $offset"
       }.mkString("\n")
       val metadata = Map(StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
+      println(s"count records at time ${validTime.milliseconds}")
       val inputInfo = StreamInputInfo(id, rdd.count, metadata)
       ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
       Some(rdd)
@@ -287,7 +284,32 @@ class DirectLoghubInputDStream(
         })
       }
       mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+      rescheduleTimes = try {
+        timesToReschedule()
+      } catch {
+        case e: Exception =>
+          Array.empty[Long]
+      }
     }
+  }
+
+  def timesToReschedule(): Array[Long] = {
+    val batchDuration = ssc.graph.batchDuration
+
+    // Batches when the master was down, that is,
+    // between the checkpoint and current restart time
+    val checkpointTime = ssc.initialCheckpoint.checkpointTime
+    val originalStartTime = graph.zeroTime.milliseconds
+    val period = graph.batchDuration.milliseconds
+    val gap = System.currentTimeMillis() - originalStartTime
+    val runTime = (math.floor(gap.toDouble / period).toLong + 1) * period + originalStartTime
+    val restartTime = new Time(runTime)
+    val downTimes = checkpointTime.until(restartTime, batchDuration)
+    // Batches that were unprocessed before failure
+    val pendingTimes = ssc.initialCheckpoint.pendingTimes.sorted(Time.ordering)
+    // Reschedule jobs for these times
+    (pendingTimes ++ downTimes).filter { _ < restartTime }.distinct.sorted(Time.ordering)
+      .map(time => time.milliseconds)
   }
 
   private def tryToCreateConsumerGroup(): Unit = {
