@@ -66,12 +66,12 @@ class DirectLoghubInputDStream(
   @transient private var restart: Boolean = false
 
   override def start(): Unit = {
-    checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
     val props = new Properties()
     zkParams.foreach(param => props.put(param._1, param._2))
     val autoCommit = zkParams.getOrElse("enable.auto.commit", "false").toBoolean
-    require(checkpointDir.nonEmpty || autoCommit, "Enable auto commit by setting " +
-      "\"enable.auto.commit=true\" or enable checkpoint.")
+    require(StringUtils.isNotEmpty(ssc.checkpointDir) && !autoCommit, "Disable auto commit by " +
+      "setting \"enable.auto.commit=false\" and enable checkpoint.")
+    checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
     if (!autoCommit) {
       zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
       zkClient.setZkSerializer(new ZkSerializer() {
