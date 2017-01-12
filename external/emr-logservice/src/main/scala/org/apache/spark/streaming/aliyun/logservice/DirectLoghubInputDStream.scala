@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
@@ -238,6 +239,12 @@ class DirectLoghubInputDStream(
         s"shardId: ${p._1}\t $offset"
       }.mkString("\n")
       val metadata = Map(StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
+      if (storageLevel != StorageLevel.NONE && rdd.isInstanceOf[LoghubRDD]) {
+        // If storageLevel is not `StorageLevel.NONE`, we need to persist rdd before `count()` to
+        // to count the number of records to avoid refetching data from loghub.
+        rdd.persist(storageLevel)
+        logDebug(s"Persisting RDD ${rdd.id} for time $validTime to $storageLevel")
+      }
       val inputInfo = StreamInputInfo(id, rdd.count, metadata)
       ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
       Some(rdd)
@@ -272,19 +279,6 @@ class DirectLoghubInputDStream(
   }
 
   private[streaming] override def name: String = s"Loghub direct stream [$id]"
-
-  private class DirectLoghubInputDStreamCheckpointData extends DStreamCheckpointData(this) {
-    override def update(time: Time): Unit = {}
-
-    override def cleanup(time: Time): Unit = {}
-
-    override def restore(): Unit = {}
-  }
-
-  override def finalize(): Unit = {
-    super.finalize()
-    stop()
-  }
 
   @throws(classOf[IOException])
   private def readObject(ois: ObjectInputStream): Unit = Utils.tryOrIOException {
@@ -385,6 +379,19 @@ class DirectLoghubInputDStream(
     }
 
     nextCursor
+  }
+
+  private class DirectLoghubInputDStreamCheckpointData extends DStreamCheckpointData(this) {
+    override def update(time: Time): Unit = {}
+
+    override def cleanup(time: Time): Unit = {}
+
+    override def restore(): Unit = {}
+  }
+
+  override def finalize(): Unit = {
+    super.finalize()
+    stop()
   }
 }
 
