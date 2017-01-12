@@ -46,6 +46,7 @@ class LoghubIterator(
   private val step: Int = 1000
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
+  // TODO: This may cost too much memory.
   private var logData = new LinkedBlockingQueue[String](4096 * step)
 
   val inputMetrics = context.taskMetrics.inputMetrics

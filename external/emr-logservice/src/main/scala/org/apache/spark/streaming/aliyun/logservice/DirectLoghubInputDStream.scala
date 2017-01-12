@@ -251,13 +251,18 @@ class DirectLoghubInputDStream(
     }
   }
 
+  /**
+   * Commit the offsets to LogService at a future time. Threadsafe.
+   * Users should call this method at end of each outputOp, otherwise streaming offsets will never
+   * go forward, i.e. re-compute the same data over and over again.
+   */
   override def commitAsync(): Unit = {
     COMMIT_LOCK.synchronized {
       doCommit = true
     }
   }
 
-  def commitAll(): Unit = {
+  private def commitAll(): Unit = {
     if (doCommit) {
       import scala.collection.JavaConversions._
       try {
