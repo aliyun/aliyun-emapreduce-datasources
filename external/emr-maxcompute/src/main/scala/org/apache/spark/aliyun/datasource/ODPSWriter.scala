@@ -119,6 +119,9 @@ class ODPSWriter(
         }
 
         writer.close()
+
+        val arr = Array(Long.box(TaskContext.get.partitionId))
+        uploadSession_.commit(arr)
         val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
       }
 
