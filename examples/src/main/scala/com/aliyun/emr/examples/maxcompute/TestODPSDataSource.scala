@@ -20,9 +20,7 @@ package com.aliyun.emr.examples.maxcompute
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SaveMode, SparkSession}
 import java.sql.Date
-/**
- * Created by songjun on 16/12/30.
- */
+
 object TestODPSDataSource {
   def main(args: Array[String]): Unit = {
     if (args.length < 6) {
@@ -55,30 +53,46 @@ object TestODPSDataSource {
       Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com") // Aliyun internal environment
     )
 
-    val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local")
+    val odpsUrl = urls(envType)(0)
+    val tunnelUrl = urls(envType)(1)
+
+    val conf = new SparkConf().setAppName("Test Odps Read")
     val ss = SparkSession.builder().appName("Test Odps Read").master("local").getOrCreate()
 
     import ss.implicits._
-    val odpsDF =  ss.read
+
+    val dataSeq = (1 to 1000000).map {
+      index => (index, (index-3).toString)
+    }.toSeq
+
+
+    val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
+
+    System.out.println("*****" + table + ",before overwrite table")
+    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+      .option("odpsUrl", odpsUrl)
+      .option("tunnelUrl", tunnelUrl)
+      .option("table", table)
+      .option("project", project)
+      .option("accessKeySecret", accessKeySecret)
+      .option("accessKeyId", accessKeyId).mode(SaveMode.Overwrite).save()
+
+    System.out.println("*****" + table + ",after overwrite table, before read table")
+
+    val readDF = ss.read
       .format("org.apache.spark.aliyun.maxcompute.datasource")
-      .option("odpsUrl", "http://service.odps.aliyun.com/api")
-      .option("tunnelUrl", "http://dt.odps.aliyun.com")
+      .option("odpsUrl", odpsUrl)
+      .option("tunnelUrl", tunnelUrl)
       .option("table", table)
       .option("project", project)
       .option("accessKeySecret", accessKeySecret)
       .option("accessKeyId", accessKeyId).load()
 
-    odpsDF.select("a","day").show
 
-    val xxdf = ss.sparkContext.makeRDD((23 to 29).map(a => (Date.valueOf("2016-08-01"),a.toString)).toSeq).toDF("day","a")
-
-    xxdf.write.format("org.apache.spark.aliyun.maxcompute.datasource")
-      .option("odpsUrl", "http://service.odps.aliyun.com/api")
-      .option("tunnelUrl", "http://dt.odps.aliyun.com")
-      .option("table", table)
-      .option("project", project)
-      .option("accessKeySecret", accessKeySecret)
-      .option("accessKeyId", accessKeyId).option("partitionSpec", "b='haha'").mode(SaveMode.Append).save()
+    val collectList = readDF.collect()
+    System.out.println("*****" + table + ",after read table," + collectList.size)
+    assert(collectList.length == 1000000)
+    assert((1 to 1000000).par.exists(n => collectList.exists(_.getLong(0) == n)))
 
   }
 }

@@ -34,21 +34,17 @@ import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
 
-/**
- * Created by songjun on 16/12/20.
- */
-
 class ODPSRDD(
-  sc: SparkContext,
-  schema: StructType,
-  accessKeyId: String,
-  accessKeySecret: String,
-  odpsUrl: String,
-  tunnelUrl: String,
-  project: String,
-  table: String,
-  partitionSpec: String,
-  numPartitions: Int)
+    sc: SparkContext,
+    schema: StructType,
+    accessKeyId: String,
+    accessKeySecret: String,
+    odpsUrl: String,
+    tunnelUrl: String,
+    project: String,
+    table: String,
+    partitionSpec: String,
+    numPartitions: Int)
   extends RDD[InternalRow](sc, Nil) {
 
   /** Implemented by subclasses to compute a given partition. */
@@ -63,7 +59,7 @@ class ODPSRDD(
       val tunnel = new TableTunnel(odps)
       tunnel.setEndpoint(tunnelUrl)
       var downloadSession: TableTunnel#DownloadSession = null
-      if(partitionSpec.equals("Non-Partitioned"))
+      if (partitionSpec.equals("Non-Partitioned"))
         downloadSession = tunnel.createDownloadSession(project, table)
       else {
         val parSpec = new PartitionSpec(partitionSpec)
@@ -77,20 +73,21 @@ class ODPSRDD(
       }
 
       val mutableRow = new SpecificMutableRow(schema.fields.map(x => x.dataType))
+
       override def getNext(): InternalRow = {
 
         try {
           val r = reader.read()
           if (r != null) {
-            schema.zipWithIndex.foreach{
+            schema.zipWithIndex.foreach {
               case (s: StructField, idx: Int) =>
-               s.dataType match {
-                 case BooleanType => mutableRow.setBoolean(idx, r.getBoolean(s.name))
-                 case DoubleType => mutableRow.setDouble(idx, r.getDouble(s.name))
-                 case LongType => mutableRow.setLong(idx, r.getBigint(s.name))
-                 case StringType => mutableRow.update(idx, UTF8String.fromString(r.getString(s.name)))
-                 case TimestampType =>  mutableRow.setLong(idx, r.getDatetime(s.name).getTime)
-               }
+                s.dataType match {
+                  case BooleanType => mutableRow.setBoolean(idx, r.getBoolean(s.name))
+                  case DoubleType => mutableRow.setDouble(idx, r.getDouble(s.name))
+                  case LongType => mutableRow.setLong(idx, r.getBigint(s.name))
+                  case StringType => mutableRow.update(idx, UTF8String.fromString(r.getString(s.name)))
+                  case TimestampType => mutableRow.setLong(idx, r.getDatetime(s.name).getTime)
+                }
             }
             inputMetrics.incRecordsRead(1L)
             mutableRow
@@ -133,7 +130,7 @@ class ODPSRDD(
     val tunnel = new TableTunnel(odps)
     tunnel.setEndpoint(tunnelUrl)
     var downloadSession: TableTunnel#DownloadSession = null
-    if(partitionSpec == null || partitionSpec.equals("Non-Partitioned"))
+    if (partitionSpec == null || partitionSpec.equals("Non-Partitioned"))
       downloadSession = tunnel.createDownloadSession(project, table)
     else {
       val parSpec = new PartitionSpec(partitionSpec)
@@ -144,7 +141,7 @@ class ODPSRDD(
       + partitionSpec + " contain " + downloadCount + " line data.")
     var numPartition_ = math.min(math.max(1, numPartitions),
       if (downloadCount > Int.MaxValue) Int.MaxValue else downloadCount.toInt)
-    if(numPartition_ == 0) {
+    if (numPartition_ == 0) {
       numPartition_ = 1
       logDebug("OdpsRdd has one partition at least.")
     }

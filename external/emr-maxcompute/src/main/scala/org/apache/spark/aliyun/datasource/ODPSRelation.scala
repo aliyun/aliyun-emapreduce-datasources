@@ -26,18 +26,15 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 import org.apache.spark.sql.sources.{PrunedFilteredScan, Filter, BaseRelation}
 
-/**
- * Created by songjun on 16/12/20.
- */
 case class ODPSRelation(
-  accessKeyId: String,
-  accessKeySecret: String,
-  odpsUrl: String,
-  tunnelUrl: String,
-  project: String,
-  table: String,
-  partitionSpec: String,
-  numPartitions: Int)(@transient val sqlContext: SQLContext)
+    accessKeyId: String,
+    accessKeySecret: String,
+    odpsUrl: String,
+    tunnelUrl: String,
+    project: String,
+    table: String,
+    partitionSpec: String,
+    numPartitions: Int)(@transient val sqlContext: SQLContext)
   extends BaseRelation
   with PrunedFilteredScan {
 

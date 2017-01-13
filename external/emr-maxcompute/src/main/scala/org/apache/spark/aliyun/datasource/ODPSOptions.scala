@@ -17,9 +17,6 @@
  */
 package org.apache.spark.aliyun.maxcompute.datasource
 
-/**
- * Created by songjun on 16/12/21.
- */
 class ODPSOptions(
   @transient private val parameters: Map[String, String])
   extends Serializable {

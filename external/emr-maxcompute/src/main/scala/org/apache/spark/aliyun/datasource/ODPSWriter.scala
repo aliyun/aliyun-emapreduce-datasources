@@ -27,14 +27,11 @@ import org.apache.spark.sql.{Row, SaveMode, DataFrame}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
 
-/**
- * Created by songjun on 16/12/22.
- */
 class ODPSWriter(
-  accessKeyId: String,
-  accessKeySecret: String,
-  odpsUrl: String,
-  tunnelUrl: String) extends Serializable {
+    accessKeyId: String,
+    accessKeySecret: String,
+    odpsUrl: String,
+    tunnelUrl: String) extends Serializable {
 
   @transient val account = new AliyunAccount(accessKeyId, accessKeySecret)
   @transient val odps = new Odps(account)

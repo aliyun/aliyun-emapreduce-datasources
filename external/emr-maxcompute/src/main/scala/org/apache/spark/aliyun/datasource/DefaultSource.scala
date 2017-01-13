@@ -21,9 +21,6 @@ import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.sources.{CreatableRelationProvider, BaseRelation, DataSourceRegister, RelationProvider}
 import org.slf4j.LoggerFactory
 
-/**
- * Created by songjun on 16/12/21.
- */
 class DefaultSource extends RelationProvider
   with CreatableRelationProvider
   with DataSourceRegister {
