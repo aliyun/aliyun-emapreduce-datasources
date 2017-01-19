@@ -41,12 +41,12 @@ import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 
-import org.apache.spark.aliyun.tablestore.hadoop.Credential;
-import org.apache.spark.aliyun.tablestore.hadoop.Endpoint;
-import org.apache.spark.aliyun.tablestore.hadoop.PrimaryKeyWritable;
-import org.apache.spark.aliyun.tablestore.hadoop.RowWritable;
-import org.apache.spark.aliyun.tablestore.hadoop.TableStore;
-import org.apache.spark.aliyun.tablestore.hadoop.TableStoreInputFormat;
+import com.aliyun.openservices.tablestore.hadoop.Credential;
+import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
+import com.aliyun.openservices.tablestore.hadoop.RowWritable;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
+import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
 
 public class RowCounter {
     private static String endpoint;
