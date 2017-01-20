@@ -38,6 +38,8 @@ import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWritable> {
     public static final String OUTPUT_TABLE = "TABLESTORE_OUTPUT_TABLE";
+    public static final String MAX_UPDATE_BATCH_SIZE = "TABLESTORE_MAX_UPDATE_BATCH_SIZE";
+
     private static final Logger logger = LoggerFactory.getLogger(TableStoreOutputFormat.class);
 
     /**
@@ -111,6 +113,22 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
         conf.set(OUTPUT_TABLE, outputTable);
     }
 
+    /**
+     * Set max batch size for BatchWriteRow requests to TableStore.
+     * This is optional.
+     */
+    public static void setMaxBatchSize(JobContext job, int maxBatchSize) {
+        setMaxBatchSize(job.getConfiguration(), maxBatchSize);
+    }
+
+    /**
+     * Set max batch size for BatchWriteRow requests to TableStore.
+     * This is optional.
+     */
+    public static void setMaxBatchSize(Configuration conf, int maxBatchSize) {
+        Preconditions.checkArgument(maxBatchSize > 0, "maxBatchsize must be greater than 0.");
+        conf.setInt(MAX_UPDATE_BATCH_SIZE, maxBatchSize);
+    }
 
     @Override public void checkOutputSpecs(JobContext job)
         throws IOException, InterruptedException {
@@ -174,8 +192,14 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
         TaskAttemptContext context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
         String outputTable = conf.get(OUTPUT_TABLE);
+        Preconditions.checkNotNull(outputTable, "Output table must be set.");
         SyncClientInterface ots = TableStore.newOtsClient(conf);
-        return new TableStoreRecordWriter(ots, outputTable);
+        int maxBatchSize = conf.getInt(MAX_UPDATE_BATCH_SIZE, 0);
+        if (maxBatchSize == 0) {
+            return new TableStoreRecordWriter(ots, outputTable);
+        } else {
+            return new TableStoreRecordWriter(ots, outputTable, maxBatchSize);
+        }
     }
 }
 
