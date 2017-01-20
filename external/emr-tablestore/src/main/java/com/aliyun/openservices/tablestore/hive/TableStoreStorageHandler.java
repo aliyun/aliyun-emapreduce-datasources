@@ -86,16 +86,30 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         logger.debug("job conf: {}", jobConf);
         jobConf.setJarByClass(TableStoreStorageHandler.class);
         {
-            Credential cred =
-                new Credential(
-                    from.getProperty(TableStoreConsts.ACCESS_KEY_ID),
-                    from.getProperty(TableStoreConsts.ACCESS_KEY_SECRET),
-                    from.getProperty(TableStoreConsts.SECURITY_TOKEN));
+            String accessKeyId = from.getProperty(TableStoreConsts.ACCESS_KEY_ID);
+            if (accessKeyId == null) {
+                logger.error("{} is required.", TableStoreConsts.ACCESS_KEY_ID);
+                throw new IllegalArgumentException(
+                    TableStoreConsts.ACCESS_KEY_ID + " is required.");
+            }
+            String accessKeySecret = from.getProperty(TableStoreConsts.ACCESS_KEY_SECRET);
+            if (accessKeySecret == null) {
+                logger.error("{} is required.", TableStoreConsts.ACCESS_KEY_SECRET);
+                throw new IllegalArgumentException(
+                    TableStoreConsts.ACCESS_KEY_SECRET + " is required.");
+            }
+            Credential cred = new Credential(accessKeyId, accessKeySecret,
+                from.getProperty(TableStoreConsts.SECURITY_TOKEN));
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .setCredential(jobConf, cred);
         }
         {
             String endpoint = from.getProperty(TableStoreConsts.ENDPOINT);
+            if (endpoint == null) {
+                logger.error("{} is required.", TableStoreConsts.ENDPOINT);
+                throw new IllegalArgumentException(
+                    TableStoreConsts.ENDPOINT + " is required.");
+            }
             String instance = from.getProperty(TableStoreConsts.INSTANCE);
             Endpoint ep;
             if (instance == null) {
@@ -110,8 +124,34 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         }
         {
             String table = from.getProperty(TableStoreConsts.TABLE_NAME);
+            if (table == null) {
+                logger.error("{} is required.", TableStoreConsts.TABLE_NAME);
+                throw new IllegalArgumentException(
+                    TableStoreConsts.TABLE_NAME + " is required.");
+            }
             com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
                 .setOutputTable(jobConf, table);
+        }
+        {
+            String t = from.getProperty(TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+            if (t != null) {
+                try {
+                    int batchSize = Integer.valueOf(t);
+                    if (batchSize <= 0) {
+                        logger.error("{} must be greater than 0.",
+                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                        throw new IllegalArgumentException(
+                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be greater than 0.");
+                    }
+                    com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
+                        .setMaxBatchSize(jobConf, batchSize);
+                } catch(NumberFormatException ex) {
+                    logger.error("{} must be a positive integer.",
+                        TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                    throw new IllegalArgumentException(
+                        TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be a positive integer.");
+                }
+            }
         }
     }
 

@@ -44,22 +44,37 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
 
     private SyncClientInterface ots;
     private String outputTable;
-    private long rowCounter;
+    private long rowCounter = 0;
     private Deque<RowChange> waitingRows = new ArrayDeque<RowChange>();
-    private static int BATCH_SIZE_MAX = 200;
+    private static int BATCH_SIZE_DEFAULT_MAX = 200;
     private static int BATCH_SIZE_INCR = 10;
     private static double BATCH_SIZE_BACKOFF = 0.8;
-    private int batchSize = BATCH_SIZE_MAX;
+    private int batchSize = BATCH_SIZE_DEFAULT_MAX;
+    private int maxBatchSize = BATCH_SIZE_DEFAULT_MAX;
 
     public TableStoreRecordWriter(SyncClientInterface ots, String outputTable) {
         Preconditions.checkNotNull(ots, "ots client must be nonnull.");
         Preconditions.checkNotNull(outputTable, "output table must be nonnull.");
         this.ots = ots;
         this.outputTable = outputTable;
-        this.rowCounter = 0;
+        logger.debug("max batch size: {}", this.maxBatchSize);
     }
 
-    @Override public void write(Writable _, BatchWriteWritable batch) {
+    public TableStoreRecordWriter(SyncClientInterface ots, String outputTable, int maxBatchSize) {
+        Preconditions.checkNotNull(ots, "ots client must be nonnull.");
+        Preconditions.checkNotNull(outputTable, "output table must be nonnull.");
+        this.ots = ots;
+        this.outputTable = outputTable;
+        this.batchSize = maxBatchSize;
+        this.maxBatchSize = maxBatchSize;
+        logger.debug("max batch size: {}", this.maxBatchSize);
+    }
+
+    public int getMaxBatchSize() {
+        return maxBatchSize;
+    }
+
+    @Override public void write(Writable x, BatchWriteWritable batch) {
         List<RowChange> rows = batch.getRowChanges();
         for(RowChange row: rows) {
             waitingRows.addLast(row);
@@ -88,8 +103,8 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
             try {
                 launch(rows);
                 batchSize += BATCH_SIZE_INCR;
-                if (batchSize > BATCH_SIZE_MAX) {
-                    batchSize = BATCH_SIZE_MAX;
+                if (batchSize > maxBatchSize) {
+                    batchSize = maxBatchSize;
                 }
                 return rows.size();
             } catch(TableStoreException ex) {

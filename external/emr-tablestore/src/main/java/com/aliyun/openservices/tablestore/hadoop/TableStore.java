@@ -26,8 +26,8 @@ import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStore {
-    static final String ENDPOINT = "TABLESTORE_ENDPOINT";
-    static final String CREDENTIAL = "TABLESTORE_CREDENTIAL";
+    public static final String ENDPOINT = "TABLESTORE_ENDPOINT";
+    public static final String CREDENTIAL = "TABLESTORE_CREDENTIAL";
 
     /**
      * Set access-key id/secret into a JobContext.

@@ -25,6 +25,7 @@ public class TableStoreConsts {
     final public static String ACCESS_KEY_ID = "tablestore.access_key_id";
     final public static String ACCESS_KEY_SECRET = "tablestore.access_key_secret";
     final public static String SECURITY_TOKEN = "tablestore.security_token";
+    final public static String MAX_UPDATE_BATCH_SIZE = "tablestore.max_update_batch_size";
 
     final public static String COLUMNS_MAPPING = "tablestore.columns.mapping";
 
@@ -36,5 +37,6 @@ public class TableStoreConsts {
     final public static String[] OPTIONALS = new String[] {
         INSTANCE,
         SECURITY_TOKEN,
+        MAX_UPDATE_BATCH_SIZE,
         COLUMNS_MAPPING};
 }
