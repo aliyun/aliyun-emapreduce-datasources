@@ -18,11 +18,16 @@
 
 package com.aliyun.openservices.tablestore.hadoop;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.JobContext;
 
 import com.alicloud.openservices.tablestore.SyncClientInterface;
 import com.alicloud.openservices.tablestore.SyncClient;
+import com.alicloud.openservices.tablestore.ClientConfiguration;
+import com.alicloud.openservices.tablestore.model.DefaultRetryStrategy;
+import com.alicloud.openservices.tablestore.model.RetryStrategy;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStore {
@@ -89,12 +94,14 @@ public class TableStore {
     public static SyncClientInterface newOtsClient(Configuration conf) {
         Credential cred = Credential.deserialize(conf.get(TableStore.CREDENTIAL));
         Endpoint ep = Endpoint.deserialize(conf.get(TableStore.ENDPOINT));
+        ClientConfiguration clientCfg = new ClientConfiguration();
+        clientCfg.setRetryStrategy(new DefaultRetryStrategy(10, TimeUnit.SECONDS));
         if (cred.securityToken == null) {
             return new SyncClient(ep.endpoint, cred.accessKeyId,
-                cred.accessKeySecret, ep.instance);
+                cred.accessKeySecret, ep.instance, clientCfg);
         } else {
             return new SyncClient(ep.endpoint, cred.accessKeyId,
-                cred.accessKeySecret, ep.instance, cred.securityToken);
+                cred.accessKeySecret, ep.instance, clientCfg, cred.securityToken);
         }
     }
 
