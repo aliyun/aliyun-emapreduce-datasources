@@ -40,7 +40,7 @@
         <scala.binary.version>2.10</scala.binary.version>
         <spark.version>1.6.2</spark.version>
         <oss.sdk.version>2.3.0</oss.sdk.version>
-        <tablestore.sdk.version>4.1.0</tablestore.sdk.version>
+        <tablestore.sdk.version>4.2.2</tablestore.sdk.version>
         <odps.version>0.23.3-public</odps.version>
         <loghubb.client.version>0.6.5</loghubb.client.version>
         <ons.version>1.2.6</ons.version>
