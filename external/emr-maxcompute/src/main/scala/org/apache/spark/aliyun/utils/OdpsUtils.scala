@@ -282,6 +282,49 @@ class OdpsUtils(odps: Odps) extends Logging{
     odps.tables().get(table).getPartitions.toArray(new Array[Partition](0))
       .map(pt => pt.getPartitionSpec).toIterator
   }
+
+  /**
+   * Check if the table is a partition table
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @return
+   */
+  def isPartitionTable(table: String, project: String = null):Boolean = {
+    if(project != null)
+      odps.setDefaultProject(project)
+    odps.tables().get(table).isPartitioned
+  }
+
+  /**
+   * Check if the table exists
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @return
+   */
+  def tableExist(table: String, project: String = null):Boolean = {
+    if(project != null)
+      odps.setDefaultProject(project)
+    odps.tables().exists(table)
+  }
+
+  /**
+   * Check if the partition exists in the table,
+   * `partitionSpec` like `pt='xxx',ds='yyy'`
+   * @param project The name of ODPS project.
+   * @param table The name of ODPS table.
+   * @return
+   */
+  def partitionExist(partitionSpec:String, table: String, project: String = null):Boolean = {
+    if(project != null)
+      odps.setDefaultProject(project)
+    val partitions = odps.tables().get(table).getPartitions
+    val partitionFilter = partitions.toArray(new Array[Partition](0)).iterator
+      .map(e => e.getPartitionSpec)
+      .filter(f => f.toString.equals(partitionSpec.toString))
+
+    if(partitionFilter.size == 0) false else true
+  }
+
 }
 
 object OdpsUtils {
