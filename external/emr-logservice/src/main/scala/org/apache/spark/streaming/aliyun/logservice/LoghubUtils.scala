@@ -87,7 +87,6 @@ object LoghubUtils {
     }
   }
 
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -177,7 +176,6 @@ object LoghubUtils {
     }
   }
 
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -252,7 +250,6 @@ object LoghubUtils {
     }
   }
 
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -334,7 +331,6 @@ object LoghubUtils {
     }
   }
 
-  @Experimental
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -380,7 +376,6 @@ object LoghubUtils {
       storageLevel)
   }
 
-  @Experimental
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -406,7 +401,6 @@ object LoghubUtils {
       accessKeySecret, storageLevel)
   }
 
-  @Experimental
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -418,6 +412,70 @@ object LoghubUtils {
       loghubConsumerGroupName, numReceivers, storageLevel)
   }
 
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
+      storageLevel, cursorPosition, mLoghubCursorStartTime, forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, storageLevel, cursorPosition, mLoghubCursorStartTime,
+      forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      numReceivers: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+      loghubEndpoint, numReceivers, accessKeyId, accessKeySecret, storageLevel,
+      cursorPosition, mLoghubCursorStartTime, forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel,
+      cursorPosition: LogHubCursorPosition,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+      numReceivers, storageLevel, cursorPosition, mLoghubCursorStartTime, forceSpecial)
+  }
+
+  @Experimental
   def createDirectStream(
       ssc: StreamingContext,
       project: String,
@@ -449,7 +507,6 @@ class LoghubUtilsHelper {
       storageLevel)
   }
 
-  @Experimental
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -475,7 +532,6 @@ class LoghubUtilsHelper {
       accessKeySecret, storageLevel)
   }
 
-  @Experimental
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
