@@ -39,13 +39,13 @@ emr-logservice_2.10-1.4.0-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.
 
 ## ODPS
 
-1. download the [**odps.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/sdk/src/main/python/pyspark/odps.py);
-2. download the pre-build [**emr-maxcompute_2.10 jar**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/prebuild);
+1. download the [**odps.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/external/emr-maxcompute/src/main/python/pyspark/odps.py);
+2. download the pre-build [**emr-sdk_2.10-1.1.3-SNAPSHOT.jar**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/prebuild/emr-sdk_2.10-1.1.3-SNAPSHOT.jar);
 3. download odps's dependencies, i.e. [**aspectjrt-1.8.2.jar**](http://mvnrepository.com/artifact/org.aspectj/aspectjrt/1.8.2), [**odps-sdk-commons-0.20.7-public.jar**](http://mvnrepository.com/artifact/com.aliyun.odps/odps-sdk-commons/0.20.7-public), [**odps-sdk-core-0.20.7-public.jar**](http://mvnrepository.com/artifact/com.aliyun.odps/odps-sdk-core/0.20.7-public). Above-mentioned library version pass test;
 4. download [**odps-sample.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/odps-sample.py);
 5. run the example, use
 ```
-   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-maxcompute_2.10-1.4.0-SNAPSHOT.jar,
+   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.1.3-SNAPSHOT.jar,
    odps-sdk-commons-0.20.7-public.jar,odps-sdk-core-0.20.7-public.jar --py-files odps.py  
    odps-sample.py <accessKeyId> <accessKeySecret> <project> <table> <partition> <numPartitions>
 ```
