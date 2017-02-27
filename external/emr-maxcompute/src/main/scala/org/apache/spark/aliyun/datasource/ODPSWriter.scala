@@ -92,6 +92,9 @@ class ODPSWriter(
     }
 
     if (shouldUpload) {
+      if (isPartitionTable && defaultCreate) {
+        odpsUtils.createPartition(project, table, partitionSpec)
+      }
       def writeToFile(schema: StructType, iter: Iterator[Row]) {
         val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
         val odps_ = new Odps(account_)
