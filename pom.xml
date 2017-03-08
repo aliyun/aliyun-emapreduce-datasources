@@ -38,7 +38,7 @@
     <properties>
         <scala.version>2.11.7</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.1.0</spark.version>
+        <spark.version>2.0.2</spark.version>
         <oss.sdk.version>2.4.0</oss.sdk.version>
         <tablestore.sdk.version>4.2.2</tablestore.sdk.version>
         <odps.version>0.24.0-public</odps.version>
