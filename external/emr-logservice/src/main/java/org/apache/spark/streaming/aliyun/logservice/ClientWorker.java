@@ -40,18 +40,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class ClientWorker implements Runnable {
+  private static final Log LOG = LogFactory.getLog(ClientWorker.class);
+
   private final ILogHubProcessorFactory mLogHubProcessorFactory;
   private final LogHubConfig mLogHubConfig;
   private final LogHubHeartBeat mLogHubHeartBeat;
   private boolean mShutDown = false;
-  private final Map<Integer, LogHubConsumer> mShardConsumer =
-      new HashMap<Integer, LogHubConsumer>();
-  private final ExecutorService mExecutorService =
-      Executors.newCachedThreadPool();
+  private final Map<Integer, LogHubConsumer> mShardConsumer = new HashMap<Integer, LogHubConsumer>();
+  private final ExecutorService mExecutorService = Executors.newCachedThreadPool();
   private LogHubClientAdapter mLogHubClientAdapter;
   private Client mClient;
   private String loghubEndpoint;
-  private static final Log LOG = LogFactory.getLog(ClientWorker.class);
+  private Boolean isRoleAK = false;
 
   public ClientWorker(ILogHubProcessorFactory factory, LogHubConfig config)
       throws LogHubClientWorkerException {
@@ -75,6 +75,8 @@ public class ClientWorker implements Runnable {
       accessKeyId = MetaClient.getRoleAccessKeyId();
       accessKeySecret = MetaClient.getRoleAccessKeySecret();
       securityToken = MetaClient.getRoleSecurityToken();
+
+      isRoleAK = true;
 
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
       this.mClient.SetSecurityToken(securityToken);
@@ -213,9 +215,13 @@ public class ClientWorker implements Runnable {
 
   private void checkAndUpdateToken() {
     try {
-      this.mClient.HeartBeat(mLogHubConfig.getProject(),
+      if (isRoleAK) {
+        this.mClient.HeartBeat(mLogHubConfig.getProject(),
           mLogHubConfig.getLogStore(), mLogHubConfig.getConsumerGroupName(),
           mLogHubConfig.getWorkerInstanceName(), new ArrayList<Integer>());
+      } else {
+        // No need to check token.
+      }
     } catch (LogException e) {
       String accessKeyId = MetaClient.getRoleAccessKeyId();
       String accessKeySecret = MetaClient.getRoleAccessKeySecret();

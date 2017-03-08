@@ -77,6 +77,8 @@ public class OSSClientAgent {
   private Gson gson = new Gson();
   private Configuration conf;
 
+  private Boolean isRoleAK = false;
+
   @SuppressWarnings("unchecked")
   public OSSClientAgent(String endpoint, String accessKeyId,
       String accessKeySecret, Configuration conf) throws Exception {
@@ -108,11 +110,13 @@ public class OSSClientAgent {
     this.ossClient = cons.newInstance(endpoint, accessKeyId, accessKeySecret,
         securityToken, clientConfiguration);
     this.conf = conf;
+    // set isRoleAK true if meet securityToken.
+    this.isRoleAK = true;
   }
 
   @SuppressWarnings("unchecked")
   private boolean updateOSSClient(Exception e) {
-    if (e instanceof InvocationTargetException) {
+    if (e instanceof InvocationTargetException && isRoleAK) {
       Throwable t = ((InvocationTargetException) e).getTargetException();
       // TODO: check specific error code and try again.
       // Following are some error code which we should catch:
@@ -121,8 +125,7 @@ public class OSSClientAgent {
       // However, OSS server often returns some confused error code
       // which dose not illustrate real cause, like 'InvalidAccessKeyId'.
       // So currently, try again in case of whatever error.
-      LOG.warn("Meet error and try again.");
-      LOG.warn(t);
+      LOG.debug("Meet some errors and try again.", t);
       String accessKeyId = MetaClient.getRoleAccessKeyId();
       String accessKeySecret = MetaClient.getRoleAccessKeySecret();
       String securityToken = MetaClient.getRoleSecurityToken();

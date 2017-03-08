@@ -46,7 +46,7 @@ public class MNSAgentUtil {
   }
 
   @SuppressWarnings("unchecked")
-  public static MNSClientAgent getMNSClientAgent(String accessKeyId,
+  private static MNSClientAgent getMNSClientAgent(String accessKeyId,
       String accessKeySecret, String endpoint, Configuration conf,
       boolean runLocal) throws Exception {
     URLClassLoader classLoader = ResourceLoader.getInstance()
@@ -65,7 +65,7 @@ public class MNSAgentUtil {
   }
 
   @SuppressWarnings("unchecked")
-  public static MNSClientAgent getMNSClientAgent(String accessKeyId,
+  private static MNSClientAgent getMNSClientAgent(String accessKeyId,
        String accessKeySecret, String securityToken, String endpoint,
        Configuration conf, boolean runLocal) throws Exception {
     URLClassLoader classLoader = ResourceLoader.getInstance()
@@ -90,7 +90,7 @@ public class MNSAgentUtil {
       Throwable t = ((InvocationTargetException) e).getTargetException();
       if (t.getMessage()
           .contains("The AccessKey Id you provided is not exist.")) {
-        LOG.warn(t.getMessage() + " Try to get AK information from MetaService");
+        LOG.warn(t.getMessage() + ". Get AK information from MetaService and try again.");
         String accessKeyId = MetaClient.getRoleAccessKeyId();
         String accessKeySecret = MetaClient.getRoleAccessKeySecret();
         String securityToken = MetaClient.getRoleSecurityToken();
@@ -110,7 +110,7 @@ public class MNSAgentUtil {
           MNSClientAgent mnsClientAgent = new MNSClientAgent(mnsClient,
               mnsClientClz, endpoint, classLoader);
           try {
-            // Test ths MNSClient works or not.
+            // Test if this MNSClient works or not.
             mnsClientAgent.isOpen();
             return mnsClient;
           } catch (Exception e1) {
