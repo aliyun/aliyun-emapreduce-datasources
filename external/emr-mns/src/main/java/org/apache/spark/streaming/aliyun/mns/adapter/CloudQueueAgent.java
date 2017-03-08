@@ -52,8 +52,7 @@ public class CloudQueueAgent {
       }.getType());
     } catch (Exception e) {
       if (retry) {
-        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
-            urlClassLoader, endpoint);
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e, urlClassLoader, endpoint);
         if (mnsClient != null) {
           Class mnsClientClz = urlClassLoader
               .loadClass("com.aliyun.mns.client.MNSClient");
@@ -83,8 +82,7 @@ public class CloudQueueAgent {
       method.invoke(cloudQueue, receiptsToDelete);
     } catch (Exception e) {
       if (retry) {
-        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
-            urlClassLoader, endpoint);
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e, urlClassLoader, endpoint);
         if (mnsClient != null) {
           Class mnsClientClz = urlClassLoader
               .loadClass("com.aliyun.mns.client.MNSClient");

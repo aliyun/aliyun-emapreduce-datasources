@@ -60,7 +60,7 @@ private[mns] class MnsPullingReceiver(
               queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
             import scala.collection.JavaConversions._
             if (batchPopMessage == null) {
-              log.warn("batch get nothing, wait for 5 seconds.")
+              log.warn("Batch get nothing, wait for 5 seconds.")
               Thread.sleep(5000L)
             } else {
               for (popMsg <- batchPopMessage) {
@@ -72,8 +72,8 @@ private[mns] class MnsPullingReceiver(
             }
           } catch {
             case ex: Throwable =>
-              log.error(s"[MnsPullingReceiver Error]", ex)
-              throw ex
+              log.error(s"Encountering error, sleep 1 seconds and try again..", ex)
+              Thread.sleep(1000)
           } finally {
             // Delete received message whatever.
             try {
@@ -83,7 +83,7 @@ private[mns] class MnsPullingReceiver(
               }
             } catch {
               case e: Exception =>
-                log.error(s"[Error] Failed to delete message, try again.", e)
+                log.error(s"Failed to delete mns message, try again.", e)
                 if (receiptsToDelete != null && receiptsToDelete.size() > 0) {
                   queue.batchDeleteMessage(receiptsToDelete)
                   receiptsToDelete.clear()
@@ -135,7 +135,7 @@ private[mns] object MnsPullingReceiver extends Logging {
             .getMNSClientAgent(accessKeyId, accessKeySecret, endpoint, runLocal)
       } catch {
         case e: Exception =>
-          throw new RuntimeException("can not initialize mns client", e)
+          throw new RuntimeException("Can not initialize mns client", e)
       }
     }
 
