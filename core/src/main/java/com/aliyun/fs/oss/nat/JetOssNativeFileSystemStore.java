@@ -82,18 +82,9 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
       throw new IllegalArgumentException("Invalid hostname in URI " + uri);
     }
 
-    // 1. try to get accessKeyId, accessJeySecret, securityToken,
-    // endpoint from OSS URI.
     String userInfo = uri.getUserInfo();
     if (userInfo != null) {
-      String[] ossCredentials = userInfo.split(":");
-      if (ossCredentials.length >= 2) {
-        accessKeyId = ossCredentials[0];
-        accessKeySecret = ossCredentials[1];
-      }
-      if (ossCredentials.length == 3) {
-        securityToken = ossCredentials[2];
-      }
+      throw new IllegalArgumentException("Disallow set ak information in OSS URI.");
     }
 
     this.conf = conf;
@@ -105,8 +96,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
       endpoint = host.substring(host.indexOf(".") + 1);
     }
 
-    // 2. try to get accessKeyId, accessJeySecret, securityToken,
-    // endpoint from configuration.
+    // try to get accessKeyId, accessJeySecret, securityToken, endpoint from configuration.
     if (accessKeyId == null) {
       accessKeyId = conf.getTrimmed("fs.oss.accessKeyId");
     }
@@ -121,10 +111,8 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
       endpoint = conf.getTrimmed("fs.oss.endpoint");
     }
 
-    // 3. try to get accessKeyId, accessJeySecret, securityToken,
-    // endpoint from metaservice.
-    LOG.debug("Try to get accessKeyId, accessJeySecret, securityToken, " +
-        "endpoint from metaservice.");
+    // try to get accessKeyId, accessJeySecret, securityToken, endpoint from MetaService.
+    LOG.debug("Try to get accessKeyId, accessJeySecret, securityToken endpoint from MetaService.");
     if (accessKeyId == null || accessKeySecret == null) {
       accessKeyId = MetaClient.getRoleAccessKeyId();
       accessKeySecret = MetaClient.getRoleAccessKeySecret();
@@ -135,7 +123,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
           || StringUtils.isEmpty(securityToken)) {
         throw new IllegalArgumentException(
             "AccessKeyId/AccessKeySecret/SecurityToken is not available, you " +
-            "can set them in OSS URI");
+            "can set them in configuration.");
       }
     }
 

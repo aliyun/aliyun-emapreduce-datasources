@@ -48,8 +48,7 @@ public class MNSClientAgent {
           urlClassLoader);
     } catch (Exception e) {
       if (retry) {
-        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
-            urlClassLoader, endpoint);
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e, urlClassLoader, endpoint);
         if (mnsClient != null) {
           this.mnsClient = mnsClient;
           return getQueueRef(queueName, false);
@@ -75,8 +74,7 @@ public class MNSClientAgent {
       return gson.fromJson(gson.toJson(ret), Boolean.class);
     } catch (Exception e) {
       if (retry) {
-        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
-            urlClassLoader, endpoint);
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e, urlClassLoader, endpoint);
         if (mnsClient != null) {
           this.mnsClient = mnsClient;
           return isOpen(false);
@@ -101,8 +99,7 @@ public class MNSClientAgent {
       method.invoke(mnsClient);
     } catch (Exception e) {
       if (retry) {
-        Object mnsClient = MNSAgentUtil.updateMNSClient(e,
-            urlClassLoader, endpoint);
+        Object mnsClient = MNSAgentUtil.updateMNSClient(e, urlClassLoader, endpoint);
         if (mnsClient != null) {
           this.mnsClient = mnsClient;
           close(false);
