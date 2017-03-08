@@ -25,12 +25,12 @@ import java.util.Formatter;
 import org.apache.hadoop.conf.Configuration;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.aliyun.tablestore.hadoop.Credential;
-import org.apache.spark.aliyun.tablestore.hadoop.Endpoint;
-import org.apache.spark.aliyun.tablestore.hadoop.PrimaryKeyWritable;
-import org.apache.spark.aliyun.tablestore.hadoop.RowWritable;
-import org.apache.spark.aliyun.tablestore.hadoop.TableStore;
-import org.apache.spark.aliyun.tablestore.hadoop.TableStoreInputFormat;
+import com.aliyun.openservices.tablestore.hadoop.Credential;
+import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
+import com.aliyun.openservices.tablestore.hadoop.RowWritable;
+import com.aliyun.openservices.tablestore.hadoop.TableStore;
+import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
@@ -89,10 +89,10 @@ public class RowCounter {
         }
         if (cred.securityToken == null) {
             return new SyncClient(ep.endpoint, cred.accessKeyId,
-              cred.accessKeySecret, ep.instance);
+                cred.accessKeySecret, ep.instance);
         } else {
             return new SyncClient(ep.endpoint, cred.accessKeyId,
-              cred.accessKeySecret, ep.instance, cred.securityToken);
+                cred.accessKeySecret, ep.instance, cred.securityToken);
         }
     }
 
@@ -100,7 +100,7 @@ public class RowCounter {
         SyncClient ots = getOTSClient();
         try {
             DescribeTableResponse resp = ots.describeTable(
-              new DescribeTableRequest(table));
+                new DescribeTableRequest(table));
             return resp.getTableMeta();
         } finally {
             ots.shutdown();
@@ -139,7 +139,7 @@ public class RowCounter {
             System.exit(1);
         }
         if (endpoint == null || accessKeyId == null || accessKeySecret == null ||
-          table == null) {
+            table == null) {
             printUsage();
             System.exit(1);
         }
@@ -150,17 +150,17 @@ public class RowCounter {
             sc = new JavaSparkContext(sparkConf);
             Configuration hadoopConf = new Configuration();
             TableStore.setCredential(
-              hadoopConf,
-              new Credential(accessKeyId, accessKeySecret, securityToken));
+                hadoopConf,
+                new Credential(accessKeyId, accessKeySecret, securityToken));
             Endpoint ep = new Endpoint(endpoint, instance);
             TableStore.setEndpoint(hadoopConf, ep);
             TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria());
 
             JavaPairRDD<PrimaryKeyWritable, RowWritable> rdd = sc.newAPIHadoopRDD(
-              hadoopConf, TableStoreInputFormat.class, PrimaryKeyWritable.class,
-              RowWritable.class);
+                hadoopConf, TableStoreInputFormat.class, PrimaryKeyWritable.class,
+                RowWritable.class);
             System.out.println(
-              new Formatter().format("TOTAL: %d", rdd.count()).toString());
+                new Formatter().format("TOTAL: %d", rdd.count()).toString());
         } finally {
             if (sc != null) {
                 sc.close();
