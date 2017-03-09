@@ -15,9 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.datasource
-
-import java.sql.Date
+package org.apache.spark.aliyun.odps.datasource
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SaveMode, SparkSession}
@@ -28,7 +26,7 @@ class ODPSDataSourceSuit extends FunSuite {
   val accessKeyId = ""
   val accessKeySecret = ""
   val envType = 0
-  val project = "test_odpss"
+  val project = "test_odps"
   val numPartitions = 2
 
   val urls = Seq(
@@ -36,8 +34,8 @@ class ODPSDataSourceSuit extends FunSuite {
     Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com") // Aliyun internal environment
   )
 
-  val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local")
-  val ss = SparkSession.builder().appName("Test Odps Read").master("local").getOrCreate()
+  val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local[*]")
+  val ss = SparkSession.builder().appName("Test Odps Read").master("local[*]").getOrCreate()
 
   import ss.implicits._
 
@@ -51,7 +49,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
     System.out.println("*****" + table + ",before overwrite table")
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -62,7 +60,7 @@ class ODPSDataSourceSuit extends FunSuite {
     System.out.println("*****" + table + ",after overwrite table, before read table")
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -86,7 +84,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -96,7 +94,7 @@ class ODPSDataSourceSuit extends FunSuite {
       .option("partitionSpec", "c='p1'").mode(SaveMode.Overwrite).save()
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -121,7 +119,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
     //First,Overwrite
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -135,7 +133,7 @@ class ODPSDataSourceSuit extends FunSuite {
     }.toSeq
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
-    df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df1.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -144,7 +142,7 @@ class ODPSDataSourceSuit extends FunSuite {
       .option("accessKeyId", accessKeyId).mode(SaveMode.Append).save()
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -167,7 +165,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -181,7 +179,7 @@ class ODPSDataSourceSuit extends FunSuite {
     }.toSeq
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
-    df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df1.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -191,7 +189,7 @@ class ODPSDataSourceSuit extends FunSuite {
       .option("partitionSpec", "c='p1'").mode(SaveMode.Append).save()
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -216,7 +214,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
     //First,Overwrite
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -230,7 +228,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     try {
-      df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+      df1.write.format("org.apache.spark.aliyun.odps.datasource")
         .option("odpsUrl", "http://service.odps.aliyun.com/api")
         .option("tunnelUrl", "http://dt.odps.aliyun.com")
         .option("table", table)
@@ -241,7 +239,8 @@ class ODPSDataSourceSuit extends FunSuite {
       assert(false)
     } catch {
       case e: Exception =>
-        System.out.println("write DataFrame to no-partition odps table with SaveMode.ErrorIfExists should throw an Exception:" + e)
+        System.out.println("write DataFrame to no-partition odps table with " +
+          "SaveMode.ErrorIfExists should throw an Exception:" + e)
         assert(true)
     }
 
@@ -256,7 +255,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -271,7 +270,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     try {
-      df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+      df1.write.format("org.apache.spark.aliyun.odps.datasource")
         .option("odpsUrl", "http://service.odps.aliyun.com/api")
         .option("tunnelUrl", "http://dt.odps.aliyun.com")
         .option("table", table)
@@ -283,7 +282,8 @@ class ODPSDataSourceSuit extends FunSuite {
       assert(false)
     } catch {
       case e: Exception =>
-        System.out.println("write DataFrame to partition odps table with SaveMode.ErrorIfExists should throw an Exception:" + e)
+        System.out.println("write DataFrame to partition odps table with " +
+          "SaveMode.ErrorIfExists should throw an Exception:" + e)
         assert(true)
     }
 
@@ -299,7 +299,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
     //First,Overwrite
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -313,7 +313,7 @@ class ODPSDataSourceSuit extends FunSuite {
     }.toSeq
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
-    df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df1.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -322,7 +322,7 @@ class ODPSDataSourceSuit extends FunSuite {
       .option("accessKeyId", accessKeyId).mode(SaveMode.Ignore).save()
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -345,7 +345,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -359,7 +359,7 @@ class ODPSDataSourceSuit extends FunSuite {
     }.toSeq
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
-    df1.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df1.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)
@@ -369,7 +369,7 @@ class ODPSDataSourceSuit extends FunSuite {
       .option("partitionSpec", "c='p1'").mode(SaveMode.Ignore).save()
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
       .option("table", table)

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.maxcompute.datasource
+package org.apache.spark.aliyun.odps.datasource
 
 import com.aliyun.odps.Odps
 import com.aliyun.odps.account.AliyunAccount
@@ -50,7 +50,6 @@ case class ODPSRelation(
 
   override val schema: StructType = {
     val tableSchema = odpsUtils.getTableSchema(project, table, false)
-    val fields = new Array[StructField](tableSchema.length)
 
     StructType(
       tableSchema.map(e => {
@@ -108,7 +107,7 @@ case class ODPSRelation(
 
   override def toString: String = {
     // credentials should not be included in the plan output, table information is sufficient.
-    s"ODPSRelation(${table})"
+    s"ODPSRelation($table)"
   }
 
 }
