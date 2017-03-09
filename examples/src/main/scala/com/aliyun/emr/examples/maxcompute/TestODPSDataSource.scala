@@ -46,7 +46,6 @@ object TestODPSDataSource {
     val envType = args(2).toInt
     val project = args(3)
     val table = args(4)
-    val numPartitions = args(5).toInt
 
     val urls = Seq(
       Seq("http://service.odps.aliyun.com/api", "http://dt.odps.aliyun.com"), // public environment
@@ -56,8 +55,7 @@ object TestODPSDataSource {
     val odpsUrl = urls(envType)(0)
     val tunnelUrl = urls(envType)(1)
 
-    val conf = new SparkConf().setAppName("Test Odps Read")
-    val ss = SparkSession.builder().appName("Test Odps Read").master("local").getOrCreate()
+    val ss = SparkSession.builder().appName("Test Odps Read").master("local[*]").getOrCreate()
 
     import ss.implicits._
 
@@ -69,7 +67,7 @@ object TestODPSDataSource {
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
     System.out.println("*****" + table + ",before overwrite table")
-    df.write.format("org.apache.spark.aliyun.maxcompute.datasource")
+    df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", odpsUrl)
       .option("tunnelUrl", tunnelUrl)
       .option("table", table)
@@ -80,7 +78,7 @@ object TestODPSDataSource {
     System.out.println("*****" + table + ",after overwrite table, before read table")
 
     val readDF = ss.read
-      .format("org.apache.spark.aliyun.maxcompute.datasource")
+      .format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", odpsUrl)
       .option("tunnelUrl", tunnelUrl)
       .option("table", table)

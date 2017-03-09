@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.maxcompute.datasource
+package org.apache.spark.aliyun.odps.datasource
 
 import java.io.EOFException
 
