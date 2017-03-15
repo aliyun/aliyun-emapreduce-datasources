@@ -72,10 +72,10 @@ If you prefer to scala, please replace `JavaSparkContext` to `SparkContext` and 
 Let it run.
 
 ```
-$ bin/spark-submit --master local --jars emr-tablestore-1.4.0-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
+$ bin/spark-submit --master local --jars emr-tablestore-1.4.1-SNAPSHOT.jar,tablestore-4.1.0-jar-with-dependencies.jar YourRowCounter.jar
 TOTAL: 9
 ```
 
 FYI,
 * for more details about `TableStoreInputFormat`, please refer to (HadoopMR-on-TableStore.md).
-* in emr-examples_2.10-1.4.0-SNAPSHOT.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
+* in emr-examples_2.11-1.4.1-SNAPSHOT.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.spark.RowCounter`.
