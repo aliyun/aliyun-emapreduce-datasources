@@ -15,9 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.maxcompute.datasource
+package org.apache.spark.aliyun.odps.datasource
 
-import com.aliyun.odps.tunnel.io.TunnelRecordWriter
 import com.aliyun.odps._
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.tunnel.TableTunnel
@@ -74,16 +73,17 @@ class ODPSWriter(
 
     val shouldUpload = {
       if (saveMode == SaveMode.ErrorIfExists && tableExists) {
-        sys.error(s"$project.$table ${if(isPartitionTable) partitionSpec else ""} already exists and SaveMode is ErrorIfExists")
+        sys.error(s"$project.$table ${if(isPartitionTable) partitionSpec else ""} " +
+          s"already exists and SaveMode is ErrorIfExists")
       } else if (saveMode == SaveMode.Ignore && tableExists) {
-        log.info(s"Table ${project}.$table already exists and SaveMode is Ignore, No data saved")
+        log.info(s"Table $project.$table already exists and SaveMode is Ignore, No data saved")
         return
       } else if (saveMode == SaveMode.Overwrite) {
         if (!isPartitionTable) {
           log.info(s"SaveMode.Overwrite with no-partition Table, truncate the $project.$table first")
           odpsUtils.runSQL(project, s"TRUNCATE TABLE $table;")
         } else {
-          log.info(s"SaveMode.Overwrite with partition Table, drop the ${partitionSpec} of $project.$table first")
+          log.info(s"SaveMode.Overwrite with partition Table, drop the $partitionSpec of $project.$table first")
           odpsUtils.dropPartition(project, table, partitionSpec)
           odpsUtils.createPartition(project, table, partitionSpec)
         }
@@ -113,7 +113,6 @@ class ODPSWriter(
 
         var recordsWritten = 0L
 
-        val numFields = schema.fields.length
         while (iter.hasNext) {
           val value = iter.next()
           val record = uploadSession_.newRecord()
@@ -139,7 +138,6 @@ class ODPSWriter(
 
         val arr = Array(Long.box(TaskContext.get.partitionId))
         uploadSession_.commit(arr)
-        val totalBytes = writer.asInstanceOf[TunnelRecordWriter].getTotalBytes
       }
 
       val dataSchema = data.schema

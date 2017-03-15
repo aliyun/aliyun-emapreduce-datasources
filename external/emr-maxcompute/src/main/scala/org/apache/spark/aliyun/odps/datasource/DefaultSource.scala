@@ -15,16 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.maxcompute.datasource
+package org.apache.spark.aliyun.odps.datasource
 
 import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.sources.{CreatableRelationProvider, BaseRelation, DataSourceRegister, RelationProvider}
-import org.slf4j.LoggerFactory
 
 class DefaultSource extends RelationProvider
   with CreatableRelationProvider
   with DataSourceRegister {
-  private val log = LoggerFactory.getLogger(getClass)
 
   override def shortName(): String = "odps"
 
@@ -44,7 +42,7 @@ class DefaultSource extends RelationProvider
   }
 
   /**
-   * Creates a Relation instance by first writing the contents of the given DataFrame to Redshift
+   * Creates a Relation instance by first writing the contents of the given DataFrame to Redshift.
    */
   override def createRelation(
     sqlContext: SQLContext,
@@ -58,7 +56,8 @@ class DefaultSource extends RelationProvider
       odpsOptions.accessKeySecret,
       odpsOptions.odpsUrl,
       odpsOptions.tunnelUrl
-    ).saveToTable(odpsOptions.project, odpsOptions.table, data, odpsOptions.partitionSpec, odpsOptions.allowCreatNewPartition, saveMode)
+    ).saveToTable(odpsOptions.project, odpsOptions.table, data, odpsOptions.partitionSpec,
+      odpsOptions.allowCreateNewPartition, saveMode)
     createRelation(sqlContext, parameters)
   }
 }
