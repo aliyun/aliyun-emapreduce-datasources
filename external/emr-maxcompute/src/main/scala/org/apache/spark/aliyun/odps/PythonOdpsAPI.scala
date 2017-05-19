@@ -40,6 +40,7 @@ class PythonOdpsAPI(
       tunnelUrl: String) extends Logging with Serializable {
 
   val odpsOps = OdpsOps(jsc.sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
+  val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
 
   def readTable(
       project: String,
@@ -121,8 +122,7 @@ class PythonOdpsAPI(
         case OdpsType.BIGINT => record.getBigint(idx)
         case OdpsType.DOUBLE => record.getDouble(idx)
         case OdpsType.BOOLEAN => record.getBoolean(idx)
-        case OdpsType.DATETIME =>
-          PythonOdpsAPI.dateFormat.format(record.getDatetime(idx))
+        case OdpsType.DATETIME => dateFormat.format(record.getDatetime(idx))
         case OdpsType.STRING => if(isBytes == 1) record.getBytes(idx) else record.getString(idx)
       }
     }
@@ -139,7 +139,7 @@ class PythonOdpsAPI(
         case OdpsType.DOUBLE => record.setDouble(idx, element.asInstanceOf[Double])
         case OdpsType.BOOLEAN => record.setBoolean(idx, element.asInstanceOf[Boolean])
         case OdpsType.DATETIME =>
-          val date = PythonOdpsAPI.dateFormat.parse(element.asInstanceOf[String])
+          val date = dateFormat.parse(element.asInstanceOf[String])
           record.setDatetime(idx, date)
         case OdpsType.STRING => if(isBytes == 1) record.setString(idx, element.asInstanceOf[Array[Byte]])
         else record.setString(idx, element.asInstanceOf[String])
@@ -210,10 +210,6 @@ class PythonOdpsAPI(
     PythonRDD.writeIteratorToStream(items, file)
     file.close()
   }
-}
-
-object PythonOdpsAPI {
-  val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 
 class PythonOdpsAPIHelper {
