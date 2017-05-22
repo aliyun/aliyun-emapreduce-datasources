@@ -708,7 +708,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
           case "STRING" => StructField(tableSchema(e)._1, StringType, true)
           case "DOUBLE" => StructField(tableSchema(e)._1, DoubleType, true)
           case "BOOLEAN" => StructField(tableSchema(e)._1, BooleanType, true)
-          case "DATETIME" => StructField(tableSchema(e)._1, DateType, true)
+          case "DATETIME" => StructField(tableSchema(e)._1, TimestampType, true)
         }
       })
     )
@@ -722,7 +722,11 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
         case OdpsType.BIGINT => record.getBigint(idx)
         case OdpsType.DOUBLE => record.getDouble(idx)
         case OdpsType.BOOLEAN => record.getBoolean(idx)
-        case OdpsType.DATETIME => new java.sql.Date(record.getDatetime(idx).getTime)
+        case OdpsType.DATETIME =>
+          val dt = record.getDatetime(idx)
+          if (dt != null) {
+            new java.sql.Timestamp(dt.getTime)
+          } else null
         case OdpsType.STRING => record.getString(idx)
       }
     }
