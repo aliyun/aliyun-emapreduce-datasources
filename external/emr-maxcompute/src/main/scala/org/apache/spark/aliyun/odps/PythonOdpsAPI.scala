@@ -40,7 +40,7 @@ class PythonOdpsAPI(
       tunnelUrl: String) extends Logging with Serializable {
 
   val odpsOps = OdpsOps(jsc.sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
-  val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
+  val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
   def readTable(
       project: String,
@@ -122,7 +122,11 @@ class PythonOdpsAPI(
         case OdpsType.BIGINT => record.getBigint(idx)
         case OdpsType.DOUBLE => record.getDouble(idx)
         case OdpsType.BOOLEAN => record.getBoolean(idx)
-        case OdpsType.DATETIME => dateFormat.format(record.getDatetime(idx))
+        case OdpsType.DATETIME =>
+          val dt = record.getDatetime(idx)
+          if (dt != null) {
+            dateFormat.format(record.getDatetime(idx))
+          } else null
         case OdpsType.STRING => if(isBytes == 1) record.getBytes(idx) else record.getString(idx)
       }
     }
