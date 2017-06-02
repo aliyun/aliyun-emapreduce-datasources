@@ -31,37 +31,37 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-maxcompute_2.10</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-logservice_2.10</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-tablestore</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-ons_2.10</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-mns_2.10</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-core</artifactId>
-            <version>1.4.1-SNAPSHOT</version>
+            <version>1.4.1</version>
         </dependency>
 
 ```
