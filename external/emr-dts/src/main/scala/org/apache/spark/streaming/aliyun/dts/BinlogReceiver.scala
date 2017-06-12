@@ -119,7 +119,7 @@ class BinlogReceiver(
   }
 
   private def storeBlockAndCommitMessage(
-                                          blockId: StreamBlockId, arrayBuffer: mutable.ArrayBuffer[_]): Unit = {
+      blockId: StreamBlockId, arrayBuffer: mutable.ArrayBuffer[_]): Unit = {
     var count = 0
     var pushed = false
     var exception: Exception = null
