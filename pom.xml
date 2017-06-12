@@ -32,6 +32,7 @@
         <module>external/emr-tablestore</module>
         <module>external/emr-mns</module>
         <module>external/emr-ons</module>
+        <module>external/emr-dts</module>
         <module>examples</module>
     </modules>
 
@@ -45,6 +46,7 @@
         <loghubb.client.version>0.6.5</loghubb.client.version>
         <ons.version>1.2.6</ons.version>
         <mns.version>1.1.7.1</mns.version>
+        <dts.version>4.6.27.12.0</dts.version>
         <hadoop.version>2.2.0</hadoop.version>
         <fastjson.version>1.2.17</fastjson.version>
         <hive.version>2.0.1</hive.version>
@@ -57,6 +59,7 @@
         <gson.version>2.6.2</gson.version>
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
         <okhttp3.version>3.4.1</okhttp3.version>
+        <commons.lang3.version>3.3.2</commons.lang3.version>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
@@ -204,6 +207,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.aliyun.dts</groupId>
+                <artifactId>dts-subscribe-sdk</artifactId>
+                <version>${dts.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-mapreduce-client-core</artifactId>
                 <version>${hadoop.version}</version>
@@ -295,6 +304,12 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons.lang3.version}</version>
             </dependency>
 
             <dependency>
@@ -479,19 +494,6 @@
                     </executions>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.6</version>
-                    <executions>
-                        <execution>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>sign</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
                     <groupId>org.sonatype.plugins</groupId>
                     <artifactId>nexus-staging-maven-plugin</artifactId>
                     <version>1.6.3</version>
@@ -505,6 +507,28 @@
             </plugins>
         </pluginManagement>
     </build>
+    <profiles>
+        <profile>
+            <id>gpg</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     <distributionManagement>
         <snapshotRepository>
             <id>oss</id>
