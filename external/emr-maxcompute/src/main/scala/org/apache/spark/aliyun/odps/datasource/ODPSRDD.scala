@@ -23,15 +23,15 @@ import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
 import com.aliyun.odps.{PartitionSpec, Odps}
 import com.aliyun.odps.account.AliyunAccount
+
 import org.apache.spark.aliyun.odps.OdpsPartition
-import org.apache.spark.sql.catalyst.expressions.SpecificMutableRow
+import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.NextIterator
-import org.apache.spark.{InterruptibleIterator, TaskContext, Partition, SparkContext}
+import org.apache.spark.{Partition, TaskContext, SparkContext, InterruptibleIterator}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types._
-
 import scala.collection.mutable.ArrayBuffer
 
 class ODPSRDD(
@@ -72,7 +72,7 @@ class ODPSRDD(
         context => closeIfNeeded()
       }
 
-      val mutableRow = new SpecificMutableRow(schema.fields.map(x => x.dataType))
+      val mutableRow = new SpecificInternalRow(schema.fields.map(x => x.dataType))
 
       override def getNext(): InternalRow = {
 

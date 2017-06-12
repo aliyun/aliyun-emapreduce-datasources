@@ -32,19 +32,21 @@
         <module>external/emr-tablestore</module>
         <module>external/emr-mns</module>
         <module>external/emr-ons</module>
+        <module>external/emr-dts</module>
         <module>examples</module>
     </modules>
 
     <properties>
         <scala.version>2.11.7</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.0.2</spark.version>
+        <spark.version>2.1.1</spark.version>
         <oss.sdk.version>2.4.0</oss.sdk.version>
         <tablestore.sdk.version>4.2.2</tablestore.sdk.version>
         <odps.version>0.24.0-public</odps.version>
         <loghubb.client.version>0.6.7</loghubb.client.version>
         <ons.version>1.2.7.Final</ons.version>
         <mns.version>1.1.8</mns.version>
+        <dts.version>4.6.27.12.0</dts.version>
         <hadoop.version>2.2.0</hadoop.version>
         <fastjson.version>1.2.23</fastjson.version>
         <hive.version>2.0.1</hive.version>
@@ -58,6 +60,7 @@
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
         <okhttp3.version>3.4.1</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
+        <commons.lang3.version>3.3.2</commons.lang3.version>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
@@ -77,28 +80,28 @@
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-core_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-sql_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-streaming_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-mllib_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <!-- Explicit listing of transitive deps that are shaded. Otherwise, odd compiler crashes. -->
@@ -106,31 +109,31 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-server</artifactId>
                 <version>${eclipse.jetty}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-plus</artifactId>
                 <version>${eclipse.jetty}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-util</artifactId>
                 <version>${eclipse.jetty}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-http</artifactId>
                 <version>${eclipse.jetty}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-servlet</artifactId>
                 <version>${eclipse.jetty}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
             <!-- End of shaded deps. -->
 
@@ -205,10 +208,16 @@
             </dependency>
 
             <dependency>
+                <groupId>com.aliyun.dts</groupId>
+                <artifactId>dts-subscribe-sdk</artifactId>
+                <version>${dts.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-mapreduce-client-core</artifactId>
                 <version>${hadoop.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
                 <exclusions>
                     <exclusion>
                         <groupId>jdk.tools</groupId>
@@ -221,21 +230,21 @@
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-auth</artifactId>
                 <version>${hadoop.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-annotations</artifactId>
                 <version>${hadoop.version}</version>
-                <scope>provided</scope>
+                <!--scope>provided</scope-->
             </dependency>
 
             <dependency>
@@ -296,6 +305,12 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons.lang3.version}</version>
             </dependency>
 
             <dependency>
@@ -480,19 +495,6 @@
                     </executions>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.6</version>
-                    <executions>
-                        <execution>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>sign</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
                     <groupId>org.sonatype.plugins</groupId>
                     <artifactId>nexus-staging-maven-plugin</artifactId>
                     <version>1.6.3</version>
@@ -506,6 +508,28 @@
             </plugins>
         </pluginManagement>
     </build>
+    <profiles>
+        <profile>
+            <id>gpg</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     <distributionManagement>
         <snapshotRepository>
             <id>oss</id>

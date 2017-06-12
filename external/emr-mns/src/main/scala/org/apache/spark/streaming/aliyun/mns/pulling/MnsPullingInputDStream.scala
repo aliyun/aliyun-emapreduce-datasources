@@ -16,7 +16,6 @@
  */
 package org.apache.spark.streaming.aliyun.mns.pulling
 
-import com.aliyun.mns.model.Message
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
