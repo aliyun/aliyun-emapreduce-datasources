@@ -108,15 +108,10 @@ class BinlogReceiver(
     }
   }
 
-  /** Update stored offset */
   private def rememberAddedClusterMessage(message: ClusterMessage): Unit = {
     clusterMessageInCurrentBlock += message
   }
 
-  /**
-   * Remember the current offsets for each topic and partition. This is called when a block is
-   * generated.
-   */
   private def rememberBlockMessages(blockId: StreamBlockId): Unit = {
     blockIdToClusterMessages.put(blockId, ClusterMessages(clusterMessageInCurrentBlock.toArray))
     clusterMessageInCurrentBlock.clear()
@@ -160,46 +155,15 @@ class BinlogReceiver(
     }
 
     def onGenerateBlock(blockId: StreamBlockId): Unit = {
-      // Remember the offsets of topics/partitions when a block has been generated
       rememberBlockMessages(blockId)
     }
 
     def onPushBlock(blockId: StreamBlockId, arrayBuffer: mutable.ArrayBuffer[_]): Unit = {
-      // Store block and commit the blocks offset
       storeBlockAndCommitMessage(blockId, arrayBuffer)
     }
 
     def onError(message: String, throwable: Throwable): Unit = {
       reportError(message, throwable)
     }
-  }
-}
-
-object BinlogReceiver extends Logging {
-  def main(args: Array[String]): Unit = {
-    val accessKey = "$accessKey"
-    val accessSecret = "$accessSecret"
-    val context = new RegionContext()
-    context.setUsePublicIp(true)
-    context.setAccessKey(accessKey)
-    context.setSecret(accessSecret)
-
-    val client = new DefaultClusterClient(context)
-    val listener = new ClusterListener {
-      override def notify(messages: util.List[ClusterMessage]): Unit = {
-        messages.foreach(message => {
-          println(message.getRecord.toString)
-          message.ackAsConsumed()
-        })
-      }
-
-      override def noException(e: Exception): Unit = {
-        logWarning("Something wrong.", e)
-      }
-    }
-
-    client.addConcurrentListener(listener)
-    client.askForGUID("$guid")
-    client.start()
   }
 }
