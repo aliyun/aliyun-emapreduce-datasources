@@ -33,7 +33,7 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
 object DtsUtils extends Logging {
 
   /**
-   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * Create an input stream that pulls message from a Aliyun DTS stream.
    * {{{
    *    val ssc: StreamingSparkContext = ...
    *    val accessKeyId = "kj7aY*******UYx6"
@@ -79,7 +79,7 @@ object DtsUtils extends Logging {
   }
 
   /**
-   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * Create an input stream that pulls message from a Aliyun DTS stream.
    * {{{
    *    val ssc: StreamingSparkContext = ...
    *    val accessKeyId = "kj7aY*******UYx6"
