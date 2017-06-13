@@ -136,7 +136,7 @@ object DtsUtils extends Logging {
    *        }
    *    }
    *
-   *    JavaReceiverInputDStream<String> onsStream = DtsUtils.createStream(
+   *    JavaReceiverInputDStream<String> dtsStream = DtsUtils.createStream(
    *        ssc,
    *        accessKeyId,
    *        accessKeySecret,
@@ -180,7 +180,7 @@ object DtsUtils extends Logging {
    *    String accessKeySecret = "AiNMAlxz*************1PxaPaL8t";
    *    String guid = "dts-guid-name";
    *
-   *    JavaReceiverInputDStream<String> onsStream = DtsUtils.createStream(
+   *    JavaReceiverInputDStream<String> dtsStream = DtsUtils.createStream(
    *        ssc,
    *        accessKeyId,
    *        accessKeySecret,
