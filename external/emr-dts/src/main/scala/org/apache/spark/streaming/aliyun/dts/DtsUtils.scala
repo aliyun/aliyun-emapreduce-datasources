@@ -32,6 +32,40 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
  */
 object DtsUtils extends Logging {
 
+  /**
+   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    val ssc: StreamingSparkContext = ...
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val guid = "dts-guid-name"
+   *
+   *    def func: ClusterMessage => String = msg => msg.getRecord.toString
+   *
+   *    val dtsStream = DtsUtils.createStream(
+   *     ssc,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     guid,
+   *     func,
+   *     StorageLevel.MEMORY_AND_DISK_2,
+   *     false)
+   *
+   *     dtsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   *
+   * }}}
+   * @param ssc StreamingContext object.
+   * @param accessKeyId Aliyun Access Key ID.
+   * @param accessKeySecret Aliyun Access Key Secret.
+   * @param guid Aliyun DTS guid name.
+   * @param func Extract information from DTS record message.
+   * @param storageLevel Storage level to use for storing the received objects.
+   *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
+   * @param usePublicIp use public ip or not.
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
@@ -44,6 +78,36 @@ object DtsUtils extends Logging {
     new BinlogDStream(ssc, accessKeyId, accessKeySecret, guid, func, storageLevel, usePublicIp)
   }
 
+  /**
+   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    val ssc: StreamingSparkContext = ...
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val guid = "dts-guid-name"
+   *
+   *    val dtsStream = DtsUtils.createStream(
+   *     ssc,
+   *     accessKeyId,
+   *     accessKeySecret,
+   *     guid,
+   *     StorageLevel.MEMORY_AND_DISK_2,
+   *     false)
+   *
+   *     dtsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   *
+   * }}}
+   * @param ssc StreamingContext object.
+   * @param accessKeyId Aliyun Access Key ID.
+   * @param accessKeySecret Aliyun Access Key Secret.
+   * @param guid Aliyun DTS guid name.
+   * @param storageLevel Storage level to use for storing the received objects.
+   *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
+   * @param usePublicIp use public ip or not.
+   * @return
+   */
   @Experimental
   def createStream(
       ssc: StreamingContext,
@@ -55,7 +119,7 @@ object DtsUtils extends Logging {
     new BinlogDStream(ssc, accessKeyId, accessKeySecret, guid, defaultMessageFunc, storageLevel, usePublicIp)
   }
 
-  def defaultMessageFunc(message: ClusterMessage): String = {
+  private def defaultMessageFunc(message: ClusterMessage): String = {
     try {
       val obj = new JSONObject()
       message.getRecord.getAttributes.foreach(attribute => {
