@@ -43,17 +43,17 @@ object DtsUtils extends Logging {
    *    def func: ClusterMessage => String = msg => msg.getRecord.toString
    *
    *    val dtsStream = DtsUtils.createStream(
-   *     ssc,
-   *     accessKeyId,
-   *     accessKeySecret,
-   *     guid,
-   *     func,
-   *     StorageLevel.MEMORY_AND_DISK_2,
-   *     false)
+   *      ssc,
+   *      accessKeyId,
+   *      accessKeySecret,
+   *      guid,
+   *      func,
+   *      StorageLevel.MEMORY_AND_DISK_2,
+   *      false)
    *
-   *     dtsStream.foreachRDD(rdd => {
-   *       ...
-   *     })
+   *    dtsStream.foreachRDD(rdd => {
+   *      ...
+   *    })
    *
    * }}}
    * @param ssc StreamingContext object.
@@ -87,16 +87,16 @@ object DtsUtils extends Logging {
    *    val guid = "dts-guid-name"
    *
    *    val dtsStream = DtsUtils.createStream(
-   *     ssc,
-   *     accessKeyId,
-   *     accessKeySecret,
-   *     guid,
-   *     StorageLevel.MEMORY_AND_DISK_2,
-   *     false)
+   *      ssc,
+   *      accessKeyId,
+   *      accessKeySecret,
+   *      guid,
+   *      StorageLevel.MEMORY_AND_DISK_2,
+   *      false)
    *
-   *     dtsStream.foreachRDD(rdd => {
-   *       ...
-   *     })
+   *    dtsStream.foreachRDD(rdd => {
+   *      ...
+   *    })
    *
    * }}}
    * @param ssc StreamingContext object.
