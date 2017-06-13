@@ -26,13 +26,13 @@ Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in py
 ## LogService
 
 1. download the [**loghub.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/external/emr-logservice/src/main/python/pyspark/streaming/loghub.py);
-2. download the emr-sdk [**emr-sdk_2.10-1.3.2.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-sdk_2.10/1.3.2/emr-sdk_2.10-1.3.2.jar);
+2. download the emr-logservice [**emr-logservice_2.10-1.4.1.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-logservice_2.10/1.4.1/emr-logservice_2.10-1.4.1.jar);
 3. download loghub's dependencies, i.e. [**fastjson-1.1.30.jar**](http://mvnrepository.com/artifact/com.alibaba/fastjson/1.1.30), [**commons-validator-1.4.0.jar**](http://mvnrepository.com/artifact/commons-validator/commons-validator/1.4.0), [**loghub-client-lib-0.6.5.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/loghub-client-lib/0.6.5), [**aliyun-log-0.6.5.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/aliyun-log/0.6.5). Above-mentioned library version pass test;
 4. download [**loghub-wordcount.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/streaming/loghub-wordcount.py);
 5. run the example, use 
 ```
 spark-submit --master local[4] --jars fastjson-1.1.30.jar,commons-validator-1.4.0.jar,
-emr-logservice_2.10-1.4.2-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar  
+emr-logservice_2.10-1.4.1.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.6.2.jar  
 --py-files loghub.py loghub-wordcount.py <logServiceProject> <logsStoreName> <logHubConsumerGroupName> 
 <loghubEndpoint> <numReceiver> <accessKeyId> <accessKeySecret>
 ```
@@ -40,12 +40,12 @@ emr-logservice_2.10-1.4.2-SNAPSHOT.jar,loghub-client-lib-0.6.4.jar,aliyun-log-0.
 ## ODPS
 
 1. download the [**odps.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/external/emr-maxcompute/src/main/python/pyspark/odps.py);
-2. download the emr-sdk [**emr-sdk_2.10-1.3.2.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-sdk_2.10/1.3.2/emr-sdk_2.10-1.3.2.jar);
+2. download the emr-maxcompute [**emr-maxcompute_2.10-1.4.1.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-maxcompute_2.10/1.4.1/emr-maxcompute_2.10-1.4.1.jar);
 3. download odps's dependencies, i.e. [**aspectjrt-1.8.2.jar**](http://mvnrepository.com/artifact/org.aspectj/aspectjrt/1.8.2), [**odps-sdk-commons-0.23.3-public.jar**](http://mvnrepository.com/artifact/com.aliyun.odps/odps-sdk-commons/0.23.3-public), [**odps-sdk-core-0.23.3-public.jar**](http://mvnrepository.com/artifact/com.aliyun.odps/odps-sdk-core/0.23.3-public). Above-mentioned library version pass test;
 4. download [**odps-sample.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/odps-sample.py);
 5. run the example, use
 ```
-   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-sdk_2.10-1.3.2.jar,
+   spark-submit --master local[4] --jars aspectjrt-1.8.2.jar,emr-maxcompute_2.10-1.4.1.jar,
    odps-sdk-commons-0.20.7-public.jar,odps-sdk-core-0.20.7-public.jar --py-files odps.py  
    odps-sample.py <accessKeyId> <accessKeySecret> <project> <table> <partition> <numPartitions>
 ```
