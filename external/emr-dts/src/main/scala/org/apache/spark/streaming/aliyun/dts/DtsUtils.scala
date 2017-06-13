@@ -35,7 +35,7 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
 object DtsUtils extends Logging {
 
   /**
-   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * Create an input stream that pulls message from a Aliyun DTS stream.
    * {{{
    *    val ssc: StreamingSparkContext = ...
    *    val accessKeyId = "kj7aY*******UYx6"
@@ -45,17 +45,17 @@ object DtsUtils extends Logging {
    *    def func: ClusterMessage => String = msg => msg.getRecord.toString
    *
    *    val dtsStream = DtsUtils.createStream(
-   *     ssc,
-   *     accessKeyId,
-   *     accessKeySecret,
-   *     guid,
-   *     func,
-   *     StorageLevel.MEMORY_AND_DISK_2,
-   *     false)
+   *      ssc,
+   *      accessKeyId,
+   *      accessKeySecret,
+   *      guid,
+   *      func,
+   *      StorageLevel.MEMORY_AND_DISK_2,
+   *      false)
    *
-   *     dtsStream.foreachRDD(rdd => {
-   *       ...
-   *     })
+   *    dtsStream.foreachRDD(rdd => {
+   *      ...
+   *    })
    *
    * }}}
    * @param ssc StreamingContext object.
@@ -81,7 +81,7 @@ object DtsUtils extends Logging {
   }
 
   /**
-   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * Create an input stream that pulls message from a Aliyun DTS stream.
    * {{{
    *    val ssc: StreamingSparkContext = ...
    *    val accessKeyId = "kj7aY*******UYx6"
@@ -89,16 +89,16 @@ object DtsUtils extends Logging {
    *    val guid = "dts-guid-name"
    *
    *    val dtsStream = DtsUtils.createStream(
-   *     ssc,
-   *     accessKeyId,
-   *     accessKeySecret,
-   *     guid,
-   *     StorageLevel.MEMORY_AND_DISK_2,
-   *     false)
+   *      ssc,
+   *      accessKeyId,
+   *      accessKeySecret,
+   *      guid,
+   *      StorageLevel.MEMORY_AND_DISK_2,
+   *      false)
    *
-   *     dtsStream.foreachRDD(rdd => {
-   *       ...
-   *     })
+   *    dtsStream.foreachRDD(rdd => {
+   *      ...
+   *    })
    *
    * }}}
    * @param ssc StreamingContext object.
