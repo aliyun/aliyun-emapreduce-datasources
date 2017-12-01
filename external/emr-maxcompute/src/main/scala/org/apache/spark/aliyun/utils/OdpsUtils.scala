@@ -200,6 +200,7 @@ class OdpsUtils(odps: Odps) extends Logging{
         case OdpsType.BOOLEAN => "BOOLEAN"
         case OdpsType.DATETIME => "DATETIME"
         case OdpsType.STRING => "STRING"
+        case OdpsType.DECIMAL => "DECIMAL"
       }
       (name, colType)
     })
@@ -223,13 +224,14 @@ class OdpsUtils(odps: Odps) extends Logging{
       case OdpsType.BOOLEAN => "BOOLEAN"
       case OdpsType.DATETIME => "DATETIME"
       case OdpsType.STRING => "STRING"
+      case OdpsType.DECIMAL => "DECIMAL"
     }
 
     (idx.toString, colType)
   }
 
   /**
-   * Get information of specific column vai column index.
+   * Get information of specific column via column index.
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
    * @param idx The index of specific column.
@@ -247,6 +249,7 @@ class OdpsUtils(odps: Odps) extends Logging{
       case OdpsType.BOOLEAN => "BOOLEAN"
       case OdpsType.DATETIME => "DATETIME"
       case OdpsType.STRING => "STRING"
+      case OdpsType.DECIMAL => "DECIMAL"
     }
 
     (name, colType)
