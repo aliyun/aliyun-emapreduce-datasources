@@ -707,6 +707,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
           case "DOUBLE" => StructField(tableSchema(e)._1, DoubleType, true)
           case "BOOLEAN" => StructField(tableSchema(e)._1, BooleanType, true)
           case "DATETIME" => StructField(tableSchema(e)._1, TimestampType, true)
+          case "DECIMAL" => StructField(tableSchema(e)._1, DecimalType(15, 2), true)
         }
       })
     )
@@ -726,6 +727,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
             new java.sql.Timestamp(dt.getTime)
           } else null
         case OdpsType.STRING => record.getString(idx)
+        case OdpsType.DECIMAL => record.getDecimal(idx)
       }
     }
   }
@@ -743,6 +745,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
         case OdpsType.BOOLEAN => "BOOLEAN"
         case OdpsType.DATETIME => "DATETIME"
         case OdpsType.STRING => "STRING"
+        case OdpsType.DECIMAL => "DECIMAL"
       }
       (name, colType)
     })
@@ -759,6 +762,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       case OdpsType.BOOLEAN => "BOOLEAN"
       case OdpsType.DATETIME => "DATETIME"
       case OdpsType.STRING => "STRING"
+      case OdpsType.DECIMAL => "DECIMAL"
     }
 
     (idx.toString, colType)
@@ -776,6 +780,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       case OdpsType.BOOLEAN => "BOOLEAN"
       case OdpsType.DATETIME => "DATETIME"
       case OdpsType.STRING => "STRING"
+      case OdpsType.DECIMAL => "DECIMAL"
     }
 
     (name, colType)
