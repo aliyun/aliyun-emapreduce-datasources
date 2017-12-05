@@ -18,10 +18,14 @@
 
 package org.apache.spark.aliyun.utils
 
+import java.sql.SQLException
+
+import com.aliyun.odps.`type`.TypeInfo
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.task.SQLTask
 import com.aliyun.odps.{Partition, _}
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.types._
 
 class OdpsUtils(odps: Odps) extends Logging{
 
@@ -188,22 +192,11 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return
    */
   def getTableSchema(project: String, table: String, isPartition: Boolean):
-      Array[(String, String)] =  {
+      Array[(String, TypeInfo)] =  {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
-    columns.toArray(new Array[Column](0)).map(e => {
-      val name = e.getName
-      val colType = e.getType match {
-        case OdpsType.BIGINT => "BIGINT"
-        case OdpsType.DOUBLE => "DOUBLE"
-        case OdpsType.BOOLEAN => "BOOLEAN"
-        case OdpsType.DATETIME => "DATETIME"
-        case OdpsType.STRING => "STRING"
-        case OdpsType.DECIMAL => "DECIMAL"
-      }
-      (name, colType)
-    })
+    columns.toArray(new Array[Column](0)).map(e => (e.getName, e.getTypeInfo))
   }
 
   /**
@@ -218,16 +211,10 @@ class OdpsUtils(odps: Odps) extends Logging{
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val idx = schema.getColumnIndex(name)
-    val colType = schema.getColumn(name).getType match {
-      case OdpsType.BIGINT => "BIGINT"
-      case OdpsType.DOUBLE => "DOUBLE"
-      case OdpsType.BOOLEAN => "BOOLEAN"
-      case OdpsType.DATETIME => "DATETIME"
-      case OdpsType.STRING => "STRING"
-      case OdpsType.DECIMAL => "DECIMAL"
-    }
+    val colType = schema.getColumn(name).getTypeInfo
+    val field = getCatalystType(name, colType, true)
 
-    (idx.toString, colType)
+    (idx.toString, field.dataType.simpleString)
   }
 
   /**
@@ -243,16 +230,10 @@ class OdpsUtils(odps: Odps) extends Logging{
     val schema = odps.tables().get(table).getSchema
     val column = schema.getColumn(idx)
     val name = column.getName
-    val colType = column.getType match {
-      case OdpsType.BIGINT => "BIGINT"
-      case OdpsType.DOUBLE => "DOUBLE"
-      case OdpsType.BOOLEAN => "BOOLEAN"
-      case OdpsType.DATETIME => "DATETIME"
-      case OdpsType.STRING => "STRING"
-      case OdpsType.DECIMAL => "DECIMAL"
-    }
+    val colType = schema.getColumn(name).getTypeInfo
+    val field = getCatalystType(name, colType, true)
 
-    (name, colType)
+    (name, field.dataType.simpleString)
   }
 
   /**
@@ -328,6 +309,43 @@ class OdpsUtils(odps: Odps) extends Logging{
     if(partitionFilter.size == 0) false else true
   }
 
+  def getCatalystType(columnName: String, columnType: TypeInfo, nullable: Boolean): StructField = {
+    val metadata = new MetadataBuilder()
+      .putString("name", columnName)
+      .putLong("scale", 0L)
+
+    val answer = columnType.getOdpsType match {
+      case OdpsType.BIGINT => LongType
+      case OdpsType.BINARY => BinaryType
+      case OdpsType.BOOLEAN => BooleanType
+      case OdpsType.CHAR => StringType
+      case OdpsType.DATE => DateType
+      case OdpsType.DATETIME => TimestampType
+      case OdpsType.DECIMAL => DecimalType.SYSTEM_DEFAULT
+      case OdpsType.DOUBLE => DoubleType
+      case OdpsType.FLOAT => FloatType
+      case OdpsType.INT => IntegerType
+      case OdpsType.SMALLINT => IntegerType
+      case OdpsType.STRING => StringType
+      case OdpsType.TINYINT => IntegerType
+      case OdpsType.VARCHAR => StringType
+      case OdpsType.TIMESTAMP => TimestampType
+      case OdpsType.VOID => NullType
+      case OdpsType.INTERVAL_DAY_TIME =>
+        throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
+      case OdpsType.INTERVAL_YEAR_MONTH =>
+        throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
+      case OdpsType.MAP =>
+        throw new SQLException(s"Unsupported type 'MAP'")
+      case OdpsType.STRUCT =>
+        throw new SQLException(s"Unsupported type 'STRUCT'")
+      case OdpsType.ARRAY =>
+        throw new SQLException(s"Unsupported type 'ARRAY'")
+      case _ => throw new SQLException(s"Unsupported type $columnType")
+    }
+
+    StructField(columnName, answer, nullable, metadata.build())
+  }
 }
 
 object OdpsUtils {

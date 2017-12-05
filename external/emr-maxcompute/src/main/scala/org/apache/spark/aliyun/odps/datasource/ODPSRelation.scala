@@ -24,7 +24,7 @@ import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
-import org.apache.spark.sql.sources.{PrunedFilteredScan, Filter, BaseRelation}
+import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
 
 case class ODPSRelation(
     accessKeyId: String,
@@ -52,15 +52,7 @@ case class ODPSRelation(
     val tableSchema = odpsUtils.getTableSchema(project, table, false)
 
     StructType(
-      tableSchema.map(e => {
-        e._2 match {
-          case "BIGINT" => StructField(e._1, LongType, true)
-          case "STRING" => StructField(e._1, StringType, true)
-          case "DOUBLE" => StructField(e._1, DoubleType, true)
-          case "BOOLEAN" => StructField(e._1, BooleanType, true)
-          case "DATETIME" => StructField(e._1, TimestampType, true)
-        }
-      })
+      tableSchema.map(e => odpsUtils.getCatalystType(e._1, e._2, true))
     )
   }
 

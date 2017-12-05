@@ -25,7 +25,6 @@ import com.aliyun.odps.tunnel.io.TunnelRecordReader
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import org.apache.spark._
-import org.apache.spark.executor.DataReadMethod
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
