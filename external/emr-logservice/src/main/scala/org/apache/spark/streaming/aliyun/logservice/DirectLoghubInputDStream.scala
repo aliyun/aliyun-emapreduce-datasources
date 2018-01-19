@@ -123,8 +123,8 @@ class DirectLoghubInputDStream(
     tryToCreateConsumerGroup()
 
     import scala.collection.JavaConversions._
-    val initial = if (zkClient.exists(s"$checkpointDir/comsume")) {
-      zkClient.getChildren(s"$checkpointDir/comsume")
+    val initial = if (zkClient.exists(s"$checkpointDir/consume")) {
+      zkClient.getChildren(s"$checkpointDir/consume")
         .filter(_.endsWith(".shard")).map(_.stripSuffix(".shard").toInt).toArray
     } else {
       Array.empty[String]
@@ -225,7 +225,7 @@ class DirectLoghubInputDStream(
           shardOffsets,
           checkpointDir).setName(s"LoghubRDD-${validTime.toString()}")
       } else {
-        // Last patch has not been completed, here we generator a fake job containing no data to
+        // Last batch has not been completed, here we generator a fake job containing no data to
         // skip this batch.
         new FakeLoghubRDD(ssc.sc).setName(s"FakeLoghubRDD-${validTime.toString()}")
       }
