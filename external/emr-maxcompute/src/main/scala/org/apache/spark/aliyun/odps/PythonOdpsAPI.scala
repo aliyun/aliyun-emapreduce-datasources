@@ -158,7 +158,7 @@ class PythonOdpsAPI(
   def getTableSchema(project: String, table: String, isPartition: Boolean): JList[Array[Byte]] = {
     val arr = odpsOps.getTableSchema(project, table, isPartition)
     val pickle = new Pickler
-    val res = arr.map( e => e._1 + "," + e._2).mkString(",").split(",")
+    val res = arr.map( e => e._1 + "," + e._2.getOdpsType).mkString(",").split(",")
       .map(pickle.dumps(_)).toSeq
     new java.util.ArrayList(res)
   }

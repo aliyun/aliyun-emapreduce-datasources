@@ -18,20 +18,22 @@
 package org.apache.spark.aliyun.odps.datasource
 
 import java.io.EOFException
+import java.sql.SQLException
 
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
-import com.aliyun.odps.{PartitionSpec, Odps}
+import com.aliyun.odps.{Odps, PartitionSpec}
 import com.aliyun.odps.account.AliyunAccount
-
 import org.apache.spark.aliyun.odps.OdpsPartition
 import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.NextIterator
-import org.apache.spark.{Partition, TaskContext, SparkContext, InterruptibleIterator}
+import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
+
 import scala.collection.mutable.ArrayBuffer
 
 class ODPSRDD(
@@ -81,12 +83,62 @@ class ODPSRDD(
           if (r != null) {
             schema.zipWithIndex.foreach {
               case (s: StructField, idx: Int) =>
-                s.dataType match {
-                  case BooleanType => mutableRow.setBoolean(idx, r.getBoolean(s.name))
-                  case DoubleType => mutableRow.setDouble(idx, r.getDouble(s.name))
-                  case LongType => mutableRow.setLong(idx, r.getBigint(s.name))
-                  case StringType => mutableRow.update(idx, UTF8String.fromString(r.getString(s.name)))
-                  case TimestampType => mutableRow.setLong(idx, r.getDatetime(s.name).getTime)
+                try {
+                  s.dataType match {
+                    case LongType => mutableRow.setLong(idx, r.getBigint(s.name))
+                    case BooleanType => mutableRow.setBoolean(idx, r.getBoolean(s.name))
+                    case DoubleType => mutableRow.setDouble(idx, r.getDouble(s.name))
+                    case TimestampType =>
+                      val value = r.toArray.apply(idx)
+                      value match {
+                        case timestamp: java.sql.Timestamp =>
+                          mutableRow.setLong(idx, DateTimeUtils.fromJavaTimestamp(timestamp))
+                        case date: java.util.Date =>
+                          mutableRow.setLong(idx, date.getTime * 1000)
+                        case _ => throw new SQLException(s"Unknown type")
+                      }
+                    case DecimalType.SYSTEM_DEFAULT => mutableRow.update(idx,
+                      new Decimal().set(r.toArray.apply(idx).asInstanceOf[java.math.BigDecimal]))
+                    case FloatType => mutableRow.update(idx,
+                      r.toArray.apply(idx).asInstanceOf[Float])
+                    case IntegerType =>
+                      val value = r.toArray.apply(idx)
+                      value match {
+                        case e: java.lang.Byte =>
+                          mutableRow.update(idx, e.toInt)
+                        case e: java.lang.Short =>
+                          mutableRow.update(idx, e.toInt)
+                        case e: java.lang.Integer =>
+                          mutableRow.update(idx, e.toInt)
+                        case _ => throw new SQLException(s"Unknown type")
+                      }
+                    case StringType =>
+                      val value = r.toArray.apply(idx)
+                      value match {
+                        case e: com.aliyun.odps.data.Char =>
+                          mutableRow.update(idx, UTF8String.fromString(e.toString))
+                        case e: com.aliyun.odps.data.Varchar =>
+                          mutableRow.update(idx, UTF8String.fromString(e.toString))
+                        case e: String =>
+                          mutableRow.update(idx, UTF8String.fromString(e))
+                        case _ => throw new SQLException(s"Unknown type")
+                      }
+                    case BinaryType =>
+                      val value = r.toArray.apply(idx)
+                      value match {
+                        case e: com.aliyun.odps.data.Binary =>
+                          mutableRow.update(idx, e.data())
+                        case _ => throw new SQLException(s"Unknown type")
+                      }
+                    case NullType =>
+                      mutableRow.setNullAt(idx)
+                    case _ => throw new SQLException(s"Unknown type")
+                  }
+                } catch {
+                  case e: Exception =>
+                    log.error(s"Can not transfer record column value, idx: $idx, " +
+                      s"type: ${s.dataType}, value ${r.toArray.apply(idx)}")
+                    throw e
                 }
             }
             inputMetrics.incRecordsRead(1L)

@@ -17,19 +17,22 @@
  */
 package org.apache.spark.aliyun.odps
 
+import java.sql.SQLException
 import java.text.SimpleDateFormat
+import java.util.Date
 
+import com.aliyun.odps.`type`.TypeInfo
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordWriter
-import com.aliyun.odps.{Column, Odps, OdpsException, OdpsType, Partition, PartitionSpec, TableSchema}
+import com.aliyun.odps._
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function.{Function2 => JFunction2, Function3 => JFunction3}
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{StructField, _}
+import org.apache.spark.sql.types.{Decimal, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.{SparkContext, TaskContext}
 
@@ -404,10 +407,11 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       partition: String,
       cols: Array[Int],
       numPartition: Int): DataFrame = {
-    val colsLen = odpsUtils.getTableSchema(project, table, false).length
-    val schema = prepareSchema(cols, colsLen, project, table, false)
-    val cols_ = prepareCols(cols, colsLen)
-    val rdd = readTable(project, table, partition, readTransfer(cols_),
+    val tableSchema = odpsUtils.getTableSchema(project, table, false)
+    val colsLen = tableSchema.length
+    val schema = prepareSchema(cols, tableSchema, project, table, false)
+    val columns = prepareCols(cols, colsLen)
+    val rdd = readTable(project, table, partition, readTransfer(columns),
       numPartition).map(e => { Row.fromSeq(e.toSeq) })
 
     sqlContext.createDataFrame(rdd, schema)
@@ -435,8 +439,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       table: String,
       cols: Array[Int],
       numPartition: Int): DataFrame = {
-    val colsLen = odpsUtils.getTableSchema(project, table, false).length
-    val schema = prepareSchema(cols, colsLen, project, table, false)
+    val tableSchema = odpsUtils.getTableSchema(project, table, false)
+    val colsLen = tableSchema.length
+    val schema = prepareSchema(cols, tableSchema, project, table, false)
     val cols_ = prepareCols(cols, colsLen)
     val rdd = readTable(project, table, readTransfer(cols_), numPartition)
         .map(e => { Row.fromSeq(e.toSeq) })
@@ -688,27 +693,20 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
 
   private def prepareSchema(
       cols: Array[Int],
-      columnsLen: Int,
+      tableSchema: Array[(String, TypeInfo)],
       project: String,
       table: String,
       isPartition: Boolean): StructType = {
     val tableSchema = odpsUtils.getTableSchema(project, table, isPartition)
-    val cols_ = if (cols.length == 0) {
-      Array.range(0, columnsLen)
+    val columns = if (cols.length == 0) {
+      Array.range(0, tableSchema.length)
     } else {
       cols
     }.sorted
 
     StructType(
-      cols_.map(e => {
-        tableSchema(e)._2 match {
-          case "BIGINT" => StructField(tableSchema(e)._1, LongType, true)
-          case "STRING" => StructField(tableSchema(e)._1, StringType, true)
-          case "DOUBLE" => StructField(tableSchema(e)._1, DoubleType, true)
-          case "BOOLEAN" => StructField(tableSchema(e)._1, BooleanType, true)
-          case "DATETIME" => StructField(tableSchema(e)._1, TimestampType, true)
-          case "DECIMAL" => StructField(tableSchema(e)._1, DecimalType(15, 2), true)
-        }
+      columns.map(idx => {
+        odpsUtils.getCatalystType(tableSchema(idx)._1, tableSchema(idx)._2, true)
       })
     )
   }
@@ -717,38 +715,62 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       Array[_] = {
     cols.sorted.map { idx =>
       val col = schema.getColumn(idx)
-      col.getType match {
-        case OdpsType.BIGINT => record.getBigint(idx)
-        case OdpsType.DOUBLE => record.getDouble(idx)
-        case OdpsType.BOOLEAN => record.getBoolean(idx)
-        case OdpsType.DATETIME =>
-          val dt = record.getDatetime(idx)
-          if (dt != null) {
-            new java.sql.Timestamp(dt.getTime)
-          } else null
-        case OdpsType.STRING => record.getString(idx)
-        case OdpsType.DECIMAL => record.getDecimal(idx)
+      try {
+        col.getTypeInfo.getOdpsType match {
+          case OdpsType.BIGINT => record.toArray.apply(idx).asInstanceOf[Long]
+          case OdpsType.BINARY =>
+            record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Binary].data()
+          case OdpsType.BOOLEAN => record.toArray.apply(idx).asInstanceOf[Boolean]
+          case OdpsType.CHAR => record.toArray.apply(idx).asInstanceOf[String]
+          case OdpsType.DATE => record.toArray.apply(idx).asInstanceOf[java.util.Date].getTime
+          case OdpsType.DATETIME =>
+            val r = record.toArray.apply(idx).asInstanceOf[Date]
+            if (r != null) {
+              new java.sql.Timestamp(r.getTime)
+            } else null
+          case OdpsType.DECIMAL =>
+            new Decimal().set(record.toArray.apply(idx).asInstanceOf[java.math.BigDecimal])
+          case OdpsType.DOUBLE => record.toArray.apply(idx).asInstanceOf[Double]
+          case OdpsType.FLOAT => record.toArray.apply(idx).asInstanceOf[Float]
+          case OdpsType.INT => record.toArray.apply(idx).asInstanceOf[Integer]
+          case OdpsType.SMALLINT => record.toArray.apply(idx).asInstanceOf[Short].toInt
+          case OdpsType.STRING => record.toArray.apply(idx).asInstanceOf[String]
+          case OdpsType.TIMESTAMP =>
+            val r = record.toArray.apply(idx).asInstanceOf[java.sql.Timestamp]
+            if (r != null) {
+              r
+            } else null
+          case OdpsType.TINYINT => record.toArray.apply(idx).asInstanceOf[Byte].toInt
+          case OdpsType.VARCHAR =>
+            record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Varchar].getValue
+          case OdpsType.VOID => "null"
+          case OdpsType.INTERVAL_DAY_TIME =>
+            throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
+          case OdpsType.INTERVAL_YEAR_MONTH =>
+            throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
+          case OdpsType.MAP =>
+            throw new SQLException(s"Unsupported type 'MAP'")
+          case OdpsType.STRUCT =>
+            throw new SQLException(s"Unsupported type 'STRUCT'")
+          case OdpsType.ARRAY =>
+            throw new SQLException(s"Unsupported type 'ARRAY'")
+          case _ => throw new SQLException(s"Unsupported type ${col.getTypeInfo.getOdpsType}")
+        }
+      } catch {
+        case e: Exception =>
+          log.error(s"Can not transfer record column value, idx: $idx, " +
+            s"type: ${col.getTypeInfo.getOdpsType}, value ${record.toArray.apply(idx)}")
+          throw e
       }
     }
   }
 
   def getTableSchema(project: String, table: String, isPartition: Boolean):
-      Array[(String, String)] =  {
+      Array[(String, TypeInfo)] =  {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
-    columns.toArray(new Array[Column](0)).map(e => {
-      val name = e.getName
-      val colType = e.getType match {
-        case OdpsType.BIGINT => "BIGINT"
-        case OdpsType.DOUBLE => "DOUBLE"
-        case OdpsType.BOOLEAN => "BOOLEAN"
-        case OdpsType.DATETIME => "DATETIME"
-        case OdpsType.STRING => "STRING"
-        case OdpsType.DECIMAL => "DECIMAL"
-      }
-      (name, colType)
-    })
+    columns.toArray(new Array[Column](0)).map(e => (e.getName, e.getTypeInfo))
   }
 
   def getColumnByName(project: String, table: String, name: String):
@@ -756,16 +778,10 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val idx = schema.getColumnIndex(name)
-    val colType = schema.getColumn(name).getType match {
-      case OdpsType.BIGINT => "BIGINT"
-      case OdpsType.DOUBLE => "DOUBLE"
-      case OdpsType.BOOLEAN => "BOOLEAN"
-      case OdpsType.DATETIME => "DATETIME"
-      case OdpsType.STRING => "STRING"
-      case OdpsType.DECIMAL => "DECIMAL"
-    }
+    val colType = schema.getColumn(name).getTypeInfo
+    val field = odpsUtils.getCatalystType(name, colType, true)
 
-    (idx.toString, colType)
+    (idx.toString, field.dataType.simpleString)
   }
 
   def getColumnByIdx(project: String, table: String, idx: Int):
@@ -774,16 +790,10 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     val schema = odps.tables().get(table).getSchema
     val column = schema.getColumn(idx)
     val name = column.getName
-    val colType = column.getType match {
-      case OdpsType.BIGINT => "BIGINT"
-      case OdpsType.DOUBLE => "DOUBLE"
-      case OdpsType.BOOLEAN => "BOOLEAN"
-      case OdpsType.DATETIME => "DATETIME"
-      case OdpsType.STRING => "STRING"
-      case OdpsType.DECIMAL => "DECIMAL"
-    }
+    val colType = schema.getColumn(name).getTypeInfo
+    val field = odpsUtils.getCatalystType(name, colType, true)
 
-    (name, colType)
+    (name, field.dataType.simpleString)
   }
 
   private def checkTableAndPartition(

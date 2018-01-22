@@ -26,7 +26,7 @@ class ODPSDataSourceSuit extends FunSuite {
   val accessKeyId = ""
   val accessKeySecret = ""
   val envType = 0
-  val project = "test_odps"
+  val project = ""
   val numPartitions = 2
 
   val urls = Seq(
