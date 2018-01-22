@@ -434,7 +434,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
     if (contentLength % partSize != 0) {
       partCount++;
     }
-    LOG.info("multipart copying, partCount" + partCount + ", partSize " + partSize);
+    LOG.info("multipart copying, partCount " + partCount + ", partSize " + partSize);
     List<PartETag> partETags = new ArrayList<PartETag>();
     List<Task> tasks = new ArrayList<Task>();
     for (int i = 0; i < partCount; i++) {
@@ -479,7 +479,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
     if (contentLength % partSize != 0) {
       partCount++;
     }
-    LOG.info("multipart uploading, partCount" + partCount + ", partSize " +
+    LOG.info("multipart uploading, partCount " + partCount + ", partSize " +
         partSize);
 
     List<Task> tasks = new ArrayList<Task>();
@@ -528,7 +528,7 @@ public class JetOssNativeFileSystemStore implements NativeFileSystemStore {
     if (totalContentLength % partSize != 0) {
       partCount++;
     }
-    LOG.info("multipart uploading, partCount" + partCount + ", partSize " +
+    LOG.info("multipart uploading, partCount " + partCount + ", partSize " +
         partSize);
 
     List<Task> tasks = new ArrayList<Task>();
