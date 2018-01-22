@@ -1,3 +1,5 @@
+[![Travis](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk.svg?branch=master)](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk)
+
 # Spark on Aliyun
 
 ## Requirements
