@@ -73,6 +73,7 @@ public class BufferReader {
     this.store = store;
     this.key = key;
     this.conf = conf;
+    this.fileContentLength = store.retrieveMetadata(key).getLength();
     this.algorithmVersion = algorithmVersion;
     if (store.retrieveMetadata(key).getLength() < 5 * 1024 * 1024) {
       this.algorithmVersion = 2;
@@ -82,7 +83,6 @@ public class BufferReader {
 
   private void prepareBeforeFetch() throws IOException {
     if (algorithmVersion == 1) {
-      this.fileContentLength = store.retrieveMetadata(key).getLength();
       this.lengthToFetch = fileContentLength - pos;
       this.bufferSize = lengthToFetch < 16 * 1024 * 1024 ? 1024 * 1024 :
           (lengthToFetch > 1024 * 1024 * 1024 ? 64 * 1024 * 1024 :
@@ -327,6 +327,9 @@ public class BufferReader {
   public synchronized void seek(long newpos) throws IOException {
     if (newpos < 0) {
       throw new EOFException("negative seek position: " + newpos);
+    } else if (newpos > fileContentLength) {
+      throw new EOFException("Cannot seek after EOF, contentLength:" +
+        fileContentLength + " position:" + newpos);
     }
 
     if (pos != newpos) {
@@ -413,6 +416,14 @@ public class BufferReader {
 
   public long getPos() {
     return pos;
+  }
+
+  public synchronized int available() throws IOException {
+    long remaining = fileContentLength - pos;
+    if (remaining > Integer.MAX_VALUE) {
+      return Integer.MAX_VALUE;
+    }
+    return (int)remaining;
   }
 
   private void progressPrint() {

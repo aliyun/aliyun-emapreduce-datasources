@@ -1,10 +1,10 @@
 [![Travis](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk.svg?branch=master-2.x)](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk)
 
-# Spark on Aliyun
+# E-MapReduce SDK
 
 ## Requirements
 
-- Spark1.3+
+- Spark 1.3+
 
 ## Introduction
 
@@ -14,7 +14,7 @@
 
 ```
 
-		git clone https://github.com/aliyun/aliyun-spark-sdk.git
+	    git clone https://github.com/aliyun/aliyun-spark-sdk.git
 	    cd  aliyun-spark-sdk
 	    mvn clean package -DskipTests
 
@@ -77,9 +77,30 @@ A native way to read and write regular files on Aliyun OSS. The advantage of thi
 
 ### OSS URI
 
-- **oss**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
+- **oss**://bucket/object/path
 
-We can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in OSS URI.
+We can set OSS "AccessKeyId/AccessKeySecret/Endpoint" in Hadoop configuration:
+
+```
+    <property>
+      <name>fs.oss.accessKeyId</name>
+      <description>Aliyun access key ID</description>
+    </property>
+    
+    <property>
+      <name>fs.oss.accessKeySecret</name>
+      <description>Aliyun access key secret</description>
+    </property>
+    
+    <property>
+      <name>fs.oss.endpoint</name>
+      <description>Aliyun OSS endpoint to connect to. An up-to-date list is
+        provided in the Aliyun OSS Documentation.
+       </description>
+    </property>
+```
+ 
+Specifically, we should add a prefix "spark.hadoop" in Spark, like "spark.hadoop.fs.oss.accessKeyId".
 
 ### OSS usage
 
@@ -97,9 +118,9 @@ Then, you can load OSS data through `SparkContext.textFile(...)`, like:
 ```
 
 	val conf = new SparkConf()
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-    val sc = new SparkContext(conf)
-	val path = "oss://accesskeyId:accessKeySecret@bucket.endpoint/input"
+	conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
+	val sc = new SparkContext(conf)
+	val path = "oss://bucket/input"
 	val rdd = sc.textFile(path)
 
 ``` 
@@ -109,7 +130,7 @@ Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
 ```
 
 	val data = sc.parallelize(1 to 10)
-	data.saveAsTextFile("oss://accesskeyId:accessKeySecret@bucket.endpoint/output")
+	data.saveAsTextFile("oss://bucket/output")
 
 ```
 
@@ -147,9 +168,9 @@ Before read/write ODPS data, we need to initialize an OdpsOps, like:
 	  }
 
 	  // == Step-2 ==
-      // function definition
+	  // function definition
 	  // == Step-3 ==
-      // function definition
+	  // function definition
 	｝
 
 ```
@@ -161,24 +182,24 @@ In above codes, the variables accessKeyId and accessKeySecret are assigned to us
 ```
 
 		// == Step-2 ==
-        val project = <odps-project>
-	    val table = <odps-table>
-	    val numPartitions = 2
+		val project = <odps-project>
+		val table = <odps-table>
+		val numPartitions = 2
 		val inputData = odpsOps.readTable(project, table, read, numPartitions)
 		inputData.top(10).foreach(println)
 
 		// == Step-3 ==
-        ...
+		...
 
 ```
 
-In above codes, we need to define a `read` function to preprocess ODPS data：
+In above codes, we need to define a `read` function to pre-process ODPS data：
 
 ```
 
 		def read(record: Record, schema: TableSchema): String = {
-	      record.getString(0)
-	    }
+		  record.getString(0)
+		}
 
 ```
 
@@ -198,9 +219,9 @@ In above codes, we need to define a `write` function to preprocess reslult data 
 ```
 
 		def write(s: String, emptyReord: Record, schema: TableSchema): Unit = {
-	      val r = emptyReord
-	      r.set(0, s)
-	    }
+		  val r = emptyReord
+		  r.set(0, s)
+		}
 
 ```
 
@@ -208,7 +229,7 @@ It means to write each line of result RDD into the first column of ODPS table.
 
 ## ONS Support
 
-In this section, we will demonstrate how to comsume ONS message in Spark.
+In this section, we will demonstrate how to consume ONS message in Spark.
 
 ```
     // cId: Aliyun ONS ConsumerID
@@ -225,7 +246,7 @@ In this section, we will demonstrate how to comsume ONS message in Spark.
     val conf = new SparkConf().setAppName("Spark ONS Sample")
     val ssc = new StreamingContext(conf, batchInterval)
 
-	// define `func` to preprocess each message 
+    // define `func` to preprocess each message 
     def func: Message => Array[Byte] = msg => msg.getBody
     val onsStreams = (0 until numStreams).map { i =>
       println(s"starting stream $i")
@@ -253,10 +274,10 @@ In this section, we will demonstrate how to comsume ONS message in Spark.
 
 ## LogService Support
 
-In this section, we will demonstrate how to comsume Loghub data in Spark Streaming.
+In this section, we will demonstrate how to consume Loghub data in Spark Streaming.
 
 ```
-	if (args.length < 8) {
+    if (args.length < 8) {
       System.err.println(
         """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint> <access key id>
           |         <access key secret> <receiver number> <batch interval seconds>
@@ -297,11 +318,6 @@ In this section, we will demonstrate how to comsume Loghub data in Spark Streami
 * [HadoopMR on TableStore](docs/HadoopMR-on-TableStore.md)
 * [Spark on TableStore](docs/Spark-on-TableStore.md)
 * [Hive/SparkSQL on TableStore](docs/Hive-SparkSQL-on-TableStore.md)
-
-## Future Work
-
-- Support more Aliyun base service
-- Support more friendly code migration.
 
 ## License
 

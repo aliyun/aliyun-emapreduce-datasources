@@ -5,6 +5,7 @@ external/emr-mns/target/
 external/emr-maxcompute/target/
 external/emr-logservice/target/
 external/emr-tablestore/target/
+external/emr-dts/target/
 examples/target/
 *.iml
 log.txt
