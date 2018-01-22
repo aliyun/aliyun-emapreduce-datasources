@@ -20,4 +20,4 @@ install:
 branches:
   only:
   - master
-  - master-2
+  - master-2.x
