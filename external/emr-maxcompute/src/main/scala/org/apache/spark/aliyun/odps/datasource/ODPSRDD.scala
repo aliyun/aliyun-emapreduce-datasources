@@ -18,7 +18,7 @@
 package org.apache.spark.aliyun.odps.datasource
 
 import java.io.EOFException
-import java.sql.SQLException
+import java.sql.{Date, SQLException}
 
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
@@ -88,13 +88,22 @@ class ODPSRDD(
                     case LongType => mutableRow.setLong(idx, r.getBigint(s.name))
                     case BooleanType => mutableRow.setBoolean(idx, r.getBoolean(s.name))
                     case DoubleType => mutableRow.setDouble(idx, r.getDouble(s.name))
+                    case ShortType => mutableRow.setShort(idx, r.get(s.name).asInstanceOf[Short])
+                    case ByteType => mutableRow.setByte(idx, r.get(s.name).asInstanceOf[Byte])
+                    case DateType =>
+                      val value = r.toArray.apply(idx)
+                      value match {
+                        case date1: java.sql.Date =>
+                          mutableRow.update(idx, DateTimeUtils.fromJavaDate(date1))
+                        case date2: java.util.Date =>
+                          mutableRow.setInt(idx, DateTimeUtils.fromJavaDate(new Date(date2.getTime)))
+                        case _ => throw new SQLException(s"Unknown type")
+                      }
                     case TimestampType =>
                       val value = r.toArray.apply(idx)
                       value match {
                         case timestamp: java.sql.Timestamp =>
                           mutableRow.setLong(idx, DateTimeUtils.fromJavaTimestamp(timestamp))
-                        case date: java.util.Date =>
-                          mutableRow.setLong(idx, date.getTime * 1000)
                         case _ => throw new SQLException(s"Unknown type")
                       }
                     case DecimalType.SYSTEM_DEFAULT => mutableRow.update(idx,
@@ -104,10 +113,6 @@ class ODPSRDD(
                     case IntegerType =>
                       val value = r.toArray.apply(idx)
                       value match {
-                        case e: java.lang.Byte =>
-                          mutableRow.update(idx, e.toInt)
-                        case e: java.lang.Short =>
-                          mutableRow.update(idx, e.toInt)
                         case e: java.lang.Integer =>
                           mutableRow.update(idx, e.toInt)
                         case _ => throw new SQLException(s"Unknown type")

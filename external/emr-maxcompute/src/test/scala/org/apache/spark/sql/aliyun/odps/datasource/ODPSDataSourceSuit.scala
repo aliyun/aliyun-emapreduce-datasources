@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.odps.datasource
+package org.apache.spark.sql.aliyun.odps.datasource
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SaveMode, SparkSession}
@@ -381,7 +381,5 @@ class ODPSDataSourceSuit extends FunSuite {
     val collectList = readDF.collect()
     assert(collectList.length == 26)
     assert((1 to 26).forall(n => collectList.exists(_.getLong(0) == n)))
-
   }
-
 }
