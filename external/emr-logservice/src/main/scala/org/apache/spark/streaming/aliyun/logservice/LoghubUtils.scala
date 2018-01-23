@@ -559,7 +559,7 @@ class LoghubUtilsHelper {
       case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
       case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
       case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
-      case e: _ => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
     }
     LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
@@ -579,7 +579,7 @@ class LoghubUtilsHelper {
       case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
       case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
       case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
-      case e: _ => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
     }
     LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, storageLevel, cursor, mLoghubCursorStartTime,
@@ -603,7 +603,7 @@ class LoghubUtilsHelper {
       case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
       case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
       case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
-      case e: _ => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
     }
     LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
       loghubEndpoint, numReceivers, accessKeyId, accessKeySecret, storageLevel,
@@ -624,7 +624,7 @@ class LoghubUtilsHelper {
       case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
       case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
       case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
-      case e: _ => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
     }
     LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
       numReceivers, storageLevel, cursor, mLoghubCursorStartTime, forceSpecial)
