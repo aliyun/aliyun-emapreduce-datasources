@@ -722,25 +722,25 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
             record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Binary].data()
           case OdpsType.BOOLEAN => record.toArray.apply(idx).asInstanceOf[Boolean]
           case OdpsType.CHAR => record.toArray.apply(idx).asInstanceOf[String]
-          case OdpsType.DATE => record.toArray.apply(idx).asInstanceOf[java.util.Date].getTime
+          case OdpsType.DATE => record.toArray.apply(idx).asInstanceOf[java.sql.Date].getTime
           case OdpsType.DATETIME =>
-            val r = record.toArray.apply(idx).asInstanceOf[Date]
+            val r = record.toArray.apply(idx).asInstanceOf[java.util.Date]
             if (r != null) {
-              new java.sql.Timestamp(r.getTime)
+              new java.sql.Date(r.getTime)
             } else null
           case OdpsType.DECIMAL =>
             new Decimal().set(record.toArray.apply(idx).asInstanceOf[java.math.BigDecimal])
           case OdpsType.DOUBLE => record.toArray.apply(idx).asInstanceOf[Double]
           case OdpsType.FLOAT => record.toArray.apply(idx).asInstanceOf[Float]
           case OdpsType.INT => record.toArray.apply(idx).asInstanceOf[Integer]
-          case OdpsType.SMALLINT => record.toArray.apply(idx).asInstanceOf[Short].toInt
+          case OdpsType.SMALLINT => record.toArray.apply(idx).asInstanceOf[Short]
           case OdpsType.STRING => record.toArray.apply(idx).asInstanceOf[String]
           case OdpsType.TIMESTAMP =>
             val r = record.toArray.apply(idx).asInstanceOf[java.sql.Timestamp]
             if (r != null) {
               r
             } else null
-          case OdpsType.TINYINT => record.toArray.apply(idx).asInstanceOf[Byte].toInt
+          case OdpsType.TINYINT => record.toArray.apply(idx).asInstanceOf[Byte]
           case OdpsType.VARCHAR =>
             record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Varchar].getValue
           case OdpsType.VOID => "null"

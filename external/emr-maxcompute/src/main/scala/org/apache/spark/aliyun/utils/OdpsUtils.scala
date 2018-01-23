@@ -320,14 +320,14 @@ class OdpsUtils(odps: Odps) extends Logging{
       case OdpsType.BOOLEAN => BooleanType
       case OdpsType.CHAR => StringType
       case OdpsType.DATE => DateType
-      case OdpsType.DATETIME => TimestampType
+      case OdpsType.DATETIME => DateType
       case OdpsType.DECIMAL => DecimalType.SYSTEM_DEFAULT
       case OdpsType.DOUBLE => DoubleType
       case OdpsType.FLOAT => FloatType
       case OdpsType.INT => IntegerType
-      case OdpsType.SMALLINT => IntegerType
+      case OdpsType.SMALLINT => ShortType
       case OdpsType.STRING => StringType
-      case OdpsType.TINYINT => IntegerType
+      case OdpsType.TINYINT => ByteType
       case OdpsType.VARCHAR => StringType
       case OdpsType.TIMESTAMP => TimestampType
       case OdpsType.VOID => NullType

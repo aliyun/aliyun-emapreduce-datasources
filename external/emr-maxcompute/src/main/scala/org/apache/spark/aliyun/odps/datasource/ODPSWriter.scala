@@ -17,7 +17,7 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
-import java.sql.SQLException
+import java.sql.{Date, SQLException}
 
 import com.aliyun.odps._
 import com.aliyun.odps.account.AliyunAccount
@@ -142,13 +142,13 @@ class ODPSWriter(
                 case OdpsType.BINARY => record.set(s._1, new Binary(value.getAs[Array[Byte]](idx)))
                 case OdpsType.BOOLEAN => record.setBoolean(s._1, value.getBoolean(idx))
                 case OdpsType.CHAR => record.set(s._1, new com.aliyun.odps.data.Char(value.get(idx).toString))
-                case OdpsType.DATE => record.set(s._1, new java.util.Date(value.get(idx).toString.toLong))
-                case OdpsType.DATETIME => record.set(s._1, new java.util.Date(value.getAs[java.sql.Timestamp](idx).getTime))
+                case OdpsType.DATE => record.set(s._1, value.getAs[Date](idx))
+                case OdpsType.DATETIME => record.set(s._1, new java.util.Date(value.getAs[Date](idx).getTime))
                 case OdpsType.DECIMAL => record.set(s._1, Decimal(value.get(idx).toString).toJavaBigDecimal)
                 case OdpsType.DOUBLE => record.setDouble(s._1, value.getDouble(idx))
                 case OdpsType.FLOAT => record.set(s._1, value.get(idx).toString.toFloat)
                 case OdpsType.INT => record.set(s._1, value.get(idx).toString.toInt)
-                case OdpsType.SMALLINT => record.set(s._1, value.get(idx).toString.toInt)
+                case OdpsType.SMALLINT => record.set(s._1, value.get(idx).toString.toShort)
                 case OdpsType.STRING => record.setString(s._1, value.get(idx).toString)
                 case OdpsType.TINYINT => record.set(s._1, value.getAs[Byte](idx))
                 case OdpsType.VARCHAR => record.set(s._1, new com.aliyun.odps.data.Varchar(value.get(idx).toString))
