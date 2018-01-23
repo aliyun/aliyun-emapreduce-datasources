@@ -25,8 +25,9 @@ __all__ = ['LoghubUtils']
 class LoghubUtils(object):
 
     @staticmethod
-    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint, numReceivers,
-                      accessKeyId, accessKeySecret, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
+                      numReceivers, accessKeyId, accessKeySecret,
+                      storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
         """
         :param ssc: StreamingContext object.
         :param logServiceProject: The name of `LogService` project.
@@ -57,8 +58,36 @@ class LoghubUtils(object):
         return DStream(jstream, ssc, UTF8Deserializer())
 
     @staticmethod
+    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, numReceivers,
+                      storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param numReceivers: The number of receivers.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, numReceivers, jlevel)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
     def createStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
-                      accessKeyId, accessKeySecret, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+                     accessKeyId, accessKeySecret, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
         """
         :param ssc: StreamingContext object.
         :param logServiceProject: The name of `LogService` project.
@@ -66,9 +95,8 @@ class LoghubUtils(object):
         :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
                                        name will consumer specific logStore together.
         :param loghubEndpoint: The endpoint of loghub.
-        :param numReceivers: The number of receivers.
         :param accessKeyId: Aliyun Access Key ID.
-        :param accessKeySecret: Aliyun Access Key Secret.s
+        :param accessKeySecret: Aliyun Access Key Secret.
         :param storageLevel: RDD storage level.
         :return: A DStream object.
         """
@@ -80,6 +108,172 @@ class LoghubUtils(object):
             jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
                                           loghubConsumerGroupName, loghubEndpoint,
                                           accessKeyId, accessKeySecret, jlevel)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+                     storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, jlevel)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+                      loghubEndpoint, numReceivers, accessKeyId, accessKeySecret,
+                      cursorPosition, mLoghubCursorStartTime, forceSpecial,
+                      storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param loghubEndpoint: The endpoint of loghub.
+        :param numReceivers: The number of receivers.
+        :param accessKeyId: Aliyun Access Key ID.
+        :param accessKeySecret: Aliyun Access Key Secret.
+        :param cursorPosition: Set user defined cursor type.
+        :param mLoghubCursorStartTime: Set user defined cursor position (Unix Timestamp).
+        :param forceSpecial: Whether to force to set consume position as the `mLoghubCursorStartTime`.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, loghubEndpoint, numReceivers,
+                                          accessKeyId, accessKeySecret, jlevel, cursorPosition,
+                                          mLoghubCursorStartTime, forceSpecial)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStreams(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, numReceivers,
+                      cursorPosition, mLoghubCursorStartTime, forceSpecial,
+                      storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param numReceivers: The number of receivers.
+        :param cursorPosition: Set user defined cursor type.
+        :param mLoghubCursorStartTime: Set user defined cursor position (Unix Timestamp).
+        :param forceSpecial: Whether to force to set consume position as the `mLoghubCursorStartTime`.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, numReceivers, jlevel,
+                                          cursorPosition, mLoghubCursorStartTime, forceSpecial)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName, loghubEndpoint,
+                     accessKeyId, accessKeySecret, cursorPosition, mLoghubCursorStartTime,
+                     forceSpecial, storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param loghubEndpoint: The endpoint of loghub.
+        :param accessKeyId: Aliyun Access Key ID.
+        :param accessKeySecret: Aliyun Access Key Secret.
+        :param cursorPosition: Set user defined cursor type.
+        :param mLoghubCursorStartTime: Set user defined cursor position (Unix Timestamp).
+        :param forceSpecial: Whether to force to set consume position as the `mLoghubCursorStartTime`.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, loghubEndpoint,
+                                          accessKeyId, accessKeySecret, jlevel, cursorPosition,
+                                          mLoghubCursorStartTime, forceSpecial)
+
+        except Py4JJavaError as e:
+            # TODO: use --jar once it also work on driver
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+                     cursorPosition, mLoghubCursorStartTime, forceSpecial,
+                     storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param cursorPosition: Set user defined cursor type.
+        :param mLoghubCursorStartTime: Set user defined cursor position (Unix Timestamp).
+        :param forceSpecial: Whether to force to set consume position as the `mLoghubCursorStartTime`.
+        :param storageLevel: RDD storage level.
+        :return: A DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jlevel = ssc._sc._getJavaStorageLevel(storageLevel)
+            jstream = helper.createStream(ssc._jssc, logServiceProject, logStoreName,
+                                          loghubConsumerGroupName, jlevel, cursorPosition,
+                                          mLoghubCursorStartTime, forceSpecial)
 
         except Py4JJavaError as e:
             # TODO: use --jar once it also work on driver
