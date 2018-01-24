@@ -28,7 +28,7 @@ import scala.reflect.ClassTag
   * Extend RDD to support more functions.
   */
 class EMRExtendRDD[T](rdd: RDD[T]) {
-  def saveToTextFileWithEncoding(path: String, encoding: String): Unit = {
+  def saveAsTextFileWithEncoding(path: String, encoding: String): Unit = {
     val nullWritableClassTag = implicitly[ClassTag[NullWritable]]
     val textClassTag = implicitly[ClassTag[Text]]
     val r = rdd.mapPartitions { iter =>
@@ -42,7 +42,7 @@ class EMRExtendRDD[T](rdd: RDD[T]) {
       .saveAsHadoopFile[TextOutputFormat[NullWritable, Text]](path)
   }
 
-  def saveToTextFileWithEncoding(path: String, codec: Class[_ <: CompressionCodec],
+  def saveAsTextFileWithEncoding(path: String, codec: Class[_ <: CompressionCodec],
       encoding: String): Unit = {
     val nullWritableClassTag = implicitly[ClassTag[NullWritable]]
     val textClassTag = implicitly[ClassTag[Text]]
