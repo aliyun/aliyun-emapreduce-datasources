@@ -17,6 +17,7 @@
 
 import sys
 
+from pyspark.storagelevel import StorageLevel
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from loghub import LoghubUtils
@@ -30,17 +31,19 @@ if __name__ == "__main__":
     sc = SparkContext(appName="PythonStreamingLoghubWordCount")
     ssc = StreamingContext(sc, 2)
 
-    logServiceProject = sys.argv[1]
-    logsStoreName = sys.argv[2]
-    logHubConsumerGroupName = sys.argv[3]
-    loghubEndpoint = sys.argv[4]
-    numReceiver = int(sys.argv[5])
-    accessKeyId = sys.argv[6]
-    accessKeySecret = sys.argv[7]
+    project = sys.argv[1]
+    logstore = sys.argv[2]
+    group = sys.argv[3]
+    endpoint = sys.argv[4]
+    num = int(sys.argv[5])
+    id = sys.argv[6]
+    secret = sys.argv[7]
 
-    stream = LoghubUtils.createStreams(ssc, logServiceProject, logsStoreName, logHubConsumerGroupName, loghubEndpoint,
-                                       numReceiver, accessKeyId, accessKeySecret)
-    lines = stream.map(lambda x: x[1])
+    stream = LoghubUtils.createStream(ssc, project, logstore, group,
+                                      numReceivers=num, loghubEndpoint=endpoint, accessKeyId=id, accessKeySecret=secret,
+                                      cursorPosition=None, mLoghubCursorStartTime=None, forceSpecial=None,
+                                      storageLevel=StorageLevel.MEMORY_AND_DISK_SER_2)
+    lines = stream.map(lambda x: x)
     counts = lines.flatMap(lambda line: line.split(" ")) \
         .map(lambda word: (word, 1)) \
         .reduceByKey(lambda a, b: a+b)

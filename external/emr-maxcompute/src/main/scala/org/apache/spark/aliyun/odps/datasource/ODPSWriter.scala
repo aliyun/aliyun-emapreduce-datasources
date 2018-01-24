@@ -137,34 +137,43 @@ class ODPSWriter(
 
           schema.zipWithIndex.foreach {
             case (s: (String, OdpsType), idx: Int) =>
-              s._2 match {
-                case OdpsType.BIGINT => record.setBigint(s._1, value.get(idx).toString.toLong)
-                case OdpsType.BINARY => record.set(s._1, new Binary(value.getAs[Array[Byte]](idx)))
-                case OdpsType.BOOLEAN => record.setBoolean(s._1, value.getBoolean(idx))
-                case OdpsType.CHAR => record.set(s._1, new com.aliyun.odps.data.Char(value.get(idx).toString))
-                case OdpsType.DATE => record.set(s._1, value.getAs[Date](idx))
-                case OdpsType.DATETIME => record.set(s._1, new java.util.Date(value.getAs[Date](idx).getTime))
-                case OdpsType.DECIMAL => record.set(s._1, Decimal(value.get(idx).toString).toJavaBigDecimal)
-                case OdpsType.DOUBLE => record.setDouble(s._1, value.getDouble(idx))
-                case OdpsType.FLOAT => record.set(s._1, value.get(idx).toString.toFloat)
-                case OdpsType.INT => record.set(s._1, value.get(idx).toString.toInt)
-                case OdpsType.SMALLINT => record.set(s._1, value.get(idx).toString.toShort)
-                case OdpsType.STRING => record.setString(s._1, value.get(idx).toString)
-                case OdpsType.TINYINT => record.set(s._1, value.getAs[Byte](idx))
-                case OdpsType.VARCHAR => record.set(s._1, new com.aliyun.odps.data.Varchar(value.get(idx).toString))
-                case OdpsType.TIMESTAMP => record.setDatetime(s._1, value.getAs[java.sql.Timestamp](idx))
-                case OdpsType.VOID => record.set(s._1, null)
-                case OdpsType.INTERVAL_DAY_TIME =>
-                  throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
-                case OdpsType.INTERVAL_YEAR_MONTH =>
-                  throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
-                case OdpsType.MAP =>
-                  throw new SQLException(s"Unsupported type 'MAP'")
-                case OdpsType.STRUCT =>
-                  throw new SQLException(s"Unsupported type 'STRUCT'")
-                case OdpsType.ARRAY =>
-                  throw new SQLException(s"Unsupported type 'ARRAY'")
-                case _ => throw new SQLException(s"Unsupported type ${s._2}")
+              try {
+                s._2 match {
+                  case OdpsType.BIGINT => record.setBigint(s._1, value.get(idx).toString.toLong)
+                  case OdpsType.BINARY => record.set(s._1, new Binary(value.getAs[Array[Byte]](idx)))
+                  case OdpsType.BOOLEAN => record.setBoolean(s._1, value.getBoolean(idx))
+                  case OdpsType.CHAR => record.set(s._1, new com.aliyun.odps.data.Char(value.get(idx).toString))
+                  case OdpsType.DATE => record.set(s._1, value.getAs[Date](idx))
+                  case OdpsType.DATETIME => record.set(s._1, new java.util.Date(value.getAs[Date](idx).getTime))
+                  case OdpsType.DECIMAL => record.set(s._1, Decimal(value.get(idx).toString).toJavaBigDecimal)
+                  case OdpsType.DOUBLE => record.setDouble(s._1, value.getDouble(idx))
+                  case OdpsType.FLOAT => record.set(s._1, value.get(idx).toString.toFloat)
+                  case OdpsType.INT => record.set(s._1, value.get(idx).toString.toInt)
+                  case OdpsType.SMALLINT => record.set(s._1, value.get(idx).toString.toShort)
+                  case OdpsType.STRING => record.setString(s._1, value.get(idx).toString)
+                  case OdpsType.TINYINT => record.set(s._1, value.getAs[Byte](idx))
+                  case OdpsType.VARCHAR => record.set(s._1, new com.aliyun.odps.data.Varchar(value.get(idx).toString))
+                  case OdpsType.TIMESTAMP => record.setDatetime(s._1, value.getAs[java.sql.Timestamp](idx))
+                  case OdpsType.VOID => record.set(s._1, null)
+                  case OdpsType.INTERVAL_DAY_TIME =>
+                    throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
+                  case OdpsType.INTERVAL_YEAR_MONTH =>
+                    throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
+                  case OdpsType.MAP =>
+                    throw new SQLException(s"Unsupported type 'MAP'")
+                  case OdpsType.STRUCT =>
+                    throw new SQLException(s"Unsupported type 'STRUCT'")
+                  case OdpsType.ARRAY =>
+                    throw new SQLException(s"Unsupported type 'ARRAY'")
+                  case _ => throw new SQLException(s"Unsupported type ${s._2}")
+                }
+              } catch {
+                case e: NullPointerException =>
+                  if (value.get(idx) == null) {
+                    record.set(s._1, null)
+                  } else {
+                    throw e
+                  }
               }
           }
           writer.write(record)
