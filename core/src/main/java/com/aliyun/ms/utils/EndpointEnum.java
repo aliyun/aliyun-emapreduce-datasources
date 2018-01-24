@@ -19,7 +19,6 @@ package com.aliyun.ms.utils;
 
 public enum EndpointEnum {
 
-  // OSS Endpoint
   OSS_CN_HANGZHOU_CLASSICAL("oss", "cn-hangzhou", "classical",
       "oss-cn-hangzhou-internal.aliyuncs.com"),
   OSS_CN_SHANGHAI_CLASSICAL("oss", "cn-shanghai", "classical",

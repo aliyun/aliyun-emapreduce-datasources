@@ -17,6 +17,7 @@
  */
 package com.aliyun.fs.oss.utils;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -28,7 +29,7 @@ import java.io.IOException;
 public class Utils {
   static final Log LOG = LogFactory.getLog(Utils.class);
   static final String loginUser = System.getProperty("user.name");
-  static final String BUFFER_DIR_KEY = "dfs.datanode.data.dir";
+  static final String BUFFER_DIR_KEY = "fs.oss.buffer.dirs";
   static final LocalDirAllocator dirAlloc =
       new LocalDirAllocator(BUFFER_DIR_KEY);
 
@@ -39,5 +40,31 @@ public class Utils {
     String dir = tmpFile.toPath().getParent().toUri().getPath();
     LOG.debug("choose oss buffer dir: " + dir);
     return new File(dir, "data/" + loginUser + "/oss");
+  }
+
+  /**
+   * Calculate a proper size of multipart piece. If <code>minPartSize</code>
+   * is too small, the number of multipart pieces may exceed the limit of
+   * 10000.
+   *
+   * @param contentLength the size of file.
+   * @param minPartSize the minimum size of multipart piece.
+   * @return a revisional size of multipart piece.
+   */
+  public static long calculatePartSize(long contentLength, long minPartSize) {
+    long tmpPartSize = contentLength / 10000 + 1;
+    return Math.max(minPartSize, tmpPartSize);
+  }
+
+  /**
+   * Check if OSS object represents a directory.
+   *
+   * @param name object key
+   * @param size object content length
+   * @return true if object represents a directory
+   */
+  public static boolean objectRepresentsDirectory(final String name,
+      final long size) {
+    return StringUtils.isNotEmpty(name) && name.endsWith("/") && size == 0L;
   }
 }
