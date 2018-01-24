@@ -27,9 +27,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BufferedFSInputStream;
+import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSExceptionMessages;
 import org.apache.hadoop.fs.FSInputStream;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,6 +43,7 @@ import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -48,12 +52,15 @@ import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+
+import static com.aliyun.fs.oss.utils.Utils.objectRepresentsDirectory;
 
 public class NativeOssFileSystem extends FileSystem {
 
@@ -71,7 +78,7 @@ public class NativeOssFileSystem extends FileSystem {
   private URI uri;
   private int bufferSize;
   private Configuration conf;
-  private Path workingDir = new Path(".");
+  private Path workingDir;
   public NativeOssFileSystem() {
     // set store in initialize()
   }
@@ -139,6 +146,8 @@ public class NativeOssFileSystem extends FileSystem {
     }
     setConf(conf);
     this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
+    workingDir = new Path("/user",
+      System.getProperty("user.name")).makeQualified(uri, null);
     this.bufferSize = conf.getInt("fs.oss.readBuffer.size", 64 * 1024 * 1024);
     // do not suggest to use too large buffer in case of GC issue or OOM.
     if (this.bufferSize >= 256 * 1024 * 1024) {
@@ -173,13 +182,50 @@ public class NativeOssFileSystem extends FileSystem {
   public FSDataOutputStream create(Path f, FsPermission permission,
       boolean overwrite, int bufferSize, short replication, long blockSize,
       Progressable progress) throws IOException {
-    if (exists(f) && !overwrite) {
-      throw new IOException("File already exists: " + f);
+    FileStatus status = null;
+    try {
+      // get the status or throw an FNFE
+      status = getFileStatus(f);
+
+      // if the thread reaches here, there is something at the path
+      if (status.isDirectory()) {
+        // path references a directory: automatic error
+        throw new FileAlreadyExistsException(f + " is a directory");
+      }
+      if (!overwrite) {
+        // path references a file and overwrite is disabled
+        throw new FileAlreadyExistsException(f + " already exists");
+      }
+      LOG.debug("Overwriting file " + f);
+    } catch (FileNotFoundException e) {
+      // this means the file is not found
+
     }
+
     Path absolutePath = makeAbsolute(f);
     String key = pathToKey(absolutePath);
     return new FSDataOutputStream(new NativeOssFsOutputStream(getConf(), store,
         key, false, progress, bufferSize), statistics);
+  }
+
+  @Override
+  public FSDataOutputStream createNonRecursive(Path path,
+      FsPermission permission,
+      EnumSet<CreateFlag> flags,
+      int bufferSize,
+      short replication,
+      long blockSize,
+      Progressable progress) throws IOException {
+    Path parent = path.getParent();
+    if (parent != null) {
+      // expect this to raise an exception if there is no parent
+      if (!getFileStatus(parent).isDirectory()) {
+        throw new FileAlreadyExistsException("Not a directory: " + parent);
+      }
+    }
+    return create(path, permission,
+      flags.contains(CreateFlag.OVERWRITE), bufferSize,
+      replication, blockSize, progress);
   }
 
   @Override
@@ -243,7 +289,10 @@ public class NativeOssFileSystem extends FileSystem {
 
     LOG.debug("getFileStatus retrieving metadata for key '" + key + "'");
     FileMetadata meta = store.retrieveMetadata(key);
-    if (meta != null) {
+    if (meta != null && objectRepresentsDirectory(key, meta.getLength())) {
+      LOG.debug("getFileStatus returning 'directory' for key '" + key + "'");
+      return newDirectory(absolutePath);
+    } else if (meta != null) {
       LOG.debug("getFileStatus returning 'file' for key '" + key + "'");
       return newFile(meta, absolutePath);
     }
@@ -293,9 +342,9 @@ public class NativeOssFileSystem extends FileSystem {
     String key = pathToKey(absolutePath);
 
     if (key.length() > 0) {
-      FileMetadata meta = store.retrieveMetadata(key);
-      if (meta != null) {
-        return new FileStatus[]{newFile(meta, absolutePath)};
+      final FileStatus fileStatus = getFileStatus(f);
+      if (fileStatus.isFile()) {
+        return new FileStatus[]{fileStatus};
       }
     }
 
@@ -366,7 +415,7 @@ public class NativeOssFileSystem extends FileSystem {
     try {
       FileStatus fileStatus = getFileStatus(f);
       if (!fileStatus.isDir()) {
-        throw new IOException(String.format(
+        throw new FileAlreadyExistsException(String.format(
             "Can't make directory for path '%s' since it is a file.", f));
       }
     } catch (FileNotFoundException e) {
@@ -381,7 +430,7 @@ public class NativeOssFileSystem extends FileSystem {
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
     FileStatus fs = getFileStatus(f); // will throw if the file doesn't exist
     if (fs.isDir()) {
-      throw new IOException("'" + f + "' is a directory");
+      throw new FileNotFoundException("'" + f + "' is a directory");
     }
     LOG.info("Opening '" + f + "' for reading");
     Path absolutePath = makeAbsolute(f);
@@ -421,7 +470,9 @@ public class NativeOssFileSystem extends FileSystem {
       if (dstIsFile) {
         LOG.debug(debugPreamble + "returning false as dst is an already " +
             "existing file");
-        return false;
+        // If dst is not a directory
+        throw new FileAlreadyExistsException(String.format(
+          "Failed to rename %s to %s, file already exists!", src, dst));
       } else {
         LOG.debug(debugPreamble + "using dst as output directory");
         dstKey = pathToKey(makeAbsolute(new Path(dst, src.getName())));
@@ -437,7 +488,7 @@ public class NativeOssFileSystem extends FileSystem {
         }
       } catch (FileNotFoundException ex) {
         LOG.debug(debugPreamble + "returning false as dst parent does not exist");
-        return false;
+        throw ex;
       }
     }
 
@@ -446,7 +497,7 @@ public class NativeOssFileSystem extends FileSystem {
       srcIsFile = !getFileStatus(src).isDir();
     } catch (FileNotFoundException e) {
       LOG.debug(debugPreamble + "returning false as src does not exist");
-      return false;
+      throw e;
     }
     if (srcIsFile) {
       LOG.debug(debugPreamble + "src is file, so doing copy then delete in Oss");
@@ -515,6 +566,13 @@ public class NativeOssFileSystem extends FileSystem {
     @Override
     public synchronized int read(byte[] b, int off, int len)
         throws IOException {
+      if (b == null) {
+        throw new NullPointerException();
+      } else if (off < 0 || len < 0 || len > b.length - off) {
+        throw new IndexOutOfBoundsException();
+      } else if (len == 0) {
+        return 0;
+      }
       return bufferReader.read(b, off, len);
     }
 
@@ -536,6 +594,44 @@ public class NativeOssFileSystem extends FileSystem {
     @Override
     public boolean seekToNewSource(long targetPos) throws IOException {
       return false;
+    }
+
+    @Override
+    public synchronized int available() throws IOException {
+      return bufferReader.available();
+    }
+
+    @Override
+    public void readFully(long position, byte[] buffer, int offset, int length)
+      throws IOException {
+      validatePositionedReadArgs(position, buffer, offset, length);
+      if (length == 0) {
+        return;
+      }
+      int nread = 0;
+      synchronized (this) {
+        long oldPos = getPos();
+        try {
+          seek(position);
+          while (nread < length) {
+            int nbytes = read(buffer, offset + nread, length - nread);
+            if (nbytes < 0) {
+              throw new EOFException(FSExceptionMessages.EOF_IN_READ_FULLY);
+            }
+            nread += nbytes;
+          }
+        } finally {
+          seekQuietly(oldPos);
+        }
+      }
+    }
+
+    private void seekQuietly(long positiveTargetPos) {
+      try {
+        seek(positiveTargetPos);
+      } catch (IOException ioe) {
+        LOG.debug("Ignoring IOE on seek of " + uri + " to " + positiveTargetPos, ioe);
+      }
     }
   }
 
@@ -647,5 +743,9 @@ public class NativeOssFileSystem extends FileSystem {
           this.blockFile + "' for block " + blockId);
       blockOutStream = new BufferedOutputStream(new FileOutputStream(blockFile));
     }
+  }
+
+  public NativeFileSystemStore getStore() {
+    return store;
   }
 }
