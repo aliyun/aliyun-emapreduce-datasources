@@ -542,4 +542,91 @@ class LoghubUtilsHelper {
     LoghubUtils.createStream(jssc, logServiceProject, logStoreName,
       loghubConsumerGroupName, numReceivers, storageLevel)
   }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: String,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    val cursor = cursorPosition match {
+      case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
+      case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
+      case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+    }
+    LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
+      storageLevel, cursor, mLoghubCursorStartTime, forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      storageLevel: StorageLevel,
+      cursorPosition: String,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    val cursor = cursorPosition match {
+      case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
+      case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
+      case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+    }
+    LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName,
+      loghubConsumerGroupName, storageLevel, cursor, mLoghubCursorStartTime,
+      forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      loghubEndpoint: String,
+      numReceivers: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      storageLevel: StorageLevel,
+      cursorPosition: String,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    val cursor = cursorPosition match {
+      case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
+      case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
+      case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+    }
+    LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+      loghubEndpoint, numReceivers, accessKeyId, accessKeySecret, storageLevel,
+      cursor, mLoghubCursorStartTime, forceSpecial)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      logServiceProject: String,
+      logStoreName: String,
+      loghubConsumerGroupName: String,
+      numReceivers: Int,
+      storageLevel: StorageLevel,
+      cursorPosition: String,
+      mLoghubCursorStartTime: Int,
+      forceSpecial: Boolean): JavaDStream[Array[Byte]] = {
+    val cursor = cursorPosition match {
+      case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
+      case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
+      case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+    }
+    LoghubUtils.createStream(jssc.ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+      numReceivers, storageLevel, cursor, mLoghubCursorStartTime, forceSpecial)
+  }
 }
