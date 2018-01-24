@@ -87,7 +87,7 @@ public class ClientWorker implements Runnable {
     this.mLogHubClientAdapter = new LogHubClientAdapter(
         loghubEndpoint, accessKeyId, accessKeySecret,
         securityToken, config.getProject(), config.getLogStore(),
-        config.getConsumerGroupName(), config.getWorkerInstanceName());
+        config.getConsumerGroupName(), config.getWorkerInstanceName(), false);
 
     try {
       this.mLogHubClientAdapter.CreateConsumerGroup(
