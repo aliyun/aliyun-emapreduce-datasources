@@ -51,7 +51,7 @@
         <fastjson.version>1.2.45</fastjson.version>
         <hive.version>2.3.2</hive.version>
         <guava.version>11.0.2</guava.version>
-        <scalatest.version>3.0.4</scalatest.version>
+        <scalatest.version>2.2.1</scalatest.version>
         <junit.version>4.8.2</junit.version>
         <eclipse.jetty>8.1.14.v20131031</eclipse.jetty>
         <easymock.version>3.2</easymock.version>
