@@ -27,7 +27,7 @@ Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in py
 
 1. download the [**loghub.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master-2.x/external/emr-logservice/src/main/python/pyspark/streaming/loghub.py);
 2. download the pre-build [**emr-logservice_2.11-1.4.3-SNAPSHOT.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-logservice_2.11/1.4.3-SNAPSHOT/emr-logservice_2.11-1.4.3-SNAPSHOT.jar);
-3. download loghub's dependencies, i.e. [**fastjson-1.2.23.jar**](http://mvnrepository.com/artifact/com.alibaba/fastjson/1.2.23), [**commons-validator-1.4.0.jar**](http://mvnrepository.com/artifact/commons-validator/commons-validator/1.4.0), [**loghub-client-lib-0.6.7.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/loghub-client-lib/0.6.7), [**aliyun-log-0.6.7.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/aliyun-log/0.6.7). Above-mentioned library version pass test;
+3. download loghub's dependencies, i.e. [**fastjson-1.2.23.jar**](http://mvnrepository.com/artifact/com.alibaba/fastjson/1.2.23), [**commons-validator-1.4.0.jar**](http://mvnrepository.com/artifact/commons-validator/commons-validator/1.4.0), [**loghub-client-lib-0.6.7.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/loghub-client-lib/0.6.7), [**aliyun-log-0.6.7.jar**](http://mvnrepository.com/artifact/com.aliyun.openservices/aliyun-log/0.6.7), [**json-lib-2.4-jdk15.jar**](http://central.maven.org/maven2/net/sf/json-lib/json-lib/2.4/json-lib-2.4-jdk15.jar). Above-mentioned library version pass test;
 4. download [**loghub-wordcount.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master/examples/src/main/python/streaming/loghub-wordcount.py);
 5. run the example, use 
 ```
