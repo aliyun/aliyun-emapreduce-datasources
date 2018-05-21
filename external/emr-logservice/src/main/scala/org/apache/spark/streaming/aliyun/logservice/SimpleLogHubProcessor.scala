@@ -80,7 +80,7 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver)
       })
 
       val flg = group.GetFastLogGroup()
-      for (i <- 0 to flg.getLogsCount) {
+      for (i <- 0 until flg.getLogTagsCount) {
         obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
       }
 
