@@ -168,10 +168,10 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
         Properties topicConfig = new Properties();
         int minIsr = Math.min(3, metricsTopicReplicas < 3 ? 1 : metricsTopicReplicas - 1);
         topicConfig.put("min.insync.replicas", String.valueOf(minIsr));
-        topicConfig.put("retention.ms", "" + String.valueOf(retentionMs));
-        topicConfig.put("retention.bytes", "" + String.valueOf(retentionBytes));
-        topicConfig.put("segment.ms", "" + String.valueOf(rollMs));
-        topicConfig.put("max.message.bytes", "" + String.valueOf(maxMessageBytes));
+        topicConfig.put("retention.ms", String.valueOf(retentionMs));
+        topicConfig.put("retention.bytes", String.valueOf(retentionBytes));
+        topicConfig.put("segment.ms", String.valueOf(rollMs));
+        topicConfig.put("max.message.bytes", String.valueOf(maxMessageBytes));
         topicConfig.put("message.timestamp.type", TimestampType.CREATE_TIME.name);
 
         String zkConnect = emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_ZOOKEEPER_CONNECT);
