@@ -19,7 +19,7 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util
 
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.common.LogGroupData
+import com.aliyun.openservices.log.common.{FastLogGroup, LogGroupData}
 import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
@@ -78,6 +78,12 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver)
       log.getContentsList.foreach(content => {
         obj.put(content.getKey, content.getValue)
       })
+
+      val flg = group.GetFastLogGroup()
+      for (i <- 0 until flg.getLogTagsCount) {
+        obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+      }
+
       receiver.store(obj.toJSONString.getBytes)
     } catch {
       case e: Exception =>
