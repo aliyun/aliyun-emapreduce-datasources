@@ -126,6 +126,11 @@ class LoghubBatchRDD(
           log.getContentsList.foreach( content => {
             data.put(content.getKey, content.getValue)
           })
+          val flg = logGroup.GetFastLogGroup()
+          for (i <- 0 until flg.getLogTagsCount) {
+            data.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+          }
+
           logCache.offer(data.toString)
         })
       })
