@@ -70,8 +70,8 @@ class LoghubRDD(
     val count = rate * duration / 1000
     shardOffsets.map(p =>
       new ShardPartition(id, p._1, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3)
-    ).toArray
+        accessKeyId, accessKeySecret, endpoint, p._2, p._3).asInstanceOf[Partition]
+    ).toArray.sortWith(_.index < _.index)
   }
 
   private class ShardPartition(

@@ -23,6 +23,9 @@ import org.I0Itec.zkclient.ZkClient
 
 import scala.collection.JavaConversions._
 import com.aliyun.openservices.log.Client
+import com.aliyun.openservices.log.exception.LogException
+import com.aliyun.openservices.log.response.BatchGetLogResponse
+import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.util.NextIterator
@@ -89,7 +92,33 @@ class LoghubIterator(
   }
 
   def fetchNextBatch(): Unit = {
-    val batchGetLogRes = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
+    var batchGetLogRes : BatchGetLogResponse = null
+    val logServiceTimeoutMaxRetry = 3
+    var failed = true
+    var retry = 0
+    var currentException :Exception = null
+
+    while (retry <= logServiceTimeoutMaxRetry && failed) {
+      try {
+        batchGetLogRes = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
+        failed = false
+      } catch {
+        case e: LogException => {
+          if (e.getCause != null && e.getCause.getCause != null && e.getCause.getCause.isInstanceOf[ConnectTimeoutException]) {
+            retry += 1
+            currentException = e
+          } else {
+            throw e
+          }
+        }
+        case e => throw e
+      }
+    }
+    if (retry > logServiceTimeoutMaxRetry) {
+      logError("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].")
+      throw currentException
+    }
+
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {
