@@ -40,7 +40,7 @@ object TestLoghub {
     val batchInterval = Milliseconds(args(6).toInt * 1000)
 
     def functionToCreateContext(): StreamingContext = {
-      val conf = new SparkConf().setAppName("Test SLS Loghub").setMaster("local[4]")
+      val conf = new SparkConf().setAppName("Test SLS Loghub")
       val ssc = new StreamingContext(conf, batchInterval)
       val loghubStream = LoghubUtils.createStream(
         ssc,
@@ -53,11 +53,11 @@ object TestLoghub {
         StorageLevel.MEMORY_AND_DISK)
 
       loghubStream.checkpoint(batchInterval * 2).foreachRDD(rdd => println(rdd.count()))
-      ssc.checkpoint("/tmp/spark/streaming") // set checkpoint directory
+      ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
       ssc
     }
 
-    val ssc = StreamingContext.getOrCreate("/tmp/spark/streaming", functionToCreateContext _)
+    val ssc = StreamingContext.getOrCreate("hdfs:///tmp/spark/streaming", functionToCreateContext _)
 
     ssc.start()
     ssc.awaitTermination()

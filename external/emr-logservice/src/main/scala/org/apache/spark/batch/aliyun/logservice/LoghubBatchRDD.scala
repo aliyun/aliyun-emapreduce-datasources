@@ -21,6 +21,9 @@ import java.util.concurrent.LinkedBlockingQueue
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.log.common.Consts.CursorMode
+import com.aliyun.openservices.log.exception.LogException
+import com.aliyun.openservices.log.response.BatchGetLogResponse
+import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
@@ -114,7 +117,32 @@ class LoghubBatchRDD(
     }
 
     def fetchData(): Unit = {
-      val logData = client.BatchGetLog(project, logStore, shardId, logGroupCount, curCursor, endCursor)
+      var logData : BatchGetLogResponse = null
+      val logServiceTimeoutMaxRetry = 3
+      var failed = true
+      var retry = 0
+      var currentException :Exception = null
+
+      while (retry <= logServiceTimeoutMaxRetry && failed) {
+        try {
+          logData = client.BatchGetLog(project, logStore, shardId, logGroupCount, curCursor, endCursor)
+          failed = false
+        } catch {
+          case e: LogException => {
+            if (e.getCause != null && e.getCause.getCause != null && e.getCause.getCause.isInstanceOf[ConnectTimeoutException]) {
+              retry += 1
+              currentException = e
+            } else {
+              throw e
+            }
+          }
+          case e => throw e
+        }
+      }
+      if (retry > logServiceTimeoutMaxRetry) {
+        logError("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].")
+        throw currentException
+      }
 
       import scala.collection.JavaConversions._
       logData.GetLogGroups().foreach(logGroup => {
