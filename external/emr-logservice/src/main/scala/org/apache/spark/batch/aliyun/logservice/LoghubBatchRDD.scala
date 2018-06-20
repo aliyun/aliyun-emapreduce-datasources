@@ -19,12 +19,10 @@ package org.apache.spark.batch.aliyun.logservice
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.log.common.Consts.CursorMode
-import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.rdd.RDD
+import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.NextIterator
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 
@@ -38,18 +36,22 @@ class LoghubBatchRDD(
     startTime: Long,
     endTime: Long) extends RDD[String](sc, Nil) {
 
-  def this(@transient sc: SparkContext, project: String, logStore: String, accessId: String, accessKey: String, endpoint: String, startTime: Long) = {
+  def this(@transient sc: SparkContext, project: String, logStore: String, accessId: String, accessKey: String,
+      endpoint: String, startTime: Long) = {
     this(sc, project, logStore, accessId, accessKey, endpoint, startTime, -1L)
   }
 
-  @transient val client: Client = LoghubBatchRDD.getClient(endpoint, accessId, accessKey)
+  @transient val client: LoghubClientAgent = LoghubBatchRDD.getClient(endpoint, accessId, accessKey)
 
   override def compute(split: Partition, context: TaskContext): Iterator[String] = {
     try {
-      val partittion = split.asInstanceOf[ShardPartition]
-      new InterruptibleIterator[String](context, new LoghubIterator(LoghubBatchRDD.getClient(endpoint, accessId, accessKey), partittion.index, project, logStore, partittion.startCursor, partittion.endCursor, context))
+      val partition = split.asInstanceOf[ShardPartition]
+      val client = LoghubBatchRDD.getClient(endpoint, accessId, accessKey)
+      val it = new LoghubIterator(client, partition.index, project, logStore, partition.startCursor,
+        partition.endCursor, context)
+      new InterruptibleIterator[String](context, it)
     } catch {
-      case e: Exception => Iterable.empty.asInstanceOf[Iterator[String]]
+      case _: Exception => Iterator.empty
     }
   }
 
@@ -65,7 +67,8 @@ class LoghubBatchRDD(
         }
         case end => client.GetCursor(project, logStore, shardId, end).GetCursor()
       }
-      new ShardPartition(id, shardId, project, logStore, accessId, accessKey, endpoint, startCursor, endCursor).asInstanceOf[Partition]
+      new ShardPartition(id, shardId, project, logStore, accessId, accessKey, endpoint, startCursor, endCursor)
+        .asInstanceOf[Partition]
     }).toArray.sortWith(_.index < _.index)
   }
 
@@ -86,7 +89,7 @@ class LoghubBatchRDD(
   }
 
   private class LoghubIterator(
-      client: Client,
+      client: LoghubClientAgent,
       shardId: Int,
       project: String,
       logStore: String,
@@ -117,32 +120,8 @@ class LoghubBatchRDD(
     }
 
     def fetchData(): Unit = {
-      var logData : BatchGetLogResponse = null
-      val logServiceTimeoutMaxRetry = 3
-      var failed = true
-      var retry = 0
-      var currentException :Exception = null
-
-      while (retry <= logServiceTimeoutMaxRetry && failed) {
-        try {
-          logData = client.BatchGetLog(project, logStore, shardId, logGroupCount, curCursor, endCursor)
-          failed = false
-        } catch {
-          case e: LogException => {
-            if (e.getCause != null && e.getCause.getCause != null && e.getCause.getCause.isInstanceOf[ConnectTimeoutException]) {
-              retry += 1
-              currentException = e
-            } else {
-              throw e
-            }
-          }
-          case e => throw e
-        }
-      }
-      if (retry > logServiceTimeoutMaxRetry) {
-        logError("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].")
-        throw currentException
-      }
+      val logData : BatchGetLogResponse = client.BatchGetLog(project, logStore, shardId, logGroupCount,
+        curCursor, endCursor)
 
       import scala.collection.JavaConversions._
       logData.GetLogGroups().foreach(logGroup => {
@@ -168,11 +147,11 @@ class LoghubBatchRDD(
 }
 
 object LoghubBatchRDD {
-  private var client: Client = _
+  private var client: LoghubClientAgent = null
 
-  def getClient(endpoint: String, accessId: String, accessKey: String): Client = {
+  def getClient(endpoint: String, accessId: String, accessKey: String): LoghubClientAgent = {
     if (client == null) {
-      client = new Client(endpoint, accessId, accessKey)
+      client = new LoghubClientAgent(endpoint, accessId, accessKey)
     }
 
     client
