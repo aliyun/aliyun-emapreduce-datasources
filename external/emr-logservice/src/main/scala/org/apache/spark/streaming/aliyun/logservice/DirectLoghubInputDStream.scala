@@ -20,7 +20,6 @@ import java.io.{IOException, ObjectInputStream, UnsupportedEncodingException}
 import java.util
 import java.util.Properties
 
-import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint}
 import com.aliyun.openservices.log.exception.LogException

@@ -18,7 +18,6 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.io.UnsupportedEncodingException
 
-import com.aliyun.openservices.log.Client
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.spark.annotation.DeveloperApi
