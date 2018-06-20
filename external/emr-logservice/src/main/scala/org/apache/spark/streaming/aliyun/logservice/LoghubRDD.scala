@@ -40,7 +40,7 @@ class LoghubRDD(
     zkParams: Map[String, String],
     shardOffsets: ArrayBuffer[(Int, String, String)],
     checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
-  @transient var mClient: Client =
+  @transient var mClient: LoghubClientAgent =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
   @transient var zkClient: ZkClient =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
@@ -92,10 +92,10 @@ class LoghubRDD(
 
 object LoghubRDD extends Logging {
   private var zkClient: ZkClient = null
-  private var mClient: Client = null
+  private var mClient: LoghubClientAgent = null
 
   def getClient(zkParams: Map[String, String], accessKeyId: String, accessKeySecret: String,
-      endpoint: String): (ZkClient, Client) = {
+      endpoint: String): (ZkClient, LoghubClientAgent) = {
     if (zkClient == null || mClient == null) {
       val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost：2181")
       val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
@@ -126,7 +126,7 @@ object LoghubRDD extends Logging {
         }
       })
 
-      mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+      mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
     }
 
     (zkClient, mClient)

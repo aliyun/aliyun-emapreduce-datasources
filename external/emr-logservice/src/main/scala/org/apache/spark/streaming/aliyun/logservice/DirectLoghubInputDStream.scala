@@ -56,7 +56,7 @@ class DirectLoghubInputDStream(
     cursorStartTime: Long = -1L
   ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
-  @transient private var mClient: Client = null
+  @transient private var mClient: LoghubClientAgent = null
   @transient private var COMMIT_LOCK = new Object()
   private val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
   private val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
@@ -118,7 +118,7 @@ class DirectLoghubInputDStream(
           "zookeeper is on active service.", e)
     }
 
-    mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+    mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
 
     tryToCreateConsumerGroup()
 
@@ -321,7 +321,7 @@ class DirectLoghubInputDStream(
           }
         })
       }
-      mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+      mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
       restartTime = -1L
       restart = true
     }

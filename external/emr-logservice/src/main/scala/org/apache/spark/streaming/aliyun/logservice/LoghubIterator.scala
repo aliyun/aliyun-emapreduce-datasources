@@ -32,7 +32,7 @@ import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
     zkClient: ZkClient,
-    mClient: Client,
+    mClient: LoghubClientAgent,
     project: String,
     logStore: String,
     shardId: Int,
@@ -96,7 +96,7 @@ class LoghubIterator(
     val logServiceTimeoutMaxRetry = 3
     var failed = true
     var retry = 0
-    var currentException :Exception = null
+    var currentException: Exception = null
 
     while (retry <= logServiceTimeoutMaxRetry && failed) {
       try {

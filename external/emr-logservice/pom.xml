@@ -5,12 +5,13 @@
     <parent>
         <artifactId>emr_2.11</artifactId>
         <groupId>com.aliyun.emr</groupId>
-        <version>1.4.3-SNAPSHOT</version>
+        <version>1.4.3</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>emr-logservice_2.11</artifactId>
+    <version>1.4.3.1</version>
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce External LogService</name>
 
@@ -18,7 +19,7 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-core</artifactId>
-            <version>${project.version}</version>
+            <version>1.4.3</version>
         </dependency>
 
         <dependency>
