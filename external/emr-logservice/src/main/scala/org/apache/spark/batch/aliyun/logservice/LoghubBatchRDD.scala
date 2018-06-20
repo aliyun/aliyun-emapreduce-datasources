@@ -51,7 +51,7 @@ class LoghubBatchRDD(
         partition.endCursor, context)
       new InterruptibleIterator[String](context, it)
     } catch {
-      case _: Exception => Iterator.empty[String]
+      case _: Exception => Iterator.empty
     }
   }
 
