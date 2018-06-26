@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.11</artifactId>
-    <version>1.4.3</version>
+    <version>1.4.4-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Aliyun E-MapReduce Root</name>
@@ -40,7 +40,7 @@
     <properties>
         <scala.version>2.11.7</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.2.1</spark.version>
+        <spark.version>2.3.1</spark.version>
         <oss.sdk.version>3.0.0</oss.sdk.version>
         <tablestore.sdk.version>4.4.0</tablestore.sdk.version>
         <odps.version>0.28.4-public</odps.version>
@@ -52,7 +52,7 @@
         <fastjson.version>1.2.45</fastjson.version>
         <hive.version>2.0.1</hive.version>
         <guava.version>11.0.2</guava.version>
-        <scalatest.version>2.2.1</scalatest.version>
+        <scalatest.version>3.0.3</scalatest.version>
         <junit.version>4.8.2</junit.version>
         <eclipse.jetty>8.1.14.v20131031</eclipse.jetty>
         <easymock.version>3.2</easymock.version>

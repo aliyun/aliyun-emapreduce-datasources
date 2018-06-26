@@ -58,7 +58,7 @@ class LoghubIterator(
   def checkHasNext(): Boolean = {
     val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$shardId.shard", nextCursor)
+      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
     }
 
     hasNext
@@ -89,7 +89,7 @@ class LoghubIterator(
   }
 
   def fetchNextBatch(): Unit = {
-    val batchGetLogRes : BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
+    val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {
