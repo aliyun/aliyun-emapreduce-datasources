@@ -29,4 +29,6 @@ class FakeLoghubRDD(sc: SparkContext) extends RDD[String](sc, Nil){
   override protected def getPartitions: Array[Partition] = {
     Array.empty[Partition]
   }
+
+  override def count(): Long = 0L
 }
