@@ -59,7 +59,7 @@ class LoghubRDD(
         shardPartition.count.toInt, checkpointDir, context)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
-      case e: Exception =>
+      case _: Exception =>
         Iterator.empty.asInstanceOf[Iterator[String]]
     }
   }

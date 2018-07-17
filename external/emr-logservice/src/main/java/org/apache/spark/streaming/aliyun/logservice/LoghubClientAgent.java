@@ -21,8 +21,6 @@ import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
 import com.aliyun.openservices.log.exception.LogException;
-import com.aliyun.openservices.log.http.utils.CodingUtils;
-import com.aliyun.openservices.log.request.GetCursorRequest;
 import com.aliyun.openservices.log.response.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -45,7 +43,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListShard(prj, logStore);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -66,7 +64,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStream, shardId, mode);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -86,7 +84,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStore, shardId, fromTime);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -107,7 +105,7 @@ public class LoghubClientAgent {
       try {
         return this.client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -128,7 +126,7 @@ public class LoghubClientAgent {
       try {
         return this.client.CreateConsumerGroup(project, logStore, consumerGroup);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -148,7 +146,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListConsumerGroup(project, logStore);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -169,7 +167,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCheckPoint(project, logStore, consumerGroup, shard);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -190,7 +188,7 @@ public class LoghubClientAgent {
       try {
         return this.client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor);
       } catch (LogException e) {
-        if (checkException(e)) {
+        if (checkConnectionTimeoutException(e)) {
           retry += 1;
           currentException = e;
         } else {
@@ -203,7 +201,49 @@ public class LoghubClientAgent {
     throw currentException;
   }
 
-  private boolean checkException(LogException e) {
+  public GetHistogramsResponse GetHistograms(String project, String logStore, int from, int to, String topic,
+      String query) throws Exception {
+    int retry = 0;
+    Exception currentException = null;
+    while (retry <= logServiceTimeoutMaxRetry) {
+      try {
+        return this.client.GetHistograms(project, logStore, from, to, topic, query);
+      } catch (LogException e) {
+        if (checkConnectionTimeoutException(e)) {
+          retry += 1;
+          currentException = e;
+        } else {
+          throw e;
+        }
+      }
+    }
+    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    assert (currentException != null);
+    throw currentException;
+  }
+
+  public GetCursorTimeResponse GetCursorTime(String project, String logStore, int shardId, String cursor)
+      throws Exception {
+    int retry = 0;
+    Exception currentException = null;
+    while (retry <= logServiceTimeoutMaxRetry) {
+      try {
+        return this.client.GetCursorTime(project, logStore, shardId, cursor);
+      } catch (LogException e) {
+        if (checkConnectionTimeoutException(e)) {
+          retry += 1;
+          currentException = e;
+        } else {
+          throw e;
+        }
+      }
+    }
+    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    assert (currentException != null);
+    throw currentException;
+  }
+
+  private boolean checkConnectionTimeoutException(LogException e) {
     return e.getCause() != null
         && e.getCause().getCause() != null
         && e.getCause().getCause() instanceof ConnectTimeoutException;
