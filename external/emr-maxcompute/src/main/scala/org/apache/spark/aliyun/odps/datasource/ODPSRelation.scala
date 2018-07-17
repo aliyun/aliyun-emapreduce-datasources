@@ -21,6 +21,7 @@ import com.aliyun.odps.Odps
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.tunnel.TableTunnel
 import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
@@ -36,7 +37,7 @@ case class ODPSRelation(
     partitionSpec: String,
     numPartitions: Int)(@transient val sqlContext: SQLContext)
   extends BaseRelation
-  with PrunedFilteredScan {
+  with PrunedFilteredScan with Logging {
 
   @transient val account = new AliyunAccount(accessKeyId, accessKeySecret)
   @transient val odps = new Odps(account)
