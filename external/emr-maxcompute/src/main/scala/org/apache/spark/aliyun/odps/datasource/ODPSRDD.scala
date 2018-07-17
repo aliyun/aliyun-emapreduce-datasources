@@ -126,7 +126,8 @@ class ODPSRDD(
                         case date2: java.util.Date =>
                           mutableRow.setInt(idx, DateTimeUtils.fromJavaDate(new Date(date2.getTime)))
                         case null => mutableRow.update(idx, null)
-                        case _ => throw new SQLException(s"Unknown type")
+                        case _ => throw new SQLException(s"Unknown type" +
+                          s" ${value.getClass.getCanonicalName}")
                       }
                     case TimestampType =>
                       val value = r.toArray.apply(idx)
@@ -134,7 +135,8 @@ class ODPSRDD(
                         case timestamp: java.sql.Timestamp =>
                           mutableRow.setLong(idx, DateTimeUtils.fromJavaTimestamp(timestamp))
                         case null => mutableRow.update(idx, null)
-                        case _ => throw new SQLException(s"Unknown type")
+                        case _ => throw new SQLException(s"Unknown type" +
+                          s" ${value.getClass.getCanonicalName}")
                       }
                     case DecimalType.SYSTEM_DEFAULT =>
                       val value = r.toArray.apply(idx)
@@ -157,7 +159,8 @@ class ODPSRDD(
                         case e: java.lang.Integer =>
                           mutableRow.update(idx, e.toInt)
                         case null => mutableRow.update(idx, null)
-                        case _ => throw new SQLException(s"Unknown type")
+                        case _ => throw new SQLException(s"Unknown type" +
+                          s" ${value.getClass.getCanonicalName}")
                       }
                     case StringType =>
                       val value = r.toArray.apply(idx)
@@ -168,8 +171,11 @@ class ODPSRDD(
                           mutableRow.update(idx, UTF8String.fromString(e.toString))
                         case e: String =>
                           mutableRow.update(idx, UTF8String.fromString(e))
+                        case e: Array[Byte] =>
+                          mutableRow.update(idx, UTF8String.fromBytes(e))
                         case null => mutableRow.update(idx, null)
-                        case _ => throw new SQLException(s"Unknown type")
+                        case _ => throw new SQLException(s"Unknown type" +
+                          s" ${value.getClass.getCanonicalName}")
                       }
                     case BinaryType =>
                       val value = r.toArray.apply(idx)
@@ -177,7 +183,8 @@ class ODPSRDD(
                         case e: com.aliyun.odps.data.Binary =>
                           mutableRow.update(idx, e.data())
                         case null => mutableRow.update(idx, null)
-                        case _ => throw new SQLException(s"Unknown type")
+                        case _ => throw new SQLException(s"Unknown type" +
+                          s" ${value.getClass.getCanonicalName}")
                       }
                     case NullType =>
                       mutableRow.setNullAt(idx)
