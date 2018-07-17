@@ -86,40 +86,40 @@ class ODPSRDD(
                 try {
                   s.dataType match {
                     case LongType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.getBigint(s.name)
                       if (value != null) {
-                        mutableRow.setLong(idx, r.getBigint(s.name))
+                        mutableRow.setLong(idx, value)
                       }
                     case BooleanType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.getBoolean(s.name)
                       if (value != null) {
-                        mutableRow.setBoolean(idx, r.getBoolean(s.name))
+                        mutableRow.setBoolean(idx, value)
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case DoubleType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.getDouble(s.name)
                       if (value != null) {
-                        mutableRow.setDouble(idx, r.getDouble(s.name))
+                        mutableRow.setDouble(idx, value)
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case ShortType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       if (value != null) {
-                        mutableRow.setShort(idx, r.get(s.name).asInstanceOf[Short])
+                        mutableRow.setShort(idx, value.asInstanceOf[Short])
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case ByteType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       if (value != null) {
-                        mutableRow.setByte(idx, r.get(s.name).asInstanceOf[Byte])
+                        mutableRow.setByte(idx, value.asInstanceOf[Byte])
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case DateType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       value match {
                         case date1: java.sql.Date =>
                           mutableRow.update(idx, DateTimeUtils.fromJavaDate(date1))
@@ -130,7 +130,7 @@ class ODPSRDD(
                           s" ${value.getClass.getCanonicalName}")
                       }
                     case TimestampType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       value match {
                         case timestamp: java.sql.Timestamp =>
                           mutableRow.setLong(idx, DateTimeUtils.fromJavaTimestamp(timestamp))
@@ -139,22 +139,22 @@ class ODPSRDD(
                           s" ${value.getClass.getCanonicalName}")
                       }
                     case DecimalType.SYSTEM_DEFAULT =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       if (value != null) {
                         mutableRow.update(idx,
-                          new Decimal().set(r.toArray.apply(idx).asInstanceOf[java.math.BigDecimal]))
+                          new Decimal().set(value.asInstanceOf[java.math.BigDecimal]))
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case FloatType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       if (value != null) {
-                        mutableRow.update(idx, r.toArray.apply(idx).asInstanceOf[Float])
+                        mutableRow.update(idx, value.asInstanceOf[Float])
                       } else {
                         mutableRow.update(idx, null)
                       }
                     case IntegerType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       value match {
                         case e: java.lang.Integer =>
                           mutableRow.update(idx, e.toInt)
@@ -163,7 +163,7 @@ class ODPSRDD(
                           s" ${value.getClass.getCanonicalName}")
                       }
                     case StringType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       value match {
                         case e: com.aliyun.odps.data.Char =>
                           mutableRow.update(idx, UTF8String.fromString(e.toString))
@@ -178,7 +178,7 @@ class ODPSRDD(
                           s" ${value.getClass.getCanonicalName}")
                       }
                     case BinaryType =>
-                      val value = r.toArray.apply(idx)
+                      val value = r.get(s.name)
                       value match {
                         case e: com.aliyun.odps.data.Binary =>
                           mutableRow.update(idx, e.data())
@@ -193,7 +193,7 @@ class ODPSRDD(
                 } catch {
                   case e: Exception =>
                     log.error(s"Can not transfer record column value, idx: $idx, " +
-                      s"type: ${s.dataType}, value ${r.toArray.apply(idx)}")
+                      s"type: ${s.dataType}, value ${r.get(s.name)}")
                     throw e
                 }
             }
