@@ -20,7 +20,6 @@ import java.io.{IOException, ObjectInputStream, UnsupportedEncodingException}
 import java.util
 import java.util.Properties
 
-import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint}
 import com.aliyun.openservices.log.exception.LogException
@@ -56,7 +55,7 @@ class DirectLoghubInputDStream(
     cursorStartTime: Long = -1L
   ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
-  @transient private var mClient: Client = null
+  @transient private var mClient: LoghubClientAgent = null
   @transient private var COMMIT_LOCK = new Object()
   private val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
   private val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
@@ -74,7 +73,7 @@ class DirectLoghubInputDStream(
     val autoCommit = zkParams.getOrElse("enable.auto.commit", "false").toBoolean
     // TODO: support concurrent jobs
     val concurrentJobs = ssc.conf.getInt(s"spark.streaming.concurrentJobs", 1)
-    require(concurrentJobs == 1, "Loghub direct api only supports running one job at each time, " +
+    require(concurrentJobs == 1, "Loghub direct api only supports one job concurrently, " +
       "but \"spark.streaming.concurrentJobs\"=" + concurrentJobs)
     require(StringUtils.isNotEmpty(ssc.checkpointDir) && !autoCommit, "Disable auto commit by " +
       "setting \"enable.auto.commit=false\" and enable checkpoint.")
@@ -86,7 +85,7 @@ class DirectLoghubInputDStream(
           try {
             data.asInstanceOf[String].getBytes("UTF-8")
           } catch {
-            case e: UnsupportedEncodingException =>
+            case _: UnsupportedEncodingException =>
               null
           }
         }
@@ -98,7 +97,7 @@ class DirectLoghubInputDStream(
           try {
             new String(bytes, "UTF-8")
           } catch {
-            case e: UnsupportedEncodingException =>
+            case _: UnsupportedEncodingException =>
               null
           }
         }
@@ -109,22 +108,22 @@ class DirectLoghubInputDStream(
       // Check if zookeeper is usable. Direct loghub api depends on zookeeper.
       val exists = zkClient.exists(s"$checkpointDir")
       if (!exists) {
-        zkClient.createPersistent(s"$checkpointDir/consume", true)
-        zkClient.createPersistent(s"$checkpointDir/commit", true)
+        zkClient.createPersistent(s"$checkpointDir/consume/$project/$logStore", true)
+        zkClient.createPersistent(s"$checkpointDir/commit/$project/$logStore", true)
       }
     } catch {
       case e: Exception =>
-        throw new RuntimeException("Direct loghub api depends on zookeeper. Make sure that " +
+        throw new RuntimeException("Loghub direct api depends on zookeeper. Make sure that " +
           "zookeeper is on active service.", e)
     }
 
-    mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+    mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
 
     tryToCreateConsumerGroup()
 
     import scala.collection.JavaConversions._
-    val initial = if (zkClient.exists(s"$checkpointDir/consume")) {
-      zkClient.getChildren(s"$checkpointDir/consume")
+    val initial = if (zkClient.exists(s"$checkpointDir/consume/$project/$logStore")) {
+      zkClient.getChildren(s"$checkpointDir/consume/$project/$logStore")
         .filter(_.endsWith(".shard")).map(_.stripSuffix(".shard").toInt).toArray
     } else {
       Array.empty[String]
@@ -132,7 +131,7 @@ class DirectLoghubInputDStream(
     val diff = mClient.ListShard(project, logStore).GetShards().map(_.GetShardId()).diff(initial)
     diff.foreach(shardId => {
       val nextCursor = fetchCursorFromLoghub(shardId)
-      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$shardId.shard",
+      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$shardId.shard",
         nextCursor)
     })
 
@@ -140,12 +139,12 @@ class DirectLoghubInputDStream(
     // in `checkpointDir`
     import scala.collection.JavaConversions._
     try {
-      zkClient.getChildren(s"$checkpointDir/commit").foreach(child => {
-        zkClient.delete(s"$checkpointDir/commit/$child")
+      zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
+        zkClient.delete(s"$checkpointDir/commit/$project/$logStore/$child")
       })
       doCommit = false
     } catch {
-      case e: ZkNoNodeException =>
+      case _: ZkNoNodeException =>
         logDebug("If this is the first time to run, it is fine to not find any commit data in " +
           "zookeeper.")
         // Do nothing, make compiler happy.
@@ -197,13 +196,13 @@ class DirectLoghubInputDStream(
         try {
           mClient.ListShard(project, logStore).GetShards().foreach(shard => {
             val shardId = shard.GetShardId()
-            val start: String = zkClient.readData(s"$checkpointDir/consume/$shardId.shard")
+            val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
             val end = mClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
             shardOffsets.+=((shardId, start, end))
           })
         } catch {
-          case e: ZkNoNodeException =>
-            logWarning("Loghub consuming metadata was lost in zookeeper, refetch from loghub " +
+          case _: ZkNoNodeException =>
+            logWarning("Loghub consuming metadata was lost in zookeeper, re-fetch from loghub " +
               "checkpoint")
             mClient.ListShard(project, logStore).GetShards().foreach(shard => {
               val shardId = shard.GetShardId()
@@ -227,7 +226,7 @@ class DirectLoghubInputDStream(
       } else {
         // Last batch has not been completed, here we generator a fake job containing no data to
         // skip this batch.
-        new FakeLoghubRDD(ssc.sc).setName(s"FakeLoghubRDD-${validTime.toString()}")
+        return None
       }
 
       if (validTime.milliseconds <= restartTime) {
@@ -266,16 +265,16 @@ class DirectLoghubInputDStream(
     if (doCommit) {
       import scala.collection.JavaConversions._
       try {
-        zkClient.getChildren(s"$checkpointDir/commit").foreach(child => {
-          val data: String = zkClient.readData(s"$checkpointDir/commit/$child")
+        zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
+          val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
           val shardId = child.substring(0, child.indexOf(".")).toInt
           log.info(s"Updating checkpoint $data for shard $shardId to consumer group $mConsumerGroup")
           mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
-          DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$child", data)
+          DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
         })
         doCommit = false
       } catch {
-        case e: ZkNoNodeException =>
+        case _: ZkNoNodeException =>
           logWarning("If this is the first time to run, it is fine to not find any commit data in " +
             "zookeeper.")
           doCommit = false
@@ -289,7 +288,7 @@ class DirectLoghubInputDStream(
   private def readObject(ois: ObjectInputStream): Unit = Utils.tryOrIOException {
     // TODO: move following logic to proper restart code path.
     this.synchronized {
-      logDebug(s"${this.getClass().getSimpleName}.readObject used")
+      logDebug(s"${this.getClass.getSimpleName}.readObject used")
       ois.defaultReadObject()
       generatedRDDs = new HashMap[Time, RDD[String]]()
       COMMIT_LOCK = new Object()
@@ -315,13 +314,13 @@ class DirectLoghubInputDStream(
             try {
               new String(bytes, "UTF-8")
             } catch {
-              case e: UnsupportedEncodingException =>
+              case _: UnsupportedEncodingException =>
                 null
             }
           }
         })
       }
-      mClient = new Client(endpoint, accessKeyId, accessKeySecret)
+      mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
       restartTime = -1L
       restart = true
     }
@@ -344,11 +343,11 @@ class DirectLoghubInputDStream(
             }
           } catch {
             case e1: LogException =>
-              new LogHubClientWorkerException("error occour when get consumer group, errorCode: " +
+              new LogHubClientWorkerException("error occurs when get consumer group, errorCode: " +
                 e1.GetErrorCode + ", errorMessage: " + e1.GetErrorMessage)
           }
         } else {
-          throw new LogHubClientWorkerException("error occour when create consumer group, " +
+          throw new LogHubClientWorkerException("error occurs when create consumer group, " +
             "errorCode: " + e.GetErrorCode() + ", errorMessage: " + e.GetErrorMessage())
         }
     }

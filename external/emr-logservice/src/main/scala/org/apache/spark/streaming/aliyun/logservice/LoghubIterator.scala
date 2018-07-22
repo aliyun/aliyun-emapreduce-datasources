@@ -32,7 +32,7 @@ import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
     zkClient: ZkClient,
-    mClient: Client,
+    mClient: LoghubClientAgent,
     project: String,
     logStore: String,
     shardId: Int,
@@ -61,7 +61,7 @@ class LoghubIterator(
   def checkHasNext(): Boolean = {
     val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$shardId.shard", nextCursor)
+      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
     }
 
     hasNext
@@ -92,33 +92,7 @@ class LoghubIterator(
   }
 
   def fetchNextBatch(): Unit = {
-    var batchGetLogRes : BatchGetLogResponse = null
-    val logServiceTimeoutMaxRetry = 3
-    var failed = true
-    var retry = 0
-    var currentException :Exception = null
-
-    while (retry <= logServiceTimeoutMaxRetry && failed) {
-      try {
-        batchGetLogRes = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
-        failed = false
-      } catch {
-        case e: LogException => {
-          if (e.getCause != null && e.getCause.getCause != null && e.getCause.getCause.isInstanceOf[ConnectTimeoutException]) {
-            retry += 1
-            currentException = e
-          } else {
-            throw e
-          }
-        }
-        case e => throw e
-      }
-    }
-    if (retry > logServiceTimeoutMaxRetry) {
-      logError("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].")
-      throw currentException
-    }
-
+    val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {
