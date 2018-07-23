@@ -33,6 +33,7 @@
         <module>external/emr-mns</module>
         <module>external/emr-ons</module>
         <module>external/emr-dts</module>
+        <module>external/emr-datahub</module>
         <module>examples</module>
         <module>external/emr-kafka</module>
     </modules>
@@ -64,6 +65,7 @@
         <commons.lang3.version>3.3.2</commons.lang3.version>
         <kafka.version>0.10.1.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
+        <datahub.verion>2.9.2-public</datahub.verion>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
@@ -394,6 +396,11 @@
                 <groupId>com.yammer.metrics</groupId>
                 <artifactId>metrics-annotation</artifactId>
                 <version>${yammer.metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliyun.datahub</groupId>
+                <artifactId>aliyun-sdk-datahub</artifactId>
+                <version>${datahub.verion}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
