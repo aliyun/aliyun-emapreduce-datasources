@@ -179,6 +179,8 @@
                             <include>com.alibaba.rocketmq:rocketmq-client</include>
                             <include>com.alibaba.rocketmq:rocketmq-common</include>
                             <include>com.alibaba.rocketmq:rocketmq-remoting</include>
+                            <include>com.aliyun.datahub:aliyun-sdk-datahub</include>
+                            <include>com.aliyun.emr:emr-datahub_${scala.binary.version}</include>
                         </includes>
                     </artifactSet>
                 </configuration>

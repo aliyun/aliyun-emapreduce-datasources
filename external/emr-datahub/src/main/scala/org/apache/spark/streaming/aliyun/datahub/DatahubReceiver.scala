@@ -36,9 +36,9 @@ private[datahub] class DatahubReceiver(
   receiver =>
 
   private var workerThread: Thread = null
-  private val conf = new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint)
 
   override def onStart(): Unit = {
+    val conf = new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint)
     val dhbWorker = new DatahubWorker(projectName, topicName, shardId, subId, conf, receiver, func)
     workerThread = new Thread(dhbWorker)
     workerThread.setName(s"Datahub Receiver $streamId")
