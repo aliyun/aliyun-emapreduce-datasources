@@ -16,10 +16,12 @@
  */
 package org.apache.spark.streaming.aliyun.datahub
 
+import com.aliyun.datahub.auth.AliyunAccount
+import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.model.RecordEntry
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.dstream.ReceiverInputDStream
+import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
 
 object DatahubUtils {
   def createStream(
@@ -32,7 +34,7 @@ object DatahubUtils {
       endpoint: String,
       shardId: String,
       func: RecordEntry => String,
-      storageLevel: StorageLevel): ReceiverInputDStream[Array[Byte]] = {
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
     ssc.withNamedScope("datahub stream") {
       new DatahubDStream(
         ssc,
@@ -46,5 +48,35 @@ object DatahubUtils {
         func,
         storageLevel)
     }
+  }
+
+  def createStream(
+      ssc: StreamingContext,
+      projectName: String,
+      topicName: String,
+      subId: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      func: RecordEntry => String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    val account = new AliyunAccount(accessKeyId, accessKeySecret)
+    val conf = new DatahubConfiguration(account, endpoint)
+    val loghubClient = new DatahubClient(conf)
+    import scala.collection.JavaConverters._
+    val shardEntries = loghubClient.listShard(projectName, topicName).getShards.asScala
+    var dStream: DStream[Array[Byte]] = null
+
+    for (shardEntry <- shardEntries) {
+      if (dStream == null) {
+        dStream = createStream(ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint,
+          shardEntry.getShardId, func, storageLevel)
+      } else {
+        dStream = dStream.union(createStream(ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint,
+          shardEntry.getShardId, func, storageLevel))
+      }
+    }
+
+    dStream
   }
 }
