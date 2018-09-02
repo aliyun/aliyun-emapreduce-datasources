@@ -64,6 +64,7 @@ object DatahubUtils {
     val conf = new DatahubConfiguration(account, endpoint)
     val loghubClient = new DatahubClient(conf)
     import scala.collection.JavaConverters._
+    // no need to catch exception or retry if datahub-service error
     val shardEntries = loghubClient.listShard(projectName, topicName).getShards.asScala
     var dStream: DStream[Array[Byte]] = null
 
