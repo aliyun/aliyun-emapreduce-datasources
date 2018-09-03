@@ -20,7 +20,9 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
+import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.NextIterator

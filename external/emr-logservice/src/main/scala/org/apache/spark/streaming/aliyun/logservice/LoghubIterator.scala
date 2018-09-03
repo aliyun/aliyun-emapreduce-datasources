@@ -22,7 +22,10 @@ import com.alibaba.fastjson.JSONObject
 import org.I0Itec.zkclient.ZkClient
 
 import scala.collection.JavaConversions._
+import com.aliyun.openservices.log.Client
+import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.util.NextIterator
