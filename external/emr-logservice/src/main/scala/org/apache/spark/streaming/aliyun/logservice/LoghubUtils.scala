@@ -488,9 +488,10 @@ object LoghubUtils {
       accessKeySecret: String,
       endpoint: String,
       zkParams: Map[String, String],
-      mode: LogHubCursorPosition): DStream[String] = {
+      mode: LogHubCursorPosition,
+      cursorStartTime: Long = -1L): DStream[String] = {
     new DirectLoghubInputDStream(ssc, project, logStore, mConsumerGroup, accessKeyId,
-      accessKeySecret, endpoint, zkParams, mode)
+      accessKeySecret, endpoint, zkParams, mode, cursorStartTime)
   }
 
   /**
