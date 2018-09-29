@@ -67,14 +67,15 @@ class LoghubRDD(
   override protected def getPartitions: Array[Partition] = {
     val rate = sc.getConf.get("spark.streaming.loghub.maxRatePerShard", "10000").toInt
     val count = rate * duration / 1000
-    shardOffsets.map(p =>
-      new ShardPartition(id, p._1, count, project, logStore,
+    shardOffsets.zipWithIndex.map { case (p, idx) =>
+      new ShardPartition(id, idx, p._1, count, project, logStore,
         accessKeyId, accessKeySecret, endpoint, p._2, p._3).asInstanceOf[Partition]
-    ).toArray.sortWith(_.index < _.index)
+    }.toArray
   }
 
   private class ShardPartition(
       rddId: Int,
+      partitionId: Int,
       val shardId: Int,
       val count: Long,
       project: String,
@@ -85,7 +86,7 @@ class LoghubRDD(
       val startCursor: String,
       val endCursor: String) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
-    override def index: Int = shardId
+    override def index: Int = partitionId
   }
 }
 

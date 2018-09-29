@@ -106,6 +106,11 @@ class LoghubIterator(
           obj.put(content.getKey, content.getValue)
         })
 
+        val flg = group.GetFastLogGroup()
+        for (i <- 0 until flg.getLogTagsCount) {
+          obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+        }
+
         count += 1
         logData.offer(obj.toJSONString)
       })
