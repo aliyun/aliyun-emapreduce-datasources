@@ -27,7 +27,6 @@ import org.apache.spark.internal.Logging
 class DatahubWorker(projectName: String, topicName: String, shardId: String, subId: String,
                     conf: DatahubConfiguration, receiver: DatahubReceiver, func: RecordEntry => String)
     extends Runnable with Logging {
-
   val client = new DatahubClientAgent(conf)
   override def run(): Unit = {
     var recordNum = 0L

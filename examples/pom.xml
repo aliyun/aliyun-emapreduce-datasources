@@ -181,6 +181,7 @@
                             <include>com.alibaba.rocketmq:rocketmq-remoting</include>
                             <include>com.aliyun.datahub:aliyun-sdk-datahub</include>
                             <include>com.aliyun.emr:emr-datahub_${scala.binary.version}</include>
+                            <include>javax.mail:mail</include>
                         </includes>
                     </artifactSet>
                 </configuration>
