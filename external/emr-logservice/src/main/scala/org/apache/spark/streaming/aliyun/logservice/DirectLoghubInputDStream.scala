@@ -401,11 +401,12 @@ class DirectLoghubInputDStream(
 
 object DirectLoghubInputDStream {
   def writeDataToZK(zkClient: ZkClient, path: String, data: String): Unit = {
-    if (zkClient.exists(path)) {
-      zkClient.writeData(path, data)
+    val nodePath = new Path(path).toUri.getPath
+    if (zkClient.exists(nodePath)) {
+      zkClient.writeData(nodePath, data)
     } else {
-      zkClient.createPersistent(path, true)
-      zkClient.writeData(path, data)
+      zkClient.createPersistent(nodePath, true)
+      zkClient.writeData(nodePath, data)
     }
   }
 }
