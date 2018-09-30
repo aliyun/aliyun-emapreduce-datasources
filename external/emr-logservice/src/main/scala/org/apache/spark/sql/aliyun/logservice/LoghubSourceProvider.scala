@@ -1,0 +1,200 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.spark.sql.aliyun.logservice
+
+import java.util.{Locale, Optional, UUID}
+
+import org.apache.commons.cli.MissingArgumentException
+
+import scala.collection.JavaConverters._
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.execution.streaming.Source
+import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
+import org.apache.spark.sql.sources._
+import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
+import org.apache.spark.sql.types.StructType
+
+class LoghubSourceProvider extends DataSourceRegister
+    with StreamSourceProvider
+    with RelationProvider
+    with CreatableRelationProvider
+    with ContinuousReadSupport
+    with Logging {
+  import LoghubSourceProvider._
+
+  override def shortName(): String = "loghub"
+
+  override def sourceSchema(
+      sqlContext: SQLContext,
+      schema: Option[StructType],
+      providerName: String,
+      parameters: Map[String, String]): (String, StructType) = {
+    validateOptions(parameters)
+    require(schema.isEmpty, "Loghub source has a fixed schema and cannot be set with a custom one")
+    (shortName(), LoghubOffsetReader.loghubSchema)
+  }
+
+  override def createSource(
+      sqlContext: SQLContext,
+      metadataPath: String,
+      schema: Option[StructType],
+      providerName: String,
+      parameters: Map[String, String]): Source = {
+    validateOptions(parameters)
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
+      STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+    new LoghubSource(
+      sqlContext,
+      parameters,
+      metadataPath,
+      startingStreamOffsets,
+      loghubOffsetReader)
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String]): BaseRelation = {
+    validateOptions(parameters)
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+
+    val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
+    assert(startingRelationOffsets != LatestOffsetRangeLimit)
+
+    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
+      ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    assert(endingRelationOffsets != EarliestOffsetRangeLimit)
+    new LoghubRelation(sqlContext, parameters, startingRelationOffsets, endingRelationOffsets)
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      mode: SaveMode,
+      parameters: Map[String, String],
+      data: DataFrame): BaseRelation = {
+    mode match {
+      case SaveMode.Overwrite | SaveMode.Ignore =>
+        throw new AnalysisException(s"Save mode $mode not allowed for Loghub. " +
+          s"Allowed save modes are ${SaveMode.Append} and " +
+          s"${SaveMode.ErrorIfExists} (default).")
+      case _ => // good
+    }
+
+    /* This method is suppose to return a relation that reads the data that was written.
+     * We cannot support this for Loghub. Therefore, in order to make things consistent,
+     * we return an empty base relation.
+     */
+    new BaseRelation {
+      override def sqlContext: SQLContext = unsupportedException
+      override def schema: StructType = unsupportedException
+      override def needConversion: Boolean = unsupportedException
+      override def sizeInBytes: Long = unsupportedException
+      override def unhandledFilters(filters: Array[Filter]): Array[Filter] = unsupportedException
+      private def unsupportedException =
+        throw new UnsupportedOperationException("BaseRelation from Loghub write " +
+          "operation is not usable.")
+    }
+  }
+
+  override def createContinuousReader(
+      schema: Optional[StructType],
+      checkpointLocation: String,
+      options: DataSourceOptions): ContinuousReader = {
+    val parameters = options.asMap().asScala.toMap
+    val specifiedLoghubParams =
+      parameters
+        .keySet
+        .filter(_.toLowerCase(Locale.ROOT).startsWith("loghub."))
+        .map { k => k.drop(6).toString -> parameters(k) }
+        .toMap
+    val uniqueGroupId = s"spark-loghub-source-${UUID.randomUUID}-${checkpointLocation.hashCode}"
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val startingStreamOffset = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
+      STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+
+    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+    new LoghubContinuousReader(
+      loghubOffsetReader,
+      paramsForExecutors(specifiedLoghubParams, uniqueGroupId),
+      parameters,
+      checkpointLocation,
+      startingStreamOffset)
+  }
+
+  private def validateOptions(caseInsensitiveParams: Map[String, String]) = {
+    caseInsensitiveParams.getOrElse("sls.project",
+      throw new MissingArgumentException("Missing logService project (='sls.project')."))
+    caseInsensitiveParams.getOrElse("sls.project",
+      throw new MissingArgumentException("Missing logService store (='sls.store')."))
+    caseInsensitiveParams.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    caseInsensitiveParams.getOrElse("access.key.secret",
+      throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+    caseInsensitiveParams.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
+  }
+
+  def paramsForExecutors(
+      specifiedLoghubParams: Map[String, String],
+      uniqueGroupId: String): java.util.Map[String, Object] =
+    ConfigUpdater("executor", specifiedLoghubParams)
+      .build()
+}
+
+object LoghubSourceProvider {
+
+  val STARTING_OFFSETS_OPTION_KEY = "startingoffsets"
+  val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
+
+  def getLoghubOffsetRangeLimit(
+      params: Map[String, String],
+      offsetOptionKey: String,
+      defaultOffsets: LoghubOffsetRangeLimit): LoghubOffsetRangeLimit = {
+    params.get(offsetOptionKey).map(_.trim) match {
+      case Some(offset) if offset.toLowerCase(Locale.ROOT) == "latest" =>
+        LatestOffsetRangeLimit
+      case Some(offset) if offset.toLowerCase(Locale.ROOT) == "earliest" =>
+        EarliestOffsetRangeLimit
+      case Some(json) => SpecificOffsetRangeLimit(LoghubSourceOffset.partitionOffsets(json))
+      case None => defaultOffsets
+    }
+  }
+}
+
+/** Class to conveniently update Loghub config params, while logging the changes */
+private case class ConfigUpdater(module: String, loghubParams: Map[String, String]) extends Logging {
+  private val map = new java.util.HashMap[String, Object](loghubParams.asJava)
+
+  def set(key: String, value: Object): this.type = {
+    map.put(key, value)
+    logDebug(s"$module: Set $key to $value, earlier value: ${loghubParams.getOrElse(key, "")}")
+    this
+  }
+
+  def setIfUnset(key: String, value: Object): ConfigUpdater = {
+    if (!map.containsKey(key)) {
+      map.put(key, value)
+      logDebug(s"$module: Set $key to $value")
+    }
+    this
+  }
+
+  def build(): java.util.Map[String, Object] = map
+}
