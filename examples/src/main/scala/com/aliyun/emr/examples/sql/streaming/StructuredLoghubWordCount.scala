@@ -25,7 +25,7 @@ import org.apache.spark.sql.streaming.Trigger
 object StructuredLoghubWordCount {
   def main(args: Array[String]) {
     if (args.length < 7) {
-      System.err.println("Usage: ContinuousStructuredLoghubWordCount <logService-project> " +
+      System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
       System.exit(1)
