@@ -243,7 +243,6 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return An instance of ODPS.
    */
   def runSQL(project: String, sqlCmd: String): Instance =  {
-    val odps = new Odps(this.odps.getAccount)
     odps.setDefaultProject(project)
     log.info("SQL command: " + sqlCmd)
     try {
