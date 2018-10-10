@@ -19,8 +19,8 @@ package org.apache.spark.streaming.aliyun.logservice
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import org.apache.spark.SparkContext
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.batch.aliyun.logservice.LoghubBatchRDD
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaDStream, JavaReceiverInputDStream, JavaStreamingContext}
@@ -505,19 +505,10 @@ object LoghubUtils {
       accessKey: String,
       endpoint: String,
       startTime: Long,
-      endTime: Long) : JavaRDD[String] = {
-    new LoghubBatchRDD(sc, project, logStore, accessId, accessKey, endpoint, startTime, endTime)
-  }
-
-  def createRDD(
-      sc:SparkContext,
-      project: String,
-      logStore: String,
-      accessId: String,
-      accessKey: String,
-      endpoint: String,
-      startTime: Long) : JavaRDD[String] = {
-    new LoghubBatchRDD(sc, project, logStore, accessId, accessKey, endpoint, startTime)
+      endTime: Long = -1,
+      parallelismInShard: Int = 1) : RDD[String] = {
+    new LoghubBatchRDD(sc, project, logStore, accessId, accessKey, endpoint, startTime, endTime = endTime,
+      parallelismInShard = parallelismInShard)
   }
 }
 
