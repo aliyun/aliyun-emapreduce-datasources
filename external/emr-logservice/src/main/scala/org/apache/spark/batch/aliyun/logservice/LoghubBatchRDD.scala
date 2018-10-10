@@ -60,11 +60,15 @@ class LoghubBatchRDD(
   override protected def getPartitions: Array[Partition] = {
     import scala.collection.JavaConversions._
     val shards = client.ListShard(project, logStore).GetShards()
-    val sliceSize = if (endTime == -1) {
-      ((System.currentTimeMillis() / 1000 - startTime - 1) / parallelismInShard).toInt
+    val rangeSize = if (endTime == -1) {
+      System.currentTimeMillis() / 1000 - startTime
     } else {
-      ((endTime - startTime - 1) / parallelismInShard).toInt
+      endTime - startTime
     }
+
+    require(rangeSize >= parallelismInShard, s"The range between ($startTime, $endTime) is too small " +
+      s"to split into $parallelismInShard slices.")
+    val sliceSize = (rangeSize / parallelismInShard).toInt
 
     val ps = Array.tabulate(parallelismInShard - 1) { idx =>
       (idx, startTime + idx * sliceSize, startTime + (idx + 1) * sliceSize - 1)
