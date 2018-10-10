@@ -36,7 +36,7 @@ class LoghubBatchRDD(
     endTime: Long = -1L,
     parallelismInShard: Int = 1) extends RDD[String](sc, Nil) {
   require(parallelismInShard >= 1 && parallelismInShard <= 5, "Parallelism in each shard should not be less than 1 " +
-    "or larger than 99.")
+    "or larger than 5.")
 
   def this(@transient sc: SparkContext, project: String, logStore: String, accessId: String, accessKey: String,
       endpoint: String, startTime: Long) = {
