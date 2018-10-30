@@ -19,10 +19,7 @@ package org.apache.spark.batch.aliyun.logservice
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.common.Consts.CursorMode
-import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.apache.http.conn.ConnectTimeoutException
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.NextIterator
@@ -36,7 +33,10 @@ class LoghubBatchRDD(
     accessKey: String,
     endpoint: String,
     startTime: Long,
-    endTime: Long) extends RDD[String](sc, Nil) {
+    endTime: Long = -1L,
+    parallelismInShard: Int = 1) extends RDD[String](sc, Nil) {
+  require(parallelismInShard >= 1 && parallelismInShard <= 5, "Parallelism in each shard should not be less than 1 " +
+    "or larger than 5.")
 
   def this(@transient sc: SparkContext, project: String, logStore: String, accessId: String, accessKey: String,
       endpoint: String, startTime: Long) = {
@@ -49,7 +49,7 @@ class LoghubBatchRDD(
     try {
       val partition = split.asInstanceOf[ShardPartition]
       val client = LoghubBatchRDD.getClient(endpoint, accessId, accessKey)
-      val it = new LoghubIterator(client, partition.index, project, logStore, partition.startCursor,
+      val it = new LoghubIterator(client, partition.shardId, project, logStore, partition.startCursor,
         partition.endCursor, context)
       new InterruptibleIterator[String](context, it)
     } catch {
@@ -60,23 +60,46 @@ class LoghubBatchRDD(
   override protected def getPartitions: Array[Partition] = {
     import scala.collection.JavaConversions._
     val shards = client.ListShard(project, logStore).GetShards()
-    shards.map(shard => {
+    val rangeSize = if (endTime == -1) {
+      System.currentTimeMillis() / 1000 - startTime
+    } else {
+      endTime - startTime
+    }
+
+    require(rangeSize >= parallelismInShard, s"The range between ($startTime, $endTime) is too small " +
+      s"to split into $parallelismInShard slices.")
+    val sliceSize = (rangeSize / parallelismInShard).toInt
+
+    val ps = Array.tabulate(parallelismInShard - 1) { idx =>
+      (idx, startTime + idx * sliceSize, startTime + (idx + 1) * sliceSize - 1)
+    }
+
+    val slices = if (ps.isEmpty) {
+      Array((0, startTime, endTime))
+    } else {
+      val lastEndTime = ps(ps.length - 1)._2
+      ps ++ Array((parallelismInShard - 1, lastEndTime + 1, endTime))
+    }
+
+    implicit val shardPartitionOrdering: Ordering[ShardPartition] = Ordering.by(t => (t.shardId, t.sliceId))
+    shards.flatMap(shard => {
       val shardId = shard.GetShardId()
-      val startCursor = client.GetCursor(project, logStore, shardId, startTime).GetCursor()
-      val endCursor = endTime match {
-        case -1 => {
-          client.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-        }
-        case end => client.GetCursor(project, logStore, shardId, end).GetCursor()
+      slices.map { case ((idx, st, et)) =>
+        val startCursor = client.GetCursor(project, logStore, shardId, st).GetCursor()
+        val endCursor = client.GetCursor(project, logStore, shardId, et).GetCursor()
+        logInfo(s"Creating shard partition (shardId: $shardId, sliceId: $idx, startTime: $st, endTime: $et)")
+        new ShardPartition(id, -1, shardId, idx, project, logStore, accessId, accessKey, endpoint, startCursor, endCursor)
       }
-      new ShardPartition(id, shardId, project, logStore, accessId, accessKey, endpoint, startCursor, endCursor)
-        .asInstanceOf[Partition]
-    }).toArray.sortWith(_.index < _.index)
+    }).sorted.zipWithIndex.map { case (p, idx) =>
+      p.updateIndex(idx)
+    }.toArray
   }
 
   private class ShardPartition(
       rddId: Int,
-      shardId: Int,
+      partitionId: Int,
+      val shardId: Int,
+      val sliceId: Int,
       project: String,
       logStore: String,
       accessKeyId: String,
@@ -85,9 +108,16 @@ class LoghubBatchRDD(
       val startCursor: String,
       val endCursor: String) extends Partition {
 
+    private var _index = partitionId
+
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
 
-    override def index: Int = shardId
+    override def index: Int = _index
+
+    def updateIndex(idx: Int): Partition = {
+      _index = idx
+      this
+    }
   }
 
   private class LoghubIterator(

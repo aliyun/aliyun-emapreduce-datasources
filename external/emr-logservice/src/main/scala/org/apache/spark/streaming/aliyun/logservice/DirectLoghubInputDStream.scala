@@ -41,6 +41,7 @@ import org.apache.spark.util.Utils
 
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 class DirectLoghubInputDStream(
     _ssc: StreamingContext,
@@ -66,6 +67,7 @@ class DirectLoghubInputDStream(
   @transient private var restartTime: Long = -1L
   @transient private var restart: Boolean = false
   private var lastJobTime: Long = -1L
+  private var readOnlyShardCache = new mutable.HashMap[Int, String]()
 
   override def start(): Unit = {
     val props = new Properties()
@@ -196,9 +198,19 @@ class DirectLoghubInputDStream(
         try {
           mClient.ListShard(project, logStore).GetShards().foreach(shard => {
             val shardId = shard.GetShardId()
-            val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
-            val end = mClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-            shardOffsets.+=((shardId, start, end))
+            if (shard.getStatus.toLowerCase.equals("readonly") && readOnlyShardCache.contains(shardId)) {
+              // do nothing
+              logDebug(s"There is no data to consume from shard $shardId.")
+            } else {
+              val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
+              val end = mClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              if (!start.equals(end)) {
+                shardOffsets.+=((shardId, start, end))
+              }
+              if (start.equals(end) && shard.getStatus.toLowerCase.equals("readonly")) {
+                readOnlyShardCache.put(shardId, end)
+              }
+            }
           })
         } catch {
           case _: ZkNoNodeException =>
@@ -266,11 +278,13 @@ class DirectLoghubInputDStream(
       import scala.collection.JavaConversions._
       try {
         zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
-          val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
           val shardId = child.substring(0, child.indexOf(".")).toInt
-          log.info(s"Updating checkpoint $data for shard $shardId to consumer group $mConsumerGroup")
-          mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
-          DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
+          if (!readOnlyShardCache.contains(shardId)) {
+            val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
+            log.info(s"Updating checkpoint $data of shard $shardId to consumer group $mConsumerGroup")
+            mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
+            DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
+          }
         })
         doCommit = false
       } catch {
@@ -291,6 +305,7 @@ class DirectLoghubInputDStream(
       logDebug(s"${this.getClass.getSimpleName}.readObject used")
       ois.defaultReadObject()
       generatedRDDs = new HashMap[Time, RDD[String]]()
+      readOnlyShardCache = new mutable.HashMap[Int, String]()
       COMMIT_LOCK = new Object()
       val autoCommit = zkParams.getOrElse("enable.auto.commit", "true").toBoolean
       require(checkpointDir.nonEmpty || autoCommit, "Enable auto commit by setting " +
