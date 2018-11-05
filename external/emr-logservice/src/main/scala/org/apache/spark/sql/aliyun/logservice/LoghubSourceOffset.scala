@@ -70,12 +70,12 @@ object LoghubSourceOffset {
         throw new IllegalArgumentException(
           s"""Expected
              |{
-             |  "logProject#logStore1":{
-             |    "shard1":1541385191,
-             |    "shard2":1541385191
+             |  "logProject#logStoreA":{
+             |    "0":1541385191,
+             |    "1":1541385191
              |  },
-             |  "logProject#logStore2":{
-             |    "shard1":1541385191
+             |  "logProject#logStoreB":{
+             |    "5":1541385191
              |  }
              |}, got $str""")
     }
