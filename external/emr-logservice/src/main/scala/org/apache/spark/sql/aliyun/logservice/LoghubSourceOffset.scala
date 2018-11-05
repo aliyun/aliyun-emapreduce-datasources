@@ -67,7 +67,17 @@ object LoghubSourceOffset {
       }
     } catch {
       case NonFatal(_) =>
-        throw new IllegalArgumentException(s"$str")
+        throw new IllegalArgumentException(
+          s"""Excepted
+             |{
+             |  "logProject#logStore1":{
+             |    "shard1":1541385191,
+             |    "shard2":1541385191
+             |  },
+             |  "logProject#logStore2":{
+             |    "shard1":1541385191
+             |  }
+             |}, got $str""")
     }
   }
 
