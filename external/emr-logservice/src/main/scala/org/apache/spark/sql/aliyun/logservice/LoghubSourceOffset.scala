@@ -68,7 +68,7 @@ object LoghubSourceOffset {
     } catch {
       case NonFatal(_) =>
         throw new IllegalArgumentException(
-          s"""Excepted
+          s"""Expected
              |{
              |  "logProject#logStore1":{
              |    "shard1":1541385191,
