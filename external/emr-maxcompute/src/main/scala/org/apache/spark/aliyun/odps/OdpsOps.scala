@@ -734,7 +734,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
           case OdpsType.FLOAT => record.toArray.apply(idx).asInstanceOf[Float]
           case OdpsType.INT => record.toArray.apply(idx).asInstanceOf[Integer]
           case OdpsType.SMALLINT => record.toArray.apply(idx).asInstanceOf[Short]
-          case OdpsType.STRING => record.toArray.apply(idx).asInstanceOf[String]
+          case OdpsType.STRING => record.getString(idx)
           case OdpsType.TIMESTAMP =>
             val r = record.toArray.apply(idx).asInstanceOf[java.sql.Timestamp]
             if (r != null) {
