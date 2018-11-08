@@ -16,6 +16,7 @@
 #
 
 from py4j.protocol import Py4JJavaError
+from pyspark import RDD
 from pyspark.storagelevel import StorageLevel
 from pyspark.streaming import DStream
 from pyspark.serializers import UTF8Deserializer
@@ -108,6 +109,37 @@ class LoghubUtils(object):
                 LoghubUtils._printErrorMsg()
             raise e
         return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
+    def createRDD(sc, logServiceProject, logStoreName, accessKeyId, accessKeySecret,
+                  loghubEndpoint, startTime, endTime=None):
+        """
+        :param sc: RDD object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param accessKeyId: Aliyun Access Key ID.
+        :param accessKeySecret: Aliyun Access Key Secret.
+        :param loghubEndpoint: The endpoint of loghub.
+        :param startTime: Set user defined startTime (Unix Timestamp).
+        :param endTime: Set user defined endTime (Unix Timestamp).
+        :return: A RDD object.
+        """
+        try:
+            helperClass = sc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            if endTime:
+                jrdd = helper.createRDD(sc._jsc, logServiceProject, logStoreName, accessKeyId, accessKeySecret,
+                                        loghubEndpoint, startTime, endTime)
+            else:
+                jrdd = helper.createRDD(sc._jsc, logServiceProject, logStoreName, accessKeyId, accessKeySecret,
+                                        loghubEndpoint, startTime)
+        except Py4JJavaError as e:
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+
+        return RDD(jrdd, sc, UTF8Deserializer())
 
     @staticmethod
     def _printErrorMsg():
