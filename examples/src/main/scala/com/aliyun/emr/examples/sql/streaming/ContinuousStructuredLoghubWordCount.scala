@@ -19,7 +19,6 @@ package com.aliyun.emr.examples.sql.streaming
 import java.util.UUID
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.streaming.Trigger
 
 object ContinuousStructuredLoghubWordCount {
@@ -55,13 +54,17 @@ object ContinuousStructuredLoghubWordCount {
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
       .option("startingoffsets", startingOffsets)
+      .option("zookeeper.connect.address", "localhost:2181")
       .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
       .load()
       .selectExpr("CAST(value AS STRING)")
-      .as[String].map(e => (e.length, e)).toDF("count", "value")
+      .as[String]
 
-    val query = lines.writeStream
-      .outputMode("append")
+    // Generate running word count
+    val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()
+
+    val query = wordCounts.writeStream
+      .outputMode("complete")
       .format("console")
       .option("checkpointLocation", checkpointLocation)
       .trigger(Trigger.Continuous("5 second"))

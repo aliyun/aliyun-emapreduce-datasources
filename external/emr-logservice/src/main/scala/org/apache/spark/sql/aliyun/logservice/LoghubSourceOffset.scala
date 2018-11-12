@@ -58,7 +58,7 @@ object LoghubSourceOffset {
 
   def partitionOffsets(str: String): Map[LoghubShard, String] = {
     try {
-      Serialization.read[Map[String, HashMap[Int, String]]](str).flatMap { case (log, shardOffset) =>
+      Serialization.read[Map[String, Map[Int, String]]](str).flatMap { case (log, shardOffset) =>
         shardOffset.map { case (shard, offset) =>
           val logProject = log.split("#")(0)
           val logStore = log.split("#")(1)
@@ -70,12 +70,12 @@ object LoghubSourceOffset {
         throw new IllegalArgumentException(
           s"""Expected
              |{
-             |  "logProject#logStoreA":{
-             |    "0":1541385191,
-             |    "1":1541385191
+             |  "logProject-A#logStore-B":{
+             |    "0":"MTUzNzIUnJKsdRcYNzIxODkyMw==",
+             |    "1":"MTUzNzIUnTGxuIkaSdIxODkyMw=="
              |  },
-             |  "logProject#logStoreB":{
-             |    "5":1541385191
+             |  "logProject-C#logStore-D":{
+             |    "5":"MTUzNzIUnMNqFtSdIPIxODkyMw=="
              |  }
              |}, got $str""")
     }
