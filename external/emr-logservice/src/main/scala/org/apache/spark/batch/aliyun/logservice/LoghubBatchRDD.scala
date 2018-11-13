@@ -33,7 +33,7 @@ class LoghubBatchRDD(
     accessKey: String,
     endpoint: String,
     startTime: Long,
-    endTime: Long = -1L,
+    var endTime: Long = -1L,
     parallelismInShard: Int = 1) extends RDD[String](sc, Nil) {
   require(parallelismInShard >= 1 && parallelismInShard <= 5, "Parallelism in each shard should not be less than 1 " +
     "or larger than 5.")
@@ -60,11 +60,10 @@ class LoghubBatchRDD(
   override protected def getPartitions: Array[Partition] = {
     import scala.collection.JavaConversions._
     val shards = client.ListShard(project, logStore).GetShards()
-    val rangeSize = if (endTime == -1) {
-      System.currentTimeMillis() / 1000 - startTime
-    } else {
-      endTime - startTime
+    if (endTime == -1) {
+      endTime = System.currentTimeMillis() / 1000
     }
+    val rangeSize = endTime - startTime
 
     require(rangeSize >= parallelismInShard, s"The range between ($startTime, $endTime) is too small " +
       s"to split into $parallelismInShard slices.")
