@@ -194,6 +194,7 @@ class LoghubContinuousDataReader(
   }
 
   override def close(): Unit = {
+    logData.clear()
     logServiceClient = null
   }
 }

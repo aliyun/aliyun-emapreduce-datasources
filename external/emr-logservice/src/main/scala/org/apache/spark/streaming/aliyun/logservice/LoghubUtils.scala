@@ -24,8 +24,10 @@ import org.apache.spark.batch.aliyun.logservice.LoghubBatchRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.api.java.{JavaDStream, JavaReceiverInputDStream, JavaStreamingContext}
+import org.apache.spark.streaming.api.java.{JavaDStream, JavaInputDStream, JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+
+import scala.collection.JavaConverters._
 
 /**
  * Various utility classes for working with Aliyun LogService.
@@ -489,10 +491,64 @@ object LoghubUtils {
       accessKeySecret: String,
       endpoint: String,
       zkParams: Map[String, String],
+      mode: LogHubCursorPosition): DStream[String] = {
+    createDirectStream(ssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams, mode, -1L)
+  }
+
+  /**
+   * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
+   * at the first time with current `mConsumerGroup`
+   */
+  @Experimental
+  def createDirectStream(
+      ssc: StreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: Map[String, String],
       mode: LogHubCursorPosition,
-      cursorStartTime: Long = -1L): DStream[String] = {
+      cursorStartTime: Long): DStream[String] = {
     new DirectLoghubInputDStream(ssc, project, logStore, mConsumerGroup, accessKeyId,
       accessKeySecret, endpoint, zkParams, mode, cursorStartTime)
+  }
+
+  @Experimental
+  def createDirectStream(
+      jssc: JavaStreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: java.util.HashMap[String, String],
+      mode: LogHubCursorPosition): JavaInputDStream[String] = {
+    createDirectStream(jssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams, mode, -1L)
+  }
+
+  /**
+   * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
+   * at the first time with current `mConsumerGroup`
+   */
+  @Experimental
+  def createDirectStream(
+      jssc: JavaStreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: java.util.HashMap[String, String],
+      mode: LogHubCursorPosition,
+      cursorStartTime: Long): JavaInputDStream[String] = {
+    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams.asScala.toMap, mode, cursorStartTime))
   }
 
   /**

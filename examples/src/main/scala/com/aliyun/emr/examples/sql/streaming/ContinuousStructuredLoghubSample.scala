@@ -21,10 +21,10 @@ import java.util.UUID
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.Trigger
 
-object ContinuousStructuredLoghubWordCount {
+object ContinuousStructuredLoghubSample {
   def main(args: Array[String]) {
     if (args.length < 7) {
-      System.err.println("Usage: ContinuousStructuredLoghubWordCount <logService-project> " +
+      System.err.println("Usage: ContinuousStructuredLoghubSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
       System.exit(1)
@@ -36,7 +36,7 @@ object ContinuousStructuredLoghubWordCount {
 
     val spark = SparkSession
       .builder
-      .appName("ContinuousStructuredLoghubWordCount")
+      .appName("ContinuousStructuredLoghubSample")
       .master("local[5]")
       .getOrCreate()
 
@@ -45,7 +45,7 @@ object ContinuousStructuredLoghubWordCount {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val lines = spark
+    val lineLength = spark
       .readStream
       .format("loghub")
       .option("sls.project", project)
@@ -54,17 +54,13 @@ object ContinuousStructuredLoghubWordCount {
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
       .option("startingoffsets", startingOffsets)
-      .option("zookeeper.connect.address", "localhost:2181")
       .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
       .load()
       .selectExpr("CAST(value AS STRING)")
-      .as[String]
+      .as[String].map(e => (e, e.length)).toDF("value", "length")
 
-    // Generate running word count
-    val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()
-
-    val query = wordCounts.writeStream
-      .outputMode("complete")
+    val query = lineLength.writeStream
+      .outputMode("append")
       .format("console")
       .option("checkpointLocation", checkpointLocation)
       .trigger(Trigger.Continuous("5 second"))
