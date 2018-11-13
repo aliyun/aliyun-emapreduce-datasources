@@ -142,7 +142,8 @@ object LoghubOffsetReader {
 
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
     if (zkClient == null) {
-      val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
+      val zkConnect = zkParams.getOrElse("connect.address",
+        throw new MissingArgumentException("Missing 'zookeeper.connect.address' option when create loghub source."))
       val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
       val zkConnectionTimeoutMs =
         zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
