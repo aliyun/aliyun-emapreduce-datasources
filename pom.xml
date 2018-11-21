@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.11</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Aliyun E-MapReduce Root</name>
@@ -26,16 +26,16 @@
     </scm>
 
     <modules>
-        <module>core</module>
-        <module>external/emr-maxcompute</module>
-        <module>external/emr-logservice</module>
-        <module>external/emr-tablestore</module>
-        <module>external/emr-mns</module>
-        <module>external/emr-ons</module>
-        <module>external/emr-dts</module>
-        <module>external/emr-datahub</module>
+        <module>emr-oss</module>
+        <module>emr-maxcompute</module>
+        <module>emr-logservice</module>
+        <module>emr-tablestore</module>
+        <module>emr-mns</module>
+        <module>emr-ons</module>
+        <module>emr-dts</module>
+        <module>emr-datahub</module>
+        <module>emr-kafka</module>
         <module>examples</module>
-        <module>external/emr-kafka</module>
     </modules>
 
     <properties>
