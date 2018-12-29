@@ -36,6 +36,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
 class LoghubContinuousReader(
+    schema: Option[StructType],
     offsetReader: LoghubOffsetReader,
     loghubParams: util.Map[String, Object],
     sourceOptions: Map[String, String],
@@ -50,7 +51,7 @@ class LoghubContinuousReader(
 
   private var offset: Offset = _
 
-  override def readSchema: StructType = LoghubOffsetReader.loghubSchema
+  override def readSchema: StructType = Utils.getSchema(schema, sourceOptions)
 
   override def commit(end: Offset): Unit = {}
 

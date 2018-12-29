@@ -19,17 +19,18 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
 import com.aliyun.openservices.log.response.BatchGetLogResponse
 import org.I0Itec.zkclient.ZkClient
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.streaming.aliyun.logservice.{DirectLoghubInputDStream, LoghubClientAgent}
 import org.apache.spark.util.NextIterator
-
-import scala.collection.JavaConversions._
-import scala.collection.mutable.ArrayBuffer
 
 class LoghubSourceRDD(
       @transient sc: SparkContext,
@@ -39,11 +40,12 @@ class LoghubSourceRDD(
       accessKeySecret: String,
       endpoint: String,
       shardOffsets: ArrayBuffer[(Int, String, String)],
+      schemaFieldNames: Array[String],
       zkParams: Map[String, String] = null,
       checkpointDir: String = null,
-      maxOffsetsPerTrigger: Long = -1L)
-    extends RDD[(Int, JSONObject)](sc, Nil) with Logging {
-  import LoghubSourceRDD._
+      maxOffsetsPerTrigger: Long = -1L,
+      fallback: Boolean = false)
+    extends RDD[LoghubData](sc, Nil) with Logging {
 
   @transient var mClient: LoghubClientAgent =
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -59,11 +61,20 @@ class LoghubSourceRDD(
   }
 
   @DeveloperApi
-  override def compute(split: Partition, context: TaskContext): Iterator[(Int, JSONObject)] = {
+  override def compute(split: Partition, context: TaskContext): Iterator[LoghubData] = {
     initialize()
     val shardPartition = split.asInstanceOf[ShardPartition]
+    val schemaFieldPos: Map[String, Int] = schemaFieldNames
+      .filter(fieldName => !isDefaultField(fieldName))
+      .map(fieldName => {
+        if (fieldName.startsWith("__tag")) {
+          fieldName.substring(5)
+        } else {
+          fieldName
+        }
+      }).zipWithIndex.toMap
     try {
-      new InterruptibleIterator[(Int, JSONObject)](context, new NextIterator[(Int, JSONObject)]() {
+      new InterruptibleIterator[LoghubData](context, new NextIterator[LoghubData]() {
         val zkClient: ZkClient = LoghubOffsetReader.getOrCreateZKClient(zkParams)
 
         private val count = shardPartition.count
@@ -71,12 +82,12 @@ class LoghubSourceRDD(
         private var hasRead: Int = 0
         private var nextCursor: String = shardPartition.startCursor
         // TODO: This may cost too much memory.
-        private var logData = new LinkedBlockingQueue[JSONObject](4096 * step)
+        private var logData = new LinkedBlockingQueue[LoghubData](4096 * step)
 
         private val inputMetrics = context.taskMetrics.inputMetrics
 
         context.addTaskCompletionListener {
-          context => closeIfNeeded()
+          _ => closeIfNeeded()
         }
 
         def checkHasNext(): Boolean = {
@@ -92,7 +103,7 @@ class LoghubSourceRDD(
           }
         }
 
-        override protected def getNext(): (Int, JSONObject) = {
+        override protected def getNext(): LoghubData = {
           finished = !checkHasNext()
           if (!finished) {
             if (logData.isEmpty) {
@@ -100,9 +111,9 @@ class LoghubSourceRDD(
             }
 
             hasRead += 1
-            (shardPartition.shardId, logData.poll())
+            logData.poll()
           } else {
-            null.asInstanceOf[(Int, JSONObject)]
+            null.asInstanceOf[LoghubData]
           }
         }
 
@@ -124,23 +135,53 @@ class LoghubSourceRDD(
             group.GetLogGroup().getLogsList.foreach(log => {
               val topic = group.GetTopic()
               val source = group.GetSource()
-              val obj = new JSONObject()
-              obj.put(__PROJECT__, project)
-              obj.put(__STORE__, logStore)
-              obj.put(__TIME__, Integer.valueOf(log.getTime))
-              obj.put(__TOPIC__, topic)
-              obj.put(__SOURCE__, source)
-              log.getContentsList.foreach(content => {
-                obj.put(content.getKey, content.getValue)
-              })
+              if (!fallback) {
+                try {
+                  // the first six columns: logProject, logStore, shardId, dataTime, topic, source
+                  // the length of rest of columns: numCols - 6
+                  val columnArray = Array.tabulate(schemaFieldNames.length - 6)(idx =>
+                    (null, null).asInstanceOf[(String, Any)]
+                  )
+                  var idx = 0
+                  log.getContentsList.foreach(content => {
+                    columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
+                    idx += 1
+                  })
 
-              val flg = group.GetFastLogGroup()
-              for (i <- 0 until flg.getLogTagsCount) {
-                obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+                  val flg = group.GetFastLogGroup()
+                  for (i <- 0 until flg.getLogTagsCount) {
+                    val tagKey = flg.getLogTags(i).getKey
+                    val tagValue = flg.getLogTags(i).getValue
+                    if (!tagKey.equals(__PACK_ID__) && !tagKey.equals(__USER_DEFINED_ID__)) {
+                      columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+                      idx += 1
+                    }
+                  }
+
+                  count += 1
+                  logData.offer(new SchemaLoghubData(project, logStore, shardPartition.shardId,
+                    new java.sql.Timestamp(log.getTime * 1000L), topic,
+                    source, columnArray))
+                } catch {
+                  case e: NoSuchElementException =>
+                    logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+                      s"data and continue.")
+                }
+              } else {
+                val obj = new JSONObject()
+                log.getContentsList.foreach(content => {
+                  obj.put(content.getKey, content.getValue)
+                })
+
+                val flg = group.GetFastLogGroup()
+                for (i <- 0 until flg.getLogTagsCount) {
+                  obj.put(flg.getLogTags(i).getKey, flg.getLogTags(i).getValue)
+                }
+                count += 1
+                logData.offer(new RawLoghubData(project, logStore, shardPartition.shardId,
+                  new java.sql.Timestamp(log.getTime * 1000L), topic,
+                  source, obj.toJSONString.getBytes))
               }
-
-              count += 1
-              logData.offer(obj)
             })
           })
 
@@ -153,7 +194,7 @@ class LoghubSourceRDD(
       })
     } catch {
       case _: Exception =>
-        Iterator.empty.asInstanceOf[Iterator[(Int, JSONObject)]]
+        Iterator.empty.asInstanceOf[Iterator[LoghubData]]
     }
   }
 
@@ -179,12 +220,4 @@ class LoghubSourceRDD(
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def index: Int = partitionId
   }
-}
-
-object LoghubSourceRDD {
-  val __PROJECT__ = "__logProject__"
-  val __STORE__ = "__logStore__"
-  val __TIME__ = "__time__"
-  val __TOPIC__ = "__topic__"
-  val __SOURCE__ = "__source__"
 }

@@ -35,13 +35,13 @@ public class LoghubClientAgent {
     this.client = new Client(endpoint, accessId, accessKey);
   }
 
-  public ListShardResponse ListShard(String prj, String logStore)
+  public ListShardResponse ListShard(String logProject, String logStore)
       throws Exception {
     int retry = 0;
     Exception currentException = null;
     while (retry <= logServiceTimeoutMaxRetry) {
       try {
-        return this.client.ListShard(prj, logStore);
+        return this.client.ListShard(logProject, logStore);
       } catch (LogException e) {
         if (checkConnectionTimeoutException(e)) {
           retry += 1;
