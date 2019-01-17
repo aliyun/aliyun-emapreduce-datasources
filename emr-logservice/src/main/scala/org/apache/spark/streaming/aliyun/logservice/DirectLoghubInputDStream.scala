@@ -358,7 +358,7 @@ class DirectLoghubInputDStream(
             }
           } catch {
             case e1: LogException =>
-              new LogHubClientWorkerException("error occurs when get consumer group, errorCode: " +
+              throw new LogHubClientWorkerException("error occurs when get consumer group, errorCode: " +
                 e1.GetErrorCode + ", errorMessage: " + e1.GetErrorMessage)
           }
         } else {

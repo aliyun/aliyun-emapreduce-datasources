@@ -17,11 +17,12 @@
 package org.apache.spark.streaming.aliyun.datahub
 
 import com.aliyun.datahub.auth.AliyunAccount
-import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
+import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
+import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
+import org.apache.spark.streaming.dstream.DStream
 
 object DatahubUtils {
   def createStream(
@@ -79,5 +80,50 @@ object DatahubUtils {
     }
 
     dStream
+  }
+
+  def createDirectStream(ssc: StreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      mode: CursorType,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    ssc.withNamedScope("datahub direct stream") {
+      new DirectDatahubInputDStream(ssc,
+        endpoint,
+        project,
+        topic,
+        subId,
+        accessId,
+        accessKey,
+        func,
+        mode,
+        zkParam)
+    }
+  }
+
+  def createDirectStream(ssc: StreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    createDirectStream(ssc,
+      endpoint,
+      project,
+      topic,
+      subId,
+      accessId,
+      accessKey,
+      func,
+      CursorType.LATEST,
+      zkParam)
   }
 }
