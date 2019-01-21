@@ -49,7 +49,7 @@
         <ons.version>1.7.1.Final</ons.version>
         <mns.version>1.1.8.4</mns.version>
         <dts.version>4.6.27.12.0</dts.version>
-        <hadoop.version>2.9.0</hadoop.version>
+        <hadoop.version>3.2.0</hadoop.version>
         <fastjson.version>1.2.45</fastjson.version>
         <hive.version>2.0.1</hive.version>
         <guava.version>11.0.2</guava.version>
