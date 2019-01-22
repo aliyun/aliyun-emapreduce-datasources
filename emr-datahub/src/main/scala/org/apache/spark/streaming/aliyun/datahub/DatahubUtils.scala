@@ -22,6 +22,7 @@ import com.aliyun.datahub.model.RecordEntry
 import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.api.java.JavaStreamingContext
 import org.apache.spark.streaming.dstream.DStream
 
 object DatahubUtils {
@@ -49,6 +50,21 @@ object DatahubUtils {
         func,
         storageLevel)
     }
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      projectName: String,
+      topicName: String,
+      subId: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      shardId: String,
+      func: RecordEntry => String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, shardId, func,
+      storageLevel)
   }
 
   def createStream(
@@ -82,6 +98,19 @@ object DatahubUtils {
     dStream
   }
 
+  def createStream(
+      jssc: JavaStreamingContext,
+      projectName: String,
+      topicName: String,
+      subId: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      func: RecordEntry => String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, func, storageLevel)
+  }
+
   def createDirectStream(ssc: StreamingContext,
       endpoint: String,
       project: String,
@@ -106,6 +135,19 @@ object DatahubUtils {
     }
   }
 
+  def createDirectStream(jssc: JavaStreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      mode: CursorType,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
+  }
+
   def createDirectStream(ssc: StreamingContext,
       endpoint: String,
       project: String,
@@ -116,6 +158,91 @@ object DatahubUtils {
       func: RecordEntry => String,
       zkParam: Map[String, String]): DStream[Array[Byte]] = {
     createDirectStream(ssc,
+      endpoint,
+      project,
+      topic,
+      subId,
+      accessId,
+      accessKey,
+      func,
+      CursorType.LATEST,
+      zkParam)
+  }
+
+  def createDirectStream(jssc: JavaStreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    createDirectStream(jssc.ssc,
+      endpoint,
+      project,
+      topic,
+      subId,
+      accessId,
+      accessKey,
+      func,
+      CursorType.LATEST,
+      zkParam)
+  }
+}
+
+class DatahubUtilsHelper {
+  def createStream(
+      jssc: JavaStreamingContext,
+      projectName: String,
+      topicName: String,
+      subId: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      shardId: String,
+      func: RecordEntry => String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    DatahubUtils.createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, shardId, func,
+      storageLevel)
+  }
+
+  def createStream(
+      jssc: JavaStreamingContext,
+      projectName: String,
+      topicName: String,
+      subId: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      func: RecordEntry => String,
+      storageLevel: StorageLevel): DStream[Array[Byte]] = {
+    DatahubUtils.createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, func, storageLevel)
+  }
+
+  def createDirectStream(jssc: JavaStreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      mode: CursorType,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    DatahubUtils.createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
+  }
+
+  def createDirectStream(jssc: JavaStreamingContext,
+      endpoint: String,
+      project: String,
+      topic: String,
+      subId: String,
+      accessId: String,
+      accessKey: String,
+      func: RecordEntry => String,
+      zkParam: Map[String, String]): DStream[Array[Byte]] = {
+    DatahubUtils.createDirectStream(jssc.ssc,
       endpoint,
       project,
       topic,

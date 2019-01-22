@@ -30,7 +30,7 @@ object TestDirectDatahub {
       val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub"))
       sc.setLogLevel("ERROR")
       val ssc = new StreamingContext(sc, Duration(duration))
-      val dstream = DatahubUtils.createDirectStream(ssc, endpoint, project, topic, subId, accessId, accessKey, read, zkParam)
+      val dstream = DatahubUtils.createDirectStream(ssc, endpoint, project, topic, subId, accessId, accessKey, read(_), zkParam)
 
       dstream.checkpoint(Duration(duration)).foreachRDD(rdd => {
         println(s"count:${rdd.count()}")
