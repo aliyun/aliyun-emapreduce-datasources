@@ -26,6 +26,17 @@ import org.apache.spark.streaming.api.java.JavaStreamingContext
 import org.apache.spark.streaming.dstream.DStream
 
 object DatahubUtils {
+  /**
+   * Scala constructor to create a DStream from datahub source.
+   * @param projectName datahub project name
+   * @param topicName datahub topic name
+   * @param subId datahub subscription id
+   * @param accessKeyId aliyun access key id
+   * @param accessKeySecret aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param shardId datahub topic shard
+   * @param func handle RecordEntry to String
+   */
   def createStream(
       ssc: StreamingContext,
       projectName: String,
@@ -67,6 +78,16 @@ object DatahubUtils {
       storageLevel)
   }
 
+  /**
+   * Scala constructor to create a DStream from datahub source.
+   * @param projectName datahub project name
+   * @param topicName datahub topic name
+   * @param subId datahub subscription id
+   * @param accessKeyId aliyun access key id
+   * @param accessKeySecret aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   */
   def createStream(
       ssc: StreamingContext,
       projectName: String,
@@ -111,7 +132,22 @@ object DatahubUtils {
     createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, func, storageLevel)
   }
 
-  def createDirectStream(ssc: StreamingContext,
+  /**
+   * :: Experimental ::
+   * Scala constructor for a DStream where
+   * each datahub shard correspond to a RDD partition.
+   * @param project datahub project name
+   * @param topic datahub topic name
+   * @param subId datahub subscription id
+   * @param accessId aliyun access key id
+   * @param accessKey aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   * @param mode datahub cursor type
+   * @param zkParam Zookeeper configuration
+   */
+  def createDirectStream(
+      ssc: StreamingContext,
       endpoint: String,
       project: String,
       topic: String,
@@ -122,7 +158,8 @@ object DatahubUtils {
       mode: CursorType,
       zkParam: Map[String, String]): DStream[Array[Byte]] = {
     ssc.withNamedScope("datahub direct stream") {
-      new DirectDatahubInputDStream(ssc,
+      new DirectDatahubInputDStream(
+        ssc,
         endpoint,
         project,
         topic,
@@ -135,7 +172,8 @@ object DatahubUtils {
     }
   }
 
-  def createDirectStream(jssc: JavaStreamingContext,
+  def createDirectStream(
+      jssc: JavaStreamingContext,
       endpoint: String,
       project: String,
       topic: String,
@@ -148,7 +186,21 @@ object DatahubUtils {
     createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
   }
 
-  def createDirectStream(ssc: StreamingContext,
+  /**
+   * :: Experimental ::
+   * Scala constructor for a DStream where
+   * each datahub shard correspond to a RDD partition.
+   * @param project datahub project name
+   * @param topic datahub topic name
+   * @param subId datahub subscription id
+   * @param accessId aliyun access key id
+   * @param accessKey aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   * @param zkParam Zookeeper configuration
+   */
+  def createDirectStream(
+      ssc: StreamingContext,
       endpoint: String,
       project: String,
       topic: String,
@@ -169,7 +221,8 @@ object DatahubUtils {
       zkParam)
   }
 
-  def createDirectStream(jssc: JavaStreamingContext,
+  def createDirectStream(
+      jssc: JavaStreamingContext,
       endpoint: String,
       project: String,
       topic: String,
@@ -192,6 +245,17 @@ object DatahubUtils {
 }
 
 class DatahubUtilsHelper {
+  /**
+   * Java constructor to create a DStream from datahub source.
+   * @param projectName datahub project name
+   * @param topicName datahub topic name
+   * @param subId datahub subscription id
+   * @param accessKeyId aliyun access key id
+   * @param accessKeySecret aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param shardId datahub topic shard
+   * @param func handle RecordEntry to String
+   */
   def createStream(
       jssc: JavaStreamingContext,
       projectName: String,
@@ -203,10 +267,29 @@ class DatahubUtilsHelper {
       shardId: String,
       func: RecordEntry => String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
-    DatahubUtils.createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, shardId, func,
+    DatahubUtils.createStream(
+      jssc.ssc,
+      projectName,
+      topicName,
+      subId,
+      accessKeyId,
+      accessKeySecret,
+      endpoint,
+      shardId,
+      func,
       storageLevel)
   }
 
+  /**
+   * Java constructor to create a DStream from datahub source.
+   * @param projectName datahub project name
+   * @param topicName datahub topic name
+   * @param subId datahub subscription id
+   * @param accessKeyId aliyun access key id
+   * @param accessKeySecret aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   */
   def createStream(
       jssc: JavaStreamingContext,
       projectName: String,
@@ -217,10 +300,34 @@ class DatahubUtilsHelper {
       endpoint: String,
       func: RecordEntry => String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
-    DatahubUtils.createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, func, storageLevel)
+    DatahubUtils.createStream(
+      jssc.ssc,
+      projectName,
+      topicName,
+      subId,
+      accessKeyId,
+      accessKeySecret,
+      endpoint,
+      func,
+      storageLevel)
   }
 
-  def createDirectStream(jssc: JavaStreamingContext,
+  /**
+   * :: Experimental ::
+   * Java constructor for a DStream where
+   * each datahub shard correspond to a RDD partition.
+   * @param project datahub project name
+   * @param topic datahub topic name
+   * @param subId datahub subscription id
+   * @param accessId aliyun access key id
+   * @param accessKey aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   * @param mode datahub cursor type
+   * @param zkParam Zookeeper configuration
+   */
+  def createDirectStream(
+      jssc: JavaStreamingContext,
       endpoint: String,
       project: String,
       topic: String,
@@ -233,7 +340,21 @@ class DatahubUtilsHelper {
     DatahubUtils.createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
   }
 
-  def createDirectStream(jssc: JavaStreamingContext,
+  /**
+   * :: Experimental ::
+   * Java constructor for a DStream where
+   * each datahub shard correspond to a RDD partition.
+   * @param project datahub project name
+   * @param topic datahub topic name
+   * @param subId datahub subscription id
+   * @param accessId aliyun access key id
+   * @param accessKey aliyun access key secret
+   * @param endpoint datahub endpoint
+   * @param func handle RecordEntry to String
+   * @param zkParam Zookeeper configuration
+   */
+  def createDirectStream(
+      jssc: JavaStreamingContext,
       endpoint: String,
       project: String,
       topic: String,

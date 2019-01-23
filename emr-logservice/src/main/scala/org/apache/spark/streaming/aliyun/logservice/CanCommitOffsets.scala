@@ -21,10 +21,10 @@ import org.apache.spark.annotation.Experimental
 @Experimental
 trait CanCommitOffsets {
   /**
-    *  :: Experimental ::
-    * Queue up offset ranges for commit to Loghub at a future time.  Threadsafe.
-    * This is only needed if you intend to store offsets in Loghub, instead of your own store.
-    */
+   *  :: Experimental ::
+   * Queue up offset ranges for commit to Loghub at a future time.  Threadsafe.
+   * This is only needed if you intend to store offsets in Loghub, instead of your own store.
+   */
   @Experimental
   def commitAsync(): Unit
 }

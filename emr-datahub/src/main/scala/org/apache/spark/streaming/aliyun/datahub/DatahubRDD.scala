@@ -20,6 +20,8 @@ package org.apache.spark.streaming.aliyun.datahub
 import java.io.UnsupportedEncodingException
 import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable.ArrayBuffer
+
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.model.RecordEntry
@@ -28,8 +30,6 @@ import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
-
-import scala.collection.mutable.ArrayBuffer
 
 class DatahubRDD(
     @transient _sc: SparkContext,
@@ -63,8 +63,9 @@ class DatahubRDD(
 
     val partition = split.asInstanceOf[ShardPartition]
     try {
-      new InterruptibleIterator[Array[Byte]](context, new DatahubIterator(datahubClientAgent, endpoint, project, topic, partition.shardId, partition.cursor,
-        partition.count, subId, accessId, accessKey, func, zkClient, checkpointDir, context))
+      new InterruptibleIterator[Array[Byte]](context, new DatahubIterator(datahubClientAgent, endpoint, project, topic,
+        partition.shardId, partition.cursor, partition.count, subId, accessId, accessKey, func, zkClient,
+        checkpointDir, context))
     } catch {
       case e: Exception =>
         logError("Fail to build DatahubIterator.", e)
@@ -105,7 +106,11 @@ object DatahubRDD extends Logging {
   var zkClient: ZkClient = null
   var datahubClient: DatahubClientAgent = null
 
-  def getClient(zkParam: Map[String, String], accessId: String, accessKey: String, endpoint: String): (ZkClient, DatahubClientAgent) = {
+  def getClient(
+      zkParam: Map[String, String],
+      accessId: String,
+      accessKey: String,
+      endpoint: String): (ZkClient, DatahubClientAgent) = {
     if (zkClient ==  null || datahubClient == null) {
       val zkServers = zkParam.getOrElse("zookeeper.connect", "localhost:2181")
       val sessionTimeout = zkParam.getOrElse("zookeeper.session.timeout.ms", "6000").toInt

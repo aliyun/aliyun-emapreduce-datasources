@@ -1,9 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.aliyun.emr.examples.streaming
 
 import com.aliyun.datahub.model.RecordEntry
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.streaming.{Duration, StreamingContext}
-import org.apache.spark.streaming.aliyun.datahub.{DatahubUtils, DirectDatahubInputDStream}
+import org.apache.spark.streaming.aliyun.datahub.{CanCommitOffsets, DatahubUtils, DirectDatahubInputDStream}
 
 object TestDirectDatahub {
   def main(args: Array[String]): Unit = {
@@ -30,11 +46,20 @@ object TestDirectDatahub {
       val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub"))
       sc.setLogLevel("ERROR")
       val ssc = new StreamingContext(sc, Duration(duration))
-      val dstream = DatahubUtils.createDirectStream(ssc, endpoint, project, topic, subId, accessId, accessKey, read(_), zkParam)
+      val dstream = DatahubUtils.createDirectStream(
+        ssc,
+        endpoint,
+        project,
+        topic,
+        subId,
+        accessId,
+        accessKey,
+        read(_),
+        zkParam)
 
       dstream.checkpoint(Duration(duration)).foreachRDD(rdd => {
         println(s"count:${rdd.count()}")
-        dstream.asInstanceOf[DirectDatahubInputDStream].commitAsync()
+        dstream.asInstanceOf[CanCommitOffsets].commitAsync()
       })
       ssc.checkpoint(checkpointDir)
       ssc

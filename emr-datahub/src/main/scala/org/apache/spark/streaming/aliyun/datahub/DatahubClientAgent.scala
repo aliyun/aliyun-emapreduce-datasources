@@ -36,8 +36,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
-        return client.getTopic(projectName, topicName)
+      try {
+          return client.getTopic(projectName, topicName)
+        }
       catch {
         case e: ResourceNotFoundException => {
           throw e
@@ -57,13 +58,11 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.getCursor(projectName, topicName, shardId, cursorType)
+      }
       catch {
-        case e: ResourceNotFoundException => {
-          throw e
-        }
-        case e: InvalidParameterException => {
+        case e @(_:ResourceNotFoundException | _:InvalidParameterException ) => {
           throw e
         }
         case e: Exception => {
@@ -77,19 +76,20 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     throw currentException
   }
 
-  def getCursor(projectName: String, topicName: String, shardId: String, offset: OffsetContext.Offset):GetCursorResult = {
+  def getCursor(
+      projectName: String,
+      topicName: String,
+      shardId: String,
+      offset: OffsetContext.Offset):GetCursorResult = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try{
+      try {
         val request = new GetCursorRequest(projectName, topicName, shardId, CursorType.SEQUENCE, offset.getSequence)
         return client.getCursor(request)
       }
       catch {
-        case e: ResourceNotFoundException => {
-          throw e
-        }
-        case e: InvalidParameterException => {
+        case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
           throw e
         }
         case e: Exception => {
@@ -103,20 +103,23 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     throw currentException
   }
 
-  def getRecords(projectName: String, topicName: String, shardId: String, cursor: String, limit: Int, schema: RecordSchema): GetRecordsResult = {
+  def getRecords(
+      projectName: String,
+      topicName: String,
+      shardId: String,
+      cursor: String,
+      limit: Int,
+      schema: RecordSchema): GetRecordsResult = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.getRecords(projectName, topicName, shardId, cursor, limit, schema)
+      }
       catch {
-        case e: MalformedRecordException => {
-          throw e
-        }
-        case e: ResourceNotFoundException => {
-          throw e
-        }
-        case e: InvalidParameterException => {
+        case e @ (_: MalformedRecordException |
+                  _: ResourceNotFoundException |
+                  _: InvalidParameterException) => {
           throw e
         }
         case e: Exception => {
@@ -134,8 +137,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.listShard(project, topic)
+      }
       catch {
         case e: InvalidParameterException => {
           throw e
@@ -143,11 +147,11 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e: Exception => {
           retry += 1
           currentException = e
-          logError(s"catch exception when initOffsetContext, start to retry $retry-times")
+          logError(s"catch exception when listShards, start to retry $retry-times")
         }
       }
     }
-    logError(s"retry to initOffsetContext exceed max retry times[$datahubServiceMaxRetry")
+    logError(s"retry to listShards exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
   }
 
@@ -155,8 +159,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.initOffsetContext(projectName, topicName, subscribeId, shardId)
+      }
       catch {
         case e: InvalidParameterException => {
           throw e
@@ -168,7 +173,7 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         }
       }
     }
-    logError(s"retry to initOffsetContext exceed max retry times[$datahubServiceMaxRetry")
+    logError(s"retry to initOffsetContext exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
   }
 
@@ -176,13 +181,11 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.getNextOffsetCursor(offsetCtx)
+      }
       catch {
-        case e: ResourceNotFoundException => {
-          throw e
-        }
-        case e: InvalidParameterException => {
+        case e @ (_: ResourceNotFoundException | _: InvalidParameterException) => {
           throw e
         }
         case e: Exception => {
@@ -200,8 +203,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         return client.commitOffset(offsetCtx)
+      }
       catch {
         case e: InvalidParameterException => {
           throw e
@@ -221,8 +225,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
-      try
+      try {
         client.updateOffsetContext(offsetCtx)
+      }
       catch {
         case e: Exception => {
           retry += 1
@@ -241,9 +246,12 @@ object JacksonParser {
 
   def getOffsetContext(offsetContextObjectNode: JsonNode): OffsetContext = {
     offsetContextObjectNode.getBinaryValue
-    val offset = new OffsetContext.Offset(offsetContextObjectNode.get("Sequence").asLong(), offsetContextObjectNode.get("Timestamp").asLong())
-    new OffsetContext(offsetContextObjectNode.get("Project").asText(), offsetContextObjectNode.get("Topic").asText(), offsetContextObjectNode.get("SubId").asText(),
-      offsetContextObjectNode.get("ShardId").asText(), offset, offsetContextObjectNode.get("Version").asLong(), offsetContextObjectNode.get("SessionId").asText())
+    val offset = new OffsetContext.Offset(offsetContextObjectNode.get("Sequence").asLong(),
+      offsetContextObjectNode.get("Timestamp").asLong())
+    new OffsetContext(offsetContextObjectNode.get("Project").asText(), offsetContextObjectNode.get("Topic").asText(),
+      offsetContextObjectNode.get("SubId").asText(),
+      offsetContextObjectNode.get("ShardId").asText(), offset, offsetContextObjectNode.get("Version").asLong(),
+      offsetContextObjectNode.get("SessionId").asText())
   }
 
   def getOffsetContext(offsetContextStr: String): OffsetContext = {

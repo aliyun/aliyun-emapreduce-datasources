@@ -20,6 +20,7 @@ package org.apache.spark.streaming.aliyun.datahub
 import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
+
 import com.aliyun.datahub.model.{OffsetContext, RecordEntry}
 import org.I0Itec.zkclient.ZkClient
 import org.apache.spark.TaskContext
@@ -57,7 +58,7 @@ private class DatahubIterator(
       }
       dataBuffer.poll()
     } else {
-      Array.empty
+      Array.empty[Byte]
     }
   }
 

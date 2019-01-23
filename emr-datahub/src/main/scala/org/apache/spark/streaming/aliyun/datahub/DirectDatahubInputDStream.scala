@@ -20,6 +20,10 @@ package org.apache.spark.streaming.aliyun.datahub
 import java.io.{IOException, ObjectInputStream, UnsupportedEncodingException}
 import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable.{ArrayBuffer, HashMap}
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
@@ -35,10 +39,6 @@ import org.apache.spark.streaming.scheduler.StreamInputInfo
 import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
-import scala.collection.mutable.{ArrayBuffer, HashMap}
-import scala.collection.JavaConversions._
-import scala.collection.mutable
-
 class DirectDatahubInputDStream(
     @transient _ssc: StreamingContext,
     endpoint: String,
@@ -53,6 +53,8 @@ class DirectDatahubInputDStream(
   @transient private var datahubClient: DatahubClientAgent = null
   @transient private var zkClient: ZkClient = null
   private var checkpointDir: String = null
+  var datahubConsumePathRoot: String = null
+  var datahubCommitPathRoot: String = null
   @transient private var restart = false
   @transient private var commitLock = new Object
   private var doCommit = false
@@ -92,13 +94,17 @@ class DirectDatahubInputDStream(
     })
 
     checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
+    datahubConsumePathRoot = s"$checkpointDir/datahub/consume"
+    datahubCommitPathRoot = s"$checkpointDir/datahub/commit"
     if (!zkClient.exists(s"$checkpointDir/datahub")) {
-      zkClient.createPersistent(s"$checkpointDir/datahub/consume/$project/$topic", true)
-      zkClient.createPersistent(s"$checkpointDir/datahub/commit/$project/$topic", true)
+      zkClient.createPersistent(s"$datahubConsumePathRoot/$project/$topic",true)
+      zkClient.createPersistent(s"$datahubCommitPathRoot/$project/$topic", true)
     }
 
-    val initial = if(zkClient.exists(s"$checkpointDir/datahub/consume/$project/$topic/$subId")) {
-      zkClient.getChildren(s"$checkpointDir/datahub/consume/$project/$topic/$subId").toArray()
+    val pathExist = zkClient.exists(s"$datahubConsumePathRoot/$project/$topic/$subId")
+    val initial = if(pathExist) {
+      zkClient.getChildren(s"$datahubConsumePathRoot/$project/$topic/$subId")
+        .toArray()
     } else Array.empty[String]
     val shards = datahubClient.listShards(project, topic).getShards
 
@@ -106,7 +112,8 @@ class DirectDatahubInputDStream(
     diff.foreach(shardId => {
       val oldestCursor = fetchCursorFormDatahub(shardId)
       val oldestOffset = new OffsetContext.Offset(oldestCursor.getSequence, oldestCursor.getRecordTime)
-      DirectDatahubInputDStream.writeDataToZk(zkClient, s"$checkpointDir/datahub/consume/$project/$topic/$subId/$shardId",
+      DirectDatahubInputDStream.writeDataToZk(zkClient,
+        s"$datahubConsumePathRoot/$project/$topic/$subId/$shardId",
         JacksonParser.toJsonNode(oldestOffset).toString)
     })
   }
@@ -154,7 +161,7 @@ class DirectDatahubInputDStream(
           } else {
             var startOffset: OffsetContext.Offset = null
             try {
-              val consume: String = zkClient.readData(s"$checkpointDir/datahub/consume/$project/$topic/$subId/$shardId")
+              val consume: String = zkClient.readData(s"$datahubConsumePathRoot/$project/$topic/$subId/$shardId")
               startOffset = JacksonParser.getOffset(consume)
             } catch {
               case _:ZkNoNodeException =>
@@ -210,15 +217,16 @@ class DirectDatahubInputDStream(
   private def commitAll(): Unit = {
     if (doCommit) {
       try {
-        val shards = zkClient.getChildren(s"$checkpointDir/datahub/commit/$project/$topic/$subId")
+        val shards = zkClient.getChildren(s"$datahubCommitPathRoot/$project/$topic/$subId")
         shards.foreach(shard => {
           if (!readOnlyShardCache.contains(shard)) {
-            val commit: String = zkClient.readData(s"$checkpointDir/datahub/commit/$project/$topic/$subId/$shard")
+            val commit: String = zkClient.readData(s"$datahubCommitPathRoot/$project/$topic/$subId/$shard")
             val offset = JacksonParser.getOffset(commit)
             val currentOffsetContext = datahubClient.initOffsetContext(project, topic, subId, shard)
             currentOffsetContext.setOffset(offset)
             datahubClient.commitOffset(currentOffsetContext)
-            DirectDatahubInputDStream.writeDataToZk(zkClient, s"$checkpointDir/datahub/consume/$project/$topic/$subId/$shard",
+            DirectDatahubInputDStream.writeDataToZk(zkClient,
+              s"$datahubConsumePathRoot/$project/$topic/$subId/$shard",
               JacksonParser.toJsonNode(offset).toString)
           }
         })
