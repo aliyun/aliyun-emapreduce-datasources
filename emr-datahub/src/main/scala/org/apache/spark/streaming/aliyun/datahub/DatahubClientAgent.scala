@@ -177,6 +177,10 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     throw currentException
   }
 
+  /**
+   * @InvalidParameterException one possible reason is when timestamp of oldest data in datahub
+   *                           is larger than consume offset in offsetCtx cause data is expired
+   */
   def getNextOffsetCursor(offsetCtx: OffsetContext): GetCursorResult = {
     var retry = 0
     var currentException: Exception = null

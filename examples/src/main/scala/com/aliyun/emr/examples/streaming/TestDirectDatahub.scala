@@ -44,7 +44,6 @@ object TestDirectDatahub {
 
     def getStreamingContext(): StreamingContext = {
       val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub"))
-      sc.setLogLevel("ERROR")
       val ssc = new StreamingContext(sc, Duration(duration))
       val dstream = DatahubUtils.createDirectStream(
         ssc,

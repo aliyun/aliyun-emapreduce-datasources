@@ -26,8 +26,9 @@ import scala.collection.mutable
 
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
+import com.aliyun.datahub.exception.InvalidParameterException
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
-import com.aliyun.datahub.model.{OffsetContext, RecordEntry, ShardState}
+import com.aliyun.datahub.model.{GetCursorResult, OffsetContext, RecordEntry, ShardState}
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
@@ -241,10 +242,23 @@ class DirectDatahubInputDStream(
     }
   }
 
-  private def fetchCursorFormDatahub(shardId: String) = {
+  private def fetchCursorFormDatahub(shardId: String): GetCursorResult = {
     val offsetContext = datahubClient.initOffsetContext(project, topic, subId, shardId)
     if (offsetContext.hasOffset) {
-      datahubClient.getNextOffsetCursor(offsetContext)
+      try {
+        datahubClient.getNextOffsetCursor(offsetContext)
+      } catch {
+        case e: InvalidParameterException =>
+          if (!isDataExpired(shardId)) {
+            throw e
+          }
+
+          logInfo("Fail to get cursor from offset context, cause data is expired. Retry with latest cursor")
+          datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST)
+        case e: Exception =>
+          logInfo(s"catch exception in fetchCursorFormDatahub, type:${e.getClass}")
+          throw e
+      }
     } else {
       mode match {
         case CursorType.OLDEST => datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST)
@@ -253,6 +267,13 @@ class DirectDatahubInputDStream(
         case CursorType.SYSTEM_TIME => datahubClient.getCursor(project, topic, shardId, CursorType.SYSTEM_TIME)
       }
     }
+  }
+
+  private def isDataExpired(shardId: String): Boolean = {
+    val oldestDataTimestamp = datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST).getRecordTime
+    val offsetContextTimestamp = datahubClient.initOffsetContext(project, topic, subId, shardId)
+      .getOffset.getTimestamp
+    oldestDataTimestamp > offsetContextTimestamp
   }
 
   @throws(classOf[IOException])
