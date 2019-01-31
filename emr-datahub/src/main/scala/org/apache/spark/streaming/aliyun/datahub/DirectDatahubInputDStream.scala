@@ -41,7 +41,7 @@ import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
 class DirectDatahubInputDStream(
-    @transient _ssc: StreamingContext,
+    _ssc: StreamingContext,
     endpoint: String,
     project: String,
     topic: String,
@@ -184,7 +184,7 @@ class DirectDatahubInputDStream(
         })
 
         lastJobTime = validTime.milliseconds
-        new DatahubRDD(_ssc.sc, _ssc.graph.batchDuration.milliseconds, endpoint, project, topic, subId, accessId,
+        new DatahubRDD(ssc.sc, ssc.graph.batchDuration.milliseconds, endpoint, project, topic, subId, accessId,
           accessKey, func, shardOffsets, zkParam, checkpointDir)
       } else {
         return None
