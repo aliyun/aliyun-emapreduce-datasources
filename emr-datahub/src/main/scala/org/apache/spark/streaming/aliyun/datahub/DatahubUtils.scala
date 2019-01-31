@@ -136,6 +136,8 @@ object DatahubUtils {
    * :: Experimental ::
    * Scala constructor for a DStream where
    * each datahub shard correspond to a RDD partition.
+   * The Spark configuration spark.streaming.datahub.maxRatePerShard sets
+   * max number of records per shard every second, 1000 by default.
    * @param project datahub project name
    * @param topic datahub topic name
    * @param subId datahub subscription id
@@ -190,6 +192,8 @@ object DatahubUtils {
    * :: Experimental ::
    * Scala constructor for a DStream where
    * each datahub shard correspond to a RDD partition.
+   * The Spark configuration spark.streaming.datahub.maxRatePerShard sets
+   * max number of records per shard every second.
    * @param project datahub project name
    * @param topic datahub topic name
    * @param subId datahub subscription id
@@ -316,6 +320,8 @@ class DatahubUtilsHelper {
    * :: Experimental ::
    * Java constructor for a DStream where
    * each datahub shard correspond to a RDD partition.
+   * The Spark configuration spark.streaming.datahub.maxRatePerShard sets
+   * max number of records per shard every second.
    * @param project datahub project name
    * @param topic datahub topic name
    * @param subId datahub subscription id
@@ -344,6 +350,8 @@ class DatahubUtilsHelper {
    * :: Experimental ::
    * Java constructor for a DStream where
    * each datahub shard correspond to a RDD partition.
+   * The Spark configuration spark.streaming.datahub.maxRatePerShard sets
+   * max number of records per shard every second.
    * @param project datahub project name
    * @param topic datahub topic name
    * @param subId datahub subscription id
