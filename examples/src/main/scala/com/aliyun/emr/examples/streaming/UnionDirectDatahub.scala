@@ -17,46 +17,60 @@
 package com.aliyun.emr.examples.streaming
 
 import com.aliyun.datahub.model.RecordEntry
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.streaming.aliyun.datahub.{CanCommitOffsets, DatahubUtils}
 import org.apache.spark.streaming.{Duration, StreamingContext}
-import org.apache.spark.streaming.aliyun.datahub.{CanCommitOffsets, DatahubUtils, DirectDatahubInputDStream}
+import org.apache.spark.{SparkConf, SparkContext}
 
-object TestDirectDatahub {
+object UnionDirectDatahub {
   def main(args: Array[String]): Unit = {
-    if (args.length < 7) {
+    if (args.length < 8) {
       println(
         """
-          |Usage: TestDirectDatahub endpoint project topic subId accessId accessKey duration [zookeeper-host:port]
+          |Usage: TestDirectDatahub endpoint project topic1 topic2 subId1 subId2
+          | accessId accessKey duration [zookeeper-host:port]
         """.stripMargin)
       sys.exit(1)
     }
     val endpoint = args(0)
     val project = args(1)
-    val topic = args(2)
-    val subId = args(3)
-    val accessId = args(4)
-    val accessKey = args(5)
-    val duration = args(6).toLong * 1000
-    val zkServer = if (args.length > 7 ) args(7) else "localhost:2181"
+    val topic1 = args(2)
+    val topic2 = args(3)
+    val subId1 = args(4)
+    val subId2 = args(5)
+    val accessId = args(6)
+    val accessKey = args(7)
+    val duration = args(8).toLong * 1000
+    val zkServer = if (args.length > 9 ) args(9) else "localhost:2181"
 
-    val checkpointDir = "/tmp/datahub/checkpoint/test-direct-datahub"
+    val checkpointDir = "/tmp/datahub/checkpoint/union-direct-datahub"
     val zkParam = Map("zookeeper.connect" -> zkServer)
 
     def getStreamingContext(): StreamingContext = {
-      val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub"))
+      val sc = new SparkContext(new SparkConf().setAppName("union-direct-datahub"))
       val ssc = new StreamingContext(sc, Duration(duration))
       val dstream = DatahubUtils.createDirectStream(
         ssc,
         endpoint,
         project,
-        topic,
-        subId,
+        topic1,
+        subId1,
         accessId,
         accessKey,
         read(_),
         zkParam)
 
-      dstream.checkpoint(Duration(duration)).foreachRDD(rdd => {
+      dstream.union(
+        DatahubUtils.createDirectStream(
+          ssc,
+          endpoint,
+          project,
+          topic2,
+          subId2,
+          accessId,
+          accessKey,
+          read(_),
+          zkParam)
+      ).checkpoint(Duration(duration)).foreachRDD(rdd => {
         println(s"count:${rdd.count()}")
         dstream.asInstanceOf[CanCommitOffsets].commitAsync()
       })
