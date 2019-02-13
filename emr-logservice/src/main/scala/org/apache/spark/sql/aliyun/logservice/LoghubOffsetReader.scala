@@ -23,7 +23,9 @@ import com.aliyun.openservices.log.common.Consts.CursorMode
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.types._
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.{ThreadUtils, UninterruptibleThread}
@@ -136,9 +138,9 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   }
 }
 
-object LoghubOffsetReader {
-  private var logServiceClient: LoghubClientAgent = null
-  private var zkClient: ZkClient = null
+object LoghubOffsetReader extends Logging with Serializable {
+  @transient private var logServiceClient: LoghubClientAgent = null
+  @transient private var zkClient: ZkClient = null
 
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
     if (zkClient == null) {
@@ -203,11 +205,63 @@ object LoghubOffsetReader {
     logServiceClient = getOrCreateLoghubClient(sourceOptions)
   }
 
-  def loghubSchema: StructType = StructType(Seq(
-    StructField("logProject", StringType),
-    StructField("logStore", StringType),
-    StructField("shardId", IntegerType),
-    StructField("timestamp", TimestampType),
-    StructField("value", BinaryType)
-  ))
+  def loghubSchema: StructType = {
+    StructType(Seq(
+      StructField("logProject", StringType),
+      StructField("logStore", StringType),
+      StructField("shardId", IntegerType),
+      StructField("timestamp", TimestampType),
+      StructField("value", BinaryType)
+    ))
+  }
+
+  def loghubSchema(
+      logProject: String,
+      logStore: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String): StructType = {
+    val logServiceClient = getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
+    logInfo(s"Try to fetch one latest log to analyse underlying schema.")
+    val (readOnlyShards, readAndWriteShards) = logServiceClient
+      .ListShard(logProject, logStore).GetShards()
+      .partition(s => s.getStatus.toLowerCase.equals("readonly"))
+    val oneShard = if (readAndWriteShards.nonEmpty) {
+      readAndWriteShards.head
+    } else if (readOnlyShards.nonEmpty) {
+      readOnlyShards.head
+    } else {
+      throw new IllegalStateException("There is no one log store shard in usable state.")
+    }
+
+    var schema = new StructType()
+    val endCursor = logServiceClient.GetCursor(logProject, logStore, oneShard.GetShardId(), CursorMode.END).GetCursor()
+    val endCursorTime = logServiceClient.GetCursorTime(logProject, logStore, oneShard.GetShardId(), endCursor).GetCursorTime()
+    val startCursor = logServiceClient.GetCursor(logProject, logStore, oneShard.GetShardId(), endCursorTime - 600).GetCursor()
+    val oneBatchLogs = logServiceClient.BatchGetLog(logProject, logStore, oneShard.GetShardId(), 1, startCursor, endCursor)
+    val group = oneBatchLogs.GetLogGroups().head
+    val log = group.GetLogGroup().getLogsList.head
+
+    schema = schema.add(StructField(__PROJECT__, StringType, false))
+    schema = schema.add(StructField(__STORE__, StringType, false))
+    schema = schema.add(StructField(__SHARD__, IntegerType, false))
+    schema = schema.add(StructField(__TIME__, TimestampType, false))
+    schema = schema.add(StructField(__TOPIC__, StringType, true))
+    schema = schema.add(StructField(__SOURCE__, StringType, true))
+
+    log.getContentsList.foreach(content => {
+      schema = schema.add(StructField(content.getKey, StringType, true))
+    })
+
+    val flg = group.GetFastLogGroup()
+    for (i <- 0 until flg.getLogTagsCount) {
+      val tagKey = flg.getLogTags(i).getKey
+      // exclude `__PACK_ID__` and `__USER_DEFINED_ID__` tag
+      if (!tagKey.equals(__PACK_ID__) && !tagKey.equals(__USER_DEFINED_ID__)) {
+        schema = schema.add(StructField(s"__tag$tagKey", StringType, true))
+      }
+    }
+
+    schema
+  }
 }

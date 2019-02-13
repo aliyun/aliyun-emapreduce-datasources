@@ -20,30 +20,32 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-import com.alibaba.fastjson.JSONObject
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
+import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.execution.SQLExecution.EXECUTION_ID_KEY
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.unsafe.types.UTF8String
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class LoghubSource(
     @transient sqlContext: SQLContext,
+    userSpecifiedSchema: Option[StructType],
     sourceOptions: Map[String, String],
     metadataPath: String,
     startingOffsets: LoghubOffsetRangeLimit,
-    loghubOffsetReader: LoghubOffsetReader)
-  extends Source with Logging {
+    @transient loghubOffsetReader: LoghubOffsetReader)
+  extends Source with Logging with Serializable {
 
   private val maxOffsetsPerTrigger =
     sourceOptions.getOrElse("maxOffsetsPerTrigger", 64 * 1024 + "")
@@ -75,8 +77,8 @@ class LoghubSource(
           out.write(0) // A zero byte is written to support Spark 2.1.0 (SPARK-19517)
           val writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))
           writer.write("v" + LoghubSource.VERSION + "\n")
-          writer.write(metadata.json)
-          writer.flush
+          writer.write(metadata.json())
+          writer.flush()
         }
 
         override def deserialize(in: InputStream): LoghubSourceOffset = {
@@ -111,19 +113,21 @@ class LoghubSource(
     }.shardToOffsets
   }
 
-  override def schema: StructType = LoghubOffsetReader.loghubSchema
+  override lazy val schema: StructType = Utils.getSchema(userSpecifiedSchema, sourceOptions)
 
-  val transf = (cr: (Int, JSONObject)) => {
-    val project = UTF8String.fromString(cr._2.getString(LoghubSourceRDD.__PROJECT__))
-    val store = UTF8String.fromString(cr._2.getString(LoghubSourceRDD.__STORE__))
-    cr._2.remove(LoghubSourceRDD.__PROJECT__)
-    cr._2.remove(LoghubSourceRDD.__STORE__)
-    InternalRow(
-      project,
-      store,
-      cr._1,
-      DateTimeUtils.fromJavaTimestamp(new java.sql.Timestamp(cr._2.getLong(LoghubSourceRDD.__TIME__) * 1000)),
-      cr._2.toJSONString.getBytes)
+  private val fallback = schema.sameType(LoghubOffsetReader.loghubSchema)
+
+  private val transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
+    if (fallback) {
+      InternalRow(
+        data.project,
+        data.store,
+        data.shardId,
+        DateTimeUtils.fromJavaTimestamp(data.dataTime),
+        data.getContent)
+    } else {
+      encoderForDataColumns.toRow(new GenericRow(data.toArray))
+    }
   }
 
   override def getOffset: Option[Offset] = {
@@ -149,11 +153,16 @@ class LoghubSource(
       })
     }
 
-    batches.foreach(e => e._2.unpersist())
+    batches.foreach(e => e._2.unpersist(false))
     batches.clear()
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-      accessKeyId, accessKeySecret, endpoint, shardOffsets, zkParams, metadataPath, maxOffsetsPerTrigger.toLong)
-      .map(transf)
+      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, zkParams,
+      metadataPath, maxOffsetsPerTrigger.toLong, fallback = fallback)
+      .mapPartitions(it => {
+        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+        it.map(t => transFunc(t, encoderForDataColumns))
+      })
+    sqlContext.sparkContext.setLocalProperty(EXECUTION_ID_KEY, null)
     rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
 
     val start = LoghubSourceOffset(shardOffsets.map(so => (logProject, logStore, so._1, so._2)).toArray:_*)
@@ -174,6 +183,7 @@ class LoghubSource(
     } else {
       start
     }
+
     val rdd = if (batches.contains((initialStart, end))) {
       val expiredBatches = batches.filter(b => !b._1._1.equals(initialStart) || !b._1._2.equals(end))
       expiredBatches.foreach(_._2.unpersist())
@@ -195,8 +205,12 @@ class LoghubSource(
       shards.foreach(shard => {
         shardOffsets.+=((shard.shard, fromShardOffsets(shard), untilShardOffsets(shard)))
       })
-      new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-        accessKeyId, accessKeySecret, endpoint, shardOffsets).map(transf)
+      new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
+        endpoint, shardOffsets, schema.fieldNames, fallback = fallback)
+        .mapPartitions(it => {
+          val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+          it.map(t => transFunc(t, encoderForDataColumns))
+        })
     }
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)

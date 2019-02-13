@@ -66,16 +66,15 @@ class LoghubRelation(
       val eof = untilPartitionOffsets(loghubShard)
       shardOffsets.+=((loghubShard.shard, sof, eof))
     }}
+    // todo: how to resolve the schema in streaming sql?
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-      accessKeyId, accessKeySecret, endpoint, shardOffsets).map { cr =>
-      cr._2.remove(LoghubSourceRDD.__PROJECT__)
-      cr._2.remove(LoghubSourceRDD.__STORE__)
+      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames).map { data =>
       InternalRow(
-        logProject,
-        logStore,
-        cr._1,
-        DateTimeUtils.fromJavaTimestamp(new java.sql.Timestamp(cr._2.getLong("__time__")* 1000)),
-        cr._2.toJSONString.getBytes)
+        data.project,
+        data.store,
+        data.shardId,
+        DateTimeUtils.fromJavaTimestamp(data.dataTime),
+        data.getContent)
     }
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }

@@ -3,7 +3,7 @@ package com.aliyun.emr.examples.streaming
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.streaming.aliyun.logservice.{DirectLoghubInputDStream, LoghubUtils}
+import org.apache.spark.streaming.aliyun.logservice.{CanCommitOffsets, LoghubUtils}
 
 object TestDirectLoghub {
   def main(args: Array[String]): Unit = {
@@ -45,7 +45,7 @@ object TestDirectLoghub {
           s.sorted
           (s.length, s)
         }).countByKey().size}")
-        loghubStream.asInstanceOf[DirectLoghubInputDStream].commitAsync()
+        loghubStream.asInstanceOf[CanCommitOffsets].commitAsync()
       })
       ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
       ssc
