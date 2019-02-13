@@ -20,8 +20,10 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 
@@ -158,9 +160,9 @@ class LoghubBatchRDD(
       logData.GetLogGroups().foreach(logGroup => {
         logGroup.GetLogGroup().getLogsList.foreach(log => {
           val data = new JSONObject()
-          data.put("__time__", log.getTime)
-          data.put("__topic__", logGroup.GetTopic())
-          data.put("__source__", logGroup.GetSource())
+          data.put(__TIME__, log.getTime)
+          data.put(__TOPIC__, logGroup.GetTopic())
+          data.put(__SOURCE__, logGroup.GetSource())
           log.getContentsList.foreach( content => {
             data.put(content.getKey, content.getValue)
           })

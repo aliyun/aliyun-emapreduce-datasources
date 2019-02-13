@@ -24,8 +24,10 @@ import scala.collection.JavaConversions._
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.{BufferHolder, UnsafeRowWriter}
@@ -114,9 +116,6 @@ class LoghubContinuousDataReader(
     shardId: Int,
     offset: String,
     sourceOptions: Map[String, String]) extends ContinuousDataReader[UnsafeRow] with Logging {
-  private val __TIME__ = "__time__"
-  private val __TOPIC__ = "__topic__"
-  private val __SOURCE__ = "__source__"
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 

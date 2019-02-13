@@ -57,6 +57,7 @@ object Utils extends Logging {
     caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
     caseInsensitiveParams.getOrElse("zookeeper.connect.address",
-      throw new MissingArgumentException("Missing 'zookeeper.connect.address' option when create loghub source."))
+      throw new MissingArgumentException("Missing zookeeper connect address " +
+        "(='zookeeper.connect.address')."))
   }
 }

@@ -142,10 +142,8 @@ class LoghubSourceRDD(
                   val columnArray = Array.tabulate(schemaFieldNames.length - 6)(idx =>
                     (null, null).asInstanceOf[(String, Any)]
                   )
-                  var idx = 0
                   log.getContentsList.foreach(content => {
                     columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
-                    idx += 1
                   })
 
                   val flg = group.GetFastLogGroup()
@@ -154,7 +152,6 @@ class LoghubSourceRDD(
                     val tagValue = flg.getLogTags(i).getValue
                     if (!tagKey.equals(__PACK_ID__) && !tagKey.equals(__USER_DEFINED_ID__)) {
                       columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
-                      idx += 1
                     }
                   }
 
