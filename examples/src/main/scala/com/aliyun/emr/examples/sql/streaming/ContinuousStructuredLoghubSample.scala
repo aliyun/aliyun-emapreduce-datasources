@@ -23,21 +23,20 @@ import org.apache.spark.sql.streaming.Trigger
 
 object ContinuousStructuredLoghubSample {
   def main(args: Array[String]) {
-    if (args.length < 7) {
+    if (args.length < 6) {
       System.err.println("Usage: ContinuousStructuredLoghubSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
-        "<starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+        "<starting-offsets> [<checkpoint-location>]")
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, _*) = args
     val checkpointLocation =
-      if (args.length > 7) args(7) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 6) args(6) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
       .appName("ContinuousStructuredLoghubSample")
-      .master("local[5]")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -54,7 +53,6 @@ object ContinuousStructuredLoghubSample {
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
       .option("startingoffsets", startingOffsets)
-      .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
       .load()
       .selectExpr("CAST(value AS STRING)")
       .as[String].map(e => (e, e.length)).toDF("value", "length")
