@@ -25,7 +25,8 @@ object StructuredLoghubWordCount {
     if (args.length < 8) {
       System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
-        "<starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+        "<starting-offsets> <max-offsets-per-trigger> <zookeeper-connect-address> " +
+        "[<checkpoint-location>]")
       System.exit(1)
     }
 
