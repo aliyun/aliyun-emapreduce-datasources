@@ -708,6 +708,47 @@ class LoghubUtilsHelper {
       numReceivers, storageLevel, cursor, mLoghubCursorStartTime, forceSpecial)
   }
 
+  @Experimental
+  def createDirectStream(
+      jssc: JavaStreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: java.util.HashMap[String, String],
+      cursorPositionMode: String): JavaInputDStream[String] = {
+    createDirectStream(jssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams, cursorPositionMode, -1L)
+  }
+
+  /**
+    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
+    * at the first time with current `mConsumerGroup`
+    */
+  @Experimental
+  def createDirectStream(
+      jssc: JavaStreamingContext,
+      project: String,
+      logStore: String,
+      mConsumerGroup: String,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      zkParams: java.util.HashMap[String, String],
+      cursorPositionMode: String,
+      cursorStartTime: Long): JavaInputDStream[String] = {
+    val cursorMode = cursorPositionMode match {
+      case "BEGIN_CURSOR" => LogHubCursorPosition.BEGIN_CURSOR
+      case "END_CURSOR" => LogHubCursorPosition.END_CURSOR
+      case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
+      case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
+    }
+    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore, mConsumerGroup, accessKeyId,
+      accessKeySecret, endpoint, zkParams.asScala.toMap, cursorMode, cursorStartTime))
+  }
+
   def createRDD(
       jsc:JavaSparkContext,
       project: String,
