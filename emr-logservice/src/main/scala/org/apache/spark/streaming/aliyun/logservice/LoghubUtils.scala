@@ -93,6 +93,32 @@ object LoghubUtils {
     }
   }
 
+  /**
+   *{{{
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val batchInterval = Milliseconds(5 * 1000)
+   *
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer.
+   *       All consumer process which has the same group name will consumer
+   *       specific logStore together.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -182,6 +208,36 @@ object LoghubUtils {
     }
   }
 
+  /**
+   * Create loghub [[DStream]].
+   *{{{
+   *   val loghubProject = "sample-project"
+   *   val logStream = "sample-logstore"
+   *   val loghubGroupName = "sample-group"
+   *   val numReceivers = 2
+   *   val batchInterval = Milliseconds(5 * 1000)
+   *
+   *   val conf = new SparkConf().setAppName("Test Loghub")
+   *   val ssc = new StreamingContext(conf, batchInterval)
+   *   val loghubStream = LoghubUtils.createStream(
+   *     ssc,
+   *     loghubProject,
+   *     logStream,
+   *     loghubGroupName,
+   *     numReceivers,
+   *     StorageLevel.MEMORY_AND_DISK)
+   *
+   *}}}
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer.
+   *        All consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param numReceivers The number of receivers.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -256,6 +312,21 @@ object LoghubUtils {
     }
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *        `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -337,6 +408,22 @@ object LoghubUtils {
     }
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param numReceivers The number of receivers.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -368,6 +455,20 @@ object LoghubUtils {
     }
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -382,6 +483,17 @@ object LoghubUtils {
       storageLevel)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -392,6 +504,21 @@ object LoghubUtils {
       loghubConsumerGroupName, storageLevel)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -407,6 +534,18 @@ object LoghubUtils {
       accessKeySecret, storageLevel)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param numReceivers The number of receivers.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -418,6 +557,24 @@ object LoghubUtils {
       loghubConsumerGroupName, numReceivers, storageLevel)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -435,6 +592,21 @@ object LoghubUtils {
       storageLevel, cursorPosition, mLoghubCursorStartTime, forceSpecial)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -449,6 +621,25 @@ object LoghubUtils {
       forceSpecial)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param loghubEndpoint The endpoint of loghub.
+   * @param numReceivers The number of receivers.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -467,6 +658,22 @@ object LoghubUtils {
       cursorPosition, mLoghubCursorStartTime, forceSpecial)
   }
 
+  /**
+   * Create loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param logServiceProject The name of `LogService` project.
+   * @param logStoreName The name of logStore.
+   * @param loghubConsumerGroupName The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param numReceivers The number of receivers.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @param cursorPosition Set user defined cursor type.
+   * @param mLoghubCursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @param forceSpecial Whether to force to set consume position as the
+   *                     `mLoghubCursorStartTime`.
+   * @return
+   */
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -481,6 +688,21 @@ object LoghubUtils {
       numReceivers, storageLevel, cursorPosition, mLoghubCursorStartTime, forceSpecial)
   }
 
+  /**
+   * Create direct loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param project The name of `LogService` project.
+   * @param logStore The name of logStore.
+   * @param mConsumerGroup The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of loghub.
+   * @param zkParams Zookeeper parameters.
+   * @param mode Set user defined cursor type.
+   * @return
+   */
   @Experimental
   def createDirectStream(
       ssc: StreamingContext,
@@ -499,6 +721,21 @@ object LoghubUtils {
   /**
    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
    * at the first time with current `mConsumerGroup`
+   *
+   * Create direct loghub [[DStream]].
+   * @param ssc StreamingContext.
+   * @param project The name of `LogService` project.
+   * @param logStore The name of logStore.
+   * @param mConsumerGroup The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of loghub.
+   * @param zkParams Zookeeper parameters.
+   * @param mode Set user defined cursor type.
+   * @param cursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @return
    */
   @Experimental
   def createDirectStream(
@@ -516,6 +753,21 @@ object LoghubUtils {
       accessKeySecret, endpoint, zkParams, mode, cursorStartTime)
   }
 
+  /**
+   * Create direct loghub [[DStream]].
+   * @param jssc JavaStreamingContext.
+   * @param project The name of `LogService` project.
+   * @param logStore The name of logStore.
+   * @param mConsumerGroup The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of loghub.
+   * @param zkParams Zookeeper parameters.
+   * @param mode Set user defined cursor type.
+   * @return
+   */
   @Experimental
   def createDirectStream(
       jssc: JavaStreamingContext,
@@ -534,6 +786,21 @@ object LoghubUtils {
   /**
    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
    * at the first time with current `mConsumerGroup`
+   *
+   * Create direct loghub [[DStream]].
+   * @param jssc StreamingContext.
+   * @param project The name of `LogService` project.
+   * @param logStore The name of logStore.
+   * @param mConsumerGroup The group name of loghub consumer. All
+   *        consumer process which has the same group name will consumer
+   *        specific logStore together.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of loghub.
+   * @param zkParams Zookeeper parameters.
+   * @param mode Set user defined cursor type.
+   * @param cursorStartTime Set user defined cursor position (Unix Timestamp).
+   * @return
    */
   @Experimental
   def createDirectStream(
@@ -723,10 +990,6 @@ class LoghubUtilsHelper {
       accessKeySecret, endpoint, zkParams, cursorPositionMode, -1L)
   }
 
-  /**
-    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
-    * at the first time with current `mConsumerGroup`
-    */
   @Experimental
   def createDirectStream(
       jssc: JavaStreamingContext,
