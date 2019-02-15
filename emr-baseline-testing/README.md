@@ -19,38 +19,55 @@ more information please pay close attention to official documentation: [E-MapRed
 
 ```
 1. Submit jobs to replicate TPC-DS dataset to Kafka:
-$ ./bin/start-data-simulator.sh -database tpcds_hdfs_text_10 -tables store_sales,store_returns -warehouse hdfs:///user/hive/warehouse -bootstrapServers a.b.c.d:9092 -schemaRegistryUrl http://a.b.c.d:8081
+$ ./bin/start-data-simulator.sh -database tpcds_hdfs_text_10 -tables store_sales,store_returns -warehouse hdfs:///user/hive/warehouse -bootstrapServers a.b.c.d:9092 -schemaRegistryUrl http://a.b.c.d:8081 -throughput 10000 -unbound
 
-Usage: start-data-simulator.sh -database <database> -tables <tables> -warehouse <warehouseLocation> -bootstrapServers <bootstrapServers> -schemaRegistryUrl <schemaRegistryUrl>
+Usage: start-data-simulator.sh -database <database> -tables <tables> -warehouse <warehouseLocation> -bootstrapServers <bootstrapServers> -schemaRegistryUrl <schemaRegistryUrl> -throughput throughput [-unbound]
 
            <database>: the name of TPC-DS dataset database
              <tables>: the name of tables to be replicated to Kafka, separated by commas.
   <warehouseLocation>: the location path of hive warehouse
    <bootstrapServers>: the bootstrap servers of Kafka
   <schemaRegistryUrl>: the url of Kafka schema registry
+         <throughput>: the max data throughput in each spark task.
+            <unbound>: indicate if continue after replicate whole table data. If true, replicate table data circularly, otherwise replicate table data just once. 
+
+You can also use `start-all-data-simulator.sh` script to replicate all needed data to Kafka circularly。
 
 2. Stop all submited data replicating jobs: 
 $ ./bin/stop-data-simulator.sh
 
-3. Create Spark stream tables whose source is Kafka:
+3. Create Spark stream tables whose source is Kafka and initialize topic (of result table) schema:
 $ ./bin/load.sh
 
 There are some env configurations we need to set in ./bin/config.sh
-                 <SF>: the scale factor ogf TPC-DS dataset, 10 default
-      <WAREHOUSE_DIR>: the location path of hive warehouse, hdfs:///user/hive/warehouse default
-              <STORE>: the storage system, hdfs default.
-               <PORT>: the port of Spark Thrift Server, 10001 default.
-                 <DB>: the name of TPC-DS dataset database
-  <BOOTSTRAP_SERVERS>: the bootstrap servers of Kafka
-<SCHEMA_REGISTRY_URL>: the url of Kafka schema registry
+                 <SF>: the scale factor ogf TPC-DS dataset, "10" default.
+      <WAREHOUSE_DIR>: the location path of hive warehouse, "hdfs:///user/hive/warehouse" default.
+              <STORE>: the storage system, "hdfs" default.
+               <PORT>: the port of Spark Thrift Server, "10001" default.
+                 <DB>: the name of TPC-DS dataset database.
+             <TABLES>: the list of tables, "store_returns,store_sales,web_returns,web_sales,inventory,catalog_returns,catalog_sales" default.
+  <BOOTSTRAP_SERVERS>: the bootstrap servers of Kafka.
+<SCHEMA_REGISTRY_URL>: the url of Kafka schema registry.
+    <CHECKPOINT_ROOT>: the spark streaming checkpoint root directory, "hdfs:///user/spark/sql/streaming/checkpoint" default.
+         <THROUGHPUT>: the throughput of data replicating in each spark task, "10000" default.
+ <TESTING_TIMEOUT_MS>: the spark streaming query timeout in ms if `TESTING_ENABLE` is true.
+     <TESTING_ENABLE>: indicate if enable spark test mode. If true, the spark streaming query will be submited in single spark-sql client with "TESTING_TIMEOUT_MS" timeout.
+                       If false, the spark streaming query will be submited to spark thrift server in a long-running way. So if "TESTING_ENABLE" is false, we should start
+                       a spark thrift server first.
+      <NUM_EXECUTORS>: the number of executors in spark-sql job, if "TESTING_ENABLE" is true.
+     <EXECUTOR_CORES>: the core number of executor in spark-sql job, if "TESTING_ENABLE" is true.
+    <EXECUTOR_MEMORY>: the memory size of executor in spark-sql job, if "TESTING_ENABLE" is true.
 
 4. Run a query:
-$ ./bin/run-query 3
+$ ./bin/run-query.sh 3
 
-Usage: run-query <queryId>
+Usage: run-query.sh <queryId>
 
             <queryId>: the id of qurey, '3' means the 'q3.sql' in ./queries directory.
 ``` 
+
+5. Run all queries.
+$ ./bin/run-all.sh
 
 ### Build
 
@@ -63,6 +80,7 @@ This command will create a emr-baseline-testing-dist-`<version>`.tgz in module r
 - lib: tool dependency libraries
 - queries: baseline testing queries
 - tables: baseline testing table definitions
+- schemas: result topic schema definition.
 
 ### Data Stream
 
@@ -79,9 +97,105 @@ schema (name and type). In consideration of particularity for stream query, we i
 |store_sales| ss_data_time|
 |web_returns| wr_data_time|
 |web_sales| ws_data_time|
+
 - Simulate data delay
   - delayed data percentage: <= 5%
   - max data delay: 5 minutes
+
+### DDL
+
+- without schema definition
+
+Spark will retrieve the table schema from kafka schema registry.
+
+```
+CREATE TABLE driverbehavior 
+USING kafka 
+OPTIONS (
+kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
+subscribe = "${TOPIC_NAME}",
+output.mode = "${OUTPUT_MODE}"",
+kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
+kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
+kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
+kafka.auto.register.schemas = "${AUTO_REGISTER_SCHEMA_ENABLE}");
+```
+
+- with user-defined schema
+
+The user-defined schema must be the subset of schema which is registered in kafka schema registry.
+
+```
+CREATE TABLE driverbehavior(deviceId string, velocity double)
+USING kafka 
+OPTIONS (
+kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
+subscribe = "${TOPIC_NAME}",
+output.mode = "${OUTPUT_MODE}"",
+kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
+kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
+kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
+kafka.auto.register.schemas = "${AUTO_REGISTER_SCHEMA_ENABLE}");
+```
+
+| Config|definition|
+|---|---|
+|kafka.bootstrap.servers|the bootstrap servers of kafka.|
+|subscribe| the topic name to subscribe.|
+|output.mode| specifies how data of a streaming DataFrame/Dataset is written to a streaming sink.|
+|kafka.schema.registry.url| the url of kafka schema registry.|
+|kafka.schema.record.name| the name of schema record.|
+|kafka.schema.record.namespace| the namespace of schema record. |
+|kafka.auto.register.schemas| whether to register nonexistent schema automatically.|
+
+### DML 
+
+There are two ways to start a spark streaming query.
+
+- CTAS
+
+```
+CREATE TABLE kafka_temp_table
+USING kafka
+OPTIONS (
+kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
+subscribe = "${TOPIC_NAME}",
+output.mode = "${OUTPUT_MODE}"",
+kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
+kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
+kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
+kafka.auto.register.schemas = "${AUTO_REGISTER_SCHEMA_ENABLE}") AS
+SELECT
+  i_brand_id brand_id,
+  i_brand brand,
+  sum(ss_ext_sales_price) ext_price
+FROM date_dim, kafka_store_sales, item
+WHERE d_date_sk = ss_sold_date_sk
+  AND ss_item_sk = i_item_sk
+  AND i_manager_id = 28
+  AND d_moy = 11
+  AND d_year = 1999
+GROUP BY TUMBLING(ss_data_time, interval 1 minute), i_brand, i_brand_id
+HAVING delay(ss_data_time) < '2 minutes'
+```
+
+- Insert into
+
+```
+INSERT INTO kafka_temp_table
+SELECT
+  i_brand_id brand_id,
+  i_brand brand,
+  sum(ss_ext_sales_price) ext_price
+FROM date_dim, kafka_store_sales, item
+WHERE d_date_sk = ss_sold_date_sk
+  AND ss_item_sk = i_item_sk
+  AND i_manager_id = 28
+  AND d_moy = 11
+  AND d_year = 1999
+GROUP BY TUMBLING(ss_data_time, interval 1 minute), i_brand, i_brand_id
+HAVING delay(ss_data_time) < '2 minutes'
+```
 
 ### Queries
 

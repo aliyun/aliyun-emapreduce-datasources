@@ -23,4 +23,4 @@ base_dir=$(dirname $0)
 
 source ${base_dir}/config.sh
 
-${base_dir}/start-data-simulator.sh -database ${DB} -tables ${TABLES} -warehouse ${WAREHOUSE_DIR} -bootstrapServers ${BOOTSTRAP_SERVERS} -schemaRegistryUrl ${SCHEMA_REGISTRY_URL} --throughput ${THROUGHPUT} --unbound
+${base_dir}/start-data-simulator.sh -database ${DB} -tables ${TABLES} -warehouse ${WAREHOUSE_DIR} -bootstrapServers ${BOOTSTRAP_SERVERS} -schemaRegistryUrl ${SCHEMA_REGISTRY_URL} -throughput ${THROUGHPUT} -unbound

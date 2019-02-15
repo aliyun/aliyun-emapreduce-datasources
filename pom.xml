@@ -64,7 +64,7 @@
         <okhttp3.version>3.9.1</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
         <commons.lang3.version>3.3.2</commons.lang3.version>
-        <kafka.version>0.10.0.1</kafka.version>
+        <kafka.version>0.10.1.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
         <datahub.verion>2.9.2-public</datahub.verion>
         <confluent.version>5.0.0</confluent.version>

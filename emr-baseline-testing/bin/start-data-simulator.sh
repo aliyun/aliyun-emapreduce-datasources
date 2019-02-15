@@ -20,7 +20,7 @@
 if [ $# -lt 1 ];
 then
 	echo "Usage: ./bin/start-data-simulator.sh -database database -tables tables -warehouse warehouseLocation
-	            -bootstrapServers bootstrapServers -schemaRegistryUrl schemaRegistryUrl --throughput throughput [--unbound]"
+	            -bootstrapServers bootstrapServers -schemaRegistryUrl schemaRegistryUrl -throughput throughput [-unbound]"
 	exit 1
 fi
 base_dir="$(cd "`dirname "$0"`/.."; pwd)"
@@ -53,11 +53,11 @@ while [ $# -gt 0 ]; do
       SCHEMA_REGISTRY_URL=$2
       shift 2
       ;;
-    --throughput)
+    -throughput)
       THROUGHPUT=$2
       shift 2
       ;;
-    --unbound)
+    -unbound)
       UNBOUND="true"
       shift 1
       ;;

@@ -12,7 +12,7 @@
 
     <artifactId>emr-tablestore</artifactId>
     <packaging>jar</packaging>
-    <name>Aliyun E-MapReduce External TableStore</name>
+    <name>Aliyun E-MapReduce External TableStore Support</name>
 
     <dependencies>
         <dependency>
