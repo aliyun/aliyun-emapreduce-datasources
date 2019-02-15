@@ -16,12 +16,12 @@
  */
 package org.apache.spark.streaming.aliyun.datahub
 
-import com.aliyun.datahub.exception.{OffsetResetedException, OffsetSessionChangedException, SubscriptionOfflineException}
-
 import scala.collection.JavaConversions._
+
+import com.aliyun.datahub.DatahubConfiguration
+import com.aliyun.datahub.exception.OffsetResetedException
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
-import com.aliyun.datahub.DatahubConfiguration
 import org.apache.spark.internal.Logging
 
 class DatahubWorker(projectName: String, topicName: String, shardId: String, subId: String,
