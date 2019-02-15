@@ -52,7 +52,9 @@ object TestLoghub {
         accessKeySecret,
         StorageLevel.MEMORY_AND_DISK)
 
-      loghubStream.checkpoint(batchInterval * 2).foreachRDD(rdd => println(rdd.count()))
+      loghubStream.checkpoint(batchInterval * 2).foreachRDD(rdd =>
+        rdd.map(bytes => new String(bytes)).top(10).foreach(println)
+      )
       ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
       ssc
     }

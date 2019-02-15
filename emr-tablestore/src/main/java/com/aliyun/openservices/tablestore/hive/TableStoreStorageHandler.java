@@ -18,11 +18,15 @@
 
 package com.aliyun.openservices.tablestore.hive;
 
+import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.Map;
+import java.util.Set;
 
 import com.aliyun.openservices.tablestore.hadoop.Credential;
 import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.ql.metadata.DefaultStorageHandler;
@@ -81,11 +85,12 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
 
     @Override public void configureJobConf(TableDesc tableDesc,
         org.apache.hadoop.mapred.JobConf jobConf) {
-        Properties from = tableDesc.getProperties();
-        logger.debug("TableDesc: {}", from);
-        logger.debug("job conf: {}", jobConf);
-        jobConf.setJarByClass(TableStoreStorageHandler.class);
-        {
+        try {
+            Properties from = tableDesc.getProperties();
+            logger.debug("TableDesc: {}", from);
+            logger.debug("job conf: {}", jobConf);
+            jobConf.setJarByClass(TableStoreStorageHandler.class);
+
             String accessKeyId = from.getProperty(TableStoreConsts.ACCESS_KEY_ID);
             if (accessKeyId == null) {
                 logger.error("{} is required.", TableStoreConsts.ACCESS_KEY_ID);
@@ -102,8 +107,7 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
                 from.getProperty(TableStoreConsts.SECURITY_TOKEN));
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .setCredential(jobConf, cred);
-        }
-        {
+
             String endpoint = from.getProperty(TableStoreConsts.ENDPOINT);
             if (endpoint == null) {
                 logger.error("{} is required.", TableStoreConsts.ENDPOINT);
@@ -121,8 +125,7 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
                 .setEndpoint(jobConf, ep);
-        }
-        {
+
             String table = from.getProperty(TableStoreConsts.TABLE_NAME);
             if (table == null) {
                 logger.error("{} is required.", TableStoreConsts.TABLE_NAME);
@@ -131,8 +134,7 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
                 .setOutputTable(jobConf, table);
-        }
-        {
+
             String t = from.getProperty(TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
             if (t != null) {
                 try {
@@ -145,14 +147,21 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
                     }
                     com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
                         .setMaxBatchSize(jobConf, batchSize);
-                } catch(NumberFormatException ex) {
+                } catch (NumberFormatException ex) {
                     logger.error("{} must be a positive integer.",
                         TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
                     throw new IllegalArgumentException(
                         TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be a positive integer.");
                 }
             }
+
+            Set<String> merged = new LinkedHashSet<String>(jobConf.getStringCollection("tmpjars"));
+            Job copy = new Job(jobConf);
+            TableMapReduceUtils.addDependencyJars(copy);
+            merged.addAll(copy.getConfiguration().getStringCollection("tmpjars"));
+            jobConf.set("tmpjars", StringUtils.arrayToString(merged.toArray(new String[0])));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
-
 }

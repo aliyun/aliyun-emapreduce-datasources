@@ -18,20 +18,19 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.util
 
+import scala.collection.JavaConversions._
+
 import com.alibaba.fastjson.JSONObject
-import com.aliyun.openservices.log.common.{FastLogGroup, LogGroupData}
+import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.log.common.Logs.Log
 import com.aliyun.openservices.loghub.client.ILogHubCheckPointTracker
 import com.aliyun.openservices.loghub.client.interfaces.ILogHubProcessor
-import org.apache.spark.internal.Logging
 
-import scala.collection.JavaConversions._
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 
 class SimpleLogHubProcessor(receiver: LoghubReceiver)
     extends ILogHubProcessor with Logging {
-  private val __TIME__ = "__time__"
-  private val __TOPIC__ = "__topic__"
-  private val __SOURCE__ = "__source__"
   private var mShardId: Int = 0
   private var mLastCheckTime = 0L
 

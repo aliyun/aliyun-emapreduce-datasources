@@ -18,9 +18,10 @@ package org.apache.spark.sql.aliyun.logservice
 
 import java.util.{Locale, Optional, UUID}
 
+import scala.collection.JavaConverters._
+
 import org.apache.commons.cli.MissingArgumentException
 
-import scala.collection.JavaConverters._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.Source
@@ -44,9 +45,7 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): (String, StructType) = {
-    validateOptions(parameters)
-    require(schema.isEmpty, "Loghub source has a fixed schema and cannot be set with a custom one")
-    (shortName(), LoghubOffsetReader.loghubSchema)
+    (shortName(), Utils.getSchema(schema, parameters))
   }
 
   override def createSource(
@@ -55,13 +54,14 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    validateOptions(parameters)
+    Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
       STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
     new LoghubSource(
       sqlContext,
+      schema,
       parameters,
       metadataPath,
       startingStreamOffsets,
@@ -71,7 +71,7 @@ class LoghubSourceProvider extends DataSourceRegister
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    validateOptions(parameters)
+    Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
 
     val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
@@ -94,7 +94,7 @@ class LoghubSourceProvider extends DataSourceRegister
         throw new AnalysisException(s"Save mode $mode not allowed for Loghub. " +
           s"Allowed save modes are ${SaveMode.Append} and " +
           s"${SaveMode.ErrorIfExists} (default).")
-      case _ => // good
+      case _ => // ok
     }
 
     /* This method is suppose to return a relation that reads the data that was written.
@@ -131,24 +131,12 @@ class LoghubSourceProvider extends DataSourceRegister
 
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
     new LoghubContinuousReader(
+      Some(schema.orElse(new StructType())),
       loghubOffsetReader,
       paramsForExecutors(specifiedLoghubParams, uniqueGroupId),
       parameters,
       checkpointLocation,
       startingStreamOffset)
-  }
-
-  private def validateOptions(caseInsensitiveParams: Map[String, String]) = {
-    caseInsensitiveParams.getOrElse("sls.project",
-      throw new MissingArgumentException("Missing logService project (='sls.project')."))
-    caseInsensitiveParams.getOrElse("sls.project",
-      throw new MissingArgumentException("Missing logService store (='sls.store')."))
-    caseInsensitiveParams.getOrElse("access.key.id",
-      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-    caseInsensitiveParams.getOrElse("access.key.secret",
-      throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
-    caseInsensitiveParams.getOrElse("endpoint",
-      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
   }
 
   def paramsForExecutors(
@@ -162,6 +150,23 @@ object LoghubSourceProvider {
 
   val STARTING_OFFSETS_OPTION_KEY = "startingoffsets"
   val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
+  val __PROJECT__ = "__logProject__"
+  val __STORE__ = "__logStore__"
+  val __SHARD__ = "__shard__"
+  val __TIME__ = "__time__"
+  val __TOPIC__ = "__topic__"
+  val __SOURCE__ = "__source__"
+  val __PACK_ID__ = "__pack_id__"
+  val __USER_DEFINED_ID__ = "__user_defined_id__"
+
+  def isDefaultField(fieldName: String): Boolean = {
+    fieldName == __PROJECT__ ||
+    fieldName == __STORE__ ||
+    fieldName == __SHARD__ ||
+    fieldName == __TIME__ ||
+    fieldName == __TOPIC__ ||
+    fieldName == __SOURCE__
+  }
 
   def getLoghubOffsetRangeLimit(
       params: Map[String, String],

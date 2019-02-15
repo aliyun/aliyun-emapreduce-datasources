@@ -142,6 +142,38 @@ class LoghubUtils(object):
         return RDD(jrdd, sc, UTF8Deserializer())
 
     @staticmethod
+    def createDirectStream(ssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+                           accessKeyId, accessKeySecret, loghubEndpoint,
+                           zkParams, cursorPositionMode, cursorStartTime=-1):
+        """
+        :param ssc: StreamingContext object.
+        :param logServiceProject: The name of `LogService` project.
+        :param logStoreName: The name of logStore.
+        :param loghubConsumerGroupName: The group name of loghub consumer. All consumer process which has the same group
+                                       name will consumer specific logStore together.
+        :param accessKeyId: Aliyun Access Key ID.
+        :param accessKeySecret: Aliyun Access Key Secret.
+        :param loghubEndpoint: The endpoint of loghub.
+        :param zkParams: Zookeeper properties.
+        :param cursorPositionMode: Set user defined cursor mode.
+        :param cursorStartTime: Set user defined cursor position (Unix Timestamp), -1 default.
+        :return: A Direct api DStream object.
+        """
+        try:
+            helperClass = ssc._jvm.java.lang.Thread.currentThread().getContextClassLoader() \
+                .loadClass("org.apache.spark.streaming.aliyun.logservice.LoghubUtilsHelper")
+            helper = helperClass.newInstance()
+            jstream = helper.createDirectStream(ssc._jssc, logServiceProject, logStoreName, loghubConsumerGroupName,
+                                                accessKeyId, accessKeySecret, loghubEndpoint, zkParams,
+                                                cursorPositionMode, cursorStartTime)
+        except Py4JJavaError as e:
+            if 'ClassNotFoundException' in str(e.java_exception):
+                LoghubUtils._printErrorMsg()
+            raise e
+
+        return DStream(jstream, ssc, UTF8Deserializer())
+
+    @staticmethod
     def _printErrorMsg():
         print("""
 ________________________________________________________________________________________________

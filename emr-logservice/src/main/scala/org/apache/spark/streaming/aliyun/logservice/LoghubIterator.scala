@@ -22,12 +22,12 @@ import com.alibaba.fastjson.JSONObject
 import org.I0Itec.zkclient.ZkClient
 
 import scala.collection.JavaConversions._
-import com.aliyun.openservices.log.Client
-import com.aliyun.openservices.log.exception.LogException
+
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.apache.http.conn.ConnectTimeoutException
+
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
@@ -42,9 +42,6 @@ class LoghubIterator(
     checkpointDir: String,
     context: TaskContext)
   extends NextIterator[String] with Logging {
-  private val __TIME__ = "__time__"
-  private val __TOPIC__ = "__topic__"
-  private val __SOURCE__ = "__source__"
 
   private val step: Int = 1000
   private var hasRead: Int = 0

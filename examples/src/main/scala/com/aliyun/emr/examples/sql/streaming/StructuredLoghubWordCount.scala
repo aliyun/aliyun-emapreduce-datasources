@@ -22,21 +22,21 @@ import org.apache.spark.sql.SparkSession
 
 object StructuredLoghubWordCount {
   def main(args: Array[String]) {
-    if (args.length < 7) {
+    if (args.length < 8) {
       System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
-        "<starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+        "<starting-offsets> <max-offsets-per-trigger> <zookeeper-connect-address> " +
+        "[<checkpoint-location>]")
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, zkAddr, _*) = args
     val checkpointLocation =
-      if (args.length > 7) args(7) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 8) args(8) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
       .appName("StructuredLoghubWordCount")
-      .master("local[5]")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -53,7 +53,7 @@ object StructuredLoghubWordCount {
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
       .option("startingoffsets", startingOffsets)
-      .option("zookeeper.connect.address", "localhost:2181")
+      .option("zookeeper.connect.address", zkAddr)
       .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
       .load()
       .selectExpr("CAST(value AS STRING)")
