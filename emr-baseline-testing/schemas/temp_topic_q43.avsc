@@ -1,0 +1,15 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "s_store_name", "type": ["string", "null"]},
+    {"name": "s_store_id", "type": ["string", "null"]},
+    {"name": "sun_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "mon_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "tue_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "wed_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "thu_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "fri_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "sat_sales", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]}
+ ]
+}

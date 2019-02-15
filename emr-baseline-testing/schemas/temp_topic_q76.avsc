@@ -1,0 +1,13 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"channel","type":"string"},
+    {"name":"col_name","type":["long","null"]},
+    {"name":"d_year","type":["int","null"]},
+    {"name":"d_qoy","type":["int","null"]},
+    {"name":"i_category","type":["string","null"]},
+    {"name":"sales_cnt","type":"long"},
+    {"name":"sales_amt","type":[{"type":"bytes","logicalType":"decimal","precision":"17","scale":"2"},"null"]}
+ ]
+}

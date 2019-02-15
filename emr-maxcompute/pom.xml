@@ -12,7 +12,7 @@
 
     <artifactId>emr-maxcompute_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Aliyun E-MapReduce External MaxCompute</name>
+    <name>Aliyun E-MapReduce External MaxCompute Support</name>
 
     <dependencies>
         <dependency>

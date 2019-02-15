@@ -1,0 +1,10 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "w_warehouse_name", "type": ["string", "null"]},
+    {"name": "i_item_id", "type": ["string", "null"]},
+    {"name": "inv_before", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]},
+    {"name": "inv_after", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]}
+ ]
+}

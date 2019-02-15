@@ -12,7 +12,7 @@
 
     <artifactId>emr-mns_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Aliyun E-MapReduce External MNS</name>
+    <name>Aliyun E-MapReduce External MNS Support</name>
 
     <dependencies>
         <dependency>

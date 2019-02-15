@@ -1,0 +1,10 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "avg_ss_quantity_", "type": ["double", "null"]},
+    {"name": "avg_ss_ext_sales_price_", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
+    {"name": "avg_ss_ext_wholesale_cost_", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
+    {"name": "sum_ss_ext_wholesale_cost_", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]}
+ ]
+}

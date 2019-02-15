@@ -1,0 +1,12 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"c_last_name","type":["string","null"]},
+    {"name":"c_first_name","type":["string","null"]},
+    {"name":"substring_s_city__1__30_","type":["string","null"]},
+    {"name":"ss_ticket_number","type":["long","null"]},
+    {"name":"amt","type":[{"type":"bytes","logicalType":"decimal","precision":"17","scale":"2"},"null"]},
+    {"name":"profit","type":[{"type":"bytes","logicalType":"decimal","precision":"17","scale":"2"},"null"]}
+ ]
+}

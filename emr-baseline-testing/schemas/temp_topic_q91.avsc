@@ -1,0 +1,10 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"Call_Center","type":["string","null"]},
+    {"name":"Call_Center_Name","type":["string","null"]},
+    {"name":"Manager","type":["string","null"]},
+    {"name":"Returns_Loss","type":[{"type":"bytes","logicalType":"decimal","precision":"17","scale":"2"},"null"]}
+ ]
+}

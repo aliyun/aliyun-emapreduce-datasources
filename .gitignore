@@ -1,4 +1,8 @@
 .idea/
+emr-baseline-testing/target/*
+emr-baseline-testing/dist/*
+emr-baseline-testing/lib/*
+emr-baseline-testing/*.tgz
 emr-oss/target/*
 emr-ons/target/*
 emr-mns/target/*

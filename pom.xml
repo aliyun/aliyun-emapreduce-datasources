@@ -36,6 +36,7 @@
         <module>emr-datahub</module>
         <module>emr-kafka</module>
         <module>examples</module>
+        <module>emr-baseline-testing</module>
     </modules>
 
     <properties>
@@ -66,6 +67,9 @@
         <kafka.version>0.10.1.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
         <datahub.verion>2.9.2-public</datahub.verion>
+        <confluent.version>5.0.0</confluent.version>
+        <avro.version>1.7.7</avro.version>
+        <gson.version>2.2.4</gson.version>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
@@ -383,6 +387,11 @@
                 <version>${kafka.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-tools</artifactId>
+                <version>${kafka.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.yammer.metrics</groupId>
                 <artifactId>metrics-ganglia</artifactId>
                 <version>${yammer.metrics.version}</version>
@@ -618,4 +627,48 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>http://maven.aliyun.com/mvn/repository</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <url>http://maven.aliyun.com/mvn/repository</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>https://packages.confluent.io/maven/</url>
+        </repository>
+        <repository>
+            <id>oss</id>
+            <name>Maven SNAPSHOT Repository</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </pluginRepository>
+    </pluginRepositories>
 </project>
