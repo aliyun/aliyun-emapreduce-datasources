@@ -114,7 +114,7 @@ USING kafka
 OPTIONS (
 kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
 subscribe = "${TOPIC_NAME}",
-output.mode = "${OUTPUT_MODE}"",
+output.mode = "${OUTPUT_MODE}",
 kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
 kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
 kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
@@ -131,14 +131,14 @@ USING kafka
 OPTIONS (
 kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
 subscribe = "${TOPIC_NAME}",
-output.mode = "${OUTPUT_MODE}"",
+output.mode = "${OUTPUT_MODE}",
 kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
 kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
 kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
 kafka.auto.register.schemas = "${AUTO_REGISTER_SCHEMA_ENABLE}");
 ```
 
-| Config|definition|
+| config|definition|
 |---|---|
 |kafka.bootstrap.servers|the bootstrap servers of kafka.|
 |subscribe| the topic name to subscribe.|
@@ -160,7 +160,7 @@ USING kafka
 OPTIONS (
 kafka.bootstrap.servers = "${BOOTSTRAP_SERVERS}",
 subscribe = "${TOPIC_NAME}",
-output.mode = "${OUTPUT_MODE}"",
+output.mode = "${OUTPUT_MODE}",
 kafka.schema.registry.url = "${SCHEMA_REGISTRY_URL}",
 kafka.schema.record.name = "${SCHEMA_RECORD_NAME}",
 kafka.schema.record.namespace = "${SCHEMA_RECORD_NAMESPACE}",
