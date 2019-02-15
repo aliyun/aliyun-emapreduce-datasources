@@ -42,9 +42,8 @@ private class DatahubIterator(
     zkClient: ZkClient,
     checkpointDir: String,
     context: TaskContext) extends NextIterator[Array[Byte]] with Logging{
-  private val datahubShardMaxSize = 512
   private val step = 100
-  private var dataBuffer = new LinkedBlockingQueue[Array[Byte]](datahubShardMaxSize * step * 10)
+  private var dataBuffer = new LinkedBlockingQueue[Array[Byte]](step)
   private var hasRead = 0
   private var lastOffset: OffsetContext.Offset = null
   private val inputMetrcis = context.taskMetrics().inputMetrics
