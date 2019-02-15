@@ -61,7 +61,7 @@ object TestDatahub {
           accessKeySecret,
           endpoint,
           shardId,
-          read,
+          read(_),
           StorageLevel.MEMORY_AND_DISK)
       } else {
         datahubStream = DatahubUtils.createStream(
@@ -72,7 +72,7 @@ object TestDatahub {
           accessKeyId,
           accessKeySecret,
           endpoint,
-          read,
+          read(_),
           StorageLevel.MEMORY_AND_DISK)
       }
 
