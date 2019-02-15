@@ -64,10 +64,10 @@ $ ./bin/run-query.sh 3
 Usage: run-query.sh <queryId>
 
             <queryId>: the id of qurey, '3' means the 'q3.sql' in ./queries directory.
-``` 
 
 5. Run all queries.
 $ ./bin/run-all.sh
+``` 
 
 ### Build
 
