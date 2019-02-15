@@ -1,0 +1,10 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "d_year", "type": ["int", "null"]},
+    {"name": "brand_id", "type": ["int", "null"]},
+    {"name": "brand", "type": ["string", "null"]},
+    {"name": "sum_agg", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]}
+ ]
+}

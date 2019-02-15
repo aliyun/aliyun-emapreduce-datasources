@@ -1,0 +1,7 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "sum_ss_quantity_", "type": ["long", "null"]}
+ ]
+}

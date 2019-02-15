@@ -1,0 +1,16 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "DriverBehavior",
+ "fields": [
+     {"name": "deviceId", "type": "string"},
+     {"name": "dataTime", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+     {"name": "receiveTime", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+     {"name": "isACCOpen", "type": "string"},
+     {"name": "longitude", "type": "string"},
+     {"name": "latitude", "type": "string"},
+     {"name": "velocity", "type": "double"},
+     {"name": "direction", "type": "string"},
+     {"name": "altitude", "type": "string"},
+     {"name": "mileage", "type": "string"}
+ ]
+}

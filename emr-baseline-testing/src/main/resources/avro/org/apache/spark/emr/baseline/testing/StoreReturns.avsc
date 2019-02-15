@@ -1,0 +1,27 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "StoreReturns",
+ "fields": [
+    {"name": "sr_returned_date_sk", "type": ["long", "null"]},
+    {"name": "sr_return_time_sk", "type": ["long", "null"]},
+    {"name": "sr_item_sk", "type": ["long", "null"]},
+    {"name": "sr_customer_sk", "type": ["long", "null"]},
+    {"name": "sr_cdemo_sk", "type": ["long", "null"]},
+    {"name": "sr_hdemo_sk", "type": ["long", "null"]},
+    {"name": "sr_addr_sk", "type": ["long", "null"]},
+    {"name": "sr_store_sk", "type": ["long", "null"]},
+    {"name": "sr_reason_sk", "type": ["long", "null"]},
+    {"name": "sr_ticket_number", "type": ["long", "null"]},
+    {"name": "sr_return_quantity", "type": ["int", "null"]},
+    {"name": "sr_return_amt", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_return_tax", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_return_amt_inc_tax", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_fee", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_return_ship_cost", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_refunded_cash", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_reversed_charge", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_store_credit", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_net_loss", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 7, "scale": 2}, "null"]},
+    {"name": "sr_data_time", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+ ]
+}

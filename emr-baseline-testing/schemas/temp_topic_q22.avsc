@@ -1,0 +1,11 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "i_product_name", "type": ["string", "null"]},
+    {"name": "i_brand", "type": ["string", "null"]},
+    {"name": "i_class", "type": ["string", "null"]},
+    {"name": "i_category", "type": ["string", "null"]},
+    {"name": "qoh", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]}
+ ]
+}

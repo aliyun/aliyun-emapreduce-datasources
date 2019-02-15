@@ -1,0 +1,5 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [{"name":"count_1_","type":"long"}]
+}

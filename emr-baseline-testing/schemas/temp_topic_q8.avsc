@@ -1,0 +1,8 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "s_store_name", "type": ["string", "null"]},
+    {"name": "sum_ss_net_profit_", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 17, "scale": 2}, "null"]}
+ ]
+}

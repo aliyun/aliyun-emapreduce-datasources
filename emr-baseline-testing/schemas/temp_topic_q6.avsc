@@ -1,0 +1,8 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"state","type":["string","null"]},
+    {"name":"cnt","type":"long"}
+ ]
+}

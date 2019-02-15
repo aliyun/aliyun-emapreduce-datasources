@@ -1,0 +1,11 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"brand_id","type":["int","null"]},
+    {"name":"brand","type":["string","null"]},
+    {"name":"t_hour","type":["int","null"]},
+    {"name":"t_minute","type":["int","null"]},
+    {"name":"ext_price","type":[{"type":"bytes","logicalType":"decimal","precision":"17","scale":"2"},"null"]}
+ ]
+}

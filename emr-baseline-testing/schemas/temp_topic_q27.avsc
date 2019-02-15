@@ -1,0 +1,13 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name": "i_item_id", "type": ["string", "null"]},
+    {"name": "s_state", "type": ["string", "null"]},
+    {"name": "g_state", "type": "int"},
+    {"name": "agg1", "type": ["double", "null"]},
+    {"name": "agg2", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
+    {"name": "agg3", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
+    {"name": "agg4", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]}
+ ]
+}

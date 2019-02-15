@@ -1,0 +1,11 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "Inventory",
+ "fields": [
+    {"name": "inv_date_sk", "type": ["long", "null"]},
+    {"name": "inv_item_sk", "type": ["long", "null"]},
+    {"name": "inv_warehouse_sk", "type": ["long", "null"]},
+    {"name": "inv_quantity_on_hand", "type": ["int", "null"]},
+    {"name": "inv_data_time", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+ ]
+}

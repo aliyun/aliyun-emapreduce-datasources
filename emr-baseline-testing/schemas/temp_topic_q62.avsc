@@ -1,0 +1,14 @@
+{"namespace": "org.apache.spark.emr.baseline.testing",
+ "type": "record",
+ "name": "TempResult",
+ "fields": [
+    {"name":"substring_w_warehouse_name__1__20_","type":["string","null"]},
+    {"name":"sm_type","type":["string","null"]},
+    {"name":"web_name","type":["string","null"]},
+    {"name":"col_30_days_","type":["long","null"]},
+    {"name":"col_31___60_days_","type":["long","null"]},
+    {"name":"col_61___90_days_","type":["long","null"]},
+    {"name":"col_91___120_days_","type":["long","null"]},
+    {"name":"col__120_days_","type":["long","null"]}
+ ]
+}
