@@ -16,6 +16,8 @@
  */
 package org.apache.spark.streaming.aliyun.ons
 
+import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.serializer.SerializeFilter
 import com.aliyun.openservices.ons.api.Message
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.function.{Function => JFunction}
@@ -186,7 +188,9 @@ object OnsUtils {
       (msg: Message) => func.call(msg))
   }
 
-  private def extractMessage(msg: Message): Array[Byte] = msg.toString.getBytes
+  private def extractMessage(msg: Message): Array[Byte] = {
+    JSON.toJSONString(msg, new SerializeFilter{}).getBytes()
+  }
 
   @Experimental
   def createDefaultStreams(
