@@ -189,7 +189,11 @@ object OnsUtils {
   }
 
   private def extractMessage(msg: Message): Array[Byte] = {
-    JSON.toJSONString(msg, new SerializeFilter{}).getBytes()
+    JSON.toJSONBytes(msg)
+  }
+
+  def toMessage(msgJson: Array[Byte]): Message = {
+    JSON.parseObject(new String(msgJson), classOf[Message])
   }
 
   @Experimental

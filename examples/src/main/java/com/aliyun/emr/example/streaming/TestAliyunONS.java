@@ -17,7 +17,6 @@
 
 package com.aliyun.emr.example.streaming;
 
-import com.alibaba.fastjson.JSON;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.VoidFunction;
@@ -25,7 +24,6 @@ import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.aliyun.ons.OnsUtils;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
-import com.aliyun.openservices.ons.api.Message;
 
 public class TestAliyunONS {
   public static void main(String[] args) throws Exception{
@@ -51,7 +49,7 @@ public class TestAliyunONS {
             javaRDD.foreach(new VoidFunction<byte[]>() {
               @Override
               public void call(byte[] bytes) throws Exception {
-                System.out.println(new String(JSON.parseObject(new String(bytes), Message.class).getBody()));
+                System.out.println(new String(OnsUtils.toMessage(bytes).getBody()));
               }
             });
           }
