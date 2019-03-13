@@ -27,11 +27,11 @@ Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in py
 
 1. download the [**loghub.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master-2.x/external/emr-logservice/src/main/python/pyspark/streaming/loghub.py);
 2. download the pre-build [**emr-logservice_2.11-1.6.0.jar**](http://central.maven.org/maven2/com/aliyun/emr/emr-logservice_2.11/1.6.0/emr-logservice_2.11-1.6.0.jar);
-3. download loghub's dependencies, i.e. [**fastjson-1.2.45.jar**](http://central.maven.org/maven2/com/alibaba/fastjson/1.2.45/fastjson-1.2.45.jar), [**commons-validator-1.4.0.jar**](http://central.maven.org/maven2/commons-validator/commons-validator/1.4.0/commons-validator-1.4.0.jar), [**loghub-client-lib-0.6.13.jar**](http://central.maven.org/maven2/com/aliyun/openservices/loghub-client-lib/0.6.13/loghub-client-lib-0.6.13.jar), [**aliyun-log-0.6.11.jar**](http://central.maven.org/maven2/com/aliyun/openservices/aliyun-log/0.6.11/aliyun-log-0.6.11.jar), [**json-lib-2.4-jdk15.jar**](http://central.maven.org/maven2/net/sf/json-lib/json-lib/2.4/json-lib-2.4-jdk15.jar). Above-mentioned library version pass test;
+3. download loghub's dependencies, i.e. [**fastjson-1.2.45.jar**](http://central.maven.org/maven2/com/alibaba/fastjson/1.2.45/fastjson-1.2.45.jar), [**commons-validator-1.4.0.jar**](http://central.maven.org/maven2/commons-validator/commons-validator/1.4.0/commons-validator-1.4.0.jar), [**loghub-client-lib-0.6.13.jar**](http://central.maven.org/maven2/com/aliyun/openservices/loghub-client-lib/0.6.13/loghub-client-lib-0.6.13.jar), [**aliyun-log-0.6.11.jar**](http://central.maven.org/maven2/com/aliyun/openservices/aliyun-log/0.6.11/aliyun-log-0.6.11.jar), [**json-lib-2.4-jdk15.jar**](http://central.maven.org/maven2/net/sf/json-lib/json-lib/2.4/json-lib-2.4-jdk15.jar), [**ezmorph-1.0.6.jar**](http://central.maven.org/maven2/net/sf/ezmorph/ezmorph/1.0.6/ezmorph-1.0.6.jar). Above-mentioned library version pass test;
 4. download [**loghub-wordcount.py**](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master-2.x/examples/src/main/python/streaming/loghub-wordcount.py);
 5. run the example, use 
 ```
-spark-submit --master local[4] --jars fastjson-1.2.45.jar,commons-validator-1.4.0.jar,
+spark-submit --master local[4] --jars fastjson-1.2.45.jar,commons-validator-1.4.0.jar,ezmorph-1.0.6.jar,
 emr-logservice_2.11-1.6.0.jar,loghub-client-lib-0.6.13.jar,aliyun-log-0.6.11.jar,json-lib-2.4-jdk15.jar
 --py-files loghub.py loghub-wordcount.py <logServiceProject> <logsStoreName> <logHubConsumerGroupName> 
 <loghubEndpoint> <numReceiver> <accessKeyId> <accessKeySecret>
