@@ -43,7 +43,7 @@ object TestDirectDatahub {
     val zkParam = Map("zookeeper.connect" -> zkServer)
 
     def getStreamingContext(): StreamingContext = {
-      val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub"))
+      val sc = new SparkContext(new SparkConf().setAppName("test-direct-datahub").setMaster("local[4]"))
       val ssc = new StreamingContext(sc, Duration(duration))
       val dstream = DatahubUtils.createDirectStream(
         ssc,

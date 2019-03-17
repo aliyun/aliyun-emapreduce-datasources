@@ -36,7 +36,7 @@ object StructuredLoghubWordCount {
 
     val spark = SparkSession
       .builder
-      .appName("StructuredLoghubWordCount")
+      .appName("StructuredLoghubWordCount").master("local[4]")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -52,11 +52,12 @@ object StructuredLoghubWordCount {
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
+
       .option("startingoffsets", startingOffsets)
       .option("zookeeper.connect.address", zkAddr)
       .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
       .load()
-      .selectExpr("CAST(value AS STRING)")
+      .selectExpr("CAST(metric AS STRING)")
       .as[String]
 
     val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()

@@ -36,7 +36,7 @@ object ContinuousStructuredLoghubSample {
 
     val spark = SparkSession
       .builder
-      .appName("ContinuousStructuredLoghubSample")
+      .appName("ContinuousStructuredLoghubSample").master("local[4]")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -53,9 +53,10 @@ object ContinuousStructuredLoghubSample {
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
       .option("startingoffsets", startingOffsets)
+      .option("zookeeper.connect.address", "47.111.65.177:2181")
       .load()
-      .selectExpr("CAST(value AS STRING)")
-      .as[String].map(e => (e, e.length)).toDF("value", "length")
+      .selectExpr("CAST(metric AS STRING)")
+      .as[String].map(e => (e, e.length)).toDF("metric", "length")
 
     val query = lineLength.writeStream
       .outputMode("append")
