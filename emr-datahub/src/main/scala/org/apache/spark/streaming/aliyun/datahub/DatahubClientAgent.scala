@@ -103,6 +103,33 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     throw currentException
   }
 
+  def getCursor(
+      projectName: String,
+      topicName: String,
+      shardId: String,
+      sequence: Long):GetCursorResult = {
+    var retry = 0
+    var currentException: Exception = null
+    while (retry <= datahubServiceMaxRetry) {
+      try {
+        val request = new GetCursorRequest(projectName, topicName, shardId, CursorType.SEQUENCE, sequence)
+        return client.getCursor(request)
+      }
+      catch {
+        case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
+          throw e
+        }
+        case e: Exception => {
+          retry += 1
+          currentException = e
+          logError(s"catch exception when getCursor, start to retry $retry-times")
+        }
+      }
+    }
+    logError(s"retry to getCursor exceed max retry times[$datahubServiceMaxRetry].")
+    throw currentException
+  }
+
   def getRecords(
       projectName: String,
       topicName: String,
@@ -268,6 +295,10 @@ object JacksonParser {
 
   def getOffset(offset: JsonNode): OffsetContext.Offset = {
     new OffsetContext.Offset(offset.get("Sequence").asLong(), offset.get("Timestamp").asLong())
+  }
+
+  def getOffset(sequenceId: Long, recordTime: Long): OffsetContext.Offset = {
+    new OffsetContext.Offset(sequenceId, recordTime)
   }
 
   def toJsonNode(offset: OffsetContext.Offset): ObjectNode = {
