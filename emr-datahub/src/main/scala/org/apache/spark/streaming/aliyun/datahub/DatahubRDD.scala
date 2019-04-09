@@ -75,7 +75,6 @@ class DatahubRDD(
 
   override protected def getPartitions: Array[Partition] = {
     val rate = _sc.getConf.get("spark.streaming.datahub.maxRatePerShard", "10000").toInt
-    var count = rate * duration / 1000
 
     datahubClientAgent = DatahubRDD.getClient(zkParam, accessId, accessKey, endpoint)._2
     shardOffsets.zipWithIndex.map {
@@ -83,6 +82,7 @@ class DatahubRDD(
         val shardId = so._1
         val startOffset = JacksonParser.getOffset(so._2)
         val endOffset = JacksonParser.getOffset(so._3)
+        var count = rate * duration / 1000
         if (count > endOffset.getSequence - startOffset.getSequence + 1) {
           count = endOffset.getSequence - startOffset.getSequence + 1
         }
