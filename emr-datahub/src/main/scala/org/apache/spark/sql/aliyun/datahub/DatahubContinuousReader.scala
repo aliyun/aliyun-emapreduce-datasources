@@ -22,8 +22,9 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
 
-import com.alibaba.fastjson.JSONObject
+import com.aliyun.datahub.common.data.Field
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
+import com.aliyun.datahub.model.RecordEntry
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
@@ -119,11 +120,12 @@ class DatahubContinuousDataReader(
   private var hasRead: Int = 0
   private var nextOffset = offset
   private var endOffset = datahubClient.getCursor(project, topic, shardId, CursorType.LATEST).getSequence()
-  private val dataBuffer = new LinkedBlockingQueue[JSONObject](step)
+  private val dataBuffer = new LinkedBlockingQueue[RecordEntry](step)
   private val sharedRow = new UnsafeRow(7)
   private val bufferHolder = new BufferHolder(sharedRow)
   private val rowWriter = new UnsafeRowWriter(bufferHolder, 6)
-  private var currentRecord: JSONObject = _
+  private var currentRecord: RecordEntry = null
+  private var fields: Option[List[Field]] = None
 
   override def getOffset: PartitionOffset = DatahubShardOffset(project, topic, shardId, nextOffset)
 
@@ -144,24 +146,17 @@ class DatahubContinuousDataReader(
     val topicResult = datahubClient.getTopic(project, topic)
     val schema = topicResult.getRecordSchema
     val limit = endOffset - nextOffset
-    val cursor = datahubClient.getCursor(project, topic, shardId, nextOffset).getCursor
-    val recordResult = datahubClient.getRecords(project, topic, shardId, cursor, limit.toInt, schema)
-    val num = recordResult.getRecordCount
-    recordResult.getRecords.foreach(record => {
-      record.getSystemTime
-      val obj = new JSONObject()
-      obj.put(DatahubSchema.SYSTEM_TIME, record.getSystemTime.toInt)
-      obj.put(DatahubSchema.TOPIC, topic)
-      obj.put(DatahubSchema.PROJECT, project)
-      record.getFields.foreach(field => {
-        obj.put(field.getName, record.get(field.getName))
+    if (limit > 0) {
+      val cursor = datahubClient.getCursor(project, topic, shardId, nextOffset).getCursor
+      val recordResult = datahubClient.getRecords(project, topic, shardId, cursor, limit.toInt, schema)
+      val num = recordResult.getRecordCount
+      recordResult.getRecords.foreach(record => {
+        dataBuffer.offer(record)
+        nextOffset = record.getOffset.getSequence
       })
-
-      dataBuffer.offer(obj)
-      nextOffset = record.getOffset.getSequence
-    })
-    hasRead = hasRead + num
-    logDebug(s"shardId: $shardId, nextCursor: $nextOffset, hasRead: $hasRead")
+      hasRead = hasRead + num
+      logDebug(s"shardId: $shardId, nextCursor: $nextOffset, hasRead: $hasRead")
+    }
   }
 
   override def get(): UnsafeRow = {
@@ -170,8 +165,19 @@ class DatahubContinuousDataReader(
     rowWriter.write(1, UTF8String.fromString(topic))
     rowWriter.write(2, UTF8String.fromString(shardId))
     rowWriter.write(3, DateTimeUtils.fromJavaTimestamp(
-      new java.sql.Timestamp(currentRecord.get(DatahubSchema.SYSTEM_TIME).asInstanceOf[Long])))
-    rowWriter.write(4, currentRecord.toJSONString.getBytes)
+      new java.sql.Timestamp(currentRecord.getSystemTime)))
+
+    fields.getOrElse({
+      fields = Some(datahubClient.getTopic(project, topic).getRecordSchema.getFields.toList)
+      fields.get
+    }).zipWithIndex.foreach({
+      case (f, index) => {
+        val field = f.getName
+        val value = currentRecord.getString(field)
+        rowWriter.write(index + 4, UTF8String.fromString(value))
+      }
+    })
+
     sharedRow.setTotalSize(bufferHolder.totalSize)
     sharedRow
   }
