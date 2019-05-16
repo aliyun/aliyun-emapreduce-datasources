@@ -245,7 +245,7 @@ built-in function `delay` to express to max delay on event time column.
 ```
 Syntax:
 
-WHERE delay(inv_data_time) < '2 minutes'where delay ( colName ) < 'duration' 
+WHERE delay ( colName ) < 'duration' 
 
 Example:
 
