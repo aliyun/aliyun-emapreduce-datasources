@@ -28,5 +28,5 @@ WHERE d_date_sk = ss_sold_date_sk
   AND i_manager_id = 28
   AND d_moy = 11
   AND d_year = 1999
+  AND delay(ss_data_time) < '2 minutes'
 GROUP BY TUMBLING(ss_data_time, interval 1 minute), i_brand, i_brand_id
-HAVING delay(ss_data_time) < '2 minutes'
