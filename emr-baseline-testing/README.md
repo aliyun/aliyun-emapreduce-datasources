@@ -175,8 +175,8 @@ WHERE d_date_sk = ss_sold_date_sk
   AND i_manager_id = 28
   AND d_moy = 11
   AND d_year = 1999
+  AND delay(ss_data_time) < '2 minutes'
 GROUP BY TUMBLING(ss_data_time, interval 1 minute), i_brand, i_brand_id
-HAVING delay(ss_data_time) < '2 minutes'
 ```
 
 - Insert into
@@ -193,8 +193,8 @@ WHERE d_date_sk = ss_sold_date_sk
   AND i_manager_id = 28
   AND d_moy = 11
   AND d_year = 1999
+  AND delay(ss_data_time) < '2 minutes'
 GROUP BY TUMBLING(ss_data_time, interval 1 minute), i_brand, i_brand_id
-HAVING delay(ss_data_time) < '2 minutes'
 ```
 
 ### Queries
@@ -245,12 +245,12 @@ built-in function `delay` to express to max delay on event time column.
 ```
 Syntax:
 
-HAVING delay ( colName ) < 'duration' 
+WHERE delay ( colName ) < 'duration' 
 
 Example:
 
 SELECT avg(inv_quantity_on_hand) qoh
 FROM kafka_inventory
+WHERE delay(inv_data_time) < '2 minutes'
 GROUP BY TUMBLING (inv_data_time, interval 1 minute)
-HAVING delay(inv_data_time) < '2 minutes'
 ```

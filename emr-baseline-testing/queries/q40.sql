@@ -38,4 +38,4 @@ WHERE
     AND cs_sold_date_sk = d_date_sk
     AND d_date BETWEEN (cast('2000-03-11' AS DATE) - INTERVAL 30 days)
   AND (cast('2000-03-11' AS DATE) + INTERVAL 30 days)
-HAVING delay(cr_data_time) < '30 seconds' and delay(cs_data_time) < '60 seconds'
+  AND delay(cr_data_time) < '30 seconds' and delay(cs_data_time) < '60 seconds'

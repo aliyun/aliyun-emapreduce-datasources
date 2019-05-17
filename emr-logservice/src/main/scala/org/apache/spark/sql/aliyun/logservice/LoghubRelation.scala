@@ -37,7 +37,6 @@ class LoghubRelation(
   override def schema: StructType = LoghubOffsetReader.loghubSchema
 
   override def buildScan(): RDD[Row] = {
-    val uniqueGroupId = s"spark-loghub-relation-${UUID.randomUUID}"
     val loghubOffsetReader = new LoghubOffsetReader(sourceOptions)
     val (fromPartitionOffsets, untilPartitionOffsets) = {
       try {

@@ -7,11 +7,11 @@
     {"name": "ca_state", "type": ["string", "null"]},
     {"name": "ca_county", "type": ["string", "null"]},
     {"name": "agg1", "type": ["double", "null"]},
-    {"name": "agg2", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
-    {"name": "agg3", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
-    {"name": "agg4", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
-    {"name": "agg5", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
-    {"name": "agg6", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]},
-    {"name": "agg7", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 11, "scale": 6}, "null"]}
+    {"name": "agg2", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]},
+    {"name": "agg3", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]},
+    {"name": "agg4", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]},
+    {"name": "agg5", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]},
+    {"name": "agg6", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]},
+    {"name": "agg7", "type": [{"type": "bytes", "logicalType": "decimal", "precision": 16, "scale": 6}, "null"]}
  ]
 }
