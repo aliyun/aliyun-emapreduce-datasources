@@ -58,15 +58,9 @@ class LoghubRDD(
       try {
         val numShards = shardOffsets.size
         shardOffsets.map(shard => {
-          var tries = 60
           val from = mClient.GetCursorTime(project, logStore, shard._1, shard._2).GetCursorTime()
           val to = mClient.GetCursorTime(project, logStore, shard._1, shard._3).GetCursorTime()
-          var res = mClient.GetHistograms(project, logStore, from, to, "", "*")
-          while (!res.IsCompleted() && tries > 0) {
-            Thread.sleep(100)
-            res = mClient.GetHistograms(project, logStore, from, to, "", "*")
-            tries -= 1
-          }
+          val res = mClient.GetHistograms(project, logStore, from, to, "", "*")
           if (!res.IsCompleted()) {
             logWarning(s"Failed to get complete count for [$project]-[$logStore]-[${shard._1}] " +
               s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. This warning " +
