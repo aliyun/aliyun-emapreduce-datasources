@@ -44,7 +44,7 @@ class LoghubRDD(
   @transient var zkClient: ZkClient =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
   private val enablePreciseCount: Boolean =
-    sc.getConf.getBoolean("spark.streaming.loghub.numRows.precise.enable", true)
+    sc.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
 
   private def initialize(): Unit = {
     mClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
