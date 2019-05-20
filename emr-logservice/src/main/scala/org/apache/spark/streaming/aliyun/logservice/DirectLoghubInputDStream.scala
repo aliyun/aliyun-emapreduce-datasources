@@ -62,6 +62,8 @@ class DirectLoghubInputDStream(
   private val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
   private val zkConnectionTimeoutMs =
     zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
+  private val enablePreciseCount: Boolean =
+    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.numRows.precise.enable", true)
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
   @transient private var restartTime: Long = -1L
@@ -70,6 +72,15 @@ class DirectLoghubInputDStream(
   private var readOnlyShardCache = new mutable.HashMap[Int, String]()
 
   override def start(): Unit = {
+    if (enablePreciseCount) {
+      logWarning(s"Enable precise count on loghub rdd, we will submit a count job in each batch. " +
+        s"This value is showed in each batch job in streaming tab in Web UI. This may increase the " +
+        s"total process time in each batch.")
+    } else {
+      logWarning(s"Disable precise count on loghub rdd, we will get an approximative count of loghub rdd, " +
+        s"via the `GetHistograms` api of log service.")
+    }
+
     val props = new Properties()
     zkParams.foreach(param => props.put(param._1, param._2))
     val autoCommit = zkParams.getOrElse("enable.auto.commit", "false").toBoolean

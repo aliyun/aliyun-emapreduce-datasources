@@ -43,10 +43,45 @@ class LoghubRDD(
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
   @transient var zkClient: ZkClient =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
+  private val enablePreciseCount: Boolean =
+    sc.getConf.getBoolean("spark.streaming.loghub.numRows.precise.enable", true)
 
   private def initialize(): Unit = {
     mClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
     zkClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
+  }
+
+  override def count(): Long = {
+    if (enablePreciseCount) {
+      super.count()
+    } else {
+      try {
+        val numShards = shardOffsets.size
+        shardOffsets.map(shard => {
+          var tries = 60
+          val from = mClient.GetCursorTime(project, logStore, shard._1, shard._2).GetCursorTime()
+          val to = mClient.GetCursorTime(project, logStore, shard._1, shard._3).GetCursorTime()
+          var res = mClient.GetHistograms(project, logStore, from, to, "", "*")
+          while (!res.IsCompleted() && tries > 0) {
+            Thread.sleep(100)
+            res = mClient.GetHistograms(project, logStore, from, to, "", "*")
+            tries -= 1
+          }
+          if (!res.IsCompleted()) {
+            logWarning(s"Failed to get complete count for [$project]-[$logStore]-[${shard._1}] " +
+              s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. This warning " +
+              s"does not introduce any job failure, but may affect some information about this batch.")
+          }
+          (res.GetTotalCount() * 1.0D) / numShards
+        }).sum.toLong
+      } catch {
+        case e: Exception =>
+          logWarning(s"Failed to get statistics of rows in [$project]-[$logStore], use 0L instead. " +
+            s"This warning does not introduce any job failure, but may affect some information about " +
+            s"this batch.", e)
+          0L
+      }
+    }
   }
 
   @DeveloperApi
