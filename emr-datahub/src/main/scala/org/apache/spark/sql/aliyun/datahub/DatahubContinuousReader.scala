@@ -21,18 +21,18 @@ import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
-
 import com.aliyun.datahub.common.data.Field
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.catalyst.expressions.codegen.{BufferHolder, UnsafeRowWriter}
+import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.sources.v2.reader.{DataReaderFactory, SupportsScanUnsafeRow}
-import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousDataReader, ContinuousReader, Offset, PartitionOffset}
+import org.apache.spark.sql.sources.v2.reader._
+import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -43,7 +43,7 @@ class DatahubContinuousReader(
     sourceOptions: Map[String, String],
     metadataPath: String,
     initialOffsets: DatahubOffsetRangeLimit)
-  extends ContinuousReader with SupportsScanUnsafeRow with Logging {
+  extends ContinuousReader with Logging {
 
   private lazy val session = SparkSession.getActiveSession.get
   private lazy val sc = session.sparkContext
@@ -80,39 +80,45 @@ class DatahubContinuousReader(
     DatahubSourceOffset(mergedMap)
   }
 
-  override def createUnsafeRowReaderFactories(): util.List[DataReaderFactory[UnsafeRow]] = {
+  override def stop(): Unit = offsetReader.close()
+
+  override def toString(): String = s"DatahubSource[$offsetReader]"
+
+  override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
     import scala.collection.JavaConverters._
     val startOffsets = DatahubSourceOffset.getShardOffsets(offset)
     startOffsets.toSeq.map {
       case (datahubShard, of) => {
-        DatahubContinuousDataReaderFactory(datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
-          .asInstanceOf[DataReaderFactory[UnsafeRow]]
+        DatahubContinuousInputPartition(
+          datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
+        : InputPartition[InternalRow]
       }
     }.asJava
   }
-
-  override def stop(): Unit = offsetReader.close()
-
-  override def toString(): String = s"DatahubSource[$offsetReader]"
 }
 
-case class DatahubContinuousDataReaderFactory(
+case class DatahubContinuousInputPartition(
     project: String,
     topic: String,
     shardId: String,
     offset: Long,
-    sourceOptions: Map[String, String]) extends DataReaderFactory[UnsafeRow] {
-  override def createDataReader(): DatahubContinuousDataReader = {
-    new DatahubContinuousDataReader(project, topic, shardId, offset, sourceOptions)
+    sourceOptions: Map[String, String]) extends ContinuousInputPartition[InternalRow] {
+  override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
+    val off = offset.asInstanceOf[DatahubShardOffset]
+    new DatahubContinuousInputPartitionReader(project, topic, shardId, off.offset, sourceOptions)
+  }
+
+  override def createPartitionReader(): InputPartitionReader[InternalRow] = {
+    new DatahubContinuousInputPartitionReader(project, topic, shardId, offset, sourceOptions)
   }
 }
 
-class DatahubContinuousDataReader(
+class DatahubContinuousInputPartitionReader(
     project: String,
     topic: String,
     shardId: String,
     offset: Long,
-    sourceOptions: Map[String, String]) extends ContinuousDataReader[UnsafeRow] with Logging {
+    sourceOptions: Map[String, String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
 
   private var datahubClient = DatahubOffsetReader.getOrCreateDatahubClient(sourceOptions)
 
@@ -121,11 +127,9 @@ class DatahubContinuousDataReader(
   private var nextOffset = offset
   private var endOffset = datahubClient.getCursor(project, topic, shardId, CursorType.LATEST).getSequence()
   private val dataBuffer = new LinkedBlockingQueue[RecordEntry](step)
-  private val sharedRow = new UnsafeRow(7)
-  private val bufferHolder = new BufferHolder(sharedRow)
-  private val rowWriter = new UnsafeRowWriter(bufferHolder, 6)
   private var currentRecord: RecordEntry = null
-  private var fields: Option[List[Field]] = None
+  private val fields: List[Field] = datahubClient.getTopic(project, topic).getRecordSchema.getFields.toList
+  private val rowWriter = new UnsafeRowWriter(4 + fields.length)
 
   override def getOffset: PartitionOffset = DatahubShardOffset(project, topic, shardId, nextOffset)
 
@@ -160,26 +164,23 @@ class DatahubContinuousDataReader(
   }
 
   override def get(): UnsafeRow = {
-    bufferHolder.reset()
+    rowWriter.reset()
+    rowWriter.zeroOutNullBytes()
+
     rowWriter.write(0, UTF8String.fromString(project))
     rowWriter.write(1, UTF8String.fromString(topic))
     rowWriter.write(2, UTF8String.fromString(shardId))
     rowWriter.write(3, DateTimeUtils.fromJavaTimestamp(
       new java.sql.Timestamp(currentRecord.getSystemTime)))
 
-    fields.getOrElse({
-      fields = Some(datahubClient.getTopic(project, topic).getRecordSchema.getFields.toList)
-      fields.get
-    }).zipWithIndex.foreach({
-      case (f, index) => {
+    fields.zipWithIndex.foreach({
+      case (f, index) =>
         val field = f.getName
         val value = currentRecord.getString(field)
         rowWriter.write(index + 4, UTF8String.fromString(value))
-      }
     })
 
-    sharedRow.setTotalSize(bufferHolder.totalSize)
-    sharedRow
+    rowWriter.getRow
   }
 
   override def close(): Unit = {

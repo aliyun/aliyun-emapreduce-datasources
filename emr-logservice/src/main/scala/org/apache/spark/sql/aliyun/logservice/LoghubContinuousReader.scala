@@ -24,16 +24,16 @@ import scala.collection.JavaConversions._
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.catalyst.expressions.codegen.{BufferHolder, UnsafeRowWriter}
+import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.sources.v2.reader.{DataReaderFactory, SupportsScanUnsafeRow}
-import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousDataReader, ContinuousReader, Offset, PartitionOffset}
+import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
+import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -44,7 +44,7 @@ class LoghubContinuousReader(
     sourceOptions: Map[String, String],
     metadataPath: String,
     initialOffsets: LoghubOffsetRangeLimit)
-  extends ContinuousReader with SupportsScanUnsafeRow with Logging {
+  extends ContinuousReader with Logging {
 
   private lazy val session = SparkSession.getActiveSession.get
   private lazy val sc = session.sparkContext
@@ -83,56 +83,62 @@ class LoghubContinuousReader(
     LoghubSourceOffset(mergedMap)
   }
 
-  override def createUnsafeRowReaderFactories(): util.List[DataReaderFactory[UnsafeRow]] = {
+  override def stop(): Unit = offsetReader.close()
+
+  override def toString(): String = s"LoghubSource[$offsetReader]"
+
+  override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
     import scala.collection.JavaConverters._
     val startOffsets = LoghubSourceOffset.getShardOffsets(offset)
     startOffsets.toSeq.map {
       case (loghubShard, of) => {
-        LoghubContinuousDataReaderFactory(loghubShard.logProject, loghubShard.logStore, loghubShard.shard, of, sourceOptions)
-          .asInstanceOf[DataReaderFactory[UnsafeRow]]
+        LoghubContinuousInputPartition(
+          loghubShard.logProject, loghubShard.logStore, loghubShard.shard, of, sourceOptions)
+        : InputPartition[InternalRow]
       }
     }.asJava
   }
-
-  override def stop(): Unit = offsetReader.close()
-
-  override def toString(): String = s"LoghubSource[$offsetReader]"
 }
 
-case class LoghubContinuousDataReaderFactory(
+case class LoghubContinuousInputPartition(
     logProject: String,
     logStore: String,
     shardId: Int,
-    offset: String,
-    sourceOptions: Map[String, String]) extends DataReaderFactory[UnsafeRow] {
-  override def createDataReader(): LoghubContinuousDataReader = {
-    new LoghubContinuousDataReader(logProject, logStore, shardId, offset, sourceOptions)
+    offset: Int,
+    sourceOptions: Map[String, String]) extends ContinuousInputPartition[InternalRow] {
+  override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
+    val off = offset.asInstanceOf[LoghubShardOffset]
+    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, off.offset, sourceOptions)
+  }
+
+  override def createPartitionReader(): InputPartitionReader[InternalRow] = {
+    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, offset, sourceOptions)
   }
 }
 
-class LoghubContinuousDataReader(
+class LoghubContinuousInputPartitionReader(
     logProject: String,
     logStore: String,
     shardId: Int,
-    offset: String,
-    sourceOptions: Map[String, String]) extends ContinuousDataReader[UnsafeRow] with Logging {
+    offset: Int,
+    sourceOptions: Map[String, String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
   private val step: Int = 1000
   private var hasRead: Int = 0
-  private var nextCursor: String = offset
+  private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
   // TODO: This may cost too much memory.
   private val logData = new LinkedBlockingQueue[JSONObject](4096 * step)
-
-  private val sharedRow = new UnsafeRow(7)
-  private val bufferHolder = new BufferHolder(sharedRow)
-  private val rowWriter = new UnsafeRowWriter(bufferHolder, 6)
+  private val rowWriter = new UnsafeRowWriter(5)
 
   private var currentRecord: JSONObject = _
 
-  override def getOffset: PartitionOffset = LoghubShardOffset(logProject, logStore, shardId, nextCursor)
+  override def getOffset: PartitionOffset = {
+    val offset = logServiceClient.GetCursorTime(logProject, logStore, shardId, nextCursor)
+    LoghubShardOffset(logProject, logStore, shardId, offset.GetCursorTime())
+  }
 
   override def next(): Boolean = {
     if (TaskContext.get().isInterrupted() || TaskContext.get().isCompleted()) {
@@ -181,7 +187,8 @@ class LoghubContinuousDataReader(
   }
 
   override def get(): UnsafeRow = {
-    bufferHolder.reset()
+    rowWriter.reset()
+    rowWriter.zeroOutNullBytes()
 
     rowWriter.write(0, UTF8String.fromString(logProject))
     rowWriter.write(1, UTF8String.fromString(logStore))
@@ -189,8 +196,8 @@ class LoghubContinuousDataReader(
     rowWriter.write(3, DateTimeUtils.fromJavaTimestamp(
       new java.sql.Timestamp(currentRecord.get(__TIME__).asInstanceOf[Integer] * 1000)))
     rowWriter.write(4, currentRecord.toJSONString.getBytes)
-    sharedRow.setTotalSize(bufferHolder.totalSize)
-    sharedRow
+
+    rowWriter.getRow
   }
 
   override def close(): Unit = {

@@ -22,7 +22,7 @@ import java.util.{Locale, Optional, UUID}
 import scala.collection.JavaConverters._
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
 import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
@@ -31,7 +31,7 @@ import org.apache.spark.sql.types.StructType
 
 class DatahubSourceProvider extends DataSourceRegister
   with StreamSourceProvider
-  with ContinuousReadSupport{
+  with ContinuousReadSupport {
   override def shortName(): String = "datahub"
 
   override def sourceSchema(

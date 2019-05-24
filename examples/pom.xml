@@ -72,7 +72,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-core</artifactId>
+            <artifactId>emr-oss</artifactId>
             <version>${project.version}</version>
         </dependency>
 

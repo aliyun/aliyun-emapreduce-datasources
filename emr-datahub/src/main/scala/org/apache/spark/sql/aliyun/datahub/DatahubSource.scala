@@ -44,7 +44,7 @@ class DatahubSource(
     sourceOptions: Map[String, String],
     metadataPath: String,
     @transient datahubOffsetReader: DatahubOffsetReader,
-    startOffset: DatahubOffsetRangeLimit) extends Source with Serializable with Logging{
+    startOffset: DatahubOffsetRangeLimit) extends Source with Serializable with Logging {
   private val currentBatches = new mutable.HashMap[(Offset, Offset), RDD[InternalRow]]()
   private var currentPartitionOffset: Option[Map[DatahubShard, Long]] = None
   private val zkParams = sourceOptions.filter(_._1.toLowerCase(Locale.ROOT).startsWith("zookeeper."))

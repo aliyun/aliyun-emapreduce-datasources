@@ -16,20 +16,20 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
+import java.util.Base64
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
-import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.I0Itec.zkclient.ZkClient
+import com.aliyun.openservices.log.response.{BatchGetLogResponse, GetCursorResponse}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
-import org.apache.spark.streaming.aliyun.logservice.{DirectLoghubInputDStream, LoghubClientAgent}
+import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.NextIterator
 
 class LoghubSourceRDD(
@@ -39,22 +39,13 @@ class LoghubSourceRDD(
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
-      shardOffsets: ArrayBuffer[(Int, String, String)],
+      shardOffsets: ArrayBuffer[(Int, Int, Int)],
       schemaFieldNames: Array[String],
-      zkParams: Map[String, String] = null,
-      checkpointDir: String = null,
-      maxOffsetsPerTrigger: Long = -1L,
       fallback: Boolean = false)
     extends RDD[LoghubData](sc, Nil) with Logging {
 
   @transient var mClient: LoghubClientAgent =
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
-  (zkParams, checkpointDir, maxOffsetsPerTrigger) match {
-    case (null, null, d) if d < 0L => logDebug("Created LoghubSourceRDD without zk checkpoint")
-    case (zk, cp, d) if zk != null && cp != null && d > 0L => logDebug("Created LoghubSourceRDD with zk checkpoint")
-    case _ => throw new IllegalArgumentException("Illegal argument (zkParams, checkpointDir, duration), we " +
-      s"should set them or not, but current setting is (${zkParams==null}, ${checkpointDir==null}, ${maxOffsetsPerTrigger<0L})")
-  }
 
   private def initialize(): Unit = {
     mClient = LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -75,33 +66,27 @@ class LoghubSourceRDD(
       }).zipWithIndex.toMap
     try {
       new InterruptibleIterator[LoghubData](context, new NextIterator[LoghubData]() {
-        val zkClient: ZkClient = LoghubOffsetReader.getOrCreateZKClient(zkParams)
-
-        private val count = shardPartition.count
+        val startCursor: GetCursorResponse =
+          mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.startCursor)
+        val endCursor: GetCursorResponse =
+          mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.endCursor)
         private val step: Int = 1000
         private var hasRead: Int = 0
-        private var nextCursor: String = shardPartition.startCursor
+        private val nextCursor: GetCursorResponse = startCursor
+        private var nextCursorTime = nextCursor.GetCursor()
+        private var nextCursorNano: Long = new String(Base64.getDecoder.decode(nextCursorTime)).toLong
+        private val endCursorNano: Long = new String(Base64.getDecoder.decode(endCursor.GetCursor())).toLong
         // TODO: This may cost too much memory.
         private var logData = new LinkedBlockingQueue[LoghubData](4096 * step)
-
         private val inputMetrics = context.taskMetrics.inputMetrics
 
         context.addTaskCompletionListener {
           _ => closeIfNeeded()
         }
 
-        def checkHasNext(): Boolean = {
-          if (count < 0) {
-            !nextCursor.equals(shardPartition.endCursor) || logData.nonEmpty
-          } else {
-            val hasNext = (hasRead < count && !nextCursor.equals(shardPartition.endCursor)) || logData.nonEmpty
-            if (!hasNext) {
-              DirectLoghubInputDStream.writeDataToZK(zkClient,
-                s"$checkpointDir/available/$project/$logStore/${shardPartition.shardId}.shard", nextCursor)
-            }
-            hasNext
-          }
-        }
+        fetchNextBatch()
+
+        def checkHasNext(): Boolean = nextCursorNano < endCursorNano || logData.nonEmpty
 
         override protected def getNext(): LoghubData = {
           finished = !checkHasNext()
@@ -109,9 +94,13 @@ class LoghubSourceRDD(
             if (logData.isEmpty) {
               fetchNextBatch()
             }
-
-            hasRead += 1
-            logData.poll()
+            if (logData.isEmpty) {
+              finished = true
+              null.asInstanceOf[LoghubData]
+            } else {
+              hasRead += 1
+              logData.poll()
+            }
           } else {
             null.asInstanceOf[LoghubData]
           }
@@ -129,7 +118,7 @@ class LoghubSourceRDD(
 
         def fetchNextBatch(): Unit = {
           val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore,
-            shardPartition.shardId, step, nextCursor, shardPartition.endCursor)
+            shardPartition.shardId, step, nextCursorTime, endCursor.GetCursor())
           var count = 0
           batchGetLogRes.GetLogGroups().foreach(group => {
             group.GetLogGroup().getLogsList.foreach(log => {
@@ -182,11 +171,14 @@ class LoghubSourceRDD(
             })
           })
 
-          val crt = nextCursor
-          nextCursor = batchGetLogRes.GetNextCursor()
-          logDebug(s"shardId: ${shardPartition.shardId}, currentCursor: $crt, nextCursor: $nextCursor," +
-            s" endCursor: ${shardPartition.endCursor}, hasRead: $hasRead, count: $count," +
-            s" get: $count, queue: ${logData.size()}")
+          val crt = nextCursorTime
+          nextCursorTime = batchGetLogRes.GetNextCursor()
+          nextCursorNano = new String(Base64.getDecoder.decode(nextCursorTime)).toLong
+          logDebug(s"project: $project, logStore: $logStore, shardId: ${shardPartition.shardId}, " +
+            s"startCursor: ${shardPartition.startCursor}, endCursor: ${shardPartition.endCursor}, " +
+            s"currentCursorTime: $crt, nextCursorTime: $nextCursorTime, " +
+            s"nextCursorNano: $nextCursorNano, endCursorNano: $endCursorNano, " +
+            s"hasRead: $hasRead, batchGet: $count, queueSize: ${logData.size()}")
         }
       })
     } catch {
@@ -198,7 +190,7 @@ class LoghubSourceRDD(
   override protected def getPartitions: Array[Partition] = {
     shardOffsets.zipWithIndex.map { case (p, idx) =>
       new ShardPartition(id, idx, p._1, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3, maxOffsetsPerTrigger).asInstanceOf[Partition]
+        accessKeyId, accessKeySecret, endpoint, p._2, p._3).asInstanceOf[Partition]
     }.toArray
   }
 
@@ -211,9 +203,8 @@ class LoghubSourceRDD(
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
-      val startCursor: String,
-      val endCursor: String,
-      val count: Long = -1L) extends Partition with Logging {
+      val startCursor: Int,
+      val endCursor: Int) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def index: Int = partitionId
   }

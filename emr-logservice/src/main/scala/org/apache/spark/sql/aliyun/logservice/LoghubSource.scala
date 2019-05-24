@@ -18,24 +18,19 @@ package org.apache.spark.sql.aliyun.logservice
 
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
-import org.apache.hadoop.fs.Path
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.execution.SQLExecution.EXECUTION_ID_KEY
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.storage.StorageLevel
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class LoghubSource(
@@ -48,17 +43,7 @@ class LoghubSource(
   extends Source with Logging with Serializable {
 
   private val maxOffsetsPerTrigger =
-    sourceOptions.getOrElse("maxOffsetsPerTrigger", 64 * 1024 + "")
-  private var currentPartitionOffsets: Option[Map[LoghubShard, String]] = None
-  private val zkParams =
-    sourceOptions
-      .keySet
-      .filter(_.toLowerCase(Locale.ROOT).startsWith("zookeeper."))
-      .map { k => k.drop(10).toString -> sourceOptions(k) }
-      .toMap
-  @transient private val zkClient = LoghubOffsetReader.getOrCreateZKClient(zkParams)
-  private val batches = new mutable.HashMap[(Option[Offset], Offset), RDD[InternalRow]]()
-
+    sourceOptions.getOrElse("maxOffsetsPerTrigger", 64 * 1024 + "").toLong
   private val accessKeyId = sourceOptions.getOrElse("access.key.id",
     throw new MissingArgumentException("Missing access key id (='access.key.id')."))
   private val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
@@ -105,13 +90,15 @@ class LoghubSource(
       val offsets = startingOffsets match {
         case EarliestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchEarliestOffsets())
         case LatestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchLatestOffsets())
-        case SpecificOffsetRangeLimit(p) => throw new UnsupportedEncodingException()
+        case SpecificOffsetRangeLimit(_) => throw new UnsupportedEncodingException()
       }
       metadataLog.add(0, offsets)
       logInfo(s"Initial offsets: $offsets")
       offsets
     }.shardToOffsets
   }
+
+  private var lastCursorTime: Int = initialPartitionOffsets.values.max
 
   override lazy val schema: StructType = Utils.getSchema(userSpecifiedSchema, sourceOptions)
 
@@ -135,83 +122,41 @@ class LoghubSource(
     initialPartitionOffsets
 
     val latest = loghubOffsetReader.fetchLatestOffsets()
-    val earliest = loghubOffsetReader.fetchEarliestOffsets()
-    val shardOffsets = new ArrayBuffer[(Int, String, String)]()
-    if (currentPartitionOffsets.isEmpty) {
-      initialPartitionOffsets.foreach(po => {
-        shardOffsets.+=((po._1.shard, po._2, latest(po._1)))
-      })
-      latest.keySet.diff(initialPartitionOffsets.keySet).foreach(po => {
-        shardOffsets.+=((po.shard, earliest(po), latest(po)))
-      })
-    } else {
-      currentPartitionOffsets.get.foreach(po => {
-        shardOffsets.+=((po._1.shard, po._2, latest(po._1)))
-      })
-      latest.keySet.diff(currentPartitionOffsets.get.keySet).foreach(po => {
-        shardOffsets.+=((po.shard, earliest(po), latest(po)))
-      })
-    }
-
-    batches.foreach(e => e._2.unpersist(false))
-    batches.clear()
-    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, zkParams,
-      metadataPath, maxOffsetsPerTrigger.toLong, fallback = fallback)
-      .mapPartitions(it => {
-        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-        it.map(t => transFunc(t, encoderForDataColumns))
-      })
-    sqlContext.sparkContext.setLocalProperty(EXECUTION_ID_KEY, null)
-    rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
-
-    val start = LoghubSourceOffset(shardOffsets.map(so => (logProject, logStore, so._1, so._2)).toArray:_*)
-    val offsets = shardOffsets.map(so => {
-      val nodeParent = new Path(metadataPath).toUri.getPath
-      val available: String = zkClient.readData(s"$nodeParent/available/$logProject/$logStore/${so._1}.shard")
-      (LoghubShard(logProject, logStore, so._1), available)
-    }).toMap
-    currentPartitionOffsets = Some(offsets)
-    val end = LoghubSourceOffset(offsets)
-    batches.put((Some(start), end), rdd)
+    val limitCursorTime = loghubOffsetReader.rateLimit(lastCursorTime, Some(maxOffsetsPerTrigger))
+    val end = LoghubSourceOffset(latest.map(e => (e._1, limitCursorTime)))
+    lastCursorTime = limitCursorTime
     Some(end)
   }
 
   override def getBatch(start: Option[Offset], end: Offset): DataFrame = {
-    val initialStart = if (start.isEmpty) {
-      Some(LoghubSourceOffset(initialPartitionOffsets))
-    } else {
-      start
+    val fromShardOffsets = start match {
+      case Some(prevBatchEndOffset) =>
+        LoghubSourceOffset.getShardOffsets(prevBatchEndOffset)
+      case None =>
+        initialPartitionOffsets
     }
-
-    val rdd = if (batches.contains((initialStart, end))) {
-      val expiredBatches = batches.filter(b => !b._1._1.equals(initialStart) || !b._1._2.equals(end))
-      expiredBatches.foreach(_._2.unpersist())
-      expiredBatches.foreach(b => batches.remove(b._1))
-      batches((initialStart, end))
+    val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
+    val untilShardOffsets = LoghubSourceOffset.getShardOffsets(end)
+    val (shards, newShards) = untilShardOffsets.keySet.partition { shard =>
+      fromShardOffsets.contains(shard)
+    }
+    val earliest = if (newShards.nonEmpty) {
+      loghubOffsetReader.fetchEarliestOffsets()
     } else {
-      val fromShardOffsets = start match {
-        case Some(prevBatchEndOffset) =>
-          LoghubSourceOffset.getShardOffsets(prevBatchEndOffset)
-        case None =>
-          initialPartitionOffsets
-      }
-      val shardOffsets = new ArrayBuffer[(Int, String, String)]()
-      val untilShardOffsets = LoghubSourceOffset.getShardOffsets(end)
-      val shards = untilShardOffsets.keySet.filter { shard =>
-        // Ignore partitions that we don't know the from offsets.
-        fromShardOffsets.contains(shard)
-      }.toSeq
-      shards.foreach(shard => {
-        shardOffsets.+=((shard.shard, fromShardOffsets(shard), untilShardOffsets(shard)))
+      Map.empty[LoghubShard, Int]
+    }
+    shards.toSeq.foreach(shard => {
+      shardOffsets.+=((shard.shard, fromShardOffsets(shard), untilShardOffsets(shard)))
+    })
+    newShards.toSeq.foreach(shard => {
+      shardOffsets.+=((shard.shard, earliest(shard), untilShardOffsets(shard)))
+    })
+    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
+      endpoint, shardOffsets, schema.fieldNames, fallback = fallback)
+      .mapPartitions(it => {
+        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+        it.map(t => transFunc(t, encoderForDataColumns))
       })
-      new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
-        endpoint, shardOffsets, schema.fieldNames, fallback = fallback)
-        .mapPartitions(it => {
-          val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-          it.map(t => transFunc(t, encoderForDataColumns))
-        })
-    }
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)
   }

@@ -22,9 +22,9 @@ case object EarliestOffsetRangeLimit extends LoghubOffsetRangeLimit
 
 case object LatestOffsetRangeLimit extends LoghubOffsetRangeLimit
 
-case class SpecificOffsetRangeLimit(partitionOffsets: Map[LoghubShard, String]) extends LoghubOffsetRangeLimit
+case class SpecificOffsetRangeLimit(partitionOffsets: Map[LoghubShard, Int]) extends LoghubOffsetRangeLimit
 
 object LoghubOffsetRangeLimit {
-  val LATEST = "-1" // indicates resolution to the latest offset
-  val EARLIEST = "-2" // indicates resolution to the earliest offset
+  val LATEST = -1 // indicates resolution to the latest offset
+  val EARLIEST = -2 // indicates resolution to the earliest offset
 }
