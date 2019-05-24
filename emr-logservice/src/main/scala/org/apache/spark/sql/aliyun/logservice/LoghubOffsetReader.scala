@@ -238,7 +238,7 @@ object LoghubOffsetReader extends Logging with Serializable {
     var schema = new StructType()
     val endCursor = logServiceClient.GetCursor(logProject, logStore, oneShard.GetShardId(), CursorMode.END).GetCursor()
     val endCursorDecoded = Base64.getDecoder.decode(endCursor)
-    val startCursorLong = new String(endCursorDecoded).toLong -1
+    val startCursorLong = new String(endCursorDecoded).toLong - 1
     val startCursor = new String(Base64.getEncoder.encode(startCursorLong.toString.getBytes()))
     val oneBatchLogs = logServiceClient.BatchGetLog(logProject, logStore, oneShard.GetShardId(), 1, startCursor, endCursor)
     val group = oneBatchLogs.GetLogGroups().head
