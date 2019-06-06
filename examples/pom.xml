@@ -19,19 +19,29 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
-            <scope>provided</scope>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.module</groupId>
+                    <artifactId>jackson-module-scala_2.11</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_${scala.binary.version}</artifactId>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -77,6 +87,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-druid</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.aliyun.oss</groupId>
             <artifactId>aliyun-sdk-oss</artifactId>
         </dependency>
@@ -116,6 +132,18 @@
         <dependency>
             <groupId>com.aliyun.datahub</groupId>
             <artifactId>aliyun-sdk-datahub</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.8.11</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
+            <version>2.8.11</version>
         </dependency>
     </dependencies>
 
@@ -198,6 +226,22 @@
                             <include>org.apache.hadoop:hadoop-common</include>
                             <include>com.101tec:zkclient</include>
                             <include>javax.mail:mail</include>
+                            <include>com.aliyun.emr:emr-druid</include>
+                            <include>io.druid:tranquility-spark_2.11</include>
+                            <include>io.druid:tranquility-core_2.11</include>
+                            <include>com.fasterxml.jackson.core:jackson-databind</include>
+                            <include>com.fasterxml.jackson.module:jackson-module-scala_2.11</include>
+                            <include>io.druid:druid-api</include>
+                            <include>io.druid:druid-processing</include>
+                            <include>io.druid:druid-common</include>
+                            <include>com.metamx:scala-util_2.11</include>
+                            <include>com.metamx:java-util</include>
+                            <include>com.metamx:loglady_2.11</include>
+                            <include>com.fasterxml.jackson.dataformat:jackson-dataformat-smile</include>
+                            <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
+                            <include>com.twitter:finagle-core_2.11</include>
+                            <include>com.twitter:util-core_2.11</include>
+                            <include>org.skife.config:config-magic</include>
                         </includes>
                     </artifactSet>
                 </configuration>

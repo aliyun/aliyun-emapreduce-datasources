@@ -12,6 +12,7 @@ emr-tablestore/target/*
 emr-dts/target/*
 emr-kafka/target/*
 emr-datahub/target/*
+emr-druid/target/*
 examples/target/*
 *.iml
 log.txt
