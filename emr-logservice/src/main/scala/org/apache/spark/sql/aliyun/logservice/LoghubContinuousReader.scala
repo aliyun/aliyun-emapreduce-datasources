@@ -119,7 +119,7 @@ class LoghubContinuousDataReader(
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
-  private val step: Int = 1000
+  private val step: Int = 2
   private var hasRead: Int = 0
   private var nextCursor: String = offset
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
