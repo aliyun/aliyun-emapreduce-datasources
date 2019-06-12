@@ -43,7 +43,7 @@ class LoghubIterator(
     context: TaskContext)
   extends NextIterator[String] with Logging {
 
-  private val step: Int = 1000
+  private val step: Int = 2
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
   // TODO: This may cost too much memory.

@@ -78,7 +78,7 @@ class LoghubSourceRDD(
         val zkClient: ZkClient = LoghubOffsetReader.getOrCreateZKClient(zkParams)
 
         private val count = shardPartition.count
-        private val step: Int = 1000
+        private val step: Int = 2
         private var hasRead: Int = 0
         private var nextCursor: String = shardPartition.startCursor
         // TODO: This may cost too much memory.
