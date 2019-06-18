@@ -654,14 +654,13 @@ object JdbcUtils extends Logging {
 
       case TimestampType =>
         (stmt: PreparedStatement, row: InternalRow, pos: Int) =>
-          stmt.setTimestamp(
-            pos + 1,
+          stmt.setTimestamp(pos + 1,
             DateTimeUtils.toJavaTimestamp(row.get(pos, dataType).asInstanceOf[Long]))
 
       case DateType =>
         (stmt: PreparedStatement, row: InternalRow, pos: Int) =>
           stmt.setDate(pos + 1,
-                       row.get(pos, dataType).asInstanceOf[java.sql.Date])
+            DateTimeUtils.toJavaDate(row.get(pos, dataType).asInstanceOf[Int]))
 
       case t: DecimalType =>
         (stmt: PreparedStatement, row: InternalRow, pos: Int) =>
