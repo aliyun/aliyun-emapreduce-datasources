@@ -189,9 +189,10 @@ class LoghubSourceRDD(
   }
 
   override protected def getPartitions: Array[Partition] = {
+    val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     shardOffsets.zipWithIndex.map { case (p, idx) =>
       new ShardPartition(id, idx, p._1, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3).asInstanceOf[Partition]
+        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
     }.toArray
   }
 
@@ -205,7 +206,8 @@ class LoghubSourceRDD(
       accessKeySecret: String,
       endpoint: String,
       val startCursor: Int,
-      val endCursor: Int) extends Partition with Logging {
+      val endCursor: Int,
+      val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def index: Int = partitionId
   }

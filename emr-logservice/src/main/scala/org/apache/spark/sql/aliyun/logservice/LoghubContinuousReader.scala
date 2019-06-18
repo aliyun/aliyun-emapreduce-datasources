@@ -127,7 +127,7 @@ class LoghubContinuousInputPartitionReader(
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
-  private val step: Int = 2
+  private val step: Int = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
   private var hasRead: Int = 0
   private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
