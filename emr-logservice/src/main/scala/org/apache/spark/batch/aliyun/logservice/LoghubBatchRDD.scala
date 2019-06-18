@@ -129,7 +129,7 @@ class LoghubBatchRDD(
       startCursor: String,
       endCursor: String,
       context: TaskContext) extends NextIterator[String] {
-    val logGroupCount = 1000
+    val logGroupCount = 2
     var logCache = new LinkedBlockingQueue[String]()
     var curCursor: String = startCursor
 

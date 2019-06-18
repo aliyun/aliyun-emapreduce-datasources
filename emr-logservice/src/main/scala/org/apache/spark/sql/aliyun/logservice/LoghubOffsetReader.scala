@@ -17,6 +17,7 @@
 package org.apache.spark.sql.aliyun.logservice
 
 import java.util
+import java.util.Base64
 import java.util.concurrent.{Executors, ThreadFactory}
 
 import com.aliyun.openservices.aliyun.log.producer.{LogProducer, ProducerConfig, ProjectConfig, ProjectConfigs}
@@ -287,8 +288,9 @@ object LoghubOffsetReader extends Logging with Serializable {
 
     var schema = new StructType()
     val endCursor = logServiceClient.GetCursor(logProject, logStore, oneShard.GetShardId(), CursorMode.END).GetCursor()
-    val endCursorTime = logServiceClient.GetCursorTime(logProject, logStore, oneShard.GetShardId(), endCursor).GetCursorTime()
-    val startCursor = logServiceClient.GetCursor(logProject, logStore, oneShard.GetShardId(), endCursorTime - 600).GetCursor()
+    val endCursorDecoded = Base64.getDecoder.decode(endCursor)
+    val startCursorLong = new String(endCursorDecoded).toLong - 1
+    val startCursor = new String(Base64.getEncoder.encode(startCursorLong.toString.getBytes()))
     val oneBatchLogs = logServiceClient.BatchGetLog(logProject, logStore, oneShard.GetShardId(), 1, startCursor, endCursor)
     val group = oneBatchLogs.GetLogGroups().head
     val log = group.GetLogGroup().getLogsList.head
