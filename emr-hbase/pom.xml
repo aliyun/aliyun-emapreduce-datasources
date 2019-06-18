@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-hbase</artifactId>
+    <artifactId>emr-hbase_2.11</artifactId>
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce External HBase Support</name>
 

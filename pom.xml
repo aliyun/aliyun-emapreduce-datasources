@@ -39,6 +39,7 @@
         <module>emr-kafka</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
+        <module>assembly</module>
     </modules>
 
     <properties>
@@ -639,6 +640,12 @@
         </pluginManagement>
     </build>
     <profiles>
+        <profile>
+            <id>ds</id>
+            <properties>
+                <shc.version>1.1.3-2.4-s_2.11</shc.version>
+            </properties>
+        </profile>
         <profile>
             <id>gpg</id>
             <properties>
