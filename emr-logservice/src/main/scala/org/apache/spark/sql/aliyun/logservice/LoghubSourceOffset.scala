@@ -16,13 +16,14 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
-import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
-import org.apache.spark.sql.sources.v2.reader.streaming.{PartitionOffset, Offset => OffsetV2}
+import scala.collection.mutable.HashMap
+import scala.util.control.NonFatal
+
 import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
 
-import scala.collection.mutable.HashMap
-import scala.util.control.NonFatal
+import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
+import org.apache.spark.sql.sources.v2.reader.streaming.{PartitionOffset, Offset => OffsetV2}
 
 case class LoghubSourceOffset(shardToOffsets: Map[LoghubShard, Int]) extends OffsetV2 {
   override def json(): String = LoghubSourceOffset.partitionOffsets(shardToOffsets)

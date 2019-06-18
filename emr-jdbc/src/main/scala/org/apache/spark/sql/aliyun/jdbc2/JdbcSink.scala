@@ -23,7 +23,6 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.aliyun.jdbc2.JdbcUtils._
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.JDBC_TABLE_NAME
 import org.apache.spark.sql.execution.datasources.jdbc._
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.jdbc.JdbcDialects

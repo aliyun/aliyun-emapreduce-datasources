@@ -27,6 +27,7 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow

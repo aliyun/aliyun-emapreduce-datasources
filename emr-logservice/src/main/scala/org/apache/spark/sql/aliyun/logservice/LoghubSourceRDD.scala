@@ -19,11 +19,12 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util.Base64
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.alibaba.fastjson.JSONObject
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
+
+import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.{BatchGetLogResponse, GetCursorResponse}
+
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}

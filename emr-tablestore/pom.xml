@@ -135,10 +135,6 @@
                             <pattern>org.json4s</pattern>
                             <shadedPattern>${emr.shade.packageName}.json4s</shadedPattern>
                         </relocation>
-                        <!--<relocation>-->
-                            <!--<pattern>org.apache.http</pattern>-->
-                            <!--<shadedPattern>${emr.shade.packageName}.http</shadedPattern>-->
-                        <!--</relocation>-->
                     </relocations>
                 </configuration>
                 <executions>

@@ -16,6 +16,8 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
+import scala.collection.mutable.ArrayBuffer
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
@@ -23,8 +25,6 @@ import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
-
-import scala.collection.mutable.ArrayBuffer
 
 class LoghubRelation(
     override val sqlContext: SQLContext,

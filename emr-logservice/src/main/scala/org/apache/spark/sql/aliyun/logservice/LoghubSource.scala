@@ -19,6 +19,8 @@ package org.apache.spark.sql.aliyun.logservice
 import java.io._
 import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable.ArrayBuffer
+
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 
@@ -30,8 +32,6 @@ import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
-
-import scala.collection.mutable.ArrayBuffer
 
 class LoghubSource(
     @transient sqlContext: SQLContext,

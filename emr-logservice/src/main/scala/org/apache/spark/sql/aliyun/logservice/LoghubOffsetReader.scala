@@ -183,8 +183,6 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
         })
 
         import scala.collection.JavaConversions._
-//        logWarning("===>" + latestHistograms.map(e => s"${e.mFromTime}, ${e.mToTime}, ${e.mCount}, ${e.mIsCompleted}").mkString(" | "))
-
         var endCursorTime = startOffset
         var count = 0L
         latestHistograms.filter(_.mFromTime >= startOffset)
@@ -197,7 +195,6 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 
         require(endCursorTime >= startOffset, s"endCursorTime[$endCursorTime] should not be less than " +
           s"startCursorTime[$startOffset].")
-//        logWarning(s"===>$startOffset, $endCursorTime")
         endCursorTime
       }
     }
