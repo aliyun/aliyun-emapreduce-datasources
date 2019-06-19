@@ -48,10 +48,6 @@ class JdbcSink(
   logInfo(s"Using temporary executor tables : $useTemporaryExecutorTable")
 
   def addBatch(batchId: Long, df: DataFrame): Unit = {
-
-    val schema: StructType = batchIdCol
-      .map(colName => df.schema.add(colName, LongType, false))
-      .getOrElse(df.schema)
     val conn = JdbcUtils.createConnectionFactory(options)()
     val sinkLogConn = sinkLog.createSinkLogConnectionFactory(parameters)()
     try {
@@ -60,13 +56,11 @@ class JdbcSink(
       } else {
         sinkLog.startBatch(batchId, sinkLogConn)
         val isCaseSensitive = sqlContext.conf.caseSensitiveAnalysis
-
         val tableExists = JdbcUtils.tableExists(conn, options)
         if (tableExists) {
           if (outputMode == OutputMode.Complete()) {
-
-            if (options.isTruncate && isCascadingTruncateTable(options.url)
-                  .contains(false)) {
+            if (options.isTruncate
+              && isCascadingTruncateTable(options.url).contains(false)) {
               // In this case, we should truncate table and then load.
               truncateTable(conn, options)
               saveRows(df, isCaseSensitive, parameters, batchId)
@@ -86,7 +80,6 @@ class JdbcSink(
           saveRows(df, isCaseSensitive, parameters, batchId)
         }
         sinkLog.commitBatch(batchId, sinkLogConn)
-
       }
     } finally {
       conn.close()
@@ -187,20 +180,15 @@ class JdbcSink(
           s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table writing " +
             "via JDBC. The minimum value is 1.")
       case Some(n) if n < df.rdd.getNumPartitions => df.coalesce(n)
-      case _                                      => df
+      case _ => df
     }
     if (batchIdCol.isEmpty) {
-
       val rddSchema = df.schema
       val sparkSession = df.sparkSession
-
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
-
         val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + TaskContext.getPartitionId()
-
         val executorParameters = parameters + ("dbtable" -> executorTable)
         val executorOptions = new JDBCOptions(executorParameters)
-
         val conn = createConnectionFactory(executorOptions).apply()
         val tableExists = JdbcUtils.tableExists(conn, executorOptions)
         if (!tableExists) {
@@ -231,19 +219,15 @@ class JdbcSink(
         truncateTable(conn, executorOptions)
       })
     } else {
-
       // batchId col is defined.. construct a schema by adding the batchId col to the DF schema
       // also put the value of the batch id to the end of every row in the DF
       val dfSchema = df.schema
       val rddSchema: StructType = df.schema.add(batchIdCol.get, LongType, false)
       val sparkSession = df.sparkSession
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
-
         val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + TaskContext.getPartitionId()
-
         val executorParameters = parameters + ("dbtable" -> executorTable)
         val executorOptions = new JDBCOptions(executorParameters)
-
         val conn = createConnectionFactory(executorOptions).apply()
         val tableExists = JdbcUtils.tableExists(conn, executorOptions)
         if (!tableExists) {
@@ -273,18 +257,6 @@ class JdbcSink(
         //Truncate the executor table
         truncateTable(conn, executorOptions)
       })
-    }
-  }
-
-
-  def saveMode(outputMode: OutputMode): SaveMode = {
-    if (outputMode == OutputMode.Append()) {
-      SaveMode.Append
-    } else if (outputMode == OutputMode.Complete()) {
-      SaveMode.Overwrite
-    } else {
-      throw new IllegalArgumentException(
-        s"Output mode $outputMode is not supported by JdbcSink")
     }
   }
 

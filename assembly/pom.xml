@@ -13,6 +13,10 @@
     <name>Aliyun E-MapReduce DataSources Assembly</name>
     <artifactId>emr-assembly_2.11</artifactId>
 
+    <properties>
+        <guava.version>27.0-jre</guava.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.aliyun.emr</groupId>
