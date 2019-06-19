@@ -214,7 +214,7 @@ public class LoghubClientAgent {
           currentException = e;
         } else {
           if (e.GetErrorCode().equals("IndexConfigNotExist")) {
-            LOG.warn("Please enable index service for " + project + "/" + logStore, e);
+            LOG.warn("Please enable index service for " + project + "/" + logStore);
           }
           throw e;
         }
