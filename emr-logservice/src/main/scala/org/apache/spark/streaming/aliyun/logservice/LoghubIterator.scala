@@ -40,14 +40,14 @@ class LoghubIterator(
     endCursor: String,
     count: Int,
     checkpointDir: String,
-    context: TaskContext)
+    context: TaskContext,
+    logGroupStep: Int = 100)
   extends NextIterator[String] with Logging {
 
-  private val step: Int = 2
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
   // TODO: This may cost too much memory.
-  private var logData = new LinkedBlockingQueue[String](4096 * step)
+  private var logData = new LinkedBlockingQueue[String](4096 * logGroupStep)
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -89,7 +89,7 @@ class LoghubIterator(
   }
 
   def fetchNextBatch(): Unit = {
-    val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, step, nextCursor, endCursor)
+    val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {

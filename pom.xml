@@ -27,9 +27,11 @@
 
     <modules>
         <module>emr-oss</module>
+        <module>emr-jdbc</module>
         <module>emr-maxcompute</module>
         <module>emr-logservice</module>
         <module>emr-tablestore</module>
+        <module>emr-hbase</module>
         <module>emr-mns</module>
         <module>emr-ons</module>
         <module>emr-dts</module>
@@ -37,23 +39,26 @@
         <module>emr-kafka</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
+        <module>assembly</module>
     </modules>
 
     <properties>
         <scala.version>2.11.7</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.3.1</spark.version>
+        <spark.version>2.4.3</spark.version>
         <oss.sdk.version>3.0.0</oss.sdk.version>
         <tablestore.sdk.version>4.4.0</tablestore.sdk.version>
         <odps.version>0.28.4-public</odps.version>
-        <loghubb.client.version>0.6.13</loghubb.client.version>
+        <loghubb.client.version>0.6.16</loghubb.client.version>
+        <aliyun.log.version>0.6.31</aliyun.log.version>
+        <aliyun.log.producer.version>0.2.0</aliyun.log.producer.version>
         <ons.version>1.7.1.Final</ons.version>
         <mns.version>1.1.8.4</mns.version>
         <dts.version>4.6.27.12.0</dts.version>
         <hadoop.version>2.9.0</hadoop.version>
         <fastjson.version>1.2.45</fastjson.version>
         <hive.version>2.0.1</hive.version>
-        <guava.version>11.0.2</guava.version>
+        <guava.version>14.0.1</guava.version>
         <scalatest.version>3.0.3</scalatest.version>
         <junit.version>4.8.2</junit.version>
         <eclipse.jetty>9.3.24.v20180605</eclipse.jetty>
@@ -68,12 +73,20 @@
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
         <datahub.verion>2.9.2-public</datahub.verion>
         <confluent.version>5.0.0</confluent.version>
-        <avro.version>1.7.7</avro.version>
+        <avro.version>1.8.2</avro.version>
         <gson.version>2.2.4</gson.version>
+        <protobuf.version>2.5.0</protobuf.version>
+        <hbase.version>1.4.9</hbase.version>
+        <hbase.mr.version>2.0.4</hbase.mr.version>
+        <!-- 1.1.1-2.1-s_2.11 is the latest released version for shc-core -->
+        <!-- But we need to use 1.1.3-2.4-s_2.11 which will be build locally.-->
+        <shc.version>1.1.1-2.1-s_2.11</shc.version>
+        <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
         <test_classpath_file>${project.build.directory}/spark-test-classpath.txt</test_classpath_file>
+        <emr.shade.packageName>com.aliyun.emr_project</emr.shade.packageName>
     </properties>
 
     <developers>
@@ -182,6 +195,13 @@
                 <groupId>com.aliyun.openservices</groupId>
                 <artifactId>tablestore</artifactId>
                 <version>${tablestore.sdk.version}</version>
+                <classifier>jar-with-dependencies</classifier>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.protobuf</groupId>
+                        <artifactId>protobuf-java</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
@@ -222,6 +242,24 @@
                 <groupId>com.aliyun.openservices</groupId>
                 <artifactId>loghub-client-lib</artifactId>
                 <version>${loghubb.client.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.aliyun.openservices</groupId>
+                        <artifactId>aliyun-log</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>aliyun-log</artifactId>
+                <version>${aliyun.log.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>aliyun-log-producer</artifactId>
+                <version>${aliyun.log.producer.version}</version>
             </dependency>
 
             <dependency>
@@ -411,6 +449,12 @@
                 <artifactId>aliyun-sdk-datahub</artifactId>
                 <version>${datahub.verion}</version>
             </dependency>
+
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -597,7 +641,16 @@
     </build>
     <profiles>
         <profile>
+            <id>ds</id>
+            <properties>
+                <shc.version>1.1.3-2.4-s_2.11</shc.version>
+            </properties>
+        </profile>
+        <profile>
             <id>gpg</id>
+            <properties>
+                <shc.version>1.1.3-2.4-s_2.11</shc.version>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -652,6 +705,17 @@
             <id>confluent</id>
             <name>Confluent</name>
             <url>https://packages.confluent.io/maven/</url>
+        </repository>
+        <repository>
+            <id>hortonworks</id>
+            <name>hortonworks</name>
+            <url>https://repo.hortonworks.com/content/repositories/releases/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
         <repository>
             <id>oss</id>

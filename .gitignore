@@ -13,5 +13,7 @@ emr-dts/target/*
 emr-kafka/target/*
 emr-datahub/target/*
 examples/target/*
+emr-hbase/target/*
+emr-jdbc/target/*
 *.iml
 log.txt

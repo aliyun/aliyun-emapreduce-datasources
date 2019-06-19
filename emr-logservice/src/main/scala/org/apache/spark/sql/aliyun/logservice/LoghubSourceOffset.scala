@@ -16,24 +16,25 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
-import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
-import org.apache.spark.sql.sources.v2.reader.streaming.{PartitionOffset, Offset => OffsetV2}
-import org.json4s.NoTypeHints
-import org.json4s.jackson.Serialization
-
 import scala.collection.mutable.HashMap
 import scala.util.control.NonFatal
 
-case class LoghubSourceOffset(shardToOffsets: Map[LoghubShard, String]) extends OffsetV2 {
+import org.json4s.NoTypeHints
+import org.json4s.jackson.Serialization
+
+import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
+import org.apache.spark.sql.sources.v2.reader.streaming.{PartitionOffset, Offset => OffsetV2}
+
+case class LoghubSourceOffset(shardToOffsets: Map[LoghubShard, Int]) extends OffsetV2 {
   override def json(): String = LoghubSourceOffset.partitionOffsets(shardToOffsets)
 }
 
-case class LoghubShardOffset(logProject: String, logStore: String, shard: Int, offset: String) extends PartitionOffset
+case class LoghubShardOffset(logProject: String, logStore: String, shard: Int, offset: Int) extends PartitionOffset
 
 object LoghubSourceOffset {
   private implicit val formats = Serialization.formats(NoTypeHints)
 
-  def getShardOffsets(offset: Offset): Map[LoghubShard, String] = {
+  def getShardOffsets(offset: Offset): Map[LoghubShard, Int] = {
     offset match {
       case o: LoghubSourceOffset => o.shardToOffsets
       case so: SerializedOffset => LoghubSourceOffset(so).shardToOffsets
@@ -43,22 +44,22 @@ object LoghubSourceOffset {
     }
   }
 
-  def partitionOffsets(shardToOffsets: Map[LoghubShard, String]): String = {
-    val result = new HashMap[String, HashMap[Int, String]]()
+  def partitionOffsets(shardToOffsets: Map[LoghubShard, Int]): String = {
+    val result = new HashMap[String, HashMap[Int, Int]]()
     implicit val topicOrdering: Ordering[LoghubShard] = Ordering.by(t => (t.logProject, t.logStore, t.shard))
     val shards = shardToOffsets.keySet.toSeq.sorted  // sort for more determinism
     shards.foreach { shard =>
       val off = shardToOffsets(shard)
-      val parts = result.getOrElse(Loghub(shard.logProject, shard.logStore).toString, new HashMap[Int, String])
+      val parts = result.getOrElse(Loghub(shard.logProject, shard.logStore).toString, new HashMap[Int, Int])
       parts += shard.shard -> off
       result += Loghub(shard.logProject, shard.logStore).toString -> parts
     }
     Serialization.write(result)
   }
 
-  def partitionOffsets(str: String): Map[LoghubShard, String] = {
+  def partitionOffsets(str: String): Map[LoghubShard, Int] = {
     try {
-      Serialization.read[Map[String, Map[Int, String]]](str).flatMap { case (log, shardOffset) =>
+      Serialization.read[Map[String, Map[Int, Int]]](str).flatMap { case (log, shardOffset) =>
         shardOffset.map { case (shard, offset) =>
           val logProject = log.split("#")(0)
           val logStore = log.split("#")(1)
@@ -71,17 +72,17 @@ object LoghubSourceOffset {
           s"""Expected
              |{
              |  "logProject-A#logStore-B":{
-             |    "0":"MTUzNzIUnJKsdRcYNzIxODkyMw==",
-             |    "1":"MTUzNzIUnTGxuIkaSdIxODkyMw=="
+             |    "0":"1409569200",
+             |    "1":"1409569200"
              |  },
              |  "logProject-C#logStore-D":{
-             |    "5":"MTUzNzIUnMNqFtSdIPIxODkyMw=="
+             |    "5":"1409569200"
              |  }
              |}, got $str""")
     }
   }
 
-  def apply(offsetTuples: (String, String, Int, String)*): LoghubSourceOffset = {
+  def apply(offsetTuples: (String, String, Int, Int)*): LoghubSourceOffset = {
     LoghubSourceOffset(offsetTuples.map { case (p, ls, sh, os) => (LoghubShard(p, ls, sh), os)}.toMap )
   }
 

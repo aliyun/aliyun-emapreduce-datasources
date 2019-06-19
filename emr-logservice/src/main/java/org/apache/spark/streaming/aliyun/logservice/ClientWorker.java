@@ -206,7 +206,8 @@ public class ClientWorker implements Runnable {
           this.mLogHubProcessorFactory.generatorProcessor(),
           this.mExecutorService,
           this.mLogHubConfig.getCursorPosition(),
-          this.mLogHubConfig.GetCursorStartTime());
+          this.mLogHubConfig.GetCursorStartTime(),
+          this.mLogHubConfig.getMaxFetchLogGroupSize());
       this.mShardConsumer.put(shardId, consumer);
       LOG.warn("create a consumer shard:" + shardId);
       return consumer;

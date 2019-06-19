@@ -27,6 +27,7 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
@@ -44,7 +45,7 @@ class DatahubSource(
     sourceOptions: Map[String, String],
     metadataPath: String,
     @transient datahubOffsetReader: DatahubOffsetReader,
-    startOffset: DatahubOffsetRangeLimit) extends Source with Serializable with Logging{
+    startOffset: DatahubOffsetRangeLimit) extends Source with Serializable with Logging {
   private val currentBatches = new mutable.HashMap[(Offset, Offset), RDD[InternalRow]]()
   private var currentPartitionOffset: Option[Map[DatahubShard, Long]] = None
   private val zkParams = sourceOptions.filter(_._1.toLowerCase(Locale.ROOT).startsWith("zookeeper."))

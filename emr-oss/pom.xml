@@ -10,7 +10,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>emr-core</artifactId>
+  <artifactId>emr-oss</artifactId>
   <packaging>jar</packaging>
   <name>Aliyun E-MapReduce OSS Support</name>
 
@@ -154,7 +154,7 @@
             <artifactId>maven-shade-plugin</artifactId>
             <configuration>
                 <shadedArtifactAttached>false</shadedArtifactAttached>
-                <outputFile>${project.build.directory}/shaded/emr-core-${project.version}.jar</outputFile>
+                <outputFile>${project.build.directory}/shaded/emr-oss-${project.version}.jar</outputFile>
                 <artifactSet>
                     <includes>
                         <include>com.aliyun.oss:aliyun-sdk-oss</include>
