@@ -21,7 +21,7 @@ import java.util
 import java.util.Properties
 
 import com.aliyun.openservices.log.common.Consts.CursorMode
-import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint}
+import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint, LogGroupData}
 import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import com.aliyun.openservices.loghub.client.exceptions.LogHubClientWorkerException
@@ -34,14 +34,14 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
+import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
-import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, HashMap}
 
 class DirectLoghubInputDStream(
     _ssc: StreamingContext,
@@ -53,7 +53,8 @@ class DirectLoghubInputDStream(
     endpoint: String,
     zkParams: Map[String, String],
     mode: LogHubCursorPosition,
-    cursorStartTime: Long = -1L
+    cursorStartTime: Long = -1L,
+    logGroupDecoder: LogGroupData => ArrayBuffer[String]
   ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
   @transient private var mClient: LoghubClientAgent = null
@@ -249,7 +250,8 @@ class DirectLoghubInputDStream(
           ssc.graph.batchDuration.milliseconds,
           zkParams,
           shardOffsets,
-          checkpointDir).setName(s"LoghubRDD-${validTime.toString()}")
+          checkpointDir,
+          logGroupDecoder).setName(s"LoghubRDD-${validTime.toString()}")
       } else {
         // Last batch has not been completed, here we generator a fake job containing no data to
         // skip this batch.

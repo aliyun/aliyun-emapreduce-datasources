@@ -18,6 +18,7 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.io.UnsupportedEncodingException
 
+import com.aliyun.openservices.log.common.LogGroupData
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.spark.annotation.DeveloperApi
@@ -38,13 +39,16 @@ class LoghubRDD(
     duration: Long,
     zkParams: Map[String, String],
     shardOffsets: ArrayBuffer[(Int, String, String)],
-    checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
+    checkpointDir: String,
+    logGroupDecoder: LogGroupData => ArrayBuffer[String])
+  extends RDD[String](sc, Nil) with Logging {
   @transient var mClient: LoghubClientAgent =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
   @transient var zkClient: ZkClient =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
   private val enablePreciseCount: Boolean =
     sc.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
+  private val decoder = logGroupDecoder
 
   private def initialize(): Unit = {
     mClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
@@ -83,9 +87,19 @@ class LoghubRDD(
     initialize()
     val shardPartition = split.asInstanceOf[ShardPartition]
     try {
-      val loghubIterator = new LoghubIterator(zkClient, mClient, project, logStore,
-        shardPartition.shardId, shardPartition.startCursor, shardPartition.endCursor,
-        shardPartition.count.toInt, checkpointDir, context, shardPartition.logGroupStep)
+      val loghubIterator = new LoghubIterator(
+        zkClient,
+        mClient,
+        project,
+        logStore,
+        shardPartition.shardId,
+        shardPartition.startCursor,
+        shardPartition.endCursor,
+        shardPartition.count.toInt,
+        checkpointDir,
+        context,
+        shardPartition.logGroupStep,
+        decoder)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
       case _: Exception =>

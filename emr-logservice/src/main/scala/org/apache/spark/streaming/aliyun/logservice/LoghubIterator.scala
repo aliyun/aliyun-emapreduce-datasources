@@ -18,17 +18,15 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.alibaba.fastjson.JSONObject
-import org.I0Itec.zkclient.ZkClient
-
-import scala.collection.JavaConversions._
-
+import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-
+import org.I0Itec.zkclient.ZkClient
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ArrayBuffer
 
 class LoghubIterator(
     zkClient: ZkClient,
@@ -41,13 +39,15 @@ class LoghubIterator(
     count: Int,
     checkpointDir: String,
     context: TaskContext,
-    logGroupStep: Int = 100)
+    logGroupStep: Int = 100,
+    logGroupDecoder: LogGroupData => ArrayBuffer[String])
   extends NextIterator[String] with Logging {
 
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
   // TODO: This may cost too much memory.
   private var logData = new LinkedBlockingQueue[String](4096 * logGroupStep)
+  private val decoder = logGroupDecoder
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -92,25 +92,9 @@ class LoghubIterator(
     val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => {
-        val topic = group.GetTopic()
-        val source = group.GetSource()
-        val obj = new JSONObject()
-        obj.put(__TIME__, Integer.valueOf(log.getTime))
-        obj.put(__TOPIC__, topic)
-        obj.put(__SOURCE__, source)
-        log.getContentsList.foreach(content => {
-          obj.put(content.getKey, content.getValue)
-        })
-
-        val flg = group.GetFastLogGroup()
-        for (i <- 0 until flg.getLogTagsCount) {
-          obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
-        }
-
-        count += 1
-        logData.offer(obj.toJSONString)
-      })
+      val r = decoder(group)
+      logData.addAll(r)
+      count += r.size()
     })
 
     val crt = nextCursor
