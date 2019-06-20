@@ -98,6 +98,7 @@
                             <include>com.aliyun.openservices:aliyun-log-producer</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
                             <include>com.aliyun.openservices:tablestore</include>
+                            <include>com.alibaba:fastjson</include>
                             <include>com.google.guava:guava</include>
                             <include>com.google.protobuf:protobuf-java</include>
                             <include>net.sf.ezmorph:ezmorph</include>
