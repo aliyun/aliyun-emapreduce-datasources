@@ -22,7 +22,7 @@ import org.apache.spark.sql.SparkSession
 
 object StructuredTableStoreSinkSample {
   def main(args: Array[String]) {
-    if (args.length < 8) {
+    if (args.length < 10) {
       System.err.println("Usage: StructuredTableStoreSinkSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <sls-endpoint> <ots-endpoint> " +
         "<ots-table-name> <ots-instance-name> <starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
@@ -32,7 +32,7 @@ object StructuredTableStoreSinkSample {
     val Array(project, logStore, accessKeyId, accessKeySecret, slsEndpoint, otsEndpoint, otsTableName, otsInstanceName,
       startingOffsets, maxOffsetsPerTrigger, _*) = args
     val checkpointLocation =
-      if (args.length > 8) args(8) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 10) args(10) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
