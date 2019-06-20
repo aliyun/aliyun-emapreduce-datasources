@@ -18,7 +18,7 @@
 package org.apache.spark.streaming.aliyun.datahub
 
 import com.aliyun.datahub.common.data.RecordSchema
-import com.aliyun.datahub.exception.{InvalidParameterException, MalformedRecordException, ResourceNotFoundException}
+import com.aliyun.datahub.exception.{InternalFailureException, InvalidParameterException, MalformedRecordException, ResourceNotFoundException}
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model._
 import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
@@ -43,6 +43,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e: ResourceNotFoundException => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -64,6 +71,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
       catch {
         case e @(_:ResourceNotFoundException | _:InvalidParameterException ) => {
           throw e
+        }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
         }
         case e: Exception => {
           retry += 1
@@ -92,6 +106,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -118,6 +139,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
       catch {
         case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
           throw e
+        }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
         }
         case e: Exception => {
           retry += 1
@@ -149,6 +177,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
                   _: InvalidParameterException) => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -171,6 +206,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e: InvalidParameterException => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -192,6 +234,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
       catch {
         case e: InvalidParameterException => {
           throw e
+        }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
         }
         case e: Exception => {
           retry += 1
@@ -219,6 +268,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e @ (_: ResourceNotFoundException | _: InvalidParameterException) => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -241,6 +297,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         case e: InvalidParameterException => {
           throw e
         }
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
@@ -260,6 +323,13 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         client.updateOffsetContext(offsetCtx)
       }
       catch {
+        case e: InternalFailureException => {
+          try {
+            Thread.sleep(5000)
+          } catch {
+            case e1: Exception => {}
+          }
+        }
         case e: Exception => {
           retry += 1
           currentException = e
