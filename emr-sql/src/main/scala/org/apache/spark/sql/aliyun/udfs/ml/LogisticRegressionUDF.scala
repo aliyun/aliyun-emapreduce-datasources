@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.spark.sql.aliyun.udfs.ml
 
 import java.lang
@@ -22,16 +23,15 @@ import org.apache.hadoop.hive.ql.exec.UDFArgumentException
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF
 import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspector, StructObjectInspector}
 import org.apache.hadoop.hive.serde2.objectinspector.primitive._
+import org.json4s.DefaultFormats
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.mllib.classification.{ClassificationModel, LogisticRegressionModel}
-import org.apache.spark.ml.linalg.{DenseVector, Matrix, SQLDataTypes, SparseVector, Vector}
+import org.apache.spark.mllib.classification.LogisticRegressionModel
+import org.apache.spark.mllib.linalg._
 import org.apache.spark.ml.util.ParquetFormatModelMetadataLoader
 import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.execution.datasources.parquet.ParquetFormatModelLoader
-import org.apache.spark.sql.types.{BooleanType, IntegerType, StructField, StructType}
-import org.json4s.DefaultFormats
+import org.apache.spark.sql.types._
 
 class LogisticRegressionUDF extends GenericUDF with Logging {
   var _x1: StringObjectInspector = _
@@ -108,32 +108,37 @@ object LogisticRegressionUDF {
   var initialized: Boolean = false
   var model: LogisticRegressionModel = _
   val lock = new Object
-  val className = classOf[LogisticRegressionModel].getName
+  val className = "org.apache.spark.mllib.classification.LogisticRegressionModel"
+
+  object VectorType extends VectorUDT
 
   val requiredSchema = StructType(Array(
-    StructField("numClasses", IntegerType),
-    StructField("numFeatures", IntegerType),
-    StructField("interceptVector", SQLDataTypes.VectorType),
-    StructField("coefficientMatrix", SQLDataTypes.MatrixType),
-    StructField("isMultinomial", BooleanType))
-  )
+    StructField("weights", VectorType),
+    StructField("intercept", DoubleType),
+    StructField("threshold", DoubleType)
+  ))
 
   def loadModel(modelPath: String): LogisticRegressionModel = {
     lock.synchronized {
       if (!initialized) {
-        val encoder = RowEncoder(requiredSchema).resolveAndBind()
-        val data = ParquetFormatModelLoader.loadModelData(requiredSchema, modelPath)
-        val (loadedClassName, version, metadata) = ParquetFormatModelMetadataLoader.loadModelMetaData(modelPath, className)
-
-        implicit val formats = DefaultFormats
-        val numFeatures = (metadata \ "numFeatures").extract[Int]
-        val numClasses = (metadata \ "numClasses").extract[Int]
-
-        val (numFeatures, numClasses) = ClassificationModel.getNumFeaturesClasses(metadata)
-        val Row(numClasses: Int, numFeatures: Int, interceptVector: Vector,
-        coefficientMatrix: Matrix, isMultinomial: Boolean) = encoder.fromRow(data)
-        model = new LogisticRegressionModel(, numFeatures, numClasses))
-        initialized = true
+        val (loadedClassName, version, metadata) = ParquetFormatModelMetadataLoader.loadModelMetaData(modelPath)
+        (loadedClassName, version) match {
+          case (clazzName, "1.0") if clazzName == className =>
+            implicit val formats = DefaultFormats
+            val numFeatures = (metadata \ "numFeatures").extract[Int]
+            val numClasses = (metadata \ "numClasses").extract[Int]
+            val (weights, intercept, threshold) = ParquetFormatModelLoader.loadModelData(modelPath, className, requiredSchema)
+            model = new LogisticRegressionModel(weights, intercept, numFeatures, numClasses)
+            threshold match {
+              case Some(t) => model.setThreshold(t)
+              case None => model.clearThreshold()
+            }
+            initialized = true
+          case _ => throw new Exception(
+            s"ParquetFormatModelMetadataLoader.loadModel did not recognize model with (className, format version):" +
+              s"($loadedClassName, $version).  Supported:\n" +
+              s"($className, 1.0)")
+        }
       }
       model
     }
