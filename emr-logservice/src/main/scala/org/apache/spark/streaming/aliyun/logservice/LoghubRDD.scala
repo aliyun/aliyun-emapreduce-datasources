@@ -85,7 +85,7 @@ class LoghubRDD(
     try {
       val loghubIterator = new LoghubIterator(zkClient, mClient, project, logStore,
         shardPartition.shardId, shardPartition.startCursor, shardPartition.endCursor,
-        shardPartition.count.toInt, checkpointDir, context)
+        shardPartition.count.toInt, checkpointDir, context, shardPartition.logGroupStep)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
       case _: Exception =>
@@ -95,10 +95,11 @@ class LoghubRDD(
 
   override protected def getPartitions: Array[Partition] = {
     val rate = sc.getConf.get("spark.streaming.loghub.maxRatePerShard", "10000").toInt
+    val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     val count = rate * duration / 1000
     shardOffsets.zipWithIndex.map { case (p, idx) =>
       new ShardPartition(id, idx, p._1, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3).asInstanceOf[Partition]
+        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
     }.toArray
   }
 
@@ -113,7 +114,8 @@ class LoghubRDD(
       accessKeySecret: String,
       endpoint: String,
       val startCursor: String,
-      val endCursor: String) extends Partition with Logging {
+      val endCursor: String,
+      val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def index: Int = partitionId
   }

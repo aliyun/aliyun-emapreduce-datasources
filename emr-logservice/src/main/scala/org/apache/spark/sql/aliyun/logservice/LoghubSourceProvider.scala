@@ -20,18 +20,19 @@ import java.util.{Locale, Optional, UUID}
 
 import scala.collection.JavaConverters._
 
-import org.apache.commons.cli.MissingArgumentException
-
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.loghub.LoghubSink
 import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
-import org.apache.spark.sql.execution.streaming.Source
+import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
+import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
 
 class LoghubSourceProvider extends DataSourceRegister
     with StreamSourceProvider
+    with StreamSinkProvider
     with RelationProvider
     with CreatableRelationProvider
     with ContinuousReadSupport
@@ -66,6 +67,14 @@ class LoghubSourceProvider extends DataSourceRegister
       metadataPath,
       startingStreamOffsets,
       loghubOffsetReader)
+  }
+
+  override def createSink(
+      sqlContext: SQLContext,
+      parameters: Map[String, String],
+      partitionColumns: Seq[String],
+      outputMode: OutputMode): Sink = {
+    new LoghubSink(sqlContext, parameters)
   }
 
   override def createRelation(

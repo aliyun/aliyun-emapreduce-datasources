@@ -17,10 +17,15 @@
 
 package org.apache.spark.sql.aliyun.logservice
 
+import java.sql.{Date, Timestamp}
+
+import com.aliyun.openservices.log.common.{LogContent, LogItem}
 import com.aliyun.openservices.log.exception.LogException
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types._
 
 object Utils extends Logging {
   def getSchema(schema: Option[StructType], sourceOptions: Map[String, String]): StructType = {
@@ -56,8 +61,49 @@ object Utils extends Logging {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
-    caseInsensitiveParams.getOrElse("zookeeper.connect.address",
-      throw new MissingArgumentException("Missing zookeeper connect address " +
-        "(='zookeeper.connect.address')."))
+  }
+
+  def toConverter(dataType: DataType): (Any) => Any = {
+    dataType match {
+      case BinaryType =>
+        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+      case ByteType | ShortType | IntegerType | LongType |
+           FloatType | DoubleType | StringType | BooleanType => identity
+      case d: DecimalType =>
+        (item: Any) =>
+          if (item == null) {
+            null
+          } else {
+            val data = Decimal(item.asInstanceOf[java.math.BigDecimal], d.precision, d.scale)
+            data.toDouble
+          }
+      case TimestampType => (item: Any) =>
+        if (item == null) null else item.asInstanceOf[Timestamp].getTime
+      case DateType => (item: Any) =>
+        if (item == null) null else item.asInstanceOf[Date].getTime
+      case ArrayType(_, _) =>
+        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+      case MapType(StringType, _, _) =>
+        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+      case structType: StructType =>
+        val fieldConverters = structType.fields.map(field => toConverter(field.dataType))
+        (item: Any) => {
+          if (item == null) {
+            null
+          } else {
+            val record = new LogItem()
+            val convertersIterator = fieldConverters.iterator
+            val fieldNamesIterator = dataType.asInstanceOf[StructType].fieldNames.iterator
+            val rowIterator = item.asInstanceOf[Row].toSeq.iterator
+
+            while (convertersIterator.hasNext) {
+              val converter = convertersIterator.next()
+              val logContent = new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
+              record.PushBack(logContent)
+            }
+            record
+          }
+        }
+    }
   }
 }

@@ -14,5 +14,8 @@ emr-kafka/target/*
 emr-datahub/target/*
 emr-druid/target/*
 examples/target/*
+emr-hbase/target/*
+emr-jdbc/target/*
 *.iml
 log.txt
+.DS_Store

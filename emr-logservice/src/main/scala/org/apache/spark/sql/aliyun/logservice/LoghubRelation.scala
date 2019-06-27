@@ -16,7 +16,7 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
-import java.util.UUID
+import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
@@ -25,8 +25,6 @@ import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
-
-import scala.collection.mutable.ArrayBuffer
 
 class LoghubRelation(
     override val sqlContext: SQLContext,
@@ -60,7 +58,7 @@ class LoghubRelation(
     val accessKeyId = sourceOptions("accessKeyId")
     val accessKeySecret = sourceOptions("accessKeySecret")
     val endpoint = sourceOptions("endpoint")
-    val shardOffsets = new ArrayBuffer[(Int, String, String)]()
+    val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
     fromPartitionOffsets.foreach { case (loghubShard, sof) => {
       val eof = untilPartitionOffsets(loghubShard)
       shardOffsets.+=((loghubShard.shard, sof, eof))
@@ -80,10 +78,10 @@ class LoghubRelation(
 
   private def getPartitionOffsets(
       loghubReader: LoghubOffsetReader,
-      loghubOffsets: LoghubOffsetRangeLimit): Map[LoghubShard, String] = {
+      loghubOffsets: LoghubOffsetRangeLimit): Map[LoghubShard, Int] = {
     def validateTopicPartitions(
         shards: Set[LoghubShard],
-        shardOffsets: Map[LoghubShard, String]): Map[LoghubShard, String] = {
+        shardOffsets: Map[LoghubShard, Int]): Map[LoghubShard, Int] = {
       assert(shards == shardOffsets.keySet,
         "If startingOffsets contains specific offsets, you must specify all LogProject-LogStore-Shard.\n" +
           "Use -1 for latest, -2 for earliest, if you don't care.\n" +

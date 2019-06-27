@@ -52,7 +52,7 @@ class LoghubBatchRDD(
       val partition = split.asInstanceOf[ShardPartition]
       val client = LoghubBatchRDD.getClient(endpoint, accessId, accessKey)
       val it = new LoghubIterator(client, partition.shardId, project, logStore, partition.startCursor,
-        partition.endCursor, context)
+        partition.endCursor, context, partition.logGroupStep)
       new InterruptibleIterator[String](context, it)
     } catch {
       case _: Exception => Iterator.empty
@@ -88,8 +88,10 @@ class LoghubBatchRDD(
       slices.map { case ((idx, st, et)) =>
         val startCursor = client.GetCursor(project, logStore, shardId, st).GetCursor()
         val endCursor = client.GetCursor(project, logStore, shardId, et).GetCursor()
+        val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
         logInfo(s"Creating shard partition (shardId: $shardId, sliceId: $idx, startTime: $st, endTime: $et)")
-        new ShardPartition(id, -1, shardId, idx, project, logStore, accessId, accessKey, endpoint, startCursor, endCursor)
+        new ShardPartition(id, -1, shardId, idx, project, logStore, accessId, accessKey, endpoint,
+          startCursor, endCursor, logGroupStep)
       }
     }).sorted.zipWithIndex.map { case (p, idx) =>
       p.updateIndex(idx)
@@ -107,7 +109,8 @@ class LoghubBatchRDD(
       accessKey: String,
       endpoint: String,
       val startCursor: String,
-      val endCursor: String) extends Partition {
+      val endCursor: String,
+      val logGroupStep: Int = 100) extends Partition {
 
     private var _index = partitionId
 
@@ -128,8 +131,8 @@ class LoghubBatchRDD(
       logStore: String,
       startCursor: String,
       endCursor: String,
-      context: TaskContext) extends NextIterator[String] {
-    val logGroupCount = 1000
+      context: TaskContext,
+      logGroupStep: Int) extends NextIterator[String] {
     var logCache = new LinkedBlockingQueue[String]()
     var curCursor: String = startCursor
 
@@ -153,7 +156,7 @@ class LoghubBatchRDD(
     }
 
     def fetchData(): Unit = {
-      val logData : BatchGetLogResponse = client.BatchGetLog(project, logStore, shardId, logGroupCount,
+      val logData : BatchGetLogResponse = client.BatchGetLog(project, logStore, shardId, logGroupStep,
         curCursor, endCursor)
 
       import scala.collection.JavaConversions._

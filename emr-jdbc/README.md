@@ -1,0 +1,2 @@
+- This implementation of JDBC Sink was initially done by Jayesh Lalwani (@GaalDornick) in PR https://github.com/apache/spark/pull/17190
+- Partial code is borrowed from https://github.com/mshtelma/spark-structured-streaming-jdbc-sink

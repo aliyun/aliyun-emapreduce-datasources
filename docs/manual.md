@@ -60,7 +60,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-core</artifactId>
+            <artifactId>emr-oss</artifactId>
             <version>1.7.0-SNAPSHOT</version>
         </dependency>
 
