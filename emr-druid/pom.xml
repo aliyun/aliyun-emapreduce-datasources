@@ -9,42 +9,24 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-druid</artifactId>
+    <artifactId>emr-druid_2.11</artifactId>
     <packaging>jar</packaging>
+
+    <properties>
+        <druid.tranquility.version>0.8.2</druid.tranquility.version>
+        <jackson.version>2.8.11</jackson.version>
+    </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <scope>provided</scope>
         </dependency>
-        <!--<dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.9.9</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-smile</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-joda</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>-->
         <dependency>
             <groupId>io.druid</groupId>
-            <artifactId>tranquility-core_2.11</artifactId>
+            <artifactId>tranquility-core_${scala.binary.version}</artifactId>
+            <version>${druid.tranquility.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -61,33 +43,25 @@
 
                 <exclusion>
                     <groupId>com.fasterxml.jackson.module</groupId>
-                    <artifactId>jackson-module-scala_2.11</artifactId>
+                    <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
                 </exclusion>
             </exclusions>
-            <!--<exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.module</groupId>
-                    <artifactId>jackson-module-scala_2.11</artifactId>
-                </exclusion>
-            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>io.druid</groupId>
-            <artifactId>tranquility-spark_2.11</artifactId>
+            <artifactId>tranquility-spark_${scala.binary.version}</artifactId>
+            <version>${druid.tranquility.version}</version>
         </dependency>
-        <!--<dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-scala_2.11</artifactId>
+            <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -129,6 +103,57 @@
                         <id>test</id>
                         <goals>
                             <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <outputFile>${project.build.directory}/shaded/emr-druid_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
+                    <artifactSet>
+                        <includes>
+                            <include>org.skife.config:config-magic</include>
+                            <include>org.hibernate:hibernate-validator</include>
+                            <include>org.jboss.logging:jboss-logging</include>
+                            <include>com.fasterxml.jackson.datatype:jackson-datatype-guava</include>
+                            <include>com.fasterxml.jackson.dataformat:jackson-dataformat-smile</include>
+                            <include>com.google.inject.extensions:guice-multibindings</include>
+                            <include>org.scalaj:scalaj-time_2.11</include>
+                            <include>org.apache.curator:curator-x-discovery</include>
+                            <include>com.twitter:*</include>
+                            <include>com.metamx:loglady_2.11</include>
+                            <include>io.druid:tranquility-core_2.11</include>
+                            <include>io.druid:tranquility-spark_2.11</include>
+                            <include>io.druid:druid-processing</include>
+                            <include>io.druid:druid-api</include>
+                            <include>io.druid:druid-common</include>
+                            <include>io.druid:druid-server</include>
+                            <include>com.metamx:java-util</include>
+                            <include>com.metamx:scala-util_2.11</include>
+                            <include>com.metamx:emitter</include>
+                            <include>com.twitter:finagle-core_2.11</include>
+                            <include>com.twitter:util-core_2.11</include>
+                            <include>com.twitter:util-logging_2.11/</include>
+                            <include>com.twitter:util-stats_2.11</include>
+                            <include>com.twitter:util-app_2.11</include>
+                            <include>com.twitter:util-registry_2.11/</include>
+                            <include>com.twitter:util-collection_2.11</include>
+                            <include>com.twitter:finagle-http_2.11</include>
+                            <include>com.twitter:jsr166e</include>
+                            <include>com.twitter:util-jvm_2.11</include>
+                            <include>com.fasterxml:classmate</include>
+                            <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
+                        </includes>
+                    </artifactSet>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
                         </goals>
                     </execution>
                 </executions>

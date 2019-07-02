@@ -41,14 +41,12 @@ case class DruidOffset() extends Offset {
   override def json(): String = ""
 }
 
-
 class DruidRDD(@transient sc: SparkContext) extends RDD[InternalRow](sc, Nil) {
 
     override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
       Iterator.empty
     }
     override protected def getPartitions: Array[Partition] = Array(new ShardPartition())
-
 }
 class ShardPartition() extends Partition {
   override def hashCode(): Int = 0

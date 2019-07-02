@@ -18,10 +18,9 @@
 package org.apache.spark.sql.druid
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.execution.streaming.Sink
-import org.apache.spark.sql.{Row, SQLContext, SparkSession}
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Row, SQLContext}
 
 class DruidRelation(override val sqlContext: SQLContext) extends BaseRelation
   with TableScan {

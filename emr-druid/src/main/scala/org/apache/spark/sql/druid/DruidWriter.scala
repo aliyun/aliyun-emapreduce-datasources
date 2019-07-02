@@ -32,38 +32,42 @@ import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.joda.time.{DateTime, Period}
-
 
 object DruidWriter {
   def write(
       sparkSession: SparkSession,
       queryExecution: QueryExecution,
       parameters: Map[String, String]): Unit = {
-    val schema = queryExecution.analyzed.schema
+    var schema = queryExecution.analyzed.schema
+    if (schema.isEmpty) {
+      val dimensions = parameters.getOrElse("rollup.dimensions",
+        throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
+          s"Format dimension1,dimension2...."))
+        schema = StructType(dimensions.split(",").map(StructField(_, StringType))
+      )
+    }
     import com.metamx.tranquility.spark.BeamRDD._
-    queryExecution.toRdd.map(SchemaInternalRow(schema, _)).propagate(new EventBeamFactory(parameters))
+    queryExecution.toRdd.map(SchemaInternalRow(schema, _)).propagate(new EventBeamFactory(parameters, schema))
   }
 }
 
-
-class EventBeamFactory(druidConfiguration: Map[String, String]) extends BeamFactory[SchemaInternalRow]
+class EventBeamFactory(druidConfiguration: Map[String, String], schema: StructType) extends BeamFactory[SchemaInternalRow]
 {
-  def makeBeam: Beam[SchemaInternalRow] = EventBeamFactory.BeamInstance(druidConfiguration)
+  def makeBeam: Beam[SchemaInternalRow] = EventBeamFactory.BeamInstance(druidConfiguration, schema)
 }
 
 object EventBeamFactory extends Logging {
-  private var curator: CuratorFramework = null
+  private var curator: CuratorFramework = _
   private val mapper = new ObjectMapper()
   mapper.registerModule(new AggregatorsModule())
 
-  def BeamInstance (druidConfiguration: Map[String, String]): Beam[SchemaInternalRow] = {
-    val curatorConnect = druidConfiguration.getOrElse("curator.connect",
-      throw new AnalysisException(s"option curator.connect is required.")
-    )
+  def BeamInstance (
+      druidConfiguration: Map[String, String],
+      schema: StructType): Beam[SchemaInternalRow] = {
     val indexService = druidConfiguration.getOrElse("index.service",
       throw new AnalysisException(s"option index.service is required.")
     )
@@ -77,18 +81,10 @@ object EventBeamFactory extends Logging {
       throw new AnalysisException(s"option metricsSpec is required. format: " +
         s"""{\\"metricsSpec\\":[{\\"type\\":\\"count\\",\\"name\\":\\"count\\"},{\\"type\\":\\"doubleSum\\",\\"fieldName\\":\\"x\\",\\"name\\":\\"x\\"}]}""")
     )
-    val rollupDimensions = druidConfiguration.getOrElse("rollup.dimensions",
-      throw new AnalysisException(s"option rollup.dimensions is required, with format dimension1,dimension2....")
-    )
     val rollupQueryGranularities = druidConfiguration.getOrElse("rollup.query.granularities",
       throw new AnalysisException(s"option rollup.query.granularities is required.")
     )
     val discoveryPath = druidConfiguration.getOrElse("discovery.path", "/druid/discovery")
-    val curatorRetryBaseSleepMs = druidConfiguration
-      .getOrElse("curator.retry.base.sleep", "100").toInt
-    val curatorRetryMaxSleepMs = druidConfiguration.getOrElse("curator.retry.max.sleep", "3000").toInt
-    val curatorMaxRetries = druidConfiguration
-      .getOrElse("curator.max.retries", "5").toInt
     val tuningSegmentGranularity = druidConfiguration
       .getOrElse("curator.max.tuning.segment.granularity","DAY")
     val segmentGranularity = Granularity.valueOf(tuningSegmentGranularity.toUpperCase)
@@ -105,21 +101,8 @@ object EventBeamFactory extends Logging {
     val timestampFormat = druidConfiguration
       .getOrElse("curator.max.tuning.timestamp.format", "iso")
 
-    if (curator == null) {
-      curator = CuratorFrameworkFactory.newClient(curatorConnect,
-        new BoundedExponentialBackoffRetry(curatorRetryBaseSleepMs, curatorRetryMaxSleepMs, curatorMaxRetries)
-      )
-      this.synchronized {
-        if (!curator.isStarted) {
-          curator.start()
-        }
-      }
-
-    }
-
     val aggregators = mapper.readValue(metricsSpec, classOf[AggregatorFactories])
-
-    val dimensions = rollupDimensions.split(",").map(_.trim())
+    val dimensions = schema.fieldNames
 
     // TODO: CALENDRIC_GRANULARITIES
     val queryGranularities = rollupQueryGranularities.toLowerCase() match {
@@ -128,8 +111,10 @@ object EventBeamFactory extends Logging {
       case time =>  QueryGranularity.fromString(time)
     }
 
-    // for test
     val location = DruidLocation(indexService, firehouse, dataSource)
+    if (curator == null) {
+      curator = getCurator(druidConfiguration)
+    }
     DruidBeams
       .builder((row: SchemaInternalRow) => {
         row.ts
@@ -151,6 +136,28 @@ object EventBeamFactory extends Logging {
       .buildBeam()
   }
 
+  def getCurator(configuration: Map[String, String]): CuratorFramework = {
+    if (curator == null) {
+      this.synchronized({
+        if (curator == null) {
+          val curatorConnect = configuration.getOrElse("curator.connect",
+            throw new AnalysisException(s"option curator.connect is required.")
+          )
+          val curatorRetryBaseSleepMs = configuration
+            .getOrElse("curator.retry.base.sleep", "100").toInt
+          val curatorRetryMaxSleepMs = configuration.getOrElse("curator.retry.max.sleep", "3000").toInt
+          val curatorMaxRetries = configuration
+            .getOrElse("curator.max.retries", "5").toInt
+          curator = CuratorFrameworkFactory.newClient(curatorConnect,
+            new BoundedExponentialBackoffRetry(curatorRetryBaseSleepMs, curatorRetryMaxSleepMs, curatorMaxRetries)
+          )
+          curator.start()
+        }
+      })
+    }
+    curator
+  }
+
   override def finalize(): Unit = {
     super.finalize()
     if (curator != null) {
@@ -166,7 +173,7 @@ object EventBeamFactory extends Logging {
 case class SchemaInternalRow(schema: StructType, row: InternalRow) {
   private val schemaRow = schema.toList.map(_.name).zip(row.toSeq(schema))
   private val time = schemaRow.toMap.getOrElse("timestamp",
-    throw new Exception("fail to find column named timestamp.")).asInstanceOf[Long]
+    throw new Exception("fail to find column named timestamp.")).toString.toLong
   private val isTimeInSec = timeInSec(time)
   private var timeInMs = time
   if (isTimeInSec) {
