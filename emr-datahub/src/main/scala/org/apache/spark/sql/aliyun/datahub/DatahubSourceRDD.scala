@@ -83,7 +83,12 @@ class DatahubSourceRDD(
             if (dataBuffer.isEmpty) {
               fetchData()
             }
-            dataBuffer.poll()
+            if (dataBuffer.isEmpty) {
+              finished = true
+              null.asInstanceOf[DatahubData]
+            } else {
+              dataBuffer.poll()
+            }
           } else {
             null
           }
@@ -123,7 +128,7 @@ class DatahubSourceRDD(
             limit, schema)
           val num = recordResult.getRecordCount
           if (num == 0) {
-            logError("Fetch 0 records from datahub, sleep 100ms and fetch again")
+            logInfo("Fetch 0 records from datahub, sleep 100ms and fetch again")
             Thread.sleep(100)
           } else {
             recordResult.getRecords.foreach(record => {

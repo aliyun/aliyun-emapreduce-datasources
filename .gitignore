@@ -15,5 +15,6 @@ emr-datahub/target/*
 examples/target/*
 emr-hbase/target/*
 emr-jdbc/target/*
+assembly/target/*
 *.iml
 log.txt

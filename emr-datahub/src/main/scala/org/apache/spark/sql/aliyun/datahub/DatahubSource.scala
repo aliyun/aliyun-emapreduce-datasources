@@ -197,7 +197,6 @@ class DatahubSource(
       new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId, accessKeySecret,
         schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger, fallback)
         .mapPartitions(it => {
-          val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
           it.map(data => {
             if (fallback) {
               InternalRow(data.project,
