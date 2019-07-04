@@ -20,7 +20,7 @@ import org.apache.spark.sql.SparkSession
 
 object StructuredDatahubWordCount {
   def main(args: Array[String]): Unit = {
-    if (args.length < 8) {
+    if (args.length < 7) {
       println(
         """
           |Usage: <endpoint> <project> <topic> <access key id> <access key secret>
@@ -32,8 +32,8 @@ object StructuredDatahubWordCount {
     }
 
     val Array(endpoint, project, topic, accessKeyId, accessKeySecret, zkHosts, maxOffset, _*) = args
-    val checkpointDir = if (args.length > 8) {
-      args(8)
+    val checkpointDir = if (args.length > 7) {
+      args(7)
     } else {
       "/tmp/datahub/test/checkpoint"
     }
