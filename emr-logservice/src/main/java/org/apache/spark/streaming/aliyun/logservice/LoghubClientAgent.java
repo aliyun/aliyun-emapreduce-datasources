@@ -29,7 +29,7 @@ import org.apache.http.conn.ConnectTimeoutException;
 public class LoghubClientAgent {
   private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
   private Client client;
-  private int logServiceTimeoutMaxRetry = 6;
+  private int maxRetry = 6;
   private long initialBackoff = 1000;
   private long maxBackoff = 10000;
 
@@ -42,11 +42,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.ListShard(logProject, logStore);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -56,7 +56,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -66,11 +66,11 @@ public class LoghubClientAgent {
     int retry = 0;
     long backoff = initialBackoff;
     Exception currentException = null;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.GetCursor(project, logStream, shardId, mode);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -80,7 +80,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -89,11 +89,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.GetCursor(project, logStore, shardId, fromTime);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -103,7 +103,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -113,11 +113,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -127,7 +127,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -137,11 +137,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.CreateConsumerGroup(project, logStore, consumerGroup);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -151,7 +151,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -160,11 +160,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.ListConsumerGroup(project, logStore);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -174,7 +174,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -184,11 +184,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.GetCheckPoint(project, logStore, consumerGroup, shard);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -198,7 +198,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -208,11 +208,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -222,7 +222,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -232,11 +232,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.GetHistograms(project, logStore, from, to, topic, query);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -249,7 +249,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -259,11 +259,11 @@ public class LoghubClientAgent {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
-    while (retry <= logServiceTimeoutMaxRetry) {
+    while (retry <= maxRetry) {
       try {
         return this.client.GetCursorTime(project, logStore, shardId, cursor);
       } catch (LogException e) {
-        if (isRecoverableException(e)) {
+        if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
           backoff = Math.min(backoff * 2, maxBackoff);
@@ -273,7 +273,7 @@ public class LoghubClientAgent {
         }
       }
     }
-    LOG.error("reconnect to log-service exceed max retry times[" + logServiceTimeoutMaxRetry + "].");
+    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
     assert (currentException != null);
     throw currentException;
   }
@@ -286,5 +286,9 @@ public class LoghubClientAgent {
 
   private static boolean isRecoverableException(LogException ex) {
     return checkConnectionTimeoutException(ex) || ex.GetHttpCode() >= 500;
+  }
+
+  private boolean shouldRetry(LogException ex, int retry) {
+    return isRecoverableException(ex) && retry < maxRetry;
   }
 }
