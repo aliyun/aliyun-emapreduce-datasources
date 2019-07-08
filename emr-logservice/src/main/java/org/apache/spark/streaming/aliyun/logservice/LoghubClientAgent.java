@@ -109,7 +109,7 @@ public class LoghubClientAgent {
   }
 
   public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
-                                                                int shard, String checkpoint) throws Exception {
+      int shard, String checkpoint) throws Exception {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
@@ -204,7 +204,7 @@ public class LoghubClientAgent {
   }
 
   public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor,
-                                         String endCursor) throws Exception {
+      String endCursor) throws Exception {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
@@ -228,7 +228,7 @@ public class LoghubClientAgent {
   }
 
   public GetHistogramsResponse GetHistograms(String project, String logStore, int from, int to, String topic,
-                                             String query) throws Exception {
+      String query) throws Exception {
     int retry = 0;
     Exception currentException = null;
     long backoff = initialBackoff;
