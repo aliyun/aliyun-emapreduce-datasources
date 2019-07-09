@@ -22,6 +22,7 @@ import java.sql.Timestamp
 import scala.collection.JavaConversions._
 
 import com.alibaba.fastjson.JSONObject
+import com.aliyun.datahub.common.data.FieldType
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.types._
@@ -101,7 +102,7 @@ object DatahubSchema extends Logging {
 
     try {
       getSchema(project, topic,
-        accessKeyId, accessKeySecret, endpoint)
+        accessKeyId, accessKeySecret, endpoint, sourceOptions)
     } catch {
       case e: Exception =>
         logWarning(s"Failed to analyse datahub schema, fall back to default " +
@@ -115,7 +116,8 @@ object DatahubSchema extends Logging {
       topic: String,
       accessKeyId: String,
       accessKeySecret: String,
-      endpoint: String): StructType = {
+      endpoint: String,
+      sourceOptions: Map[String, String]): StructType = {
     var schema = new StructType()
     schema = schema.add(StructField(PROJECT, StringType, false))
     schema = schema.add(StructField(TOPIC, StringType, false))
@@ -124,24 +126,53 @@ object DatahubSchema extends Logging {
 
     val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
     client.getTopic(project, topic).getRecordSchema.getFields.foreach(field => {
-      schema = schema.add(StructField(field.getName, StringType, false))
+      val struct = field.getType match {
+        case FieldType.BIGINT => StructField(field.getName, DataTypes.LongType)
+        case FieldType.BOOLEAN => StructField(field.getName, DataTypes.BooleanType)
+        case FieldType.DECIMAL => {
+          val precision = sourceOptions("decimal.precision").toInt
+          val scale = sourceOptions("decimal.scale").toInt
+          StructField(field.getName, DataTypes.createDecimalType(precision, scale))
+        }
+        case FieldType.DOUBLE => StructField(field.getName, DataTypes.DoubleType)
+        case FieldType.TIMESTAMP => StructField(field.getName, DataTypes.LongType)
+        case _ => StructField(field.getName, DataTypes.StringType)
+      }
+      schema = schema.add(struct)
     })
     schema
   }
 
   def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
-    caseInsensitiveParams.getOrElse("project",
+    val project = caseInsensitiveParams.getOrElse("project",
       throw new MissingArgumentException("Missing datahub project (='project')."))
-    caseInsensitiveParams.getOrElse("topic",
+    val topic = caseInsensitiveParams.getOrElse("topic",
       throw new MissingArgumentException("Missing datahub topic (='topic')."))
-    caseInsensitiveParams.getOrElse("access.key.id",
+    val accessKeyId = caseInsensitiveParams.getOrElse("access.key.id",
       throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-    caseInsensitiveParams.getOrElse("access.key.secret",
+    val accessKeySecret = caseInsensitiveParams.getOrElse("access.key.secret",
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
-    caseInsensitiveParams.getOrElse("endpoint",
+    val endpoint = caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing datahub endpoint (='endpoint')."))
     caseInsensitiveParams.getOrElse("zookeeper.connect.address",
       throw new MissingArgumentException("Missing zookeeper connect address " +
         "(='zookeeper.connect.address')."))
+    val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
+    val existDecimal = client.getTopic(project, topic).getRecordSchema.getFields.exists(x=> {
+      x.getType == FieldType.DECIMAL
+    })
+    if (existDecimal) {
+      val precision = caseInsensitiveParams.getOrElse("decimal.precision",
+        throw new MissingArgumentException("Missing datahub decimal precision (='decimal.precision')." +
+          " 'decimal.precision' must be set when there is decimal type in schema.")).toInt
+      val scale = caseInsensitiveParams.getOrElse("decimal.scale",
+        throw new MissingArgumentException("Missing datahub decimal precision (='decimal.scale'). " +
+          "'decimal.scale' must be set when there is decimal type in schema.")).toInt
+      if (precision > DecimalType.MAX_PRECISION || scale > DecimalType.MAX_SCALE) {
+        throw new IllegalArgumentException(s"Option decimal.precision[${precision}] or decimal.scale[$scale] " +
+          s"exceed max value in spark. Max precision is ${DecimalType.MAX_PRECISION }, " +
+          s"max scale is ${DecimalType.MAX_SCALE}.")
+      }
+    }
   }
 }

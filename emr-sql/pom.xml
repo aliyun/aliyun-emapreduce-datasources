@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>emr-sql_2.11</artifactId>
+    <name>Aliyun E-MapReduce SQL Extension</name>
 
     <dependencies>
         <dependency>

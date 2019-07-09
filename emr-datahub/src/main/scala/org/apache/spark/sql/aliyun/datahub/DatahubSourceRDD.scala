@@ -74,7 +74,7 @@ class DatahubSourceRDD(
         private var dataBuffer = new LinkedBlockingQueue[DatahubData](step)
         private var hasRead = 0
         private var lastOffset: OffsetContext.Offset = null
-        private val inputMetrcis = context.taskMetrics().inputMetrics
+        private val inputMetrics = context.taskMetrics().inputMetrics
         private var nextCursor = shardPartition.cursor
 
         override protected def getNext(): DatahubData = {
@@ -91,7 +91,7 @@ class DatahubSourceRDD(
 
         override protected def close() = {
           try {
-            inputMetrcis.incRecordsRead(hasRead)
+            inputMetrics.incRecordsRead(hasRead)
             dataBuffer.clear()
             dataBuffer = null
           } catch {
@@ -121,47 +121,42 @@ class DatahubSourceRDD(
           val limit = if (shardPartition.count - hasRead >= step) step else shardPartition.count - hasRead
           val recordResult = datahubClientAgent.getRecords(project, topic, shardPartition.shardId, nextCursor,
             limit, schema)
-          val num = recordResult.getRecordCount
-          if (num == 0) {
-            logError("Fetch 0 records from datahub, sleep 100ms and fetch again")
-            Thread.sleep(100)
-          } else {
-            recordResult.getRecords.foreach(record => {
-              if (!fallback) {
-                try {
+          recordResult.getRecords.foreach(record => {
+            if (!fallback) {
+              try {
 
-                  // the first four columns: project, topic, shardId, systemTime
-                  // the length of rest of columns: numCols - 6
-                  val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
-                    (null, null).asInstanceOf[(String, Any)]
-                  )
+                // the first four columns: project, topic, shardId, systemTime
+                // the length of rest of columns: numCols - 6
+                val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
+                  (null, null).asInstanceOf[(String, Any)]
+                )
 
-                  record.getFields.foreach(field => {
-                    val fieldName = field.getName
-                    columnArray(schemaFieldPos(fieldName)) = (fieldName, record.get(fieldName))
-                  })
-                  dataBuffer.offer(new SchemaDatahubData(project, topic, shardPartition.shardId,
-                    new Timestamp(record.getSystemTime), columnArray))
-                } catch {
-                  case e: NoSuchElementException =>
-                    logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                      s"data and continue.")
-                }
-              } else {
-                val obj = new JSONObject()
                 record.getFields.foreach(field => {
-                  obj.put(field.getName, record.get(field.getName))
+                  val fieldName = field.getName
+                  columnArray(schemaFieldPos(fieldName)) = (fieldName, record.get(fieldName))
                 })
-
-                dataBuffer.offer(new RawDatahubData(project, topic, shardPartition.shardId,
-                  new Timestamp(record.getSystemTime), obj.toJSONString.getBytes))
+                dataBuffer.offer(new SchemaDatahubData(project, topic, shardPartition.shardId,
+                  new Timestamp(record.getSystemTime), columnArray))
+              } catch {
+                case e: NoSuchElementException =>
+                  logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+                    s"data and continue.")
               }
-              lastOffset = record.getOffset
-            })
-            nextCursor = recordResult.getNextCursor
-            hasRead = hasRead + num
-            logDebug(s"shardId: ${shardPartition.shardId}, nextCursor: $nextCursor, hasRead: $hasRead, count: ${shardPartition.count}")
-          }
+            } else {
+              val obj = new JSONObject()
+              record.getFields.foreach(field => {
+                obj.put(field.getName, record.get(field.getName))
+              })
+
+              dataBuffer.offer(new RawDatahubData(project, topic, shardPartition.shardId,
+                new Timestamp(record.getSystemTime), obj.toJSONString.getBytes))
+            }
+            lastOffset = record.getOffset
+          })
+          nextCursor = recordResult.getNextCursor
+          hasRead = hasRead + recordResult.getRecordCount
+          logDebug(s"shardId: ${shardPartition.shardId}, nextCursor: $nextCursor, hasRead: $hasRead, count: ${shardPartition.count}")
+
         }
 
         private def writeDataToZk(zkClient: ZkClient, path:String, data:String) = {
