@@ -37,9 +37,11 @@
         <module>emr-dts</module>
         <module>emr-datahub</module>
         <module>emr-kafka</module>
+        <module>emr-redis</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
         <module>assembly</module>
+        <module>emr-sql</module>
     </modules>
 
     <properties>
@@ -78,6 +80,7 @@
         <protobuf.version>2.5.0</protobuf.version>
         <hbase.version>1.4.9</hbase.version>
         <hbase.mr.version>2.0.4</hbase.mr.version>
+        <spark.redis.version>2.4.0</spark.redis.version>
         <!-- 1.1.1-2.1-s_2.11 is the latest released version for shc-core -->
         <!-- But we need to use 1.1.3-2.4-s_2.11 which will be build locally.-->
         <shc.version>1.1.1-2.1-s_2.11</shc.version>
@@ -455,6 +458,13 @@
                 <artifactId>protobuf-java</artifactId>
                 <version>${protobuf.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>com.redislabs</groupId>
+                <artifactId>spark-redis</artifactId>
+                <version>${spark.redis.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

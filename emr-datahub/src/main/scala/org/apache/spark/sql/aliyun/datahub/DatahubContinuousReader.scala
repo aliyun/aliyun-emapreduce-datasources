@@ -22,7 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
 
-import com.aliyun.datahub.common.data.Field
+import com.aliyun.datahub.common.data.{Field, FieldType}
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
 
@@ -158,7 +158,7 @@ class DatahubContinuousInputPartitionReader(
       val num = recordResult.getRecordCount
       recordResult.getRecords.foreach(record => {
         dataBuffer.offer(record)
-        nextOffset = record.getOffset.getSequence
+        nextOffset = record.getOffset.getSequence + 1
       })
       hasRead = hasRead + num
       logDebug(s"shardId: $shardId, nextCursor: $nextOffset, hasRead: $hasRead")
@@ -178,8 +178,17 @@ class DatahubContinuousInputPartitionReader(
     fields.zipWithIndex.foreach({
       case (f, index) =>
         val field = f.getName
-        val value = currentRecord.getString(field)
-        rowWriter.write(index + 4, UTF8String.fromString(value))
+        f.getType match {
+          case FieldType.BIGINT => rowWriter.write(index + 4, currentRecord.getBigint(field))
+          case FieldType.BOOLEAN => rowWriter.write(index + 4, currentRecord.getBoolean(field))
+          case FieldType.DECIMAL => {
+            val rec = currentRecord.getDecimal(field)
+            rowWriter.write(index + 4, Decimal(rec), rec.precision(), rec.scale())
+          }
+          case FieldType.DOUBLE => rowWriter.write(index + 4, currentRecord.getDouble(field))
+          case FieldType.TIMESTAMP => rowWriter.write(index + 4, currentRecord.getTimeStampAsUs(field))
+          case _ => rowWriter.write(index + 4, UTF8String.fromString(String.valueOf(currentRecord.get(field))))
+        }
     })
 
     rowWriter.getRow
