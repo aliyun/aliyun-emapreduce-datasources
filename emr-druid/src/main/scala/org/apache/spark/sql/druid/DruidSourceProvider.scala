@@ -99,6 +99,6 @@ class DruidSourceProvider extends DataSourceRegister
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    new DruidRelation(sqlContext)
+    new DruidRelation(sqlContext, parameters)
   }
 }

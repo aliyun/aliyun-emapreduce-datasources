@@ -38,20 +38,24 @@ import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.joda.time.{DateTime, Period}
 
 object DruidWriter {
+  var schema: StructType = _
+
   def write(
       sparkSession: SparkSession,
       queryExecution: QueryExecution,
       parameters: Map[String, String]): Unit = {
-    var schema = queryExecution.analyzed.schema
-    if (schema.isEmpty) {
-      val dimensions = parameters.getOrElse("rollup.dimensions",
-        throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
-          s"Format dimension1,dimension2...."))
-        schema = StructType(dimensions.split(",").map(StructField(_, StringType))
-      )
+    if (schema == null) {
+      schema = getSchema(parameters)
     }
     import com.metamx.tranquility.spark.BeamRDD._
     queryExecution.toRdd.map(SchemaInternalRow(schema, _)).propagate(new EventBeamFactory(parameters, schema))
+  }
+
+  def getSchema(parameters: Map[String, String]): StructType = {
+    val dimensions = parameters.getOrElse("rollup.dimensions",
+      throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
+        s"Format dimension1,dimension2...."))
+    StructType(dimensions.split(",").map(StructField(_, StringType)))
   }
 }
 

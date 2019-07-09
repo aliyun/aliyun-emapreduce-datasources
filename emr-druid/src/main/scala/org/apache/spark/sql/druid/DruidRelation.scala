@@ -22,9 +22,11 @@ import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Row, SQLContext}
 
-class DruidRelation(override val sqlContext: SQLContext) extends BaseRelation
+class DruidRelation(
+    override val sqlContext: SQLContext,
+    parameters: Map[String, String]) extends BaseRelation
   with TableScan {
-  override def schema: StructType = new StructType()
+  override def schema: StructType = DruidWriter.getSchema(parameters)
 
   override def buildScan(): RDD[Row] = {
     sqlContext.internalCreateDataFrame(new DruidRDD(sqlContext.sparkContext), schema).rdd
