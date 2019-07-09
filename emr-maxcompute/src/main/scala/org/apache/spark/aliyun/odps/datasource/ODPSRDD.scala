@@ -89,6 +89,8 @@ class ODPSRDD(
                       val value = r.getBigint(s.name)
                       if (value != null) {
                         mutableRow.setLong(idx, value)
+                      } else {
+                        mutableRow.update(idx, null)
                       }
                     case BooleanType =>
                       val value = r.getBoolean(s.name)

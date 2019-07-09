@@ -16,6 +16,7 @@ emr-druid/target/*
 examples/target/*
 emr-hbase/target/*
 emr-jdbc/target/*
+assembly/target/*
 *.iml
 log.txt
 .DS_Store

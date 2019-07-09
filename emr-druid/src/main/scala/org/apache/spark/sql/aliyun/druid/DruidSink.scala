@@ -15,23 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.druid;
+package org.apache.spark.sql.aliyun.druid
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.druid.query.aggregation.AggregatorFactory;
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql._
+import org.apache.spark.sql.execution.streaming.Sink
 
-public class AggregatorFactories {
-  private final AggregatorFactory[] aggregators;
+class DruidSink(
+    sqlContext: SQLContext,
+    executorParams: Map[String, String]) extends Sink with Logging {
+  @volatile private var latestBatchId = -1L
 
-  @JsonCreator
-  public AggregatorFactories(@JsonProperty("metricsSpec") AggregatorFactory[] aggregators) {
-    this.aggregators = aggregators;
-  }
+  override def toString(): String = "DruidSink"
 
-  @JsonProperty("metricsSpec")
-  public AggregatorFactory[] getAggregators()
-  {
-    return aggregators;
+  override def addBatch(batchId: Long, data: DataFrame): Unit = {
+    if (batchId <= latestBatchId) {
+      logInfo(s"Skipping already committed batch $batchId")
+    } else {
+      DruidWriter.write(sqlContext.sparkSession, data.queryExecution, executorParams)
+      latestBatchId = batchId
+    }
   }
 }
+

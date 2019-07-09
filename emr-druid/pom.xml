@@ -11,6 +11,7 @@
 
     <artifactId>emr-druid_2.11</artifactId>
     <packaging>jar</packaging>
+    <name>Aliyun E-MapReduce External Druid Support</name>
 
     <properties>
         <druid.tranquility.version>0.8.2</druid.tranquility.version>
@@ -66,7 +67,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>15.0</version>
+            <version>${guava.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
@@ -136,10 +137,10 @@
                             <include>com.metamx:emitter</include>
                             <include>com.twitter:finagle-core_2.11</include>
                             <include>com.twitter:util-core_2.11</include>
-                            <include>com.twitter:util-logging_2.11/</include>
+                            <include>com.twitter:util-logging_2.11</include>
                             <include>com.twitter:util-stats_2.11</include>
                             <include>com.twitter:util-app_2.11</include>
-                            <include>com.twitter:util-registry_2.11/</include>
+                            <include>com.twitter:util-registry_2.11</include>
                             <include>com.twitter:util-collection_2.11</include>
                             <include>com.twitter:finagle-http_2.11</include>
                             <include>com.twitter:jsr166e</include>

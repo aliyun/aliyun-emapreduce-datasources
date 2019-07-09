@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.druid
+package org.apache.spark.sql.aliyun.druid
 
 import java.util.concurrent.TimeUnit
 
@@ -52,10 +52,15 @@ object DruidWriter {
   }
 
   def getSchema(parameters: Map[String, String]): StructType = {
-    val dimensions = parameters.getOrElse("rollup.dimensions",
+    val dimension = parameters.getOrElse("rollup.dimensions",
       throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
         s"Format dimension1,dimension2...."))
-    StructType(dimensions.split(",").map(StructField(_, StringType)))
+    val dimensions = dimension.split(",")
+    val existTimestamp = dimensions.exists(_.equals("timestamp"))
+    if (!existTimestamp) {
+      throw new AnalysisException("Missing timestamp in option rollup.dimension")
+    }
+    StructType(dimensions.map(StructField(_, StringType)))
   }
 }
 

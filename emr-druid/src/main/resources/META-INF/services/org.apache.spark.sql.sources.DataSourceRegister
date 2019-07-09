@@ -1,1 +1,1 @@
-org.apache.spark.sql.druid.DruidSourceProvider
+org.apache.spark.sql.aliyun.druid.DruidSourceProvider

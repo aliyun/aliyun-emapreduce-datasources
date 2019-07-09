@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.druid
+package org.apache.spark.sql.aliyun.druid
 
 import java.util.Locale
 

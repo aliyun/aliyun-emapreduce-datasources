@@ -52,7 +52,7 @@
         <oss.sdk.version>3.0.0</oss.sdk.version>
         <tablestore.sdk.version>4.4.0</tablestore.sdk.version>
         <odps.version>0.28.4-public</odps.version>
-        <loghubb.client.version>0.6.16</loghubb.client.version>
+        <loghubb.client.version>0.6.15</loghubb.client.version>
         <aliyun.log.version>0.6.31</aliyun.log.version>
         <aliyun.log.producer.version>0.2.0</aliyun.log.producer.version>
         <ons.version>1.7.1.Final</ons.version>
