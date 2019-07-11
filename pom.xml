@@ -655,6 +655,18 @@
             <properties>
                 <shc.version>1.1.3-2.4-s_2.11</shc.version>
             </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-aliyun-avro_${scala.binary.version}</artifactId>
+                    <version>${spark.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
+                    <version>${spark.version}</version>
+                </dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>gpg</id>

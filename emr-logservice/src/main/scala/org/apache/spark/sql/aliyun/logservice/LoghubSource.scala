@@ -100,21 +100,10 @@ class LoghubSource(
 
   private var lastCursorTime: Int = initialPartitionOffsets.values.max
 
-  override lazy val schema: StructType = Utils.getSchema(userSpecifiedSchema, sourceOptions)
-
-  private val fallback = schema.sameType(LoghubOffsetReader.loghubSchema)
+  override lazy val schema: StructType = userSpecifiedSchema.get
 
   private val transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
-    if (fallback) {
-      InternalRow(
-        data.project,
-        data.store,
-        data.shardId,
-        DateTimeUtils.fromJavaTimestamp(data.dataTime),
-        data.getContent)
-    } else {
-      encoderForDataColumns.toRow(new GenericRow(data.toArray))
-    }
+    encoderForDataColumns.toRow(new GenericRow(data.toArray))
   }
 
   override def getOffset: Option[Offset] = {
@@ -152,7 +141,7 @@ class LoghubSource(
       shardOffsets.+=((shard.shard, earliest(shard), untilShardOffsets(shard)))
     })
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
-      endpoint, shardOffsets, schema.fieldNames, fallback = fallback)
+      endpoint, shardOffsets, schema.fieldNames, sourceOptions)
       .mapPartitions(it => {
         val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
         it.map(t => transFunc(t, encoderForDataColumns))
