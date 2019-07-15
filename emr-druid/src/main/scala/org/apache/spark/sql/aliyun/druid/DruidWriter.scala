@@ -33,20 +33,16 @@ import org.apache.curator.retry.BoundedExponentialBackoffRetry
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.QueryExecution
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.joda.time.{DateTime, Period}
 
 object DruidWriter {
-  var schema: StructType = _
-
   def write(
       sparkSession: SparkSession,
       queryExecution: QueryExecution,
       parameters: Map[String, String]): Unit = {
-    if (schema == null) {
-      schema = getSchema(parameters)
-    }
+    val schema = getSchema(parameters)
     import com.metamx.tranquility.spark.BeamRDD._
     queryExecution.toRdd.map(SchemaInternalRow(schema, _)).propagate(new EventBeamFactory(parameters, schema))
   }
@@ -180,28 +176,72 @@ object EventBeamFactory extends Logging {
 }
 
 case class SchemaInternalRow(schema: StructType, row: InternalRow) {
-  private val schemaRow = schema.toList.map(_.name).zip(row.toSeq(schema))
-  private val time = schemaRow.toMap.getOrElse("timestamp",
-    throw new Exception("fail to find column named timestamp.")).toString.toLong
-  private val isTimeInSec = timeInSec(time)
-  private var timeInMs = time
-  if (isTimeInSec) {
-    timeInMs = time * 1000
-  } else if (timeInNS(time)) {
-    timeInMs = TimeUnit.NANOSECONDS.toMicros(time)
-  } else if (!timeInMS(time)) {
-    throw new Exception(s"invalid timestamp[${time}], timestamp should be second, millisecond or nanosecond.")
-  }
+  private val fieldNames = schema.fieldNames
+  private val timeIndex = fieldNames.indexOf("timestamp")
+  private val time = row.getLong(timeIndex)
+  private val timeInMs = getTimeInMS(time)
   val ts = new DateTime(timeInMs)
 
   @JsonValue
-  def toMap: Map[String, Any] = {
-    if (!isTimeInSec) {
-      val ret = collection.mutable.Map(schemaRow:_*)
-      ret("timestamp") = (timeInMs / 1000).toLong
-      ret.toMap
+  def toMap: collection.mutable.Map[String, Any] = {
+    var rowMap = collection.mutable.Map[String, Any]("timestamp" -> timeInMs / 1000)
+    for (ordinal <- fieldNames.indices) {
+      val key =fieldNames(ordinal)
+
+      if (!"timestamp".equals(key)) {
+        val dataType = schema(ordinal).dataType
+        dataType match {
+          case _: BooleanType =>
+            rowMap += (key -> row.getBoolean(ordinal))
+          case _: ByteType =>
+            rowMap += (key -> row.getByte(ordinal))
+          case _: ShortType =>
+            rowMap += (key -> row.getShort(ordinal))
+          case _: IntegerType =>
+            rowMap += (key ->row.getInt(ordinal))
+          case _: LongType =>
+            rowMap += (key ->row.getLong(ordinal))
+          case _: FloatType =>
+            rowMap += (key ->row.getFloat(ordinal))
+          case _: DoubleType =>
+            rowMap += (key ->row.getDouble(ordinal))
+          case _: DateType =>
+            rowMap += (key ->row.getInt(ordinal))
+          case _: TimestampType =>
+            rowMap += (key ->row.getLong(ordinal))
+          case _: BinaryType =>
+            rowMap += (key ->row.getBinary(ordinal))
+          case _: StringType =>
+            rowMap += (key ->row.getUTF8String(ordinal).toString)
+          case _ =>
+            throw new UnsupportedOperationException("Unsupported data type " + dataType.simpleString)
+        }
+      }
+    }
+    rowMap
+  }
+
+  def getTimeInSec(t: Long, row: InternalRow): Long = {
+    if (timeInSec(t)) {
+      t
+    } else if (timeInMS(t)) {
+      TimeUnit.MILLISECONDS.toSeconds(t)
+    } else if (timeInNS(t)) {
+      TimeUnit.NANOSECONDS.toSeconds(t)
     } else {
-      schemaRow.toMap
+      throw new Exception(s"Invalid timestamp[${t}],timestamp should be second, millisecond or nanosecond.")
+    }
+  }
+
+  def getTimeInMS(time: Long): Long = {
+    if (timeInMS(time)) {
+      time
+    } else if (timeInSec(time)) {
+      time * 1000
+    } else if (timeInNS(time)) {
+      TimeUnit.NANOSECONDS.toMicros(time)
+    } else {
+      throw new Exception(s"Invalid timestamp[${time}], timestamp should be second, millisecond or nanosecond.")
     }
   }
 
