@@ -121,7 +121,7 @@ class LoghubIterator(
     }
     val crt = nextCursor
     nextCursor = batchGetLogRes.GetNextCursor()
-    logInfo(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
+    logDebug(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
       s" endCursor: $endCursor, hasRead: $hasRead, count: $count," +
       s" get: $count, queue: ${logData.size()}")
   }
