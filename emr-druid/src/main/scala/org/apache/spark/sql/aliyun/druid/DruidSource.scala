@@ -28,10 +28,12 @@ class DruidSource(
     @transient sqlContext: SQLContext) extends Source{
   override def schema: StructType = new StructType()
 
-  override def getOffset: Option[Offset] = Some(DruidOffset())
+  override def getOffset: Option[Offset] = {
+    throw new UnsupportedOperationException("Druid source is not supported.")
+  }
 
   override def getBatch(start: Option[Offset], end: Offset): DataFrame = {
-    sqlContext.internalCreateDataFrame(new DruidRDD(sqlContext.sparkContext), schema, isStreaming = true)
+    throw new UnsupportedOperationException("Druid source is not supported.")
   }
 
   override def stop(): Unit = {}

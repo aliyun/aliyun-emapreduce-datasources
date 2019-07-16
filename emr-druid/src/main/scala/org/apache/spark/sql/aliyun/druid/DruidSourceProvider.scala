@@ -85,7 +85,13 @@ class DruidSourceProvider extends DataSourceRegister
       sqlContext: SQLContext,
       schema: Option[StructType],
       providerName: String,
-      parameters: Map[String, String]): (String, StructType) = (shortName(), new StructType())
+      parameters: Map[String, String]): (String, StructType) = {
+    if (schema.nonEmpty) {
+      println(s"Schema[${schema}] will be ignored, use dimension in the parameters instead.")
+    }
+    val druidSchema = DruidWriter.getSchema(parameters)
+    (shortName(), druidSchema)
+  }
 
   override def createSource(
       sqlContext: SQLContext,
