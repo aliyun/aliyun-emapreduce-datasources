@@ -33,7 +33,7 @@ import org.apache.spark.sql.types.StructType
 class LoghubSourceProvider extends DataSourceRegister
     with StreamSourceProvider
     with StreamSinkProvider
-    with RelationProvider
+    with SchemaRelationProvider
     with CreatableRelationProvider
     with ContinuousReadSupport
     with Logging {
@@ -46,7 +46,9 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): (String, StructType) = {
-    (shortName(), Utils.getSchema(schema, parameters))
+    require(schema.isDefined && schema.get.nonEmpty, "Unable to infer the schema. " +
+      "The schema specification is required to create the table.;")
+    (shortName(), schema.get)
   }
 
   override def createSource(
@@ -55,6 +57,9 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
+    require(schema.isDefined && schema.get.nonEmpty, "Unable to infer the schema. " +
+      "The schema specification is required to create the table.;")
+
     Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
@@ -79,8 +84,12 @@ class LoghubSourceProvider extends DataSourceRegister
 
   override def createRelation(
       sqlContext: SQLContext,
-      parameters: Map[String, String]): BaseRelation = {
+      parameters: Map[String, String],
+      schema: StructType): BaseRelation = {
     Utils.validateOptions(parameters)
+    require(schema.nonEmpty, "Unable to infer the schema. The schema specification " +
+      "is required to create the table.;")
+
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
 
     val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
@@ -90,7 +99,8 @@ class LoghubSourceProvider extends DataSourceRegister
     val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
       ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
-    new LoghubRelation(sqlContext, parameters, startingRelationOffsets, endingRelationOffsets)
+
+    new LoghubRelation(sqlContext, schema, parameters, startingRelationOffsets, endingRelationOffsets)
   }
 
   override def createRelation(
@@ -126,6 +136,9 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Optional[StructType],
       checkpointLocation: String,
       options: DataSourceOptions): ContinuousReader = {
+    require(schema.isPresent && schema.get.nonEmpty, "Unable to infer the schema. " +
+      "The schema specification is required to create the table.;")
+
     val parameters = options.asMap().asScala.toMap
     val specifiedLoghubParams =
       parameters
@@ -140,7 +153,7 @@ class LoghubSourceProvider extends DataSourceRegister
 
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
     new LoghubContinuousReader(
-      Some(schema.orElse(new StructType())),
+      schema.get(),
       loghubOffsetReader,
       paramsForExecutors(specifiedLoghubParams, uniqueGroupId),
       parameters,
@@ -165,17 +178,6 @@ object LoghubSourceProvider {
   val __TIME__ = "__time__"
   val __TOPIC__ = "__topic__"
   val __SOURCE__ = "__source__"
-  val __PACK_ID__ = "__pack_id__"
-  val __USER_DEFINED_ID__ = "__user_defined_id__"
-
-  def isDefaultField(fieldName: String): Boolean = {
-    fieldName == __PROJECT__ ||
-    fieldName == __STORE__ ||
-    fieldName == __SHARD__ ||
-    fieldName == __TIME__ ||
-    fieldName == __TOPIC__ ||
-    fieldName == __SOURCE__
-  }
 
   def getLoghubOffsetRangeLimit(
       params: Map[String, String],
