@@ -86,9 +86,8 @@ class DruidSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): (String, StructType) = {
-    if (schema.nonEmpty) {
-      println(s"Schema[${schema}] will be ignored, use dimension in the parameters instead.")
-    }
+    require(!(schema.nonEmpty && schema.get.nonEmpty), "Schema should not be inferred, " +
+      "use 'rollup.dimensions' in the parameters instead.")
     val druidSchema = DruidWriter.getSchema(parameters)
     (shortName(), druidSchema)
   }
