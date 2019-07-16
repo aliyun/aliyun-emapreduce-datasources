@@ -70,9 +70,12 @@ class LoghubIterator(
       if (logData.isEmpty) {
         fetchNextBatch()
       }
-
-      hasRead += 1
-      logData.poll()
+      if (!finished) {
+        hasRead += 1
+        logData.poll()
+      } else {
+        ""
+      }
     } else {
       ""
     }
@@ -112,10 +115,13 @@ class LoghubIterator(
         logData.offer(obj.toJSONString)
       })
     })
-
+    if (nextCursor.equals(batchGetLogRes.GetNextCursor())) {
+      logInfo(s"shardID $shardId is finished, currentCursor $nextCursor")
+      finished = true
+    }
     val crt = nextCursor
     nextCursor = batchGetLogRes.GetNextCursor()
-    logDebug(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
+    logInfo(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
       s" endCursor: $endCursor, hasRead: $hasRead, count: $count," +
       s" get: $count, queue: ${logData.size()}")
   }
