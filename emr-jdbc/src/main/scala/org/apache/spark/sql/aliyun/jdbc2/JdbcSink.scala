@@ -40,7 +40,7 @@ class JdbcSink(
   val sinkLog = new JDBCSinkLog(parameters, sqlContext.sparkSession)
   // If user specifies a batchIdCol in the parameters, then it means that the user wants exactly
   // once semantics. This column will store the batch Id for the row when an uncommitted batch
-  // is replayed, JDBC SInk will delete the rows that were added to the previous play of the
+  // is replayed, JDBC Sink will delete the rows that were added to the previous play of the
   // batch
   val batchIdCol = parameters.get("batchIdCol")
 
@@ -49,40 +49,50 @@ class JdbcSink(
 
   def addBatch(batchId: Long, df: DataFrame): Unit = {
     val conn = JdbcUtils.createConnectionFactory(options)()
-    val sinkLogConn = sinkLog.createSinkLogConnectionFactory(parameters)()
     try {
-      if (sinkLog.isBatchCommitted(batchId, sinkLogConn)) {
-        logInfo(s"Skipping already committed batch $batchId")
+      // batchIdCol unset means users dont want exactly once semantics, so there is no need
+      // to use SinkLog to record batch information.
+      if (batchIdCol.isEmpty) {
+        addBatchImpl(conn, batchId, df)
       } else {
-        sinkLog.startBatch(batchId, sinkLogConn)
-        val isCaseSensitive = sqlContext.conf.caseSensitiveAnalysis
-        val tableExists = JdbcUtils.tableExists(conn, options)
-        if (tableExists) {
-          if (outputMode == OutputMode.Complete()) {
-            if (options.isTruncate
-              && isCascadingTruncateTable(options.url).contains(false)) {
-              // In this case, we should truncate table and then load.
-              truncateTable(conn, options)
-              saveRows(df, isCaseSensitive, parameters, batchId)
-            } else {
-              // Otherwise, do not truncate the table, instead drop and recreate it
-              dropTable(conn, getTableName(options))
-              createTable(conn, df.schema, df.sparkSession, options)
-              saveRows(df, isCaseSensitive, parameters, batchId)
-            }
-          } else if (outputMode == OutputMode.Append()) {
-              saveRows(df, isCaseSensitive, parameters, batchId)
-          } else {
-            throw new IllegalArgumentException(s"$outputMode not supported")
-          }
+        val sinkLogConn = sinkLog.createSinkLogConnectionFactory(parameters)()
+        if (sinkLog.isBatchCommitted(batchId, sinkLogConn)) {
+          logInfo(s"Skipping already committed batch $batchId")
         } else {
-          createTable(conn, df.schema, df.sparkSession, options)
-          saveRows(df, isCaseSensitive, parameters, batchId)
+          sinkLog.startBatch(batchId, sinkLogConn)
+          addBatchImpl(conn, batchId, df)
+          sinkLog.commitBatch(batchId, sinkLogConn)
         }
-        sinkLog.commitBatch(batchId, sinkLogConn)
       }
     } finally {
       conn.close()
+    }
+  }
+
+  private def addBatchImpl(conn: Connection, batchId: Long, df: DataFrame): Unit = {
+    val isCaseSensitive = sqlContext.conf.caseSensitiveAnalysis
+    val tableExists = JdbcUtils.tableExists(conn, options)
+    if (tableExists) {
+      if (outputMode == OutputMode.Complete()) {
+        if (options.isTruncate
+          && isCascadingTruncateTable(options.url).contains(false)) {
+          // In this case, we should truncate table and then load.
+          truncateTable(conn, options)
+          saveRows(df, isCaseSensitive, parameters, batchId)
+        } else {
+          // Otherwise, do not truncate the table, instead drop and recreate it
+          dropTable(conn, getTableName(options))
+          createTable(conn, df.schema, df.sparkSession, options)
+          saveRows(df, isCaseSensitive, parameters, batchId)
+        }
+      } else if (outputMode == OutputMode.Append() || outputMode == OutputMode.Update()) {
+        saveRows(df, isCaseSensitive, parameters, batchId)
+      } else {
+        throw new IllegalArgumentException(s"$outputMode not supported")
+      }
+    } else {
+      createTable(conn, df.schema, df.sparkSession, options)
+      saveRows(df, isCaseSensitive, parameters, batchId)
     }
   }
 
