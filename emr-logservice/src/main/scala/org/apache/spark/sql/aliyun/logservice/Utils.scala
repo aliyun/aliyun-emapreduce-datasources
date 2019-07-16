@@ -20,35 +20,15 @@ package org.apache.spark.sql.aliyun.logservice
 import java.sql.{Date, Timestamp}
 
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
-import com.aliyun.openservices.log.exception.LogException
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types._
 
 object Utils extends Logging {
-  def getSchema(schema: Option[StructType], sourceOptions: Map[String, String]): StructType = {
-    validateOptions(sourceOptions)
-    val logProject = sourceOptions("sls.project")
-    val logStore = sourceOptions("sls.store")
-    val endpoint = sourceOptions("endpoint")
-    val accessKeyId = sourceOptions("access.key.id")
-    val accessKeySecret = sourceOptions("access.key.secret")
-    if (schema.isDefined && schema.get.nonEmpty) {
-      schema.get
-    } else {
-      try {
-        LoghubOffsetReader.loghubSchema(logProject, logStore,
-          accessKeyId, accessKeySecret, endpoint)
-      } catch {
-        case e: LogException =>
-          logWarning(s"Failed to analyse loghub schema, fall back to default " +
-            s"schema ${LoghubOffsetReader.loghubSchema}", e)
-          LoghubOffsetReader.loghubSchema
-      }
-    }
-  }
 
   def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
     caseInsensitiveParams.getOrElse("sls.project",
@@ -105,5 +85,9 @@ object Utils extends Logging {
           }
         }
     }
+  }
+
+  def transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
+    encoderForDataColumns.toRow(new GenericRow(data.toArray))
   }
 }
