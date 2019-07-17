@@ -20,19 +20,18 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.{Row, SQLContext}
-import org.apache.spark.sql.sources.{BaseRelation, TableScan}
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 
 class LoghubRelation(
     override val sqlContext: SQLContext,
+    override val schema: StructType,
     sourceOptions: Map[String, String],
     startingOffsets: LoghubOffsetRangeLimit,
     endingOffsets: LoghubOffsetRangeLimit)
-    extends BaseRelation with TableScan with Logging {
-  override def schema: StructType = LoghubOffsetReader.loghubSchema
+    extends BaseRelation with TableScan with InsertableRelation with Serializable with Logging {
 
   override def buildScan(): RDD[Row] = {
     val loghubOffsetReader = new LoghubOffsetReader(sourceOptions)
@@ -49,30 +48,26 @@ class LoghubRelation(
       val fromTopics = fromPartitionOffsets.keySet.toList.sorted.mkString(",")
       val untilTopics = untilPartitionOffsets.keySet.toList.sorted.mkString(",")
       throw new IllegalStateException("different shards " +
-        s"for starting offsets shards[${fromTopics}] and " +
-        s"ending offsets shards[${untilTopics}]")
+        s"for starting offsets shards[$fromTopics] and " +
+        s"ending offsets shards[$untilTopics]")
     }
 
     val logProject = sourceOptions("sls.project")
-    val logStore = sourceOptions("sls.project")
-    val accessKeyId = sourceOptions("accessKeyId")
-    val accessKeySecret = sourceOptions("accessKeySecret")
+    val logStore = sourceOptions("sls.store")
+    val accessKeyId = sourceOptions("access.key.id")
+    val accessKeySecret = sourceOptions("access.key.secret")
     val endpoint = sourceOptions("endpoint")
     val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
     fromPartitionOffsets.foreach { case (loghubShard, sof) => {
       val eof = untilPartitionOffsets(loghubShard)
       shardOffsets.+=((loghubShard.shard, sof, eof))
     }}
-    // todo: how to resolve the schema in streaming sql?
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames).map { data =>
-      InternalRow(
-        data.project,
-        data.store,
-        data.shardId,
-        DateTimeUtils.fromJavaTimestamp(data.dataTime),
-        data.getContent)
-    }
+      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, sourceOptions)
+      .mapPartitions(it => {
+        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+        it.map(t => Utils.transFunc(t, encoderForDataColumns))
+      })
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }
 
@@ -85,22 +80,30 @@ class LoghubRelation(
       assert(shards == shardOffsets.keySet,
         "If startingOffsets contains specific offsets, you must specify all LogProject-LogStore-Shard.\n" +
           "Use -1 for latest, -2 for earliest, if you don't care.\n" +
-          s"Specified: ${shardOffsets.keySet} Assigned: ${shards}")
+          s"Specified: ${shardOffsets.keySet} Assigned: $shards")
       logDebug(s"Shards assigned to consumer: $shards. Seeking to $shardOffsets")
       shardOffsets
     }
     val shards = loghubReader.fetchLoghubShard()
     // Obtain TopicPartition offsets with late binding support
     loghubOffsets match {
-      case EarliestOffsetRangeLimit => shards.map {
-        case tp => tp -> LoghubOffsetRangeLimit.EARLIEST
-      }.toMap
-      case LatestOffsetRangeLimit => shards.map {
-        case tp => tp -> LoghubOffsetRangeLimit.LATEST
-      }.toMap
+      case EarliestOffsetRangeLimit =>
+        val earliest = loghubReader.fetchEarliestOffsets()
+        shards.map {
+          case tp => tp -> earliest(tp)
+        }.toMap
+      case LatestOffsetRangeLimit =>
+        val latest = loghubReader.fetchLatestOffsets()
+        shards.map {
+          case tp => tp -> latest(tp)
+        }.toMap
       case SpecificOffsetRangeLimit(shardOffsets) =>
         validateTopicPartitions(shards, shardOffsets)
     }
+  }
+
+  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+    LoghubWriter.write(sqlContext.sparkSession, data.queryExecution, sourceOptions)
   }
 
   override def toString: String =

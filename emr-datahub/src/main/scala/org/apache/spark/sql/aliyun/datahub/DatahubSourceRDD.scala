@@ -83,9 +83,14 @@ class DatahubSourceRDD(
             if (dataBuffer.isEmpty) {
               fetchData()
             }
-            dataBuffer.poll()
+            if (dataBuffer.isEmpty) {
+              finished = true
+              null.asInstanceOf[DatahubData]
+            } else {
+              dataBuffer.poll()
+            }
           } else {
-            null
+            null.asInstanceOf[DatahubData]
           }
         }
 
