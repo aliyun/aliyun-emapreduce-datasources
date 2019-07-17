@@ -22,15 +22,14 @@ import java.util.concurrent.LinkedBlockingQueue
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 
-import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.{BatchGetLogResponse, GetCursorResponse}
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
+import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
 
 class LoghubSourceRDD(
@@ -42,11 +41,13 @@ class LoghubSourceRDD(
       endpoint: String,
       shardOffsets: ArrayBuffer[(Int, Int, Int)],
       schemaFieldNames: Array[String],
-      fallback: Boolean = false)
+      sourceOptions: Map[String, String])
     extends RDD[LoghubData](sc, Nil) with Logging {
 
   @transient var mClient: LoghubClientAgent =
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
+
+  val step = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
 
   private def initialize(): Unit = {
     mClient = LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -56,22 +57,13 @@ class LoghubSourceRDD(
   override def compute(split: Partition, context: TaskContext): Iterator[LoghubData] = {
     initialize()
     val shardPartition = split.asInstanceOf[ShardPartition]
-    val schemaFieldPos: Map[String, Int] = schemaFieldNames
-      .filter(fieldName => !isDefaultField(fieldName))
-      .map(fieldName => {
-        if (fieldName.startsWith("__tag")) {
-          fieldName.substring(5)
-        } else {
-          fieldName
-        }
-      }).zipWithIndex.toMap
+    val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     try {
       new InterruptibleIterator[LoghubData](context, new NextIterator[LoghubData]() {
         val startCursor: GetCursorResponse =
           mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.startCursor)
         val endCursor: GetCursorResponse =
           mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.endCursor)
-        private val step: Int = 1000
         private var hasRead: Int = 0
         private val nextCursor: GetCursorResponse = startCursor
         private var nextCursorTime = nextCursor.GetCursor()
@@ -125,49 +117,55 @@ class LoghubSourceRDD(
             group.GetLogGroup().getLogsList.foreach(log => {
               val topic = group.GetTopic()
               val source = group.GetSource()
-              if (!fallback) {
-                try {
-                  // the first six columns: logProject, logStore, shardId, dataTime, topic, source
-                  // the length of rest of columns: numCols - 6
-                  val columnArray = Array.tabulate(schemaFieldNames.length - 6)(idx =>
-                    (null, null).asInstanceOf[(String, Any)]
-                  )
-                  log.getContentsList.foreach(content => {
+              try {
+                val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
+                  (null, null).asInstanceOf[(String, Any)]
+                )
+                log.getContentsList
+                  .filter(content => schemaFieldPos.contains(content.getKey))
+                  .foreach(content => {
                     columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
                   })
 
-                  val flg = group.GetFastLogGroup()
-                  for (i <- 0 until flg.getLogTagsCount) {
-                    val tagKey = flg.getLogTags(i).getKey
-                    val tagValue = flg.getLogTags(i).getValue
-                    if (!tagKey.equals(__PACK_ID__) && !tagKey.equals(__USER_DEFINED_ID__)) {
-                      columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
-                    }
-                  }
-
-                  count += 1
-                  logData.offer(new SchemaLoghubData(project, logStore, shardPartition.shardId,
-                    new java.sql.Timestamp(log.getTime * 1000L), topic,
-                    source, columnArray))
-                } catch {
-                  case e: NoSuchElementException =>
-                    logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                      s"data and continue.")
-                }
-              } else {
-                val obj = new JSONObject()
-                log.getContentsList.foreach(content => {
-                  obj.put(content.getKey, content.getValue)
-                })
-
                 val flg = group.GetFastLogGroup()
                 for (i <- 0 until flg.getLogTagsCount) {
-                  obj.put(flg.getLogTags(i).getKey, flg.getLogTags(i).getValue)
+                  val tagKey = flg.getLogTags(i).getKey
+                  val tagValue = flg.getLogTags(i).getValue
+                  if (schemaFieldPos.contains(tagKey)) {
+                    columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+                  }
                 }
+
+                if (schemaFieldPos.contains(__PROJECT__)) {
+                  columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, project)
+                }
+
+                if (schemaFieldPos.contains(__STORE__)) {
+                  columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
+                }
+
+                if (schemaFieldPos.contains(__SHARD__)) {
+                  columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardPartition.shardId)
+                }
+
+                if (schemaFieldPos.contains(__TOPIC__)) {
+                  columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
+                }
+
+                if (schemaFieldPos.contains(__SOURCE__)) {
+                  columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
+                }
+
+                if (schemaFieldPos.contains(__TIME__)) {
+                  columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L))
+                }
+
                 count += 1
-                logData.offer(new RawLoghubData(project, logStore, shardPartition.shardId,
-                  new java.sql.Timestamp(log.getTime * 1000L), topic,
-                  source, obj.toJSONString.getBytes))
+                logData.offer(new SchemaLoghubData(columnArray))
+              } catch {
+                case e: NoSuchElementException =>
+                  logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+                    s"data and continue.")
               }
             })
           })

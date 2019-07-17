@@ -15,31 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.aliyun.logservice
+package org.apache.spark.sql.aliyun.druid
 
-import org.apache.spark.internal.Logging
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.sources.{BaseRelation, TableScan}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Row, SQLContext}
 
-abstract class LoghubData()
-  extends Serializable {
-  def getContent: Array[Byte]
-  def toArray: Array[Any]
-}
+class DruidRelation(
+    override val sqlContext: SQLContext,
+    parameters: Map[String, String]) extends BaseRelation
+  with TableScan {
+  override def schema: StructType = DruidWriter.getSchema(parameters)
 
-class SchemaLoghubData(content: Array[(String, Any)])
-  extends LoghubData with Logging with Serializable {
-
-  override def toArray: Array[Any] = {
-    content.map(_._2)
+  override def buildScan(): RDD[Row] = {
+    sqlContext.internalCreateDataFrame(new DruidRDD(sqlContext.sparkContext), schema).rdd
   }
-
-  override def getContent: Array[Byte] = throw new UnsupportedOperationException
-}
-
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-                    topic: String, source: String, content: Array[Byte])
-  extends LoghubData {
-
-  override def getContent: Array[Byte] = content
-
-  override def toArray: Array[Any] = throw new UnsupportedOperationException
 }

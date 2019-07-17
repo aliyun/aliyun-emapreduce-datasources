@@ -15,31 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.aliyun.logservice
+package org.apache.spark.sql.aliyun.druid
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql._
+import org.apache.spark.sql.execution.streaming.Sink
 
-abstract class LoghubData()
-  extends Serializable {
-  def getContent: Array[Byte]
-  def toArray: Array[Any]
-}
+class DruidSink(
+    sqlContext: SQLContext,
+    executorParams: Map[String, String]) extends Sink with Logging {
+  @volatile private var latestBatchId = -1L
 
-class SchemaLoghubData(content: Array[(String, Any)])
-  extends LoghubData with Logging with Serializable {
+  override def toString(): String = "DruidSink"
 
-  override def toArray: Array[Any] = {
-    content.map(_._2)
+  override def addBatch(batchId: Long, data: DataFrame): Unit = {
+    if (batchId <= latestBatchId) {
+      logInfo(s"Skipping already committed batch $batchId")
+    } else {
+      DruidWriter.write(sqlContext.sparkSession, data.queryExecution, executorParams)
+      latestBatchId = batchId
+    }
   }
-
-  override def getContent: Array[Byte] = throw new UnsupportedOperationException
 }
 
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-                    topic: String, source: String, content: Array[Byte])
-  extends LoghubData {
-
-  override def getContent: Array[Byte] = content
-
-  override def toArray: Array[Any] = throw new UnsupportedOperationException
-}

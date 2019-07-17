@@ -42,6 +42,7 @@
         <module>emr-baseline-testing</module>
         <module>assembly</module>
         <module>emr-sql</module>
+        <module>emr-druid</module>
     </modules>
 
     <properties>
@@ -105,6 +106,16 @@
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-core_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.module</groupId>
+                        <artifactId>jackson-module-scala_2.11</artifactId>
+                    </exclusion>
+                </exclusions>
                 <scope>provided</scope>
             </dependency>
 

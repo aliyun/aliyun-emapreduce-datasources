@@ -176,6 +176,7 @@
                             <include>net.sf.ezmorph:ezmorph</include>
                             <include>net.sf.json-lib:json-lib</include>
                             <include>commons-validator:commons-validator</include>
+                            <include>com.alibaba:fastjson</include>
                         </includes>
                     </artifactSet>
                     <relocations>

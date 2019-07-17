@@ -15,31 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.aliyun.logservice
+package org.apache.spark.sql.aliyun.druid;
 
-import org.apache.spark.internal.Logging
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.query.aggregation.AggregatorFactory;
 
-abstract class LoghubData()
-  extends Serializable {
-  def getContent: Array[Byte]
-  def toArray: Array[Any]
-}
+public class AggregatorFactories {
+  private final AggregatorFactory[] aggregators;
 
-class SchemaLoghubData(content: Array[(String, Any)])
-  extends LoghubData with Logging with Serializable {
-
-  override def toArray: Array[Any] = {
-    content.map(_._2)
+  @JsonCreator
+  public AggregatorFactories(@JsonProperty("metricsSpec") AggregatorFactory[] aggregators) {
+    this.aggregators = aggregators;
   }
 
-  override def getContent: Array[Byte] = throw new UnsupportedOperationException
-}
-
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-                    topic: String, source: String, content: Array[Byte])
-  extends LoghubData {
-
-  override def getContent: Array[Byte] = content
-
-  override def toArray: Array[Any] = throw new UnsupportedOperationException
+  @JsonProperty("metricsSpec")
+  public AggregatorFactory[] getAggregators()
+  {
+    return aggregators;
+  }
 }
