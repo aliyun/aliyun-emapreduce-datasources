@@ -124,7 +124,6 @@
                             <include>com.google.inject.extensions:guice-multibindings</include>
                             <include>org.scalaj:scalaj-time_2.11</include>
                             <include>org.apache.curator:curator-x-discovery</include>
-                            <include>com.twitter:*</include>
                             <include>com.metamx:loglady_2.11</include>
                             <include>io.druid:tranquility-core_2.11</include>
                             <include>io.druid:tranquility-spark_2.11</include>
