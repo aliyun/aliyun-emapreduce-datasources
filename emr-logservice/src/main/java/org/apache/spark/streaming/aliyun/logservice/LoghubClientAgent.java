@@ -285,7 +285,9 @@ public class LoghubClientAgent {
   }
 
   private static boolean isRecoverableException(LogException ex) {
-    return checkConnectionTimeoutException(ex) || ex.GetHttpCode() >= 500;
+    return checkConnectionTimeoutException(ex)
+            || ex.GetHttpCode() >= 500 // Internal server error
+            || ex.GetHttpCode() == 403; // Request rate exceed quota
   }
 
   private boolean shouldRetry(LogException ex, int retry) {
