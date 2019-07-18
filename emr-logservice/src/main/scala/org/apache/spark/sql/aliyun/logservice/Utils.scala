@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.aliyun.logservice
 
+import java.math.BigDecimal
 import java.sql.{Date, Timestamp}
 
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
@@ -24,11 +25,14 @@ import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
+
 
 object Utils extends Logging {
+
+  private type ValueConverter = String => Any
 
   def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
     caseInsensitiveParams.getOrElse("sls.project",
@@ -87,7 +91,72 @@ object Utils extends Logging {
     }
   }
 
-  def transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
-    encoderForDataColumns.toRow(new GenericRow(data.toArray))
+  def makeConverter(
+      name: String,
+      dataType: DataType,
+      nullable: Boolean = true): ValueConverter = dataType match {
+    case _: ByteType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(_.toByte)
+
+    case _: ShortType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(_.toShort)
+
+    case _: IntegerType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(_.toInt)
+
+    case _: LongType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(_.toLong)
+
+    case _: FloatType => (d: String) =>
+      nullSafeDatum(d, name, nullable) {
+        case datum => datum.toFloat
+      }
+
+    case _: DoubleType => (d: String) =>
+      nullSafeDatum(d, name, nullable) {
+        case datum => datum.toDouble
+      }
+
+    case _: BooleanType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(_.toBoolean)
+
+    case dt: DecimalType => (d: String) =>
+      nullSafeDatum(d, name, nullable) { datum =>
+        val value = new BigDecimal(datum.replaceAll(",", ""))
+        Decimal(value, dt.precision, dt.scale)
+      }
+
+    case _: TimestampType => (d: String) =>
+      nullSafeDatum(d, name, nullable) { datum =>
+        DateTimeUtils.stringToTime(datum).getTime * 1000L
+      }
+
+    case _: DateType => (d: String) =>
+      nullSafeDatum(d, name, nullable) { datum =>
+        DateTimeUtils.millisToDays(DateTimeUtils.stringToTime(datum).getTime)
+      }
+
+    case _: StringType => (d: String) =>
+      nullSafeDatum(d, name, nullable)(UTF8String.fromString)
+
+    case udt: UserDefinedType[_] => (datum: String) =>
+      makeConverter(name, udt.sqlType, nullable)
+
+    // We don't actually hit this exception though, we keep it for understandability
+    case _ => throw new RuntimeException(s"Unsupported type: ${dataType.typeName}")
+  }
+
+  private def nullSafeDatum(
+     datum: String,
+     name: String,
+     nullable: Boolean)(converter: ValueConverter): Any = {
+    if (datum == null) {
+      if (!nullable) {
+        throw new RuntimeException(s"null value found but field $name is not nullable.")
+      }
+      null
+    } else {
+      converter.apply(datum)
+    }
   }
 }

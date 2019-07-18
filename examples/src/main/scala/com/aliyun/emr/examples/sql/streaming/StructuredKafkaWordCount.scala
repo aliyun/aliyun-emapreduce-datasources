@@ -19,24 +19,22 @@ package com.aliyun.emr.examples.sql.streaming
 import java.util.UUID
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types._
 
-object StructuredLoghubWordCount {
+object StructuredKafkaWordCount {
   def main(args: Array[String]) {
-    if (args.length < 8) {
-      System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
-        "<logService-store-in> <logService-store-out> <access-key-id> <access-key-secret> " +
-        "<endpoint> <starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+    if (args.length < 3) {
+      System.err.println("Usage: StructuredKafkaWordCount <bootstrapSevers> <topicIn> <topicOut> " +
+        "[<checkpoint-location>]")
       System.exit(1)
     }
 
-    val Array(project, logStoreIn, logStoreOut, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(bootstrapSevers, topicIn, topicOut) = args
     val checkpointLocation =
-      if (args.length > 8) args(8) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 3) args(3) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
-      .appName("StructuredLoghubWordCount")
+      .appName("StructuredKafkaWordCount")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -44,32 +42,22 @@ object StructuredLoghubWordCount {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
     val lines = spark
       .readStream
-      .format("loghub")
-      .schema(schema)
-      .option("sls.project", project)
-      .option("sls.store", logStoreIn)
-      .option("access.key.id", accessKeyId)
-      .option("access.key.secret", accessKeySecret)
-      .option("endpoint", endpoint)
-      .option("startingoffsets", startingOffsets)
-      .option("maxOffsetsPerTrigger", maxOffsetsPerTrigger)
+      .format("kafka")
+      .option("kafka.bootstrap.servers", bootstrapSevers)
+      .option("subscribe", topicIn)
       .load()
-      .select("content")
+      .selectExpr("CAST(value AS STRING)")
       .as[String]
 
     val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()
 
     val query = wordCounts.writeStream
       .outputMode("complete")
-      .format("loghub")
-      .option("sls.project", project)
-      .option("sls.store", logStoreOut)
-      .option("access.key.id", accessKeyId)
-      .option("access.key.secret", accessKeySecret)
-      .option("endpoint", endpoint)
+      .format("kafka")
+      .option("kafka.bootstrap.servers", bootstrapSevers)
+      .option("topic", topicOut)
       .option("checkpointLocation", checkpointLocation)
       .start()
 
