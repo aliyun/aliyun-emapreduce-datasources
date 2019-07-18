@@ -100,7 +100,6 @@ class LoghubSource(
 
   override lazy val schema: StructType = userSpecifiedSchema.get
 
-
   override def getOffset: Option[Offset] = {
     // Make sure initialPartitionOffsets is initialized
     initialPartitionOffsets

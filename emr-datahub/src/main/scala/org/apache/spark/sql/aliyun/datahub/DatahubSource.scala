@@ -157,8 +157,14 @@ class DatahubSource(
     val startOffset = DatahubSourceOffset(shardOffsets.map(so => (DatahubShard(project, topic, so._1), so._2)).toMap)
     val end = shardOffsets.map(so => {
       val path = new Path(metadataPath).toUri.getPath
-      val offset: String = zkClient.readData(s"$path/datahub/available/$project/$topic/${so._1}")
-      (DatahubShard(project, topic, so._1), offset.toLong)
+      val available: String = zkClient.readData(s"$path/datahub/available/$project/$topic/${so._1}",
+        true)
+      val offset = if (available != null) {
+        available.toLong
+      } else {
+        so._3
+      }
+      (DatahubShard(project, topic, so._1), offset)
     }).toMap
     val endOffset = DatahubSourceOffset(end)
     currentBatches((startOffset, endOffset)) = rdd
