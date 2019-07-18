@@ -30,6 +30,11 @@ import scala.util.Random
 
 object DatahubDataGen {
   def main(args: Array[String]): Unit = {
+    if (args.length < 4) {
+      System.err.println("Usage: DatahubDataGen <project> <topic> <access-key-id> <access-key-secret>")
+      System.exit(1)
+    }
+
     val Array(project, topic, endpoint, accessKeyId, accessKeySecret) = args
 
     val dclient = new DatahubClient(new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
