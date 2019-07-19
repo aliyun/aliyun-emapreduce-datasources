@@ -38,11 +38,11 @@
         <module>emr-datahub</module>
         <module>emr-kafka</module>
         <module>emr-redis</module>
+        <module>emr-druid</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
-        <module>assembly</module>
         <module>emr-sql</module>
-        <module>emr-druid</module>
+        <module>assembly</module>
     </modules>
 
     <properties>

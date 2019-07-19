@@ -108,14 +108,10 @@ object Utils extends Logging {
       nullSafeDatum(d, name, nullable)(_.toLong)
 
     case _: FloatType => (d: String) =>
-      nullSafeDatum(d, name, nullable) {
-        case datum => datum.toFloat
-      }
+      nullSafeDatum(d, name, nullable)(_.toFloat)
 
     case _: DoubleType => (d: String) =>
-      nullSafeDatum(d, name, nullable) {
-        case datum => datum.toDouble
-      }
+      nullSafeDatum(d, name, nullable)(_.toDouble)
 
     case _: BooleanType => (d: String) =>
       nullSafeDatum(d, name, nullable)(_.toBoolean)
