@@ -19,6 +19,7 @@ package com.aliyun.emr.examples.sql.streaming
 import java.util.UUID
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types._
 
 object StructuredTableStoreSinkSample {
   def main(args: Array[String]) {
@@ -44,9 +45,11 @@ object StructuredTableStoreSinkSample {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
+    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
     val lines = spark
       .readStream
       .format("loghub")
+      .schema(schema)
       .option("sls.project", project)
       .option("sls.store", logStore)
       .option("access.key.id", accessKeyId)

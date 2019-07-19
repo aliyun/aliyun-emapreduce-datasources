@@ -19,24 +19,27 @@ package com.aliyun.emr.examples.sql.streaming
 import java.util.UUID
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, current_timestamp}
 import org.apache.spark.sql.types._
 
-object StructuredLoghubWordCount {
+object StructuredHBaseSinkSample {
   def main(args: Array[String]) {
-    if (args.length < 8) {
-      System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
-        "<logService-store-in> <logService-store-out> <access-key-id> <access-key-secret> " +
-        "<endpoint> <starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+    if (args.length < 9) {
+      System.err.println("Usage: StructuredHBaseSinkSample <logService-project> " +
+        "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
+        "<starting-offsets> <max-offsets-per-trigger> <catalog> <hbaseConfiguration> " +
+        "[<checkpoint-location>]")
       System.exit(1)
     }
 
-    val Array(project, logStoreIn, logStoreOut, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger,
+      catalog, hbaseConfiguration, _*) = args
     val checkpointLocation =
-      if (args.length > 8) args(8) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 9) args(9) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
-      .appName("StructuredLoghubWordCount")
+      .appName("StructuredHBaseSinkSample")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -50,7 +53,7 @@ object StructuredLoghubWordCount {
       .format("loghub")
       .schema(schema)
       .option("sls.project", project)
-      .option("sls.store", logStoreIn)
+      .option("sls.store", logStore)
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
@@ -62,14 +65,11 @@ object StructuredLoghubWordCount {
 
     val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()
 
-    val query = wordCounts.writeStream
+    val query = wordCounts.select(current_timestamp.as("key").cast(StringType), col("*")).writeStream
       .outputMode("complete")
-      .format("loghub")
-      .option("sls.project", project)
-      .option("sls.store", logStoreOut)
-      .option("access.key.id", accessKeyId)
-      .option("access.key.secret", accessKeySecret)
-      .option("endpoint", endpoint)
+      .format("hbase")
+      .option("catalog", catalog)
+      .option("hbaseConfiguration", hbaseConfiguration)
       .option("checkpointLocation", checkpointLocation)
       .start()
 

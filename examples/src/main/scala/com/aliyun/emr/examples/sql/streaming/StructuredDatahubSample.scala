@@ -16,34 +16,36 @@
  */
 package com.aliyun.emr.examples.sql.streaming
 
-import org.apache.spark.sql.SparkSession
+import java.util.UUID
 
-object StructuredDatahubWordCount {
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.streaming.Trigger
+
+object StructuredDatahubSample {
   def main(args: Array[String]): Unit = {
-    if (args.length < 7) {
+    if (args.length < 8) {
       println(
         """
-          |Usage: <endpoint> <project> <topic> <access key id> <access key secret>
-          |        <zookeeper host:port> <max offset per trigger>
-          |        [checkpoint directory=/tmp/datahub/test/checkpoint]
+          |Usage: Usage: StructuredDatahubSample <endpoint> <project> <topic> <access key id>
+          |       <access key secret> <zookeeper host:port> <max offset per trigger>
+          |       [checkpoint directory=/tmp/datahub/test/checkpoint]
           |
         """.stripMargin)
       sys.exit(1)
     }
 
-    val Array(endpoint, project, topic, accessKeyId, accessKeySecret, zkHosts, maxOffset, _*) = args
-    val checkpointDir = if (args.length > 7) {
-      args(7)
+    val Array(endpoint, project, topic, accessKeyId, accessKeySecret, zkHosts, maxOffset, triggerInterval, _*) = args
+    val checkpointDir = if (args.length > 8) {
+      args(8)
     } else {
-      "/tmp/datahub/test/checkpoint"
+      "/tmp/temporary-" + UUID.randomUUID.toString
     }
 
     val spark = SparkSession.builder()
-      .appName("datahub-word-count")
+      .appName("StructuredDatahubSample")
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    import spark.implicits._
     val value = spark.readStream.format("datahub")
       .option("endpoint", endpoint)
       .option("project", project)
@@ -52,12 +54,14 @@ object StructuredDatahubWordCount {
       .option("access.key.secret", accessKeySecret)
       .option("max.offset.per.trigger", maxOffset)
       .option("zookeeper.connect.address", zkHosts)
+      .option("decimal.precision", "5")
+      .option("decimal.scale", "5")
       .load()
 
-    val count = value.groupBy("value0", "value1").count()
-    val query = count.writeStream.format("console")
+    val query = value.select("*").writeStream.format("console")
       .option("checkpointLocation", checkpointDir)
-      .outputMode("complete")
+      .outputMode("append")
+      .trigger(Trigger.ProcessingTime(triggerInterval.toLong))
       .start()
     query.awaitTermination()
   }

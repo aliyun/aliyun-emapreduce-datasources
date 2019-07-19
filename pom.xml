@@ -38,11 +38,11 @@
         <module>emr-datahub</module>
         <module>emr-kafka</module>
         <module>emr-redis</module>
+        <module>emr-druid</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
-        <module>assembly</module>
         <module>emr-sql</module>
-        <module>emr-druid</module>
+        <module>assembly</module>
     </modules>
 
     <properties>
@@ -82,9 +82,6 @@
         <hbase.version>1.4.9</hbase.version>
         <hbase.mr.version>2.0.4</hbase.mr.version>
         <spark.redis.version>2.4.0</spark.redis.version>
-        <!-- 1.1.1-2.1-s_2.11 is the latest released version for shc-core -->
-        <!-- But we need to use 1.1.3-2.4-s_2.11 which will be build locally.-->
-        <shc.version>1.1.1-2.1-s_2.11</shc.version>
         <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
@@ -662,10 +659,34 @@
     </build>
     <profiles>
         <profile>
+            <id>compile</id>
+            <properties>
+                <!-- 1.1.1-2.1-s_2.11 is the latest released version for shc-core -->
+                <!-- But we need to use 1.1.3-2.4-s_2.11 which will be build locally.-->
+                <shc.version>1.1.1-2.1-s_2.11</shc.version>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+
+        <profile>
             <id>ds</id>
             <properties>
                 <shc.version>1.1.3-2.4-s_2.11</shc.version>
             </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-aliyun-avro_${scala.binary.version}</artifactId>
+                    <version>${spark.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
+                    <version>${spark.version}</version>
+                </dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>gpg</id>

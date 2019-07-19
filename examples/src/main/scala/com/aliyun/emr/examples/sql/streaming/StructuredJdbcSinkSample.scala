@@ -21,22 +21,26 @@ import java.util.UUID
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 
-object StructuredLoghubWordCount {
+object StructuredJdbcSinkSample {
   def main(args: Array[String]) {
-    if (args.length < 8) {
-      System.err.println("Usage: StructuredLoghubWordCount <logService-project> " +
-        "<logService-store-in> <logService-store-out> <access-key-id> <access-key-secret> " +
-        "<endpoint> <starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+    if (args.length < 11) {
+      System.err.println("Usage: StructuredJdbcSinkSample <logService-project> " +
+        "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
+        "<starting-offsets> <max-offsets-per-trigger> <url> <table> <user> <pwd> " +
+        "[<checkpoint-location>]")
       System.exit(1)
     }
 
-    val Array(project, logStoreIn, logStoreOut, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger,
+      url, table, user, pwd, _*) = args
     val checkpointLocation =
-      if (args.length > 8) args(8) else "/tmp/temporary-" + UUID.randomUUID.toString
+      if (args.length > 11) args(11) else "/tmp/temporary-" + UUID.randomUUID.toString
 
     val spark = SparkSession
       .builder
-      .appName("StructuredLoghubWordCount")
+      .config("streaming.query.name", "test")
+      .config("streaming.query.test.sql", s"insert into `$table` (`value`, `count`) values(?, ?)")
+      .appName("StructuredJdbcSinkSample")
       .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
@@ -50,7 +54,7 @@ object StructuredLoghubWordCount {
       .format("loghub")
       .schema(schema)
       .option("sls.project", project)
-      .option("sls.store", logStoreIn)
+      .option("sls.store", logStore)
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
       .option("endpoint", endpoint)
@@ -64,12 +68,14 @@ object StructuredLoghubWordCount {
 
     val query = wordCounts.writeStream
       .outputMode("complete")
-      .format("loghub")
-      .option("sls.project", project)
-      .option("sls.store", logStoreOut)
-      .option("access.key.id", accessKeyId)
-      .option("access.key.secret", accessKeySecret)
-      .option("endpoint", endpoint)
+      .format("jdbc2")
+      .option("url", url)
+      .option("driver", "com.mysql.jdbc.Driver")
+      .option("dbtable", table)
+      .option("user", user)
+      .option("password", pwd)
+      .option("batchsize", 100)
+      .option("isolationLevel", "NONE")
       .option("checkpointLocation", checkpointLocation)
       .start()
 

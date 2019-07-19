@@ -26,10 +26,8 @@ import org.apache.commons.io.IOUtils
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
-import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
 
@@ -102,10 +100,6 @@ class LoghubSource(
 
   override lazy val schema: StructType = userSpecifiedSchema.get
 
-  private val transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
-    encoderForDataColumns.toRow(new GenericRow(data.toArray))
-  }
-
   override def getOffset: Option[Offset] = {
     // Make sure initialPartitionOffsets is initialized
     initialPartitionOffsets
@@ -143,8 +137,12 @@ class LoghubSource(
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
       endpoint, shardOffsets, schema.fieldNames, sourceOptions)
       .mapPartitions(it => {
-        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-        it.map(t => transFunc(t, encoderForDataColumns))
+        val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
+        it.map(t => {
+          val row = new GenericInternalRow(schema.length)
+          t.toArray.zipWithIndex.foreach{ case (t, idx) => row(idx) = valueConverters(idx).apply(t)}
+          row.asInstanceOf[InternalRow]
+        })
       })
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)
