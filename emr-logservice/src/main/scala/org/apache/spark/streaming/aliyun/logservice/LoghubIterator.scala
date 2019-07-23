@@ -70,11 +70,15 @@ class LoghubIterator(
       if (logData.isEmpty) {
         fetchNextBatch()
       }
-
-      hasRead += 1
-      logData.poll()
+      if (logData.isEmpty) {
+        finished = true
+        null
+      } else {
+        hasRead += 1
+        logData.poll()
+      }
     } else {
-      ""
+      null
     }
   }
 
@@ -96,7 +100,6 @@ class LoghubIterator(
       logData.addAll(r)
       count += r.size()
     })
-
     val crt = nextCursor
     nextCursor = batchGetLogRes.GetNextCursor()
     logDebug(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +

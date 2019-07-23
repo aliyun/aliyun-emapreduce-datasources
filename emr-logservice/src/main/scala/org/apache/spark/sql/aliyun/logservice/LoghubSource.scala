@@ -26,10 +26,8 @@ import org.apache.commons.io.IOUtils
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
-import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
 
@@ -100,22 +98,7 @@ class LoghubSource(
 
   private var lastCursorTime: Int = initialPartitionOffsets.values.max
 
-  override lazy val schema: StructType = Utils.getSchema(userSpecifiedSchema, sourceOptions)
-
-  private val fallback = schema.sameType(LoghubOffsetReader.loghubSchema)
-
-  private val transFunc = (data: LoghubData, encoderForDataColumns: ExpressionEncoder[Row]) => {
-    if (fallback) {
-      InternalRow(
-        data.project,
-        data.store,
-        data.shardId,
-        DateTimeUtils.fromJavaTimestamp(data.dataTime),
-        data.getContent)
-    } else {
-      encoderForDataColumns.toRow(new GenericRow(data.toArray))
-    }
-  }
+  override lazy val schema: StructType = userSpecifiedSchema.get
 
   override def getOffset: Option[Offset] = {
     // Make sure initialPartitionOffsets is initialized
@@ -152,10 +135,14 @@ class LoghubSource(
       shardOffsets.+=((shard.shard, earliest(shard), untilShardOffsets(shard)))
     })
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
-      endpoint, shardOffsets, schema.fieldNames, fallback = fallback)
+      endpoint, shardOffsets, schema.fieldNames, sourceOptions)
       .mapPartitions(it => {
-        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-        it.map(t => transFunc(t, encoderForDataColumns))
+        val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
+        it.map(t => {
+          val row = new GenericInternalRow(schema.length)
+          t.toArray.zipWithIndex.foreach{ case (t, idx) => row(idx) = valueConverters(idx).apply(t)}
+          row.asInstanceOf[InternalRow]
+        })
       })
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)

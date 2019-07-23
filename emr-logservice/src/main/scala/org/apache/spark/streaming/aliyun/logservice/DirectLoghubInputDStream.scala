@@ -220,6 +220,7 @@ class DirectLoghubInputDStream(
             } else {
               val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
               val end = mClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              logInfo(s"ShardID $shardId, start $start end $end")
               if (!start.equals(end)) {
                 shardOffsets.+=((shardId, start, end))
               }
@@ -236,6 +237,7 @@ class DirectLoghubInputDStream(
               val shardId = shard.GetShardId()
               val start: String = fetchCursorFromLoghub(shardId)
               val end = mClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              logInfo(s"ShardID $shardId, start $start end $end")
               shardOffsets.+=((shardId, start, end))
             })
         }

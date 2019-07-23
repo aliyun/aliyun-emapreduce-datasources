@@ -17,43 +17,29 @@
 
 package org.apache.spark.sql.aliyun.logservice
 
-import com.alibaba.fastjson.JSONObject
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 
-abstract class LoghubData(
-    val project: String, val store: String, val shardId: Int,
-    val dataTime: java.sql.Timestamp, val topic: String, val source: String)
+abstract class LoghubData()
   extends Serializable {
   def getContent: Array[Byte]
-  def toArray: Array[Any]
+  def toArray: Array[String]
 }
 
-class SchemaLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-                       topic: String, source: String, content: Array[(String, Any)])
-  extends LoghubData(project, store, shardId, dataTime, topic, source)
-    with Logging with Serializable {
+class SchemaLoghubData(content: Array[(String, String)])
+  extends LoghubData with Logging with Serializable {
 
-  override def getContent: Array[Byte] = {
-    val obj = new JSONObject()
-    obj.put(__TOPIC__, topic)
-    obj.put(__SOURCE__, source)
-    content.asInstanceOf[Array[(String, Any)]].foreach(r => {
-      obj.put(r._1, r._2)
-    })
-    obj.toJSONString.getBytes
+  override def toArray: Array[String] = {
+    content.map(_._2)
   }
 
-  override def toArray: Array[Any] = {
-    Array(project, store, shardId, dataTime, topic, source) ++: content.map(_._2)
-  }
+  override def getContent: Array[Byte] = throw new UnsupportedOperationException
 }
 
 class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-                    topic: String, source: String, content: Array[Byte])
-  extends LoghubData(project, store, shardId, dataTime, topic, source) {
+    topic: String, source: String, content: Array[Byte])
+  extends LoghubData {
 
   override def getContent: Array[Byte] = content
 
-  override def toArray: Array[Any] = throw new UnsupportedOperationException
+  override def toArray: Array[String] = throw new UnsupportedOperationException
 }

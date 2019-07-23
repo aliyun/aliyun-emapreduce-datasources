@@ -22,25 +22,22 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
 
-import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
 
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
 import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
 class LoghubContinuousReader(
-    schema: Option[StructType],
+    schema: StructType,
     offsetReader: LoghubOffsetReader,
     loghubParams: util.Map[String, Object],
     sourceOptions: Map[String, String],
@@ -48,14 +45,9 @@ class LoghubContinuousReader(
     initialOffsets: LoghubOffsetRangeLimit)
   extends ContinuousReader with Logging {
 
-  private lazy val session = SparkSession.getActiveSession.get
-  private lazy val sc = session.sparkContext
-
-  private val pollTimeoutMs = sourceOptions.getOrElse("loghub.pollTimeoutMs", "512").toLong
-
   private var offset: Offset = _
 
-  override def readSchema: StructType = Utils.getSchema(schema, sourceOptions)
+  override def readSchema: StructType = schema
 
   override def commit(end: Offset): Unit = {}
 
@@ -95,7 +87,7 @@ class LoghubContinuousReader(
     startOffsets.toSeq.map {
       case (loghubShard, of) => {
         LoghubContinuousInputPartition(
-          loghubShard.logProject, loghubShard.logStore, loghubShard.shard, of, sourceOptions)
+          loghubShard.logProject, loghubShard.logStore, loghubShard.shard, of, sourceOptions, readSchema.fieldNames)
         : InputPartition[InternalRow]
       }
     }.asJava
@@ -107,14 +99,15 @@ case class LoghubContinuousInputPartition(
     logStore: String,
     shardId: Int,
     offset: Int,
-    sourceOptions: Map[String, String]) extends ContinuousInputPartition[InternalRow] {
+    sourceOptions: Map[String, String],
+    schemaFieldNames: Array[String]) extends ContinuousInputPartition[InternalRow] {
   override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
     val off = offset.asInstanceOf[LoghubShardOffset]
-    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, off.offset, sourceOptions)
+    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, off.offset, sourceOptions, schemaFieldNames)
   }
 
   override def createPartitionReader(): InputPartitionReader[InternalRow] = {
-    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, offset, sourceOptions)
+    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, offset, sourceOptions, schemaFieldNames)
   }
 }
 
@@ -123,7 +116,8 @@ class LoghubContinuousInputPartitionReader(
     logStore: String,
     shardId: Int,
     offset: Int,
-    sourceOptions: Map[String, String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
+    sourceOptions: Map[String, String],
+    schemaFieldNames: Array[String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
@@ -132,10 +126,10 @@ class LoghubContinuousInputPartitionReader(
   private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
   // TODO: This may cost too much memory.
-  private val logData = new LinkedBlockingQueue[JSONObject](4096 * step)
-  private val rowWriter = new UnsafeRowWriter(5)
+  private val logData = new LinkedBlockingQueue[LoghubData](4096 * step)
+  private val rowWriter = new UnsafeRowWriter(schemaFieldNames.length)
 
-  private var currentRecord: JSONObject = _
+  private var currentRecord: LoghubData = _
 
   override def getOffset: PartitionOffset = {
     val offset = logServiceClient.GetCursorTime(logProject, logStore, shardId, nextCursor)
@@ -158,26 +152,62 @@ class LoghubContinuousInputPartitionReader(
     endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
     val batchGetLogRes: BatchGetLogResponse = logServiceClient.BatchGetLog(logProject, logStore, shardId,
       step, nextCursor, endCursor)
+    val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {
         val topic = group.GetTopic()
         val source = group.GetSource()
-        val obj = new JSONObject()
-        obj.put(__TIME__, Integer.valueOf(log.getTime))
-        obj.put(__TOPIC__, topic)
-        obj.put(__SOURCE__, source)
-        log.getContentsList.foreach(content => {
-          obj.put(content.getKey, content.getValue)
-        })
+        try {
+          val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
+            (null, null).asInstanceOf[(String, String)]
+          )
+          log.getContentsList
+            .filter(content => schemaFieldPos.contains(content.getKey))
+            .foreach(content => {
+              columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
+            })
 
-        val flg = group.GetFastLogGroup()
-        for (i <- 0 until flg.getLogTagsCount) {
-          obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+          val flg = group.GetFastLogGroup()
+          for (i <- 0 until flg.getLogTagsCount) {
+            val tagKey = flg.getLogTags(i).getKey
+            val tagValue = flg.getLogTags(i).getValue
+            if (schemaFieldPos.contains(tagKey)) {
+              columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+            }
+          }
+
+          if (schemaFieldPos.contains(__PROJECT__)) {
+            columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
+          }
+
+          if (schemaFieldPos.contains(__STORE__)) {
+            columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
+          }
+
+          if (schemaFieldPos.contains(__SHARD__)) {
+            columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
+          }
+
+          if (schemaFieldPos.contains(__TOPIC__)) {
+            columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
+          }
+
+          if (schemaFieldPos.contains(__SOURCE__)) {
+            columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
+          }
+
+          if (schemaFieldPos.contains(__TIME__)) {
+            columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
+          }
+
+          count += 1
+          logData.offer(new SchemaLoghubData(columnArray))
+        } catch {
+          case e: NoSuchElementException =>
+            logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+              s"data and continue.")
         }
-
-        count += 1
-        logData.offer(obj)
       })
     })
 
@@ -192,12 +222,9 @@ class LoghubContinuousInputPartitionReader(
     rowWriter.reset()
     rowWriter.zeroOutNullBytes()
 
-    rowWriter.write(0, UTF8String.fromString(logProject))
-    rowWriter.write(1, UTF8String.fromString(logStore))
-    rowWriter.write(2, shardId)
-    rowWriter.write(3, DateTimeUtils.fromJavaTimestamp(
-      new java.sql.Timestamp(currentRecord.get(__TIME__).asInstanceOf[Integer] * 1000)))
-    rowWriter.write(4, currentRecord.toJSONString.getBytes)
+    currentRecord.toArray.zipWithIndex.foreach(item => {
+      rowWriter.write(item._2, UTF8String.fromString(item._1.asInstanceOf[String]))
+    })
 
     rowWriter.getRow
   }
