@@ -52,7 +52,7 @@ class DatahubContinuousReader(
 
   private var offset: Offset = _
 
-  override def readSchema: StructType = DatahubSchema.getSchema(schema, sourceOptions)
+  override lazy val readSchema: StructType = DatahubSchema.getSchema(schema, sourceOptions)
 
   override def commit(end: Offset): Unit = {}
 
