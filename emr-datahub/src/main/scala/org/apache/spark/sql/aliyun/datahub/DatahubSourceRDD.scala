@@ -131,7 +131,7 @@ class DatahubSourceRDD(
               try {
 
                 // the first four columns: project, topic, shardId, systemTime
-                // the length of rest of columns: numCols - 6
+                // the length of rest of columns: numCols - 4
                 val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
                   (null, null).asInstanceOf[(String, Any)]
                 )

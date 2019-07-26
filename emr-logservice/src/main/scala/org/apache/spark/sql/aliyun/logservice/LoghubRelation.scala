@@ -20,7 +20,8 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation, TableScan}
 import org.apache.spark.sql.types.StructType
@@ -65,8 +66,12 @@ class LoghubRelation(
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
       accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, sourceOptions)
       .mapPartitions(it => {
-        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-        it.map(t => Utils.transFunc(t, encoderForDataColumns))
+        val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
+        it.map(t => {
+          val row = new GenericInternalRow(schema.length)
+          t.toArray.zipWithIndex.foreach{ case (t, idx) => row(idx) = valueConverters(idx).apply(t)}
+          row.asInstanceOf[InternalRow]
+        })
       })
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }

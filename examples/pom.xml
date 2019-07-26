@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.aliyun.emr</groupId>
         <artifactId>emr_2.11</artifactId>
-        <version>1.7.0-SNAPSHOT</version>
+        <version>1.8.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -14,6 +14,10 @@
     <artifactId>emr-examples_2.11</artifactId>
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce Examples</name>
+
+    <properties>
+        <guava.version>27.0-jre</guava.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -67,6 +71,18 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-ons_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-jdbc_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-hbase_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -162,20 +178,25 @@
                     <outputFile>${project.build.directory}/shaded/emr-examples_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
+                            <include>org.apache.spark:spark-sql-kafka-0-10_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-tablestore</include>
                             <include>com.aliyun.emr:emr-mns_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-logservice_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-maxcompute_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-ons_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-datahub_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-hbase_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-jdbc_${scala.binary.version}</include>
                             <include>com.aliyun.datahub:aliyun-sdk-datahub</include>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>
                             <include>com.aliyun.oss:aliyun-sdk-oss</include>
                             <include>com.aliyun.openservices:aliyun-log</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
+                            <include>com.aliyun.openservices:aliyun-log-producer</include>
                             <include>com.aliyun.openservices:ons-client</include>
                             <include>com.aliyun.openservices:ons-api</include>
+                            <include>com.aliyun.openservices:tablestore</include>
                             <include>com.aliyun.mns:aliyun-sdk-mns</include>
                             <include>com.alibaba.rocketmq:rocketmq-client</include>
                             <include>com.alibaba.rocketmq:rocketmq-common</include>
@@ -198,8 +219,33 @@
                             <include>org.apache.hadoop:hadoop-common</include>
                             <include>com.101tec:zkclient</include>
                             <include>javax.mail:mail</include>
+                            <include>org.apache.hbase:*</include>
+                            <include>org.apache.phoenix:*</include>
+                            <include>org.apache.hbase.thirdparty:*</include>
+                            <include>org.apache.htrace:*</include>
+                            <include>com.hortonworks:*</include>
+                            <include>org.json4s:*</include>
+                            <include>com.google.protobuf:protobuf-java</include>
                         </includes>
                     </artifactSet>
+                    <relocations>
+                        <relocation>
+                            <pattern>org.json4s</pattern>
+                            <shadedPattern>${emr.shade.packageName}.json4s</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache.htrace</pattern>
+                            <shadedPattern>${emr.shade.packageName}.htrace</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.google.common</pattern>
+                            <shadedPattern>${emr.shade.packageName}.guava</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.google.protobuf</pattern>
+                            <shadedPattern>${emr.shade.packageName}.protobuf</shadedPattern>
+                        </relocation>
+                    </relocations>
                 </configuration>
                 <executions>
                     <execution>
