@@ -31,7 +31,6 @@ import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
 import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.types._
@@ -161,7 +160,7 @@ class LoghubContinuousInputPartitionReader(
         val source = group.GetSource()
         try {
           val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
-            (null, null).asInstanceOf[(String, Any)]
+            (null, null).asInstanceOf[(String, String)]
           )
           log.getContentsList
             .filter(content => schemaFieldPos.contains(content.getKey))
@@ -187,7 +186,7 @@ class LoghubContinuousInputPartitionReader(
           }
 
           if (schemaFieldPos.contains(__SHARD__)) {
-            columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId)
+            columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
           }
 
           if (schemaFieldPos.contains(__TOPIC__)) {
@@ -199,7 +198,7 @@ class LoghubContinuousInputPartitionReader(
           }
 
           if (schemaFieldPos.contains(__TIME__)) {
-            columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L))
+            columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
           }
 
           count += 1
@@ -224,17 +223,7 @@ class LoghubContinuousInputPartitionReader(
     rowWriter.zeroOutNullBytes()
 
     currentRecord.toArray.zipWithIndex.foreach(item => {
-      item._1 match {
-        case _: String =>
-          rowWriter.write(item._2, UTF8String.fromString(item._1.asInstanceOf[String]))
-        case _: Int =>
-          rowWriter.write(item._2, item._1.asInstanceOf[Int])
-        case _: java.sql.Timestamp =>
-          rowWriter.write(item._2, DateTimeUtils.fromJavaTimestamp(item._1.asInstanceOf[java.sql.Timestamp]))
-        case uet: Any =>
-          throw new Exception(s"Unexpected data type: ${uet.getClass.getCanonicalName}")
-      }
-
+      rowWriter.write(item._2, UTF8String.fromString(item._1.asInstanceOf[String]))
     })
 
     rowWriter.getRow

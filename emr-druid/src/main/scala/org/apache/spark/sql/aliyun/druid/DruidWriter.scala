@@ -43,8 +43,9 @@ object DruidWriter {
       queryExecution: QueryExecution,
       parameters: Map[String, String]): Unit = {
     val schema = getSchema(parameters)
+    val timestampColumn = parameters.getOrElse("timestampSpec.column", "timestamp")
     import com.metamx.tranquility.spark.BeamRDD._
-    queryExecution.toRdd.map(SchemaInternalRow(schema, _)).propagate(new EventBeamFactory(parameters, schema))
+    queryExecution.toRdd.map(SchemaInternalRow(schema, _, timestampColumn)).propagate(new EventBeamFactory(parameters, schema))
   }
 
   def getSchema(parameters: Map[String, String]): StructType = {
@@ -52,9 +53,10 @@ object DruidWriter {
       throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
         s"Format dimension1,dimension2...."))
     val dimensions = dimension.split(",")
-    val existTimestamp = dimensions.exists(_.equals("timestamp"))
+    val timestampColumn = parameters.getOrElse("timestampSpec.column", "timestamp")
+    val existTimestamp = dimensions.exists(_.equals(timestampColumn))
     if (!existTimestamp) {
-      throw new AnalysisException("Missing timestamp in option rollup.dimension")
+      throw new AnalysisException("Missing timestamp column in option rollup.dimension")
     }
     StructType(dimensions.map(StructField(_, StringType)))
   }
@@ -82,7 +84,7 @@ object EventBeamFactory extends Logging {
     val firehouse = druidConfiguration.getOrElse("firehouse",
       throw new AnalysisException(s"option firehouse is required.")
     )
-    val metricsSpec = druidConfiguration.getOrElse("metricsSpec",
+    val metricsSpec = druidConfiguration.getOrElse("rollup.aggregators",
       throw new AnalysisException(s"option metricsSpec is required. format: " +
         s"""{\\"metricsSpec\\":[{\\"type\\":\\"count\\",\\"name\\":\\"count\\"},{\\"type\\":\\"doubleSum\\",\\"fieldName\\":\\"x\\",\\"name\\":\\"x\\"}]}""")
     )
@@ -91,20 +93,20 @@ object EventBeamFactory extends Logging {
     )
     val discoveryPath = druidConfiguration.getOrElse("discovery.path", "/druid/discovery")
     val tuningSegmentGranularity = druidConfiguration
-      .getOrElse("curator.max.tuning.segment.granularity","DAY")
+      .getOrElse("tuning.segment.granularity","DAY")
     val segmentGranularity = Granularity.valueOf(tuningSegmentGranularity.toUpperCase)
     val tuningWindowPeriod = druidConfiguration
-      .getOrElse("curator.max.tuning.tuning.window.period", "PT10M")
+      .getOrElse("tuning.window.period", "PT10M")
     val tuningPartitions = druidConfiguration
-      .getOrElse("curator.max.tuning.partitions", "1").toInt
+      .getOrElse("tuning.partitions", "1").toInt
     val tuningReplicants = druidConfiguration
-      .getOrElse("curator.max.tuning.replications", "1").toInt
+      .getOrElse("tuning.replications", "1").toInt
     val tuningWarmingPeriod = druidConfiguration
-      .getOrElse("curator.max.tuning.warming.period", "0").toInt
+      .getOrElse("tuning.warming.period", "0").toInt
     val warmingPeriod: Period = new Period(tuningWarmingPeriod)
-    val timestampColumn = druidConfiguration.getOrElse("curator.max.tuning.column", "timestamp")
+    val timestampColumn = druidConfiguration.getOrElse("timestampSpec.column", "timestamp")
     val timestampFormat = druidConfiguration
-      .getOrElse("curator.max.tuning.timestamp.format", "iso")
+      .getOrElse("timestampSpec.format", "iso")
 
     val aggregators = mapper.readValue(metricsSpec, classOf[AggregatorFactories])
     val dimensions = schema.fieldNames
@@ -175,9 +177,9 @@ object EventBeamFactory extends Logging {
   }
 }
 
-case class SchemaInternalRow(schema: StructType, row: InternalRow) {
+case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColumn: String) {
   private val fieldNames = schema.fieldNames
-  private val timeIndex = fieldNames.indexOf("timestamp")
+  private val timeIndex = fieldNames.indexOf(timestampColumn)
   private val time = row.getLong(timeIndex)
   private val timeInMs = getTimeInMS(time)
   val ts = new DateTime(timeInMs)
