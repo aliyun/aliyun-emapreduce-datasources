@@ -29,9 +29,9 @@ import org.apache.http.conn.ConnectTimeoutException;
 public class LoghubClientAgent {
   private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
   private Client client;
-  private int maxRetry = 6;
-  private long initialBackoff = 1000;
-  private long maxBackoff = 10000;
+  private int maxRetry = 60;
+  private long initialBackoff = 500;
+  private long maxBackoff = 5000;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
@@ -46,6 +46,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListShard(logProject, logStore);
       } catch (LogException e) {
+        LOG.error("List shards failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -70,6 +71,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStream, shardId, mode);
       } catch (LogException e) {
+        LOG.error("Get cursor failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -93,6 +95,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStore, shardId, fromTime);
       } catch (LogException e) {
+        LOG.error("Get cursor from time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -117,6 +120,7 @@ public class LoghubClientAgent {
       try {
         return this.client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
       } catch (LogException e) {
+        LOG.error("Update checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -141,6 +145,7 @@ public class LoghubClientAgent {
       try {
         return this.client.CreateConsumerGroup(project, logStore, consumerGroup);
       } catch (LogException e) {
+        LOG.error("Create consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -164,6 +169,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListConsumerGroup(project, logStore);
       } catch (LogException e) {
+        LOG.error("List consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -188,6 +194,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCheckPoint(project, logStore, consumerGroup, shard);
       } catch (LogException e) {
+        LOG.error("Get checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -212,6 +219,7 @@ public class LoghubClientAgent {
       try {
         return this.client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor);
       } catch (LogException e) {
+        LOG.error("Pull data failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -236,6 +244,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetHistograms(project, logStore, from, to, topic, query);
       } catch (LogException e) {
+        LOG.error("Get histograms failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -263,6 +272,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursorTime(project, logStore, shardId, cursor);
       } catch (LogException e) {
+        LOG.error("Get cursor time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -285,7 +295,9 @@ public class LoghubClientAgent {
   }
 
   private static boolean isRecoverableException(LogException ex) {
-    return checkConnectionTimeoutException(ex) || ex.GetHttpCode() >= 500;
+    return checkConnectionTimeoutException(ex)
+            || ex.GetHttpCode() >= 500 // Internal Server Error
+            || ex.GetHttpCode() == 403; // Throttling Error
   }
 
   private boolean shouldRetry(LogException ex, int retry) {
