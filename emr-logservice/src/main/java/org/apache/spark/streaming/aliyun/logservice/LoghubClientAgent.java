@@ -46,7 +46,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListShard(logProject, logStore);
       } catch (LogException e) {
-        LOG.error("List shards failed", e);
+        LOG.error("List shards failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -71,7 +71,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStream, shardId, mode);
       } catch (LogException e) {
-        LOG.error("Get cursor failed", e);
+        LOG.error("Get cursor failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -95,7 +95,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursor(project, logStore, shardId, fromTime);
       } catch (LogException e) {
-        LOG.error("Get cursor from time failed", e);
+        LOG.error("Get cursor from time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -120,7 +120,7 @@ public class LoghubClientAgent {
       try {
         return this.client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
       } catch (LogException e) {
-        LOG.error("Update checkpoint failed", e);
+        LOG.error("Update checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -145,7 +145,7 @@ public class LoghubClientAgent {
       try {
         return this.client.CreateConsumerGroup(project, logStore, consumerGroup);
       } catch (LogException e) {
-        LOG.error("Create consumer group failed", e);
+        LOG.error("Create consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -169,7 +169,7 @@ public class LoghubClientAgent {
       try {
         return this.client.ListConsumerGroup(project, logStore);
       } catch (LogException e) {
-        LOG.error("List consumer group failed", e);
+        LOG.error("List consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -194,7 +194,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCheckPoint(project, logStore, consumerGroup, shard);
       } catch (LogException e) {
-        LOG.error("Get checkpoint failed", e);
+        LOG.error("Get checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -219,6 +219,7 @@ public class LoghubClientAgent {
       try {
         return this.client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor);
       } catch (LogException e) {
+        LOG.error("Pull data failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -243,7 +244,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetHistograms(project, logStore, from, to, topic, query);
       } catch (LogException e) {
-        LOG.error("Get histograms failed", e);
+        LOG.error("Get histograms failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
@@ -271,7 +272,7 @@ public class LoghubClientAgent {
       try {
         return this.client.GetCursorTime(project, logStore, shardId, cursor);
       } catch (LogException e) {
-        LOG.error("Get cursor time failed", e);
+        LOG.error("Get cursor time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
         if (shouldRetry(e, retry)) {
           retry += 1;
           Thread.sleep(backoff);
