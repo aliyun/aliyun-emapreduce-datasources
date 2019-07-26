@@ -29,9 +29,9 @@ import org.apache.http.conn.ConnectTimeoutException;
 public class LoghubClientAgent {
   private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
   private Client client;
-  private int maxRetry = 6;
+  private int maxRetry = 30;
   private long initialBackoff = 1000;
-  private long maxBackoff = 10000;
+  private long maxBackoff = 30000;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
