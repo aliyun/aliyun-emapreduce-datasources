@@ -106,7 +106,7 @@ class DatahubSource(
     })
   }.shardToOffsets
 
-  override def schema: StructType = DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions)
+  override lazy val schema: StructType = DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions)
 
   // TODO: remove fallback
   private val fallback = schema.sameType(DatahubSchema.getDefaultSchema)
