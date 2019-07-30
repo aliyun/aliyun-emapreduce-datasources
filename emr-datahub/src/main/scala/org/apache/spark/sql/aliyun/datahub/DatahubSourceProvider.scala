@@ -24,14 +24,18 @@ import scala.collection.JavaConverters._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Source
-import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
-import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
+import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
+import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions, MicroBatchReadSupport, StreamWriteSupport}
 import org.apache.spark.sql.sources._
+import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
+import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
 
 class DatahubSourceProvider extends DataSourceRegister
   with StreamSourceProvider
-  with ContinuousReadSupport {
+  with MicroBatchReadSupport
+  with ContinuousReadSupport
+  with StreamWriteSupport{
   override def shortName(): String = "datahub"
 
   override def sourceSchema(
@@ -85,6 +89,49 @@ class DatahubSourceProvider extends DataSourceRegister
       uniqueGroupId: String): java.util.Map[String, Object] =
     ConfigUpdater("executor", specifiedDatahubParams)
       .build()
+
+  override def createMicroBatchReader(
+      schema: Optional[StructType],
+      checkpointLocation: String,
+      options: DataSourceOptions): MicroBatchReader = {
+    val parameters = options.asMap().asScala.toMap
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
+    val startingStreamOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(caseInsensitiveParams,
+      "startingoffsets", LatestOffsetRangeLimit)
+
+    new DatahubMicroBatchReader(
+      datahubOffsetReader,
+      caseInsensitiveParams,
+      checkpointLocation,
+      startingStreamOffsets,
+      caseInsensitiveParams.getOrElse("failondataloss", "true").toBoolean,
+      Some(schema.orElse(new StructType()).toDDL))
+  }
+
+  override def createStreamWriter(
+      queryId: String,
+      schema: StructType,
+      mode: OutputMode,
+      options: DataSourceOptions): StreamWriter = {
+    new DatahubStreamWriter()
+  }
+}
+
+object DatahubSourceProvider {
+  val INSTRUCTION_FOR_FAIL_ON_DATA_LOSS_FALSE =
+    """
+      |Some data may have been lost because they are not available in Datahub any more; either the
+      | data was aged out by Datahub or shard was in 'CLOSED' status and recycled. If you want your
+      | streaming query to fail on such cases, set the source option "failOnDataLoss" to "true".
+    """.stripMargin
+
+  val INSTRUCTION_FOR_FAIL_ON_DATA_LOSS_TRUE =
+    """
+      |Some data may have been lost because they are not available in Datahub any more; either the
+      | data was aged out by Datahub or shard was in 'CLOSED' status and recycled. If you don't want
+      | your streaming query to fail on such cases, set the source option "failOnDataLoss" to "false".
+    """.stripMargin
 }
 
 /** Class to conveniently update Datahub config params, while logging the changes */

@@ -105,8 +105,8 @@ object DatahubSchema extends Logging {
         accessKeyId, accessKeySecret, endpoint, sourceOptions)
     } catch {
       case e: Exception =>
-        logWarning(s"Failed to analyse datahub schema, fall back to default " +
-          s"schema ${getDefaultSchema}", e)
+        logWarning(s"Failed to analyse datahub schema, fallback to default " +
+          s"schema $getDefaultSchema", e)
         getDefaultSchema
     }
   }
@@ -154,9 +154,6 @@ object DatahubSchema extends Logging {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     val endpoint = caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing datahub endpoint (='endpoint')."))
-    caseInsensitiveParams.getOrElse("zookeeper.connect.address",
-      throw new MissingArgumentException("Missing zookeeper connect address " +
-        "(='zookeeper.connect.address')."))
     val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
     val existDecimal = client.getTopic(project, topic).getRecordSchema.getFields.exists(x=> {
       x.getType == FieldType.DECIMAL

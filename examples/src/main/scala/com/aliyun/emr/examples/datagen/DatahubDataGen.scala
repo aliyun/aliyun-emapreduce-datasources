@@ -23,7 +23,6 @@ import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.common.data.FieldType
 import com.aliyun.datahub.model.RecordEntry
-import org.apache.spark.sql.aliyun.datahub.DatahubOffsetReader
 import org.apache.spark.sql.types.{DataTypes, StructField}
 
 import scala.util.Random
@@ -38,8 +37,7 @@ object DatahubDataGen {
     val Array(project, topic, endpoint, accessKeyId, accessKeySecret) = args
 
     val dclient = new DatahubClient(new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
-    val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
-    val schema = client.getTopic(project, topic).getRecordSchema
+    val schema = dclient.getTopic(project, topic).getRecordSchema
 
     while(true) {
       val recordEntries = new util.ArrayList[RecordEntry]()
@@ -47,7 +45,7 @@ object DatahubDataGen {
         val data = new RecordEntry(schema)
         schema.getFields.foreach(f => {
           f.getType match {
-            case FieldType.STRING => data.setString(f.getName, "i am" + Random.nextString(10))
+            case FieldType.STRING => data.setString(f.getName, "i am a string")
             case FieldType.BIGINT => data.setBigint(f.getName, Random.nextLong())
             case FieldType.BOOLEAN => data.setBoolean(f.getName, Random.nextBoolean())
             case FieldType.DECIMAL => data.setDecimal(f.getName, java.math.BigDecimal.valueOf(0.1d))

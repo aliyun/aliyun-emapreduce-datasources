@@ -107,7 +107,7 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
       projectName: String,
       topicName: String,
       shardId: String,
-      sequence: Long):GetCursorResult = {
+      sequence: Long): GetCursorResult = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
@@ -269,6 +269,10 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     }
     logError(s"retry to updateOffsetContext exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
+  }
+
+  def close(): Unit = {
+    client.close()
   }
 }
 
