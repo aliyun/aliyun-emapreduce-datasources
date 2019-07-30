@@ -107,12 +107,12 @@ class TableStoreRelation(
     val batch = new BatchWriteWritable()
     val pkeyNames = new util.HashSet[String]()
     val pkeyCols = new util.ArrayList[PrimaryKeyColumn]()
-    tbMeta.getPrimaryKeyList.foreach(schema => {
-      val name = schema.getName
+    tbMeta.getPrimaryKeyList.foreach(otsSchema => {
+      val name = otsSchema.getName
       pkeyNames.add(name)
-      val pkeyCol = schema.getType match {
+      val pkeyCol = otsSchema.getType match {
         case PrimaryKeyType.INTEGER =>
-          this.schema(name).dataType match {
+          schema(name).dataType match {
             case LongType =>
               new PrimaryKeyColumn(name, PrimaryKeyValue.fromLong(row.getAs[Long](name)))
             case IntegerType =>
@@ -126,15 +126,15 @@ class TableStoreRelation(
             case ByteType =>
               new PrimaryKeyColumn(name, PrimaryKeyValue.fromLong(row.getAs[Byte](name).toLong))
             case _ =>
-              throw new SerDeException(s"data type mismatch, " +
-                s"expected: ${schema.getType} real: ${this.schema(name).dataType}")
+              throw new SerDeException(s"Data type of column $name mismatch, " +
+                s"expected: ${otsSchema.getType} real: ${schema(name).dataType}")
           }
         case PrimaryKeyType.STRING =>
           new PrimaryKeyColumn(name, PrimaryKeyValue.fromString(row.getAs[String](name)))
         case PrimaryKeyType.BINARY =>
-          new PrimaryKeyColumn(name, PrimaryKeyValue.fromLong(row.getAs[Long](name)))
+          new PrimaryKeyColumn(name, PrimaryKeyValue.fromBinary(row.getAs[Array[Byte]](name)))
         case _ =>
-          throw new SerDeException(s"unknown data type of primary key: ${schema.getType}")
+          throw new SerDeException(s"unknown data type of primary key: ${otsSchema.getType}")
       }
       pkeyCols.add(pkeyCol)
     })
@@ -150,7 +150,7 @@ class TableStoreRelation(
           case FloatType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Float](field).toLong)))
           case DoubleType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Double](field).toLong)))
+            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field).toLong)))
           case ShortType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Short](field).toLong)))
           case ByteType =>
@@ -165,14 +165,10 @@ class TableStoreRelation(
       }
     })
 
-    val putRow = new RowPutChange(tbName,new PrimaryKey(pkeyCols))
+    val putRow = new RowPutChange(tbName, new PrimaryKey(pkeyCols))
     putRow.addColumns(attrs)
     batch.addRowChange(putRow)
     batch
-  }
-
-  private def toColumnValue(): Unit = {
-
   }
 
   private def fetchCriteria(): RangeRowQueryCriteria = {
