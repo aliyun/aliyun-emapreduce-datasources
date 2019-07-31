@@ -144,6 +144,10 @@
                             <pattern>okhttp3</pattern>
                             <shadedPattern>${emr.shade.packageName}.okhttp3</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>okio</pattern>
+                            <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
+                        </relocation>
                     </relocations>
                 </configuration>
                 <executions>
