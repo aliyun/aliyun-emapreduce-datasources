@@ -33,13 +33,14 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, SerializedOffset}
+import org.apache.spark.sql.sources.v2.DataSourceOptions
 import org.apache.spark.sql.sources.v2.reader.{InputPartition, InputPartitionReader}
 import org.apache.spark.sql.sources.v2.reader.streaming.{MicroBatchReader, Offset}
 import org.apache.spark.sql.types.StructType
 
 class DatahubMicroBatchReader(
     @transient offsetReader: DatahubOffsetReader,
-    sourceOptions: Map[String, String],
+    @transient sourceOptions: DataSourceOptions,
     metadataPath: String,
     startingOffsets: DatahubOffsetRangeLimit,
     failOnDataLoss: Boolean,
@@ -55,7 +56,8 @@ class DatahubMicroBatchReader(
 
   private var startPartitionOffsets: Map[DatahubShard, Long] = _
   private var endPartitionOffsets: Map[DatahubShard, Long] = _
-  private val maxOffsetsPerTrigger = sourceOptions.get("maxOffsetsPerTrigger").map(_.toLong)
+  private val maxOffsetsPerTrigger =
+    Option(sourceOptions.get("maxOffsetsPerTrigger").orElse(null)).map(_.toLong)
 
   private lazy val initialPartitionOffsets = getOrCreateInitialPartitionOffsets()
 
@@ -155,7 +157,7 @@ class DatahubMicroBatchReader(
   }
 
   override def readSchema(): StructType = {
-    DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions)
+    DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions.asMap().asScala.toMap)
   }
 
   private def reportDataLoss(message: String): Unit = {
@@ -206,7 +208,7 @@ class DatahubMicroBatchReader(
     // Generate factories based on the offset ranges
     offsetRanges.map { range =>
       new DatahubMicroBatchInputPartition(range, failOnDataLoss,
-        sourceOptions, readSchema().toDDL): InputPartition[InternalRow]
+        sourceOptions.asMap().asScala.toMap, readSchema().toDDL): InputPartition[InternalRow]
     }.asJava
   }
 

@@ -102,7 +102,7 @@ class DatahubSourceProvider extends DataSourceRegister
 
     new DatahubMicroBatchReader(
       datahubOffsetReader,
-      caseInsensitiveParams,
+      options,
       checkpointLocation,
       startingStreamOffsets,
       caseInsensitiveParams.getOrElse("failondataloss", "true").toBoolean,
