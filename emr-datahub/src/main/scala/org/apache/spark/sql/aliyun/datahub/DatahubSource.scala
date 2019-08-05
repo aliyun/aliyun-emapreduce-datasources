@@ -108,9 +108,6 @@ class DatahubSource(
 
   override lazy val schema: StructType = DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions)
 
-  // TODO: remove fallback
-  private val fallback = schema.sameType(DatahubSchema.getDefaultSchema)
-
   override def getOffset: Option[Offset] = {
     initialPartitionOffsets
 
@@ -137,20 +134,10 @@ class DatahubSource(
     currentBatches.foreach(_._2.unpersist(false))
     currentBatches.clear()
     val rdd = new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId,
-      accessKeySecret, schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger, fallback)
+      accessKeySecret, schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger)
       .mapPartitions(it => {
         val encoder = RowEncoder(schema).resolveAndBind()
-        it.map(data => {
-          if (fallback) {
-            InternalRow(data.project,
-              data.topic,
-              data.shardId,
-              data.systemTime,
-              data.getContent)
-          } else {
-            encoder.toRow(new GenericRow(data.toArray))
-          }
-        })
+        it.map(data => encoder.toRow(new GenericRow(data.toArray)))
       })
     sqlContext.sparkContext.setLocalProperty(SQLExecution.EXECUTION_ID_KEY, null)
     rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
@@ -202,20 +189,10 @@ class DatahubSource(
         shardOffsets.+=((shard.shardId, fromShardOffsets(shard), untilShardOffsets(shard)))
       })
       new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId, accessKeySecret,
-        schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger, fallback)
+        schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger)
         .mapPartitions(it => {
           val encoder = RowEncoder(schema).resolveAndBind(schema.toAttributes)
-          it.map(data => {
-            if (fallback) {
-              InternalRow(data.project,
-                data.topic,
-                data.shardId,
-                data.systemTime,
-                data.getContent)
-            } else {
-              encoder.toRow(new GenericRow(data.toArray))
-            }
-          })
+          it.map(data => encoder.toRow(new GenericRow(data.toArray)))
         })
     }
 

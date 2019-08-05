@@ -73,17 +73,6 @@ object DatahubSchema extends Logging {
     field == PROJECT || field == TOPIC || field == SHARD || field == SYSTEM_TIME
   }
 
-  // TODO: remove default schema
-  def getDefaultSchema: StructType = {
-    StructType(Seq(
-      StructField(PROJECT, StringType),
-      StructField(TOPIC, StringType),
-      StructField(SHARD, StringType),
-      StructField(SYSTEM_TIME, TimestampType),
-      StructField("value", BinaryType)
-    ))
-  }
-
   def getSchema(schema: Option[StructType], sourceOptions: Map[String, String]): StructType = {
     if (schema.isDefined && schema.get.nonEmpty) {
       schema.get
@@ -105,9 +94,7 @@ object DatahubSchema extends Logging {
         accessKeyId, accessKeySecret, endpoint, sourceOptions)
     } catch {
       case e: Exception =>
-        logWarning(s"Failed to analyse datahub schema, fallback to default " +
-          s"schema $getDefaultSchema", e)
-        getDefaultSchema
+        throw new Exception(s"Failed to analyse datahub schema", e)
     }
   }
 
