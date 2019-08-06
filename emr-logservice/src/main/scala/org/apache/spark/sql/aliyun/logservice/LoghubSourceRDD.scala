@@ -131,8 +131,8 @@ class LoghubSourceRDD(
                 for (i <- 0 until flg.getLogTagsCount) {
                   val tagKey = flg.getLogTags(i).getKey
                   val tagValue = flg.getLogTags(i).getValue
-                  if (schemaFieldPos.contains(tagKey)) {
-                    columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+                  if (schemaFieldPos.contains(s"__tag__:$tagKey")) {
+                    columnArray(schemaFieldPos(s"__tag__:$tagKey")) = (s"__tag__:$tagKey", tagValue)
                   }
                 }
 
