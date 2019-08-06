@@ -129,6 +129,15 @@
                             <shadedPattern>${emr.shade.packageName}.protobuf</shadedPattern>
                         </relocation>
                     </relocations>
+                    <filters>
+                        <filter>
+                            <artifact>*:*:*:*</artifact>
+                            <excludes>
+                                <exclude>log4j.properties</exclude>
+                                <exclude>log4j2.xml</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
                 </configuration>
                 <executions>
                     <execution>
