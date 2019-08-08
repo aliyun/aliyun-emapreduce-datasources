@@ -83,6 +83,8 @@
         <hbase.mr.version>2.0.4</hbase.mr.version>
         <spark.redis.version>2.4.0</spark.redis.version>
         <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
+        <json4s.jackson.version>3.5.3</json4s.jackson.version>
+        <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
