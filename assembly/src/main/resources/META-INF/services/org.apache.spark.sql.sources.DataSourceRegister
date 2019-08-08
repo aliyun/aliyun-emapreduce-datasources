@@ -2,3 +2,4 @@ org.apache.spark.sql.aliyun.hbase.HBaseSourceProvider
 org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider
 org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider
 org.apache.spark.sql.aliyun.jdbc2.JdbcSourceProvider
+org.apache.spark.sql.kafka010.KafkaSourceProvider

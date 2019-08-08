@@ -109,6 +109,10 @@
                             <include>com.aliyun.emr:emr-logservice_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-jdbc_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-hbase_${scala.binary.version}</include>
+                            <include>org.apache.spark:spark-aliyun-avro_${scala.binary.version}</include>
+                            <include>org.apache.spark:spark-sql-kafka-0-10_${scala.binary.version}</include>
+                            <include>io.confluent:*</include>
+                            <include>org.apache.kafka:*</include>
                         </includes>
                     </artifactSet>
                     <relocations>
