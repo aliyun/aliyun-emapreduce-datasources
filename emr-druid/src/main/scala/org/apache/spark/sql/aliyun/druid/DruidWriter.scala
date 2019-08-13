@@ -71,76 +71,86 @@ object EventBeamFactory extends Logging {
   private var curator: CuratorFramework = _
   private val mapper = new ObjectMapper()
   mapper.registerModule(new AggregatorsModule())
+  private var beamInstance: Beam[SchemaInternalRow] = _
 
   def BeamInstance (
       druidConfiguration: Map[String, String],
       schema: StructType): Beam[SchemaInternalRow] = {
-    val indexService = druidConfiguration.getOrElse("index.service",
-      throw new AnalysisException(s"option index.service is required.")
-    )
-    val dataSource = druidConfiguration.getOrElse("data.source",
-      throw new AnalysisException(s"option data.source is required.")
-    )
-    val firehouse = druidConfiguration.getOrElse("firehouse",
-      throw new AnalysisException(s"option firehouse is required.")
-    )
-    val metricsSpec = druidConfiguration.getOrElse("rollup.aggregators",
-      throw new AnalysisException(s"option metricsSpec is required. format: " +
-        s"""{\\"metricsSpec\\":[{\\"type\\":\\"count\\",\\"name\\":\\"count\\"},{\\"type\\":\\"doubleSum\\",\\"fieldName\\":\\"x\\",\\"name\\":\\"x\\"}]}""")
-    )
-    val rollupQueryGranularities = druidConfiguration.getOrElse("rollup.query.granularities",
-      throw new AnalysisException(s"option rollup.query.granularities is required.")
-    )
-    val discoveryPath = druidConfiguration.getOrElse("discovery.path", "/druid/discovery")
-    val tuningSegmentGranularity = druidConfiguration
-      .getOrElse("tuning.segment.granularity","DAY")
-    val segmentGranularity = Granularity.valueOf(tuningSegmentGranularity.toUpperCase)
-    val tuningWindowPeriod = druidConfiguration
-      .getOrElse("tuning.window.period", "PT10M")
-    val tuningPartitions = druidConfiguration
-      .getOrElse("tuning.partitions", "1").toInt
-    val tuningReplicants = druidConfiguration
-      .getOrElse("tuning.replications", "1").toInt
-    val tuningWarmingPeriod = druidConfiguration
-      .getOrElse("tuning.warming.period", "0").toInt
-    val warmingPeriod: Period = new Period(tuningWarmingPeriod)
-    val timestampColumn = druidConfiguration.getOrElse("timestampSpec.column", "timestamp")
-    val timestampFormat = druidConfiguration
-      .getOrElse("timestampSpec.format", "iso")
+    if (beamInstance == null) {
+      this.synchronized {
+        if (beamInstance == null) {
+          beamInstance = {
+            val indexService = druidConfiguration.getOrElse("index.service",
+              throw new AnalysisException(s"option index.service is required.")
+            )
+            val dataSource = druidConfiguration.getOrElse("data.source",
+              throw new AnalysisException(s"option data.source is required.")
+            )
+            val firehouse = druidConfiguration.getOrElse("firehouse",
+              throw new AnalysisException(s"option firehouse is required.")
+            )
+            val metricsSpec = druidConfiguration.getOrElse("rollup.aggregators",
+              throw new AnalysisException(s"option metricsSpec is required. format: " +
+                s"""{\\"metricsSpec\\":[{\\"type\\":\\"count\\",\\"name\\":\\"count\\"},{\\"type\\":\\"doubleSum\\",\\"fieldName\\":\\"x\\",\\"name\\":\\"x\\"}]}""")
+            )
+            val rollupQueryGranularities = druidConfiguration.getOrElse("rollup.query.granularities",
+              throw new AnalysisException(s"option rollup.query.granularities is required.")
+            )
+            val discoveryPath = druidConfiguration.getOrElse("discovery.path", "/druid/discovery")
+            val tuningSegmentGranularity = druidConfiguration
+              .getOrElse("tuning.segment.granularity","DAY")
+            val segmentGranularity = Granularity.valueOf(tuningSegmentGranularity.toUpperCase)
+            val tuningWindowPeriod = druidConfiguration
+              .getOrElse("tuning.window.period", "PT10M")
+            val tuningPartitions = druidConfiguration
+              .getOrElse("tuning.partitions", "1").toInt
+            val tuningReplicants = druidConfiguration
+              .getOrElse("tuning.replications", "1").toInt
+            val tuningWarmingPeriod = druidConfiguration
+              .getOrElse("tuning.warming.period", "0").toInt
+            val warmingPeriod: Period = new Period(tuningWarmingPeriod)
+            val timestampColumn = druidConfiguration.getOrElse("timestampSpec.column", "timestamp")
+            val timestampFormat = druidConfiguration
+              .getOrElse("timestampSpec.format", "iso")
 
-    val aggregators = mapper.readValue(metricsSpec, classOf[AggregatorFactories])
-    val dimensions = schema.fieldNames
+            val aggregators = mapper.readValue(metricsSpec, classOf[AggregatorFactories])
+            val dimensions = schema.fieldNames
 
-    // TODO: CALENDRIC_GRANULARITIES
-    val queryGranularities = rollupQueryGranularities.toLowerCase() match {
-      case "all" => QueryGranularities.ALL
-      case "none" => QueryGranularities.NONE
-      case time =>  QueryGranularity.fromString(time)
+            // TODO: CALENDRIC_GRANULARITIES
+            val queryGranularities = rollupQueryGranularities.toLowerCase() match {
+              case "all" => QueryGranularities.ALL
+              case "none" => QueryGranularities.NONE
+              case time =>  QueryGranularity.fromString(time)
+            }
+
+            val location = DruidLocation(indexService, firehouse, dataSource)
+            if (curator == null) {
+              curator = getCurator(druidConfiguration)
+            }
+            DruidBeams
+              .builder((row: SchemaInternalRow) => {
+                row.ts
+              })
+              .curator(curator)
+              .discoveryPath(discoveryPath)
+              .location(location)
+              .rollup(DruidRollup(SpecificDruidDimensions(dimensions), aggregators.getAggregators, queryGranularities))
+              .tuning(
+                ClusteredBeamTuning(
+                  segmentGranularity = segmentGranularity,
+                  windowPeriod = new Period(tuningWindowPeriod),
+                  partitions = tuningPartitions,
+                  replicants = tuningReplicants,
+                  warmingPeriod = warmingPeriod
+                )
+              )
+              .timestampSpec(new TimestampSpec(timestampColumn, timestampFormat, null))//optional
+              .buildBeam()
+          }
+        }
+      }
     }
-
-    val location = DruidLocation(indexService, firehouse, dataSource)
-    if (curator == null) {
-      curator = getCurator(druidConfiguration)
-    }
-    DruidBeams
-      .builder((row: SchemaInternalRow) => {
-        row.ts
-      })
-      .curator(curator)
-      .discoveryPath(discoveryPath)
-      .location(location)
-      .rollup(DruidRollup(SpecificDruidDimensions(dimensions), aggregators.getAggregators, queryGranularities))
-      .tuning(
-        ClusteredBeamTuning(
-          segmentGranularity = segmentGranularity,
-          windowPeriod = new Period(tuningWindowPeriod),
-          partitions = tuningPartitions,
-          replicants = tuningReplicants,
-          warmingPeriod = warmingPeriod
-        )
-      )
-      .timestampSpec(new TimestampSpec(timestampColumn, timestampFormat, null))//optional
-      .buildBeam()
+    beamInstance
   }
 
   def getCurator(configuration: Map[String, String]): CuratorFramework = {
