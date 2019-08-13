@@ -174,6 +174,16 @@ class DatahubSource(
   }
 
   override def getBatch(start: Option[Offset], end: Offset): DataFrame = {
+    // Make sure initialPartitionOffsets is initialized
+    initialPartitionOffsets
+
+    logInfo(s"GetBatch called with start = $start, end = $end")
+    val untilShardOffsets = DatahubSourceOffset.getShardOffsets(end)
+    // On recovery, getBatch will get called before getOffset
+    if (currentPartitionOffset.isEmpty) {
+      currentPartitionOffset = Some(untilShardOffsets)
+    }
+
     val startOffset = if (start.isEmpty) {
       DatahubSourceOffset(initialPartitionOffsets)
     } else {
