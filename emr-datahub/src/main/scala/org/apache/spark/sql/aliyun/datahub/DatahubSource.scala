@@ -178,10 +178,10 @@ class DatahubSource(
     initialPartitionOffsets
 
     logInfo(s"GetBatch called with start = $start, end = $end")
-    val untilPartitionOffsets = DatahubSourceOffset.getShardOffsets(end)
+    val untilShardOffsets = DatahubSourceOffset.getShardOffsets(end)
     // On recovery, getBatch will get called before getOffset
     if (currentPartitionOffset.isEmpty) {
-      currentPartitionOffset = Some(untilPartitionOffsets)
+      currentPartitionOffset = Some(untilShardOffsets)
     }
 
     val startOffset = if (start.isEmpty) {
