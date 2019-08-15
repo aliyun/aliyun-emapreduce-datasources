@@ -61,7 +61,7 @@ class LoghubInputDStream(
         loghubEndpoint
       }
       val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
-      client.SetSecurityToken(securityToken)
+      client.setSecurityToken(securityToken)
       client
     } else {
       new Client(loghubEndpoint, accessKeyId, accessKeySecret)
@@ -81,7 +81,7 @@ class LoghubInputDStream(
             accessKeySecret = MetaClient.getRoleAccessKeySecret
             securityToken = MetaClient.getRoleSecurityToken
             val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
-            client.SetSecurityToken(securityToken)
+            client.setSecurityToken(securityToken)
             client.DeleteConsumerGroup(logServiceProject, logStoreName,
               loghubConsumerGroupName)
           } catch {
