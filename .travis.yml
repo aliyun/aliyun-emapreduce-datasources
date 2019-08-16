@@ -20,6 +20,7 @@ script:
   - cat $HOME/.m2/settings.xml
   - while sleep 10s; do echo "=====[ $SECONDS seconds, build still running... ]====="; done &
   - mvn clean package -DskipTests > build.log 2>&1
+  - if [ $? -eq 0 ]; then tail -n 2000 -f build.log; fi
   - kill %1
 
 # 5. Branches only
