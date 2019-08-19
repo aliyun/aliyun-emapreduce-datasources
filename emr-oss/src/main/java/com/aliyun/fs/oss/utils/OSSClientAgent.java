@@ -213,7 +213,7 @@ public class OSSClientAgent {
       GsonBuilder builder = new GsonBuilder();
       builder.registerTypeAdapter(ObjectMetadata.class,
           new ObjectMetadataDeserializer());
-      Gson gson = builder.create();
+      Gson gson = builder.setDateFormat("MMM d, yyyy K:mm:ss a").create();
 
       Method method = this.ossClientClz.getMethod("getObjectMetadata",
           String.class, String.class);
