@@ -36,7 +36,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
-import org.apache.spark.streaming.scheduler.StreamInputInfo
+import org.apache.spark.streaming.scheduler.{StreamInputInfo, StreamingListener, StreamingListenerBatchCompleted}
 import org.apache.spark.util.Utils
 
 import scala.collection.mutable.{ArrayBuffer, HashMap}
@@ -167,6 +167,11 @@ class DirectLoghubInputDStream(
           "zookeeper.")
       // Do nothing, make compiler happy.
     }
+    ssc.addStreamingListener(new StreamingListener() {
+      override def onBatchCompleted(batchCompleted: StreamingListenerBatchCompleted): Unit = {
+        commitAsync()
+      }
+    })
   }
 
   override def stop(): Unit = {
@@ -275,10 +280,6 @@ class DirectLoghubInputDStream(
       }
       val inputInfo = StreamInputInfo(id, rdd.count, metadata)
       ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
-      if (autoCommitEnabled) {
-        // Mark as commitable so that next batch will commit checkpoint.
-        doCommit = true
-      }
       Some(rdd)
     }
   }
