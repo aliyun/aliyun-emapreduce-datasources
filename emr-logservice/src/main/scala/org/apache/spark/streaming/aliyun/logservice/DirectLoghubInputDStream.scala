@@ -167,11 +167,13 @@ class DirectLoghubInputDStream(
           "zookeeper.")
       // Do nothing, make compiler happy.
     }
-    ssc.addStreamingListener(new StreamingListener() {
-      override def onBatchCompleted(batchCompleted: StreamingListenerBatchCompleted): Unit = {
-        commitAsync()
-      }
-    })
+    if (autoCommitEnabled) {
+      ssc.addStreamingListener(new StreamingListener() {
+        override def onBatchCompleted(batchCompleted: StreamingListenerBatchCompleted): Unit = {
+          commitAsync()
+        }
+      })
+    }
   }
 
   override def stop(): Unit = {
