@@ -65,7 +65,7 @@ class DirectLoghubInputDStream(
   private val enablePreciseCount: Boolean =
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private val autoCommitEnabled: Boolean =
-    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommitEnabled", defaultValue = true)
+    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommit", defaultValue = true)
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
   @transient private var startTime: Long = -1L
