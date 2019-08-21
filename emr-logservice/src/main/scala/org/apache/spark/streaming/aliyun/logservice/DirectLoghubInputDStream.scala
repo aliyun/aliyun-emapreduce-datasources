@@ -64,6 +64,8 @@ class DirectLoghubInputDStream(
     zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
   private val enablePreciseCount: Boolean =
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
+  private val autoCommitEnabled: Boolean =
+    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommitEnabled", defaultValue = true)
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
   @transient private var startTime: Long = -1L
@@ -85,6 +87,7 @@ class DirectLoghubInputDStream(
 
     val props = new Properties()
     zkParams.foreach(param => props.put(param._1, param._2))
+    // TODO Remove the following code
     val autoCommit = zkParams.getOrElse("enable.auto.commit", "false").toBoolean
     // TODO: support concurrent jobs
     val concurrentJobs = ssc.conf.getInt(s"spark.streaming.concurrentJobs", 1)
@@ -162,7 +165,7 @@ class DirectLoghubInputDStream(
       case _: ZkNoNodeException =>
         logDebug("If this is the first time to run, it is fine to not find any commit data in " +
           "zookeeper.")
-        // Do nothing, make compiler happy.
+      // Do nothing, make compiler happy.
     }
   }
 
@@ -207,8 +210,9 @@ class DirectLoghubInputDStream(
           // 2. If last batch job failed, we should also recompute from last `consume` offset.
           // Then, set `restart=false` to continue committing.
           restart = false
-        } else {
+        } else if (doCommit) {
           commitAll()
+          doCommit = false
         }
         try {
           mClient.ListShard(project, logStore).GetShards().foreach(shard => {
@@ -271,6 +275,10 @@ class DirectLoghubInputDStream(
       }
       val inputInfo = StreamInputInfo(id, rdd.count, metadata)
       ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
+      if (autoCommitEnabled) {
+        // Mark as commitable so that next batch will commit checkpoint.
+        doCommit = true
+      }
       Some(rdd)
     }
   }
@@ -287,7 +295,6 @@ class DirectLoghubInputDStream(
   }
 
   private def commitAll(): Unit = {
-    if (doCommit) {
       import scala.collection.JavaConversions._
       try {
         zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
@@ -299,14 +306,11 @@ class DirectLoghubInputDStream(
             DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
           }
         })
-        doCommit = false
       } catch {
         case _: ZkNoNodeException =>
           logWarning("If this is the first time to run, it is fine to not find any commit data in " +
             "zookeeper.")
-          doCommit = false
       }
-    }
   }
 
   private[streaming] override def name: String = s"Loghub direct stream [$id]"
@@ -317,7 +321,7 @@ class DirectLoghubInputDStream(
     this.synchronized {
       logDebug(s"${this.getClass.getSimpleName}.readObject used")
       ois.defaultReadObject()
-      generatedRDDs = new HashMap[Time, RDD[String]]()
+      generatedRDDs = new mutable.HashMap[Time, RDD[String]]()
       readOnlyShardCache = new mutable.HashMap[Int, String]()
       COMMIT_LOCK = new Object()
       val autoCommit = zkParams.getOrElse("enable.auto.commit", "true").toBoolean
