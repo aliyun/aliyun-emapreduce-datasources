@@ -16,7 +16,6 @@
  */
 package org.apache.spark.sql.aliyun.redis
 
-import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.redis.DefaultSource
@@ -25,8 +24,7 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode
 
 class RedisStreamSourceProvider extends RedisStreamProvider
-  with StreamSinkProvider
-  with Logging {
+  with StreamSinkProvider {
 
   override def createSink(
       sqlContext: SQLContext,
