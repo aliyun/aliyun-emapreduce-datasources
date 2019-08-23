@@ -34,14 +34,14 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.{StreamInputInfo, StreamingListener, StreamingListenerBatchCompleted}
+import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
-import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class DirectLoghubInputDStream(
     _ssc: StreamingContext,
@@ -65,7 +65,7 @@ class DirectLoghubInputDStream(
   private val enablePreciseCount: Boolean =
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private val autoCommitEnabled: Boolean =
-    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommit", defaultValue = true)
+    _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommit", defaultValue = false)
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
   @transient private var startTime: Long = -1L
