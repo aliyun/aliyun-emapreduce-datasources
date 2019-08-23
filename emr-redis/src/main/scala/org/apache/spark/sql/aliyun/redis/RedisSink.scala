@@ -17,6 +17,7 @@
 package org.apache.spark.sql.aliyun.redis
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.redis.DefaultSource
@@ -32,6 +33,11 @@ class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) exte
       case "ignore" => SaveMode.Ignore
       case unknown: String => throw new Exception(s"Unknown redis save mode $unknown.")
     }
-    new DefaultSource().createRelation(sqlContext, saveMode, sourceOptions, data)
+
+    val schema = data.schema
+    val encoder = RowEncoder(schema).resolveAndBind()
+    val rdd = data.queryExecution.toRdd.map(r => encoder.fromRow(r))
+    val df = sqlContext.sparkSession.createDataFrame(rdd, schema)
+    new DefaultSource().createRelation(sqlContext, saveMode, sourceOptions, df)
   }
 }
