@@ -31,13 +31,18 @@ class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) exte
     val rdd = data.queryExecution.toRdd.map(r => encoder.fromRow(r))
     val df = sqlContext.sparkSession.createDataFrame(rdd, schema)
 
-    val relation = new RedisRelation(sqlContext, sourceOptions, None, batchId)
-    if (!initialed && !existKeyColumn(schema, sourceOptions)) {
+    val saveMode = sqlContext.sparkSession.conf
+      .getOption("redis.save.mode")
+      .getOrElse("append").toLowerCase
+    if (!initialed && batchId > 0 && !existKeyColumn(schema, sourceOptions) &&
+      !saveMode.equals("overwrite")) {
+      val table = sourceOptions(SqlOptionTableName)
+      val keysPatternForRewrite = s"$table:$batchId:*"
+      val updatedOptions = sourceOptions.updated(SqlOptionKeysPatternForRewrite, keysPatternForRewrite)
+      val relation = new RedisRelation(sqlContext, updatedOptions, None, batchId)
       relation.insert(df, overwrite = true)
     } else {
-      val saveMode = sqlContext.sparkSession.conf
-        .getOption("redis.save.mode")
-        .getOrElse("append").toLowerCase
+      val relation = new RedisRelation(sqlContext, sourceOptions, None, batchId)
       saveMode match {
         case "append" => relation.insert(df, overwrite = false)
         case "overwrite" => relation.insert(df, overwrite = true)

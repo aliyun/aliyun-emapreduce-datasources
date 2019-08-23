@@ -20,6 +20,7 @@ package object redis {
   val SqlOptionNumPartitionsDefault = 3
   val SqlOptionTableName = "table"
   val SqlOptionKeysPattern = "keys.pattern"
+  val SqlOptionKeysPatternForRewrite = "keys.pattern.for.rewrite"
   val SqlOptionModel = "model"
   val SqlOptionModelBinary = "binary"
   val SqlOptionModelHash = "hash"

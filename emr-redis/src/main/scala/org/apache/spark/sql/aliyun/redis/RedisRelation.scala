@@ -147,7 +147,8 @@ class RedisRelation(override val sqlContext: SQLContext,
     currentSchema = saveSchema(schema)
     if (overwrite) {
       // truncate the table
-      sc.fromRedisKeyPattern(dataKeyPattern).foreachPartition { partition =>
+      val keyPattern = parameters.getOrElse(SqlOptionKeysPatternForRewrite, dataKeyPattern)
+      sc.fromRedisKeyPattern(keyPattern).foreachPartition { partition =>
         groupKeysByNode(redisConfig.hosts, partition).foreach { case (node, keys) =>
           val conn = node.connect()
           foreachWithPipeline(conn, keys) { (pipeline, key) =>
