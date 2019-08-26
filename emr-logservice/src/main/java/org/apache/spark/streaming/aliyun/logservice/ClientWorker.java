@@ -79,7 +79,7 @@ public class ClientWorker implements Runnable {
       isRoleAK = true;
 
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
-      this.mClient.SetSecurityToken(securityToken);
+      this.mClient.setSecurityToken(securityToken);
     } else {
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
     }
@@ -141,10 +141,8 @@ public class ClientWorker implements Runnable {
 
     while(!this.mShutDown) {
       this.mLogHubHeartBeat.GetHeldShards(heldShards);
-      Iterator var2 = heldShards.iterator();
 
-      while(var2.hasNext()) {
-        int shard = (Integer) var2.next();
+      for (int shard : heldShards) {
         LogHubConsumer consumer = this.getConsumer(shard);
         consumer.consume();
       }
@@ -219,7 +217,7 @@ public class ClientWorker implements Runnable {
       if (isRoleAK) {
         this.mClient.HeartBeat(mLogHubConfig.getProject(),
           mLogHubConfig.getLogStore(), mLogHubConfig.getConsumerGroupName(),
-          mLogHubConfig.getWorkerInstanceName(), new ArrayList<Integer>());
+          mLogHubConfig.getConsumerName(), new ArrayList<Integer>());
       } else {
         // No need to check token.
       }
@@ -229,7 +227,7 @@ public class ClientWorker implements Runnable {
       String securityToken = MetaClient.getRoleSecurityToken();
 
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
-      this.mClient.SetSecurityToken(securityToken);
+      this.mClient.setSecurityToken(securityToken);
       switchClient(accessKeyId, accessKeySecret, securityToken);
     }
   }

@@ -47,6 +47,12 @@
             <artifactId>emr-datahub_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
+  
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-redis_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -121,6 +127,9 @@
                             <include>com.squareup.retrofit2:*</include>
                             <include>com.squareup.okhttp3:*</include>
                             <include>com.squareup.okio:*</include>
+                            <include>com.aliyun.emr:emr-redis_${scala.binary.version}</include>
+                            <include>com.redislabs:spark-redis</include>
+                            <include>redis.clients:jedis</include>
                         </includes>
                     </artifactSet>
                     <relocations>
@@ -149,6 +158,15 @@
                             <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
                         </relocation>
                     </relocations>
+                    <filters>
+                        <filter>
+                            <artifact>*:*:*:*</artifact>
+                            <excludes>
+                                <exclude>log4j.properties</exclude>
+                                <exclude>log4j2.xml</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
                 </configuration>
                 <executions>
                     <execution>

@@ -14,25 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.aliyun.redis
+package com.alibaba.dts.recordprocessor;
 
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.execution.streaming.Sink
-import org.apache.spark.sql.redis.DefaultSource
-import org.apache.spark.sql.redis.stream.RedisStreamProvider
-import org.apache.spark.sql.sources._
-import org.apache.spark.sql.streaming.OutputMode
+import com.alibaba.dts.formats.avro.Field;
+import org.apache.commons.lang3.StringUtils;
+import com.alibaba.dts.recordprocessor.mysql.MysqlFieldConverter;
 
-class RedisStreamSourceProvider extends RedisStreamProvider
-  with StreamSinkProvider {
-
-  override def createSink(
-      sqlContext: SQLContext,
-      parameters: Map[String, String],
-      partitionColumns: Seq[String],
-      outputMode: OutputMode): Sink = {
-    new RedisSink(sqlContext, parameters)
-  }
+public interface FieldConverter {
+    FieldValue convert(Field field, Object o);
+    public static FieldConverter getConverter(String sourceName, String sourceVersion) {
+        if (StringUtils.endsWithIgnoreCase("mysql", sourceName)) {
+            return new MysqlFieldConverter();
+        } else {
+            throw new RuntimeException("FieldConverter: only mysql supported for now");
+        }
+    }
 }
-
-class RedisSourceProvider extends DefaultSource

@@ -53,7 +53,7 @@
         <tablestore.sdk.version>4.4.0</tablestore.sdk.version>
         <odps.version>0.28.4-public</odps.version>
         <loghubb.client.version>0.6.15</loghubb.client.version>
-        <aliyun.log.version>0.6.31</aliyun.log.version>
+        <aliyun.log.version>0.6.37</aliyun.log.version>
         <aliyun.log.producer.version>0.2.0</aliyun.log.producer.version>
         <ons.version>1.7.1.Final</ons.version>
         <mns.version>1.1.8.4</mns.version>
@@ -83,6 +83,8 @@
         <hbase.mr.version>2.0.4</hbase.mr.version>
         <spark.redis.version>2.4.0</spark.redis.version>
         <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
+        <json4s.jackson.version>3.5.3</json4s.jackson.version>
+        <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
         <CodeCacheSize>512m</CodeCacheSize>
