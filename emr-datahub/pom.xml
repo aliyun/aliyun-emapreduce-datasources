@@ -30,7 +30,6 @@
         <dependency>
             <groupId>com.aliyun.datahub</groupId>
             <artifactId>aliyun-sdk-datahub</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -50,6 +49,11 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
         </dependency>
 
         <dependency>
@@ -103,6 +107,41 @@
                         <id>test</id>
                         <goals>
                             <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <outputFile>${project.build.directory}/shaded/emr-datahub_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
+                    <artifactSet>
+                        <includes>
+                            <include>com.aliyun.datahub:aliyun-sdk-datahub</include>
+                            <include>com.101tec:zkclient</include>
+                            <include>com.squareup.retrofit2:*</include>
+                            <include>com.squareup.okhttp3:*</include>
+                            <include>com.squareup.okio:*</include>
+                        </includes>
+                    </artifactSet>
+                    <relocations>
+                        <relocation>
+                            <pattern>okhttp3</pattern>
+                            <shadedPattern>${emr.shade.packageName}.okhttp3</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>okio</pattern>
+                            <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
                         </goals>
                     </execution>
                 </executions>

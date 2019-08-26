@@ -73,17 +73,6 @@ object DatahubSchema extends Logging {
     field == PROJECT || field == TOPIC || field == SHARD || field == SYSTEM_TIME
   }
 
-  // TODO: remove default schema
-  def getDefaultSchema: StructType = {
-    StructType(Seq(
-      StructField(PROJECT, StringType),
-      StructField(TOPIC, StringType),
-      StructField(SHARD, StringType),
-      StructField(SYSTEM_TIME, TimestampType),
-      StructField("value", BinaryType)
-    ))
-  }
-
   def getSchema(schema: Option[StructType], sourceOptions: Map[String, String]): StructType = {
     if (schema.isDefined && schema.get.nonEmpty) {
       schema.get
@@ -105,9 +94,7 @@ object DatahubSchema extends Logging {
         accessKeyId, accessKeySecret, endpoint, sourceOptions)
     } catch {
       case e: Exception =>
-        logWarning(s"Failed to analyse datahub schema, fall back to default " +
-          s"schema ${getDefaultSchema}", e)
-        getDefaultSchema
+        throw new Exception(s"Failed to analyse datahub schema", e)
     }
   }
 
@@ -154,9 +141,6 @@ object DatahubSchema extends Logging {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     val endpoint = caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing datahub endpoint (='endpoint')."))
-    caseInsensitiveParams.getOrElse("zookeeper.connect.address",
-      throw new MissingArgumentException("Missing zookeeper connect address " +
-        "(='zookeeper.connect.address')."))
     val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
     val existDecimal = client.getTopic(project, topic).getRecordSchema.getFields.exists(x=> {
       x.getType == FieldType.DECIMAL

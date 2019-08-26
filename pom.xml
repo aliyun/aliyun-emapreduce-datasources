@@ -69,12 +69,12 @@
         <mockito.version>1.10.19</mockito.version>
         <gson.version>2.8.2</gson.version>
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
-        <okhttp3.version>3.9.1</okhttp3.version>
+        <okhttp3.version>3.12.0</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
         <commons.lang3.version>3.3.2</commons.lang3.version>
         <kafka.version>0.10.1.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
-        <datahub.verion>2.9.2-public</datahub.verion>
+        <datahub.verion>2.13.0-public</datahub.verion>
         <confluent.version>5.0.0</confluent.version>
         <avro.version>1.8.2</avro.version>
         <gson.version>2.2.4</gson.version>

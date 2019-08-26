@@ -44,8 +44,7 @@ class DatahubSourceRDD(
     shardOffsets: Array[(String, Long, Long)],
     zkParam: Map[String, String],
     checkpointDir: String,
-    maxOffsetPerTrigger: Long = -1,
-    fallback: Boolean = false) extends RDD[DatahubData](_sc, Nil) with Logging{
+    maxOffsetPerTrigger: Long = -1) extends RDD[DatahubData](_sc, Nil) with Logging {
 
   @transient private var zkClient = DatahubOffsetReader.getOrCreateZKClient(zkParam)
   @transient private var datahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
@@ -127,34 +126,24 @@ class DatahubSourceRDD(
           val recordResult = datahubClientAgent.getRecords(project, topic, shardPartition.shardId, nextCursor,
             limit, schema)
           recordResult.getRecords.foreach(record => {
-            if (!fallback) {
-              try {
+            try {
 
-                // the first four columns: project, topic, shardId, systemTime
-                // the length of rest of columns: numCols - 4
-                val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
-                  (null, null).asInstanceOf[(String, Any)]
-                )
+              // the first four columns: project, topic, shardId, systemTime
+              // the length of rest of columns: numCols - 4
+              val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
+                (null, null).asInstanceOf[(String, Any)]
+              )
 
-                record.getFields.foreach(field => {
-                  val fieldName = field.getName
-                  columnArray(schemaFieldPos(fieldName)) = (fieldName, record.get(fieldName))
-                })
-                dataBuffer.offer(new SchemaDatahubData(project, topic, shardPartition.shardId,
-                  new Timestamp(record.getSystemTime), columnArray))
-              } catch {
-                case e: NoSuchElementException =>
-                  logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                    s"data and continue.")
-              }
-            } else {
-              val obj = new JSONObject()
               record.getFields.foreach(field => {
-                obj.put(field.getName, record.get(field.getName))
+                val fieldName = field.getName
+                columnArray(schemaFieldPos(fieldName)) = (fieldName, record.get(fieldName))
               })
-
-              dataBuffer.offer(new RawDatahubData(project, topic, shardPartition.shardId,
-                new Timestamp(record.getSystemTime), obj.toJSONString.getBytes))
+              dataBuffer.offer(new SchemaDatahubData(project, topic, shardPartition.shardId,
+                new Timestamp(record.getSystemTime), columnArray))
+            } catch {
+              case e: NoSuchElementException =>
+                logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+                  s"data and continue.")
             }
             lastOffset = record.getOffset
           })

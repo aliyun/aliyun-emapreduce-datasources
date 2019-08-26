@@ -30,6 +30,7 @@ import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.streaming.aliyun.datahub.DatahubClientAgent
 import org.apache.spark.util.{ThreadUtils, UninterruptibleThread}
@@ -115,20 +116,52 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 
   def fetchEarliestOffsets(): Map[DatahubShard, Long] = runUninterruptibly {
     withRetriesWithoutInterrupt {
-      fetchDatahubShard().map {case datahubShard => {
+      fetchDatahubShard().map { case datahubShard => {
         val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
         (datahubShard, cursor.getSequence)
       }}.toMap
     }
   }
 
+  def fetchEarliestOffsets(newPartitions: Set[DatahubShard]): Map[DatahubShard, Long] = {
+    runUninterruptibly {
+      withRetriesWithoutInterrupt {
+        val partitionOffsets = fetchDatahubShard().map { case datahubShard => {
+          val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
+          (datahubShard, cursor.getSequence)
+        }}.toMap
+
+        partitionOffsets.filter(po => newPartitions.contains(po._1))
+      }
+    }
+  }
+
   def fetchLatestOffsets(): Map[DatahubShard, Long] = runUninterruptibly {
     withRetriesWithoutInterrupt {
-      fetchDatahubShard().map {case datahubShard => {
+      fetchDatahubShard().map { case datahubShard =>
         val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
         (datahubShard, cursor.getSequence)
-      }}.toMap
+      }.toMap
     }
+  }
+
+  def fetchLatestOffsets(knownOffsets: Option[Map[DatahubShard, Long]]): Map[DatahubShard, Long] =
+    runUninterruptibly {
+      withRetriesWithoutInterrupt {
+        val partitionOffsets = fetchDatahubShard().map { case datahubShard =>
+          val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
+          (datahubShard, cursor.getSequence)
+        }.toMap
+
+        if (knownOffsets.isDefined) {
+          val missingShards = knownOffsets.get.keys.toSeq.diff(partitionOffsets.keys.toSeq)
+          if (missingShards.nonEmpty) {
+            throw new IllegalStateException(s"Found some shard missing in latest state: $missingShards")
+          }
+        }
+
+        partitionOffsets
+      }
   }
 
   def close(): Unit = {
