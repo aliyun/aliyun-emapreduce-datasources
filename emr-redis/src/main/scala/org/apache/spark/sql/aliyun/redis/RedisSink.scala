@@ -23,6 +23,7 @@ import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.types.StructType
 
 class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) extends Sink with Logging {
+  // determine whether to overwrite data to redis to recover from failure when restart application
   private var initialed = false
 
   override def addBatch(batchId: Long, data: DataFrame): Unit = {
