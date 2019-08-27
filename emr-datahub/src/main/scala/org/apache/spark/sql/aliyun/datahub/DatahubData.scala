@@ -24,6 +24,7 @@ import scala.collection.JavaConversions._
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.datahub.common.data.FieldType
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.types._
 
@@ -40,38 +41,16 @@ class SchemaDatahubData(project: String, topic: String, shardId: String, systemT
     with Logging with Serializable {
   override def getContent: Array[Byte] = {
     val jo = new JSONObject()
-    jo.put(DatahubSchema.PROJECT, project)
-    jo.put(DatahubSchema.TOPIC, topic)
-    jo.put(DatahubSchema.SHARD, shardId)
-    jo.put(DatahubSchema.SYSTEM_TIME, systemTime)
     content.foreach(con => {
       jo.put(con._1, con._2)
     })
     jo.toString.getBytes()
   }
 
-  override def toArray: Array[Any] = {
-    Array(project, topic, shardId, systemTime) ++ content.map(_._2)
-  }
-}
-
-class RawDatahubData(project: String, topic: String, shardId: String, systemTime: Timestamp, content: Array[Byte])
-  extends DatahubData(project, topic, shardId, systemTime) {
-
-  override def getContent: Array[Byte] = content
-
-  override def toArray: Array[Any] = throw new UnsupportedOperationException
+  override def toArray: Array[Any] = content.map(_._2)
 }
 
 object DatahubSchema extends Logging {
-  val PROJECT = "project"
-  val TOPIC = "topic"
-  val SHARD = "shardId"
-  val SYSTEM_TIME = "systemTime"
-
-  def isDefaultField(field: String): Boolean = {
-    field == PROJECT || field == TOPIC || field == SHARD || field == SYSTEM_TIME
-  }
 
   def getSchema(schema: Option[StructType], sourceOptions: Map[String, String]): StructType = {
     if (schema.isDefined && schema.get.nonEmpty) {
@@ -106,24 +85,19 @@ object DatahubSchema extends Logging {
       endpoint: String,
       sourceOptions: Map[String, String]): StructType = {
     var schema = new StructType()
-    schema = schema.add(StructField(PROJECT, StringType, false))
-    schema = schema.add(StructField(TOPIC, StringType, false))
-    schema = schema.add(StructField(SHARD, StringType, false))
-    schema = schema.add(StructField(SYSTEM_TIME, TimestampType, false))
-
     val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
     client.getTopic(project, topic).getRecordSchema.getFields.foreach(field => {
       val struct = field.getType match {
-        case FieldType.BIGINT => StructField(field.getName, DataTypes.LongType)
-        case FieldType.BOOLEAN => StructField(field.getName, DataTypes.BooleanType)
+        case FieldType.BIGINT => StructField(field.getName, DataTypes.LongType, !field.getNotnull)
+        case FieldType.BOOLEAN => StructField(field.getName, DataTypes.BooleanType, !field.getNotnull)
         case FieldType.DECIMAL => {
           val precision = sourceOptions("decimal.precision").toInt
           val scale = sourceOptions("decimal.scale").toInt
-          StructField(field.getName, DataTypes.createDecimalType(precision, scale))
+          StructField(field.getName, DataTypes.createDecimalType(precision, scale), !field.getNotnull)
         }
-        case FieldType.DOUBLE => StructField(field.getName, DataTypes.DoubleType)
-        case FieldType.TIMESTAMP => StructField(field.getName, DataTypes.LongType)
-        case _ => StructField(field.getName, DataTypes.StringType)
+        case FieldType.DOUBLE => StructField(field.getName, DataTypes.DoubleType, !field.getNotnull)
+        case FieldType.TIMESTAMP => StructField(field.getName, DataTypes.LongType, !field.getNotnull)
+        case _ => StructField(field.getName, DataTypes.StringType, !field.getNotnull)
       }
       schema = schema.add(struct)
     })

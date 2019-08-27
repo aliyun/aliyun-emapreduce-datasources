@@ -23,10 +23,11 @@ import java.nio.charset.StandardCharsets
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
-import com.aliyun.datahub.model.RecordEntry
-
 import scala.collection.JavaConverters._
+
+import com.aliyun.datahub.model.RecordEntry
 import org.apache.commons.io.IOUtils
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.datahub.DatahubSourceProvider._
 import org.apache.spark.sql.SparkSession
@@ -207,7 +208,7 @@ class DatahubMicroBatchReader(
 
     // Generate factories based on the offset ranges
     offsetRanges.map { range =>
-      new DatahubMicroBatchInputPartition(range, failOnDataLoss,
+      DatahubMicroBatchInputPartition(range, failOnDataLoss,
         sourceOptions.asMap().asScala.toMap, readSchema().toDDL): InputPartition[InternalRow]
     }.asJava
   }
@@ -228,8 +229,8 @@ class DatahubMicroBatchReader(
       out.write(0) // A zero byte is written to support Spark 2.1.0 (SPARK-19517)
       val writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))
       writer.write("v" + VERSION + "\n")
-      writer.write(metadata.json)
-      writer.flush
+      writer.write(metadata.json())
+      writer.flush()
     }
 
     override def deserialize(in: InputStream): DatahubSourceOffset = {
@@ -263,7 +264,7 @@ class DatahubMicroBatchReader(
     override def preferredLocations(): Array[String] = Array.empty[String]
 
     override def createPartitionReader(): InputPartitionReader[InternalRow] =
-      new DatahubMicroBatchInputPartitionReader(offsetRange, failOnDataLoss,
+      DatahubMicroBatchInputPartitionReader(offsetRange, failOnDataLoss,
         sourceOptions, schemaDdl)
   }
 
