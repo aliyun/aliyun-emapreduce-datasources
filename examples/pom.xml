@@ -133,6 +133,12 @@
             <groupId>com.aliyun.datahub</groupId>
             <artifactId>aliyun-sdk-datahub</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -230,6 +236,7 @@
                             <include>com.squareup.retrofit2:*</include>
                             <include>com.squareup.okhttp3:*</include>
                             <include>com.squareup.okio:*</include>
+                            <include>org.apache.kafka:kafka-clients</include>
                         </includes>
                     </artifactSet>
                     <relocations>

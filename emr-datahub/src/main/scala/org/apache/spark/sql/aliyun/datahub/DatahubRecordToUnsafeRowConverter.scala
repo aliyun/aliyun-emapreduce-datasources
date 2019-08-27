@@ -18,6 +18,7 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import com.aliyun.datahub.model.RecordEntry
+
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -28,8 +29,8 @@ class DatahubRecordToUnsafeRowConverter(
     schema: StructType,
     sourceOptions: Map[String, String]) {
   private val rowWriter = new UnsafeRowWriter(schema.fields.length)
-  private val precision = sourceOptions("decimal.precision").toInt
-  private val scale = sourceOptions("decimal.scale").toInt
+  private lazy val precision = sourceOptions("decimal.precision").toInt
+  private lazy val scale = sourceOptions("decimal.scale").toInt
 
   def toUnsafeRow(
       record: RecordEntry,
@@ -38,26 +39,53 @@ class DatahubRecordToUnsafeRowConverter(
       shardId: String): UnsafeRow = {
     rowWriter.reset()
     rowWriter.zeroOutNullBytes()
-    rowWriter.write(0, UTF8String.fromString(project))
-    rowWriter.write(1, UTF8String.fromString(topic))
-    rowWriter.write(2, UTF8String.fromString(shardId))
-    rowWriter.write(3, DateTimeUtils.fromJavaTimestamp(
-      new java.sql.Timestamp(record.getSystemTime)))
 
-    var idx = 4
-    schema.fields.filter(f => !DatahubSchema.isDefaultField(f.name))
-      .foreach(field => {
-        field.dataType match {
-          case LongType => rowWriter.write(idx, record.getBigint(field.name))
-          case BooleanType => rowWriter.write(idx, record.getBoolean(field.name))
-          case _: DecimalType =>
-            val v = record.getDecimal(field.name)
-            rowWriter.write(idx, Decimal(v, precision, scale), precision, scale)
-          case DoubleType => rowWriter.write(idx, record.getDouble(field.name))
-          case TimestampType => rowWriter.write(idx,
-            DateTimeUtils.fromJavaTimestamp(
-              new java.sql.Timestamp(record.getTimeStampAsMs(field.name))))
-          case _ => rowWriter.write(idx, UTF8String.fromString(record.getString(field.name)))
+    var idx = 0
+    schema.fields.foreach(field => {
+      field.dataType match {
+        case LongType =>
+          val value = record.getBigint(field.name)
+          if (value != null) {
+            rowWriter.write(idx, value)
+          } else {
+            rowWriter.setNullAt(idx)
+          }
+        case BooleanType =>
+          val value = record.getBoolean(field.name)
+          if (value != null) {
+            rowWriter.write(idx, value)
+          } else {
+            rowWriter.setNullAt(idx)
+          }
+        case _: DecimalType =>
+          val value = record.getDecimal(field.name)
+          if (value != null) {
+            rowWriter.write(idx, Decimal(value, precision, scale), precision, scale)
+          } else {
+            rowWriter.setNullAt(idx)
+          }
+        case DoubleType =>
+          val value = record.getDouble(field.name)
+          if (value != null) {
+            rowWriter.write(idx, value)
+          } else {
+            rowWriter.setNullAt(idx)
+          }
+        case TimestampType =>
+          val value = record.getTimeStampAsMs(field.name)
+          if (value != null) {
+            rowWriter.write(idx,
+              DateTimeUtils.fromJavaTimestamp(new java.sql.Timestamp(value)))
+          } else {
+            rowWriter.setNullAt(idx)
+          }
+        case _ =>
+          val value = record.getString(field.name)
+          if (value != null) {
+            rowWriter.write(idx, UTF8String.fromString(value))
+          } else {
+            rowWriter.setNullAt(idx)
+          }
       }
       idx += 1
     })

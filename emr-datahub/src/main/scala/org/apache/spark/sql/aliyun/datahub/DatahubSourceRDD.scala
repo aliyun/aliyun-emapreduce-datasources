@@ -23,11 +23,11 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
 
-import com.alibaba.fastjson.JSONObject
 import com.aliyun.datahub.model.OffsetContext
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.internal.Logging
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
@@ -64,9 +64,7 @@ class DatahubSourceRDD(
     })
     datahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
 
-    val schemaFieldPos: Map[String, Int] = schemaFieldNames
-      .filter(fieldName => !DatahubSchema.isDefaultField(fieldName))
-      .zipWithIndex.toMap
+    val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     try {
       new InterruptibleIterator[DatahubData](context, new NextIterator[DatahubData] {
         private val step = 100
@@ -127,10 +125,7 @@ class DatahubSourceRDD(
             limit, schema)
           recordResult.getRecords.foreach(record => {
             try {
-
-              // the first four columns: project, topic, shardId, systemTime
-              // the length of rest of columns: numCols - 4
-              val columnArray = Array.tabulate(schemaFieldNames.length - 4)(_ =>
+              val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
                 (null, null).asInstanceOf[(String, Any)]
               )
 
@@ -181,7 +176,7 @@ class DatahubSourceRDD(
         }
         val cursor = datahubClientAgent.getCursor(project, topic, shardId, startOffset).getCursor
         new ShardPartition(id, shardId, index, cursor, count.toInt).asInstanceOf[Partition]
-    }.toArray
+    }
   }
 }
 

@@ -46,6 +46,7 @@ class DatahubSourceProvider extends DataSourceRegister
     (shortName(), DatahubSchema.getSchema(schema, parameters))
   }
 
+  @deprecated("use DataSourceV2 impl", "1.8.0")
   override def createSource(
       sqlContext: SQLContext,
       metadataPath: String, 
