@@ -18,26 +18,54 @@ package org.apache.spark.sql.aliyun.redis
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.execution.streaming.Sink
-import org.apache.spark.sql.redis.DefaultSource
+import org.apache.spark.sql.types.StructType
 
 class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) extends Sink with Logging {
-  override def addBatch(batchId: Long, data: DataFrame): Unit = {
-    val saveMode = sqlContext.sparkSession.conf
-      .getOption("redis.save.mode")
-      .getOrElse("append").toLowerCase match {
-      case "append" => SaveMode.Append
-      case "overwrite" => SaveMode.Overwrite
-      case "errorifexists" => SaveMode.ErrorIfExists
-      case "ignore" => SaveMode.Ignore
-      case unknown: String => throw new Exception(s"Unknown redis save mode $unknown.")
-    }
+  // determine whether to overwrite data to redis to recover from failure when restart application
+  private var initialed = false
 
+  override def addBatch(batchId: Long, data: DataFrame): Unit = {
     val schema = data.schema
     val encoder = RowEncoder(schema).resolveAndBind()
     val rdd = data.queryExecution.toRdd.map(r => encoder.fromRow(r))
     val df = sqlContext.sparkSession.createDataFrame(rdd, schema)
-    new DefaultSource().createRelation(sqlContext, saveMode, sourceOptions, df)
+
+    val saveMode = sqlContext.sparkSession.conf
+      .getOption("redis.save.mode")
+      .getOrElse("append").toLowerCase
+    if (!initialed && batchId > 0 && !existKeyColumn(schema, sourceOptions) &&
+      !saveMode.equals("overwrite")) {
+      val table = sourceOptions(SqlOptionTableName)
+      val keysPatternForRewrite = s"$table:$batchId:*"
+      val updatedOptions = sourceOptions.updated(SqlOptionKeysPatternForRewrite, keysPatternForRewrite)
+      val relation = new RedisRelation(sqlContext, updatedOptions, None, batchId)
+      relation.insert(df, overwrite = true)
+    } else {
+      val relation = new RedisRelation(sqlContext, sourceOptions, None, batchId)
+      saveMode match {
+        case "append" => relation.insert(df, overwrite = false)
+        case "overwrite" => relation.insert(df, overwrite = true)
+        case "errorifexists" =>
+          if (relation.nonEmpty) {
+            throw new IllegalStateException("SaveMode is set to ErrorIfExists and dataframe " +
+              "already exists in Redis and contains data.")
+          }
+          relation.insert(df, overwrite = false)
+        case "ignore" =>
+          if (relation.isEmpty) {
+            relation.insert(df, overwrite = false)
+          }
+        case unknown: String => throw new Exception(s"Unknown redis save mode $unknown.")
+      }
+    }
+
+    initialed = true
+  }
+
+  private def existKeyColumn(schema: StructType, sourceOptions: Map[String, String]): Boolean = {
+    sourceOptions.contains(SqlOptionKeyColumn) &&
+      schema.fieldNames.exists(_.equals(sourceOptions(SqlOptionKeyColumn)))
   }
 }
