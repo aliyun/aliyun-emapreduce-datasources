@@ -18,6 +18,7 @@ package org.apache.spark.streaming.aliyun.logservice.writer
 
 import com.aliyun.openservices.aliyun.log.producer.Callback
 import com.aliyun.openservices.log.common.LogItem
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
@@ -32,9 +33,13 @@ class RDDLoghubWriter[T: ClassTag](@transient private val rdd: RDD[T])
                              callback: Option[Callback] = None
                             ): Unit =
     rdd.foreachPartition { partition =>
-      val producer = CachedProducer.getOrCreate(producerConfig)
+      val project = producerConfig.getOrElse("sls.project",
+        throw new MissingArgumentException("Missing project (='sls.project')."))
+      val logstore = producerConfig.getOrElse("sls.logstore",
+        throw new MissingArgumentException("Missing logstore (='sls.logstore')."))
+      val producer = CachedProducer.getOrCreate(project, producerConfig)
       partition
         .map(transformFunc)
-        .foreach(record => producer.send(topic, source, record, callback.orNull))
+        .foreach(record => producer.send(project, logstore, topic, source, record, callback.orNull))
     }
 }
