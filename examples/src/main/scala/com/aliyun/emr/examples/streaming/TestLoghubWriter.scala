@@ -16,7 +16,6 @@
  */
 package com.aliyun.emr.examples.streaming
 
-
 import com.aliyun.openservices.aliyun.log.producer.{Callback, Result}
 import com.aliyun.openservices.log.common.LogItem
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
@@ -29,7 +28,7 @@ object TestLoghubWriter {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
       System.err.println(
-        """Usage: TestDirectLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint>
+        """Usage: TestLoghubWriter <sls project> <sls logstore> <sls target logstore> <loghub group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds> <zookeeper host:port=localhost:2181>
             """.stripMargin)
       System.exit(1)
@@ -37,13 +36,13 @@ object TestLoghubWriter {
 
     val loghubProject = args(0)
     val logStore = args(1)
-    val loghubGroupName = args(2)
-    val endpoint = args(3)
-    val accessKeyId = args(4)
-    val accessKeySecret = args(5)
-    val batchInterval = Milliseconds(args(6).toInt * 1000)
-    val zkAddress = if (args.length >= 8) args(7) else "localhost:2181"
-    val targetLogstore = "test-logstore"
+    val targetLogstore = args(2)
+    val loghubGroupName = args(3)
+    val endpoint = args(4)
+    val accessKeyId = args(5)
+    val accessKeySecret = args(6)
+    val batchInterval = Milliseconds(args(7).toInt * 1000)
+    val zkAddress = if (args.length >= 9) args(8) else "localhost:2181"
 
     val conf = new SparkConf().setAppName("Test Direct SLS Loghub")
       .setMaster("local[2]")
@@ -93,7 +92,7 @@ object TestLoghubWriter {
       "streaming",
       transformFunc, Option.apply(callback))
 
-    ssc.checkpoint("/tmp/spark5/streaming") // set checkpoint directory
+    ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
     ssc.start()
     ssc.awaitTermination()
   }
