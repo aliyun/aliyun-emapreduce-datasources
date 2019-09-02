@@ -23,33 +23,36 @@ import org.apache.commons.cli.MissingArgumentException
 object CachedProducer {
   @transient private var producer: Producer = _
 
-  def getOrCreate[K, V](
-                         project: String,
-                         producerConfig: Map[String, String]): Producer = {
-    if (producer == null) {
-      val accessKeyId = producerConfig.getOrElse("access.key.id",
-        throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-      val accessKeySecret = producerConfig.getOrElse("access.key.secret",
-        throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
-      val endpoint = producerConfig.getOrElse("sls.endpoint",
-        throw new MissingArgumentException("Missing endpoint (='sls.endpoint')."))
-      val config = new ProducerConfig()
-      val maxIOThread = producerConfig.getOrElse("sls.ioThreadCount", "1").toInt
-      config.setIoThreadCount(maxIOThread)
-      producer = new LogProducer(config)
-      producer.putProjectConfig(new ProjectConfig(project, endpoint, accessKeyId, accessKeySecret))
-      sys.addShutdownHook(producer.close())
+  def getOrCreate[K, V](project: String,
+                        producerConfig: Map[String, String]): Producer = {
+    synchronized {
+      if (producer == null) {
+        val accessKeyId = producerConfig.getOrElse("access.key.id",
+          throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+        val accessKeySecret = producerConfig.getOrElse("access.key.secret",
+          throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+        val endpoint = producerConfig.getOrElse("sls.endpoint",
+          throw new MissingArgumentException("Missing endpoint (='sls.endpoint')."))
+        val config = new ProducerConfig()
+        val maxIOThread = producerConfig.getOrElse("sls.ioThreadCount", "1").toInt
+        config.setIoThreadCount(maxIOThread)
+        producer = new LogProducer(config)
+        producer.putProjectConfig(new ProjectConfig(project, endpoint, accessKeyId, accessKeySecret))
+        sys.addShutdownHook(producer.close())
+      }
+      producer
     }
-    producer
   }
 
   /**
    * Flush and close the cached [[Producer]]
    */
   def close(): Unit = {
-    if (producer != null) {
-      producer.close()
-      producer = null
+    synchronized {
+      if (producer != null) {
+        producer.close()
+        producer = null
+      }
     }
   }
 }

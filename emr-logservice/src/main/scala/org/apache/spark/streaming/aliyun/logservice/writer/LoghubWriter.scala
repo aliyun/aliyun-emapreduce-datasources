@@ -21,8 +21,8 @@ import com.aliyun.openservices.log.common.LogItem
 
 import scala.reflect.ClassTag
 
-
 abstract class LoghubWriter[T: ClassTag] extends Serializable {
+
   /**
    * Write a DStream to Loghub
    *
@@ -34,6 +34,5 @@ abstract class LoghubWriter[T: ClassTag] extends Serializable {
                     topic: String,
                     source: String,
                     transformFunc: T => LogItem,
-                    callback: Option[Callback] = None
-                   ): Unit
+                    callback: Option[Callback] = None): Unit
 }

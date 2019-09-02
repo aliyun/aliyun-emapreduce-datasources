@@ -30,8 +30,7 @@ class RDDLoghubWriter[T: ClassTag](@transient private val rdd: RDD[T])
                              topic: String,
                              source: String,
                              transformFunc: T => LogItem,
-                             callback: Option[Callback] = None
-                            ): Unit =
+                             callback: Option[Callback] = None): Unit =
     rdd.foreachPartition { partition =>
       val project = producerConfig.getOrElse("sls.project",
         throw new MissingArgumentException("Missing project (='sls.project')."))
@@ -40,6 +39,10 @@ class RDDLoghubWriter[T: ClassTag](@transient private val rdd: RDD[T])
       val producer = CachedProducer.getOrCreate(project, producerConfig)
       partition
         .map(transformFunc)
-        .foreach(record => producer.send(project, logstore, topic, source, record, callback.orNull))
+        .foreach(record => {
+          if (record != null) {
+            producer.send(project, logstore, topic, source, record, callback.orNull)
+          }
+        })
     }
 }
