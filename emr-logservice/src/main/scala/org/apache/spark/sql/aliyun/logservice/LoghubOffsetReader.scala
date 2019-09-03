@@ -19,7 +19,7 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util
 import java.util.concurrent.{Executors, ThreadFactory}
 
-import com.aliyun.openservices.aliyun.log.producer.{LogProducer, ProducerConfig, ProjectConfig, ProjectConfigs}
+import com.aliyun.openservices.aliyun.log.producer.{LogProducer, ProducerConfig, ProjectConfig}
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.Histogram
 import org.apache.commons.cli.MissingArgumentException
@@ -240,10 +240,9 @@ object LoghubOffsetReader extends Logging with Serializable {
         throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
       val endpoint = sourceOptions.getOrElse("endpoint",
         throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
-      val projectConfigs = new ProjectConfigs()
-      projectConfigs.put(new ProjectConfig(logProject, endpoint, accessKeyId, accessKeySecret))
-      val config = new ProducerConfig(projectConfigs)
+      val config = new ProducerConfig()
       logProducer = new LogProducer(config)
+      logProducer.putProjectConfig(new ProjectConfig(logProject, endpoint, accessKeyId, accessKeySecret))
     }
     logProducer
   }
