@@ -25,10 +25,11 @@ import org.apache.spark.streaming.aliyun.logservice.writer._
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 
 object TestLoghubWriter {
+
   def main(args: Array[String]): Unit = {
-    if (args.length < 7) {
+    if (args.length < 8) {
       System.err.println(
-        """Usage: TestLoghubWriter <sls project> <sls logstore> <sls target logstore> <loghub group name> <sls endpoint>
+        """Usage: TestLoghubWriter <sls project> <sls logstore> <sls target logstore> <sls group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds> <zookeeper host:port=localhost:2181>
             """.stripMargin)
       System.exit(1)
@@ -44,8 +45,8 @@ object TestLoghubWriter {
     val batchInterval = Milliseconds(args(7).toInt * 1000)
     val zkAddress = if (args.length >= 9) args(8) else "localhost:2181"
 
-    val conf = new SparkConf().setAppName("Test Direct SLS Loghub")
-      .setMaster("local[2]")
+    val conf = new SparkConf().setAppName("Test write data to Loghub")
+      .setMaster("local[1]")
       .set("spark.streaming.loghub.maxRatePerShard", "10")
       .set("spark.loghub.batchGet.step", "1")
     val zkParas = Map("zookeeper.connect" -> zkAddress,
