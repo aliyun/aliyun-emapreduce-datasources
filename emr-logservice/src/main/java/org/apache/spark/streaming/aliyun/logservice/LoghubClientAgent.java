@@ -35,6 +35,7 @@ public class LoghubClientAgent {
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
+    this.client.setUserAgent("Spark-Streaming-1.8.0");
   }
 
   public ListShardResponse ListShard(String logProject, String logStore)
