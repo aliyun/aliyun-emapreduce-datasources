@@ -28,7 +28,7 @@ final class RetryUtil {
 
   private static final long maxBackoff = 10000;
   private static final long initialBackoff = 1000;
-  private static final int maxRetry = 6;
+  private static final int maxRetry = 10;
 
   static <T> T call(Callable<T> callable) throws Exception {
     long backoff = initialBackoff;
