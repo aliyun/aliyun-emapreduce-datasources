@@ -20,287 +20,68 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
-import com.aliyun.openservices.log.exception.LogException;
-import com.aliyun.openservices.log.response.*;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.http.conn.ConnectTimeoutException;
+import com.aliyun.openservices.log.response.BatchGetLogResponse;
+import com.aliyun.openservices.log.response.ConsumerGroupCheckPointResponse;
+import com.aliyun.openservices.log.response.ConsumerGroupUpdateCheckPointResponse;
+import com.aliyun.openservices.log.response.CreateConsumerGroupResponse;
+import com.aliyun.openservices.log.response.GetCursorResponse;
+import com.aliyun.openservices.log.response.GetCursorTimeResponse;
+import com.aliyun.openservices.log.response.GetHistogramsResponse;
+import com.aliyun.openservices.log.response.ListConsumerGroupResponse;
+import com.aliyun.openservices.log.response.ListShardResponse;
 
 public class LoghubClientAgent {
-  private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
   private Client client;
-  private int maxRetry = 60;
-  private long initialBackoff = 500;
-  private long maxBackoff = 5000;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
   }
 
   public ListShardResponse ListShard(String logProject, String logStore)
-      throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.ListShard(logProject, logStore);
-      } catch (LogException e) {
-        LOG.error("List shards failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+          throws Exception {
+    return RetryUtil.call(() -> client.ListShard(logProject, logStore));
   }
 
   public GetCursorResponse GetCursor(String project, String logStream, int shardId, Consts.CursorMode mode)
-      throws Exception {
-    int retry = 0;
-    long backoff = initialBackoff;
-    Exception currentException = null;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.GetCursor(project, logStream, shardId, mode);
-      } catch (LogException e) {
-        LOG.error("Get cursor failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+          throws Exception {
+    return RetryUtil.call(() -> client.GetCursor(project, logStream, shardId, mode));
   }
 
   public GetCursorResponse GetCursor(String project, String logStore, int shardId, long fromTime) throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.GetCursor(project, logStore, shardId, fromTime);
-      } catch (LogException e) {
-        LOG.error("Get cursor from time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+    return RetryUtil.call(() -> client.GetCursor(project, logStore, shardId, fromTime));
   }
 
   public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
-      int shard, String checkpoint) throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
-      } catch (LogException e) {
-        LOG.error("Update checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+                                                                int shard, String checkpoint) throws Exception {
+    return RetryUtil.call(() -> client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint));
   }
 
   public CreateConsumerGroupResponse CreateConsumerGroup(String project, String logStore, ConsumerGroup consumerGroup)
-      throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.CreateConsumerGroup(project, logStore, consumerGroup);
-      } catch (LogException e) {
-        LOG.error("Create consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+          throws Exception {
+    return RetryUtil.call(() -> client.CreateConsumerGroup(project, logStore, consumerGroup));
   }
 
   public ListConsumerGroupResponse ListConsumerGroup(String project, String logStore) throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.ListConsumerGroup(project, logStore);
-      } catch (LogException e) {
-        LOG.error("List consumer group failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+    return RetryUtil.call(() -> client.ListConsumerGroup(project, logStore));
   }
 
   public ConsumerGroupCheckPointResponse GetCheckPoint(String project, String logStore, String consumerGroup, int shard)
-      throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.GetCheckPoint(project, logStore, consumerGroup, shard);
-      } catch (LogException e) {
-        LOG.error("Get checkpoint failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+          throws Exception {
+    return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup, shard));
   }
 
   public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor,
-      String endCursor) throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor);
-      } catch (LogException e) {
-        LOG.error("Pull data failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+                                         String endCursor) throws Exception {
+    return RetryUtil.call(() -> client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor));
   }
 
   public GetHistogramsResponse GetHistograms(String project, String logStore, int from, int to, String topic,
-      String query) throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.GetHistograms(project, logStore, from, to, topic, query);
-      } catch (LogException e) {
-        LOG.error("Get histograms failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          if (e.GetErrorCode().equals("IndexConfigNotExist")) {
-            LOG.warn("Please enable index service for " + project + "/" + logStore);
-          }
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
+                                             String query) throws Exception {
+    return RetryUtil.call(() -> client.GetHistograms(project, logStore, from, to, topic, query));
   }
 
   public GetCursorTimeResponse GetCursorTime(String project, String logStore, int shardId, String cursor)
-      throws Exception {
-    int retry = 0;
-    Exception currentException = null;
-    long backoff = initialBackoff;
-    while (retry <= maxRetry) {
-      try {
-        return this.client.GetCursorTime(project, logStore, shardId, cursor);
-      } catch (LogException e) {
-        LOG.error("Get cursor time failed: " + e.GetErrorMessage() + ", retry " + retry + "/" + maxRetry);
-        if (shouldRetry(e, retry)) {
-          retry += 1;
-          Thread.sleep(backoff);
-          backoff = Math.min(backoff * 2, maxBackoff);
-          currentException = e;
-        } else {
-          throw e;
-        }
-      }
-    }
-    LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
-    assert (currentException != null);
-    throw currentException;
-  }
-
-  private static boolean checkConnectionTimeoutException(LogException e) {
-    return e.getCause() != null
-        && e.getCause().getCause() != null
-        && e.getCause().getCause() instanceof ConnectTimeoutException;
-  }
-
-  private static boolean isRecoverableException(LogException ex) {
-    return checkConnectionTimeoutException(ex)
-            || ex.GetHttpCode() >= 500 // Internal Server Error
-            || ex.GetHttpCode() == 403; // Throttling Error
-  }
-
-  private boolean shouldRetry(LogException ex, int retry) {
-    return isRecoverableException(ex) && retry < maxRetry;
+          throws Exception {
+    return RetryUtil.call(() -> client.GetCursorTime(project, logStore, shardId, cursor));
   }
 }
