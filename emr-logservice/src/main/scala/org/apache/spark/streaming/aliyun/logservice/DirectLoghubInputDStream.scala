@@ -170,7 +170,7 @@ class DirectLoghubInputDStream(
     if (autoCommitEnabled) {
       ssc.addStreamingListener(new StreamingListener() {
         override def onBatchCompleted(batchCompleted: StreamingListenerBatchCompleted): Unit = {
-          commitAsync()
+          commitAll()
         }
       })
     }
