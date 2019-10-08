@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.spark.streaming.aliyun.logservice.constants.Constants;
 
 public class ClientWorker implements Runnable {
   private static final Log LOG = LogFactory.getLog(ClientWorker.class);
@@ -83,6 +84,7 @@ public class ClientWorker implements Runnable {
     } else {
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
     }
+    this.mClient.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT);
 
     this.mLogHubClientAdapter = new LogHubClientAdapter(
         loghubEndpoint, accessKeyId, accessKeySecret,
@@ -135,6 +137,7 @@ public class ClientWorker implements Runnable {
         .SwitchClient(this.loghubEndpoint, accessKeyId, accessKey, stsToken);
   }
 
+  @Override
   public void run() {
     this.mLogHubHeartBeat.Start();
     ArrayList<Integer> heldShards = new ArrayList<Integer>();
@@ -228,6 +231,7 @@ public class ClientWorker implements Runnable {
 
       this.mClient = new Client(loghubEndpoint, accessKeyId, accessKeySecret);
       this.mClient.setSecurityToken(securityToken);
+      this.mClient.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT);
       switchClient(accessKeyId, accessKeySecret, securityToken);
     }
   }
