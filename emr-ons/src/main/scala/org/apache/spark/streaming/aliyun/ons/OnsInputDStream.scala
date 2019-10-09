@@ -16,6 +16,8 @@
  */
 package org.apache.spark.streaming.aliyun.ons
 
+import java.util.Properties
+
 import com.aliyun.openservices.ons.api.Message
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
@@ -24,16 +26,12 @@ import org.apache.spark.streaming.receiver.Receiver
 
 private[ons] class OnsInputDStream(
     @transient _ssc: StreamingContext,
-    consumerID: String,
-    topic: String,
-    subExpression: String,
-    accessKeyId: String,
-    accessKeySecret: String,
+    properties: Properties,
     storageLevel: StorageLevel,
     func: Message => Array[Byte])
   extends ReceiverInputDStream[Array[Byte]](_ssc) {
 
   override def getReceiver(): Receiver[Array[Byte]] = {
-    new OnsReceiver(consumerID, topic, subExpression, accessKeyId, accessKeySecret, storageLevel, func)
+    new OnsReceiver(properties, storageLevel, func)
   }
 }
