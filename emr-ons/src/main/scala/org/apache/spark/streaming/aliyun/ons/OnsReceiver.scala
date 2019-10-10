@@ -19,17 +19,14 @@ package org.apache.spark.streaming.aliyun.ons
 import java.util.Properties
 
 import com.aliyun.openservices.ons.api._
+import com.aliyun.openservices.ons.api.PropertyKeyConst._
 import com.aliyun.openservices.ons.api.impl.ONSFactoryImpl
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
 
 private[ons] class OnsReceiver(
-    consumerID: String,
-    topic: String,
-    subExpression: String,
-    accessKeyId: String,
-    accessKeySecret: String,
+    properties: Properties,
     storageLevel: StorageLevel,
     func: Message => Array[Byte])
   extends Receiver[Array[Byte]](storageLevel) with Logging {
@@ -42,10 +39,13 @@ private[ons] class OnsReceiver(
   override def onStart() {
     workerThread = new Thread() {
       override def run(): Unit = {
-        val properties = new Properties()
-        properties.put(PropertyKeyConst.ConsumerId, consumerID)
-        properties.put(PropertyKeyConst.AccessKey, accessKeyId)
-        properties.put(PropertyKeyConst.SecretKey, accessKeySecret)
+        val topic = properties.getProperty("topic")
+        val subExpression = properties.getProperty("subExpression")
+        if (topic == null || subExpression == null) {
+          throw new Exception("Missing property topic or subExpression")
+        }
+        require(properties.containsKey(ConsumerId) && properties.containsKey(AccessKey) &&
+          properties.containsKey(SecretKey), "Missing property ConsumerId or AccessKey or SecretKey")
         val onsFactoryImpl = new ONSFactoryImpl
         consumer = onsFactoryImpl.createConsumer(properties)
         consumer.subscribe(topic, subExpression, new MessageListener() {
