@@ -27,7 +27,7 @@ script:
   - PING_LOOP_PID=$!
   - mvn clean package -DskipTests > $BUILD_OUTPUT 2>&1
   - err=`grep "ERROR" $BUILD_OUTPUT`
-  - if [[ $string =~ "ERROR" ]]; then
+  - if [[ $err =~ "ERROR" ]]; then
   -   echo "An error was encountered with the build."
   -   echo $err
   -   exit 1
