@@ -23,20 +23,16 @@ script:
   - export WORKDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
   - export BUILD_OUTPUT=$WORKDIR/build.out
   - touch $BUILD_OUTPUT
-  - dump_output() {
-  -   echo "Tailing the last 500 lines of output:"
-  -   tail -500 $BUILD_OUTPUT  
-  - }
-  - error_handler() {
-  -   echo "An error was encountered with the build."
-  -   dump_output
-  -   exit 1
-  - }
-  - trap 'error_handler' ERR
   - bash -c "while true; do echo \$(date) - building ...; sleep $PING_SLEEP; done" &
   - PING_LOOP_PID=$!
-  - mvn clean package -DskipTests >> $BUILD_OUTPUT 2>&1
-  - dump_output
+  - mvn clean package -DskipTests > $BUILD_OUTPUT 2>&1
+  - err=`grep "ERROR" $BUILD_OUTPUT`
+  - if [[ $string =~ "ERROR" ]]; then
+  -   echo "An error was encountered with the build."
+  -   echo $err
+  -   exit 1
+  - fi
+  - tail -n500 $BUILD_OUTPUT
   - kill $PING_LOOP_PID
 
 # 5. Branches only
