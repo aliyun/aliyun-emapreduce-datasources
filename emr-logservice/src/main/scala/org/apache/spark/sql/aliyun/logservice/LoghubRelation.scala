@@ -29,6 +29,7 @@ import org.apache.spark.sql.types.StructType
 class LoghubRelation(
     override val sqlContext: SQLContext,
     override val schema: StructType,
+    defaultSchema: Boolean,
     sourceOptions: Map[String, String],
     startingOffsets: LoghubOffsetRangeLimit,
     endingOffsets: LoghubOffsetRangeLimit)
@@ -64,7 +65,7 @@ class LoghubRelation(
       shardOffsets.+=((loghubShard.shard, sof, eof))
     }}
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
-      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, sourceOptions)
+      accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, defaultSchema, sourceOptions)
       .mapPartitions(it => {
         val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
         it.map(t => {

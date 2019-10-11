@@ -28,12 +28,13 @@ import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
 import org.apache.spark.sql.streaming.OutputMode
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
 class LoghubSourceProvider extends DataSourceRegister
     with StreamSourceProvider
     with StreamSinkProvider
     with SchemaRelationProvider
+    with RelationProvider
     with CreatableRelationProvider
     with ContinuousReadSupport
     with Logging {
@@ -46,9 +47,10 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): (String, StructType) = {
-    require(schema.isDefined && schema.get.nonEmpty, "Unable to infer the schema. " +
-      "The schema specification is required to create the table.;")
-    (shortName(), schema.get)
+    (shortName(), schema.getOrElse({
+      logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
+      LoghubSourceProvider.getDefaultSchema
+    }))
   }
 
   override def createSource(
@@ -57,17 +59,19 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    require(schema.isDefined && schema.get.nonEmpty, "Unable to infer the schema. " +
-      "The schema specification is required to create the table.;")
-
     Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
       STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+    val _schema = schema.getOrElse({
+      logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
+      LoghubSourceProvider.getDefaultSchema
+    })
     new LoghubSource(
       sqlContext,
-      schema,
+      _schema,
+      LoghubSourceProvider.isDefaultSchema(_schema),
       parameters,
       metadataPath,
       startingStreamOffsets,
@@ -100,7 +104,38 @@ class LoghubSourceProvider extends DataSourceRegister
       ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
 
-    new LoghubRelation(sqlContext, schema, parameters, startingRelationOffsets, endingRelationOffsets)
+    new LoghubRelation(
+      sqlContext,
+      schema,
+      LoghubSourceProvider.isDefaultSchema(schema),
+      parameters,
+      startingRelationOffsets,
+      endingRelationOffsets)
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String]): BaseRelation = {
+    Utils.validateOptions(parameters)
+
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+
+    val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
+    assert(startingRelationOffsets != LatestOffsetRangeLimit)
+
+    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
+      ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    assert(endingRelationOffsets != EarliestOffsetRangeLimit)
+
+    val schema = LoghubSourceProvider.getDefaultSchema
+    new LoghubRelation(
+      sqlContext,
+      schema,
+      true,
+      parameters,
+      startingRelationOffsets,
+      endingRelationOffsets)
   }
 
   override def createRelation(
@@ -178,6 +213,24 @@ object LoghubSourceProvider {
   val __TIME__ = "__time__"
   val __TOPIC__ = "__topic__"
   val __SOURCE__ = "__source__"
+  val __VALUE__ = "__value__"
+
+  def getDefaultSchema: StructType = {
+    new StructType()
+      .add(new StructField(__PROJECT__, StringType))
+      .add(new StructField(__STORE__, StringType))
+      .add(new StructField(__SHARD__, StringType))
+      .add(new StructField(__TIME__, StringType))
+      .add(new StructField(__TOPIC__, StringType))
+      .add(new StructField(__SOURCE__, StringType))
+      .add(new StructField(__VALUE__, StringType))
+  }
+
+  def isDefaultSchema(schema: StructType): Boolean = {
+    !(schema.fields.map(f => (f.name, f.dataType.simpleString))
+      .zip(getDefaultSchema.fields.map(f => (f.name, f.dataType.simpleString)))
+      .exists{ case (l, r) => !l._1.equals(r._1) || !l._2.equals(r._2)})
+  }
 
   def getLoghubOffsetRangeLimit(
       params: Map[String, String],

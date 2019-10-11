@@ -21,25 +21,16 @@ import org.apache.spark.internal.Logging
 
 abstract class LoghubData()
   extends Serializable {
-  def getContent: Array[Byte]
   def toArray: Array[String]
 }
 
 class SchemaLoghubData(content: Array[(String, String)])
   extends LoghubData with Logging with Serializable {
-
-  override def toArray: Array[String] = {
-    content.map(_._2)
-  }
-
-  override def getContent: Array[Byte] = throw new UnsupportedOperationException
+  override def toArray: Array[String] = content.map(_._2)
 }
 
 class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-    topic: String, source: String, content: Array[Byte])
+    topic: String, source: String, value: String)
   extends LoghubData {
-
-  override def getContent: Array[Byte] = content
-
-  override def toArray: Array[String] = throw new UnsupportedOperationException
+  override def toArray: Array[String] = Array(project, store, shardId.toString, dataTime.toString, topic, source, value)
 }
