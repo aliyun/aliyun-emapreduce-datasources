@@ -33,7 +33,8 @@ import org.apache.spark.sql.types.StructType
 
 class LoghubSource(
     @transient sqlContext: SQLContext,
-    userSpecifiedSchema: Option[StructType],
+    override val schema: StructType,
+    defaultSchema: Boolean,
     sourceOptions: Map[String, String],
     metadataPath: String,
     startingOffsets: LoghubOffsetRangeLimit,
@@ -98,8 +99,6 @@ class LoghubSource(
 
   private var lastCursorTime: Int = initialPartitionOffsets.values.max
 
-  override lazy val schema: StructType = userSpecifiedSchema.get
-
   override def getOffset: Option[Offset] = {
     // Make sure initialPartitionOffsets is initialized
     initialPartitionOffsets
@@ -135,7 +134,7 @@ class LoghubSource(
       shardOffsets.+=((shard.shard, earliest(shard), untilShardOffsets(shard)))
     })
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
-      endpoint, shardOffsets, schema.fieldNames, sourceOptions)
+      endpoint, shardOffsets, schema.fieldNames, defaultSchema, sourceOptions)
       .mapPartitions(it => {
         val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
         it.map(t => {
