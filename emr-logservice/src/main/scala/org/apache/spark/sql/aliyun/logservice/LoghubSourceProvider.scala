@@ -129,7 +129,7 @@ class LoghubSourceProvider extends DataSourceRegister
     new LoghubRelation(
       sqlContext,
       schema,
-      LoghubSourceProvider.isDefaultSchema(schema),
+      true,
       parameters,
       startingRelationOffsets,
       endingRelationOffsets)
