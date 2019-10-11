@@ -64,7 +64,10 @@ class LoghubSourceProvider extends DataSourceRegister
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
       STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
-    val _schema = schema.getOrElse(LoghubSourceProvider.getDefaultSchema)
+    val _schema = schema.getOrElse({
+      logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
+      LoghubSourceProvider.getDefaultSchema
+    })
     new LoghubSource(
       sqlContext,
       _schema,
@@ -210,7 +213,7 @@ object LoghubSourceProvider {
   val __TIME__ = "__time__"
   val __TOPIC__ = "__topic__"
   val __SOURCE__ = "__source__"
-  val __VALUE__ = "value"
+  val __VALUE__ = "__value__"
 
   def getDefaultSchema: StructType = {
     new StructType()
