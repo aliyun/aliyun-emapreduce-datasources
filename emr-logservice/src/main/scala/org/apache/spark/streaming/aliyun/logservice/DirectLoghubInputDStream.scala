@@ -43,18 +43,17 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class DirectLoghubInputDStream(
-    _ssc: StreamingContext,
-    project: String,
-    logStore: String,
-    mConsumerGroup: String,
-    accessKeyId: String,
-    accessKeySecret: String,
-    endpoint: String,
-    zkParams: Map[String, String],
-    mode: LogHubCursorPosition,
-    cursorStartTime: Long = -1L
-  ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
+class DirectLoghubInputDStream(_ssc: StreamingContext,
+                               project: String,
+                               logStore: String,
+                               mConsumerGroup: String,
+                               accessKeyId: String,
+                               accessKeySecret: String,
+                               endpoint: String,
+                               zkParams: Map[String, String],
+                               mode: LogHubCursorPosition,
+                               cursorStartTime: Long = -1L
+                              ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
   @transient private var mClient: LoghubClientAgent = null
   @transient private var COMMIT_LOCK = new Object()
@@ -68,6 +67,7 @@ class DirectLoghubInputDStream(
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.autoCommit", defaultValue = false)
   private var checkpointDir: String = null
   private var doCommit: Boolean = false
+  private var stopped: Boolean = false
   @transient private var startTime: Long = -1L
   @transient private var restart: Boolean = false
   private var lastJobTime: Long = -1L
@@ -168,18 +168,38 @@ class DirectLoghubInputDStream(
       // Do nothing, make compiler happy.
     }
     if (autoCommitEnabled) {
+      logInfo(s"Auto commit enabled: $autoCommitEnabled")
       ssc.addStreamingListener(new StreamingListener() {
         override def onBatchCompleted(batchCompleted: StreamingListenerBatchCompleted): Unit = {
+          logInfo("Committing checkpoint to remote server.")
           commitAll()
+          // onBatchCompleted may called after stop() which means we cannot
+          // close zk client in stop if auto commit enabled.
+          COMMIT_LOCK.synchronized {
+            if (stopped) {
+              stopZkClient()
+            }
+          }
         }
       })
     }
   }
 
-  override def stop(): Unit = {
+  private def stopZkClient(): Unit = {
     if (zkClient != null) {
+      logInfo("Closing zk client...")
       zkClient.close()
       zkClient = null
+    }
+  }
+
+  override def stop(): Unit = {
+    logInfo("Stopping DStream...")
+    COMMIT_LOCK.synchronized {
+      stopped = true
+      if (!autoCommitEnabled) {
+        stopZkClient()
+      }
     }
   }
 
@@ -198,7 +218,7 @@ class DirectLoghubInputDStream(
     COMMIT_LOCK.synchronized {
       val shardOffsets = new ArrayBuffer[(Int, String, String)]()
       val lastFailed: Boolean = {
-        if(doCommit) {
+        if (doCommit) {
           false
         } else {
           val pendingTimes = ssc.scheduler.getPendingTimes()
@@ -298,22 +318,22 @@ class DirectLoghubInputDStream(
   }
 
   private def commitAll(): Unit = {
-      import scala.collection.JavaConversions._
-      try {
-        zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
-          val shardId = child.substring(0, child.indexOf(".")).toInt
-          if (!readOnlyShardCache.contains(shardId)) {
-            val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
-            log.info(s"Updating checkpoint $data of shard $shardId to consumer group $mConsumerGroup")
-            mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
-            DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
-          }
-        })
-      } catch {
-        case _: ZkNoNodeException =>
-          logWarning("If this is the first time to run, it is fine to not find any commit data in " +
-            "zookeeper.")
-      }
+    import scala.collection.JavaConversions._
+    try {
+      zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
+        val shardId = child.substring(0, child.indexOf(".")).toInt
+        if (!readOnlyShardCache.contains(shardId)) {
+          val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
+          log.info(s"Updating checkpoint $data of shard $shardId to consumer group $mConsumerGroup")
+          mClient.UpdateCheckPoint(project, logStore, mConsumerGroup, shardId, data)
+          DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
+        }
+      })
+    } catch {
+      case _: ZkNoNodeException =>
+        logWarning("If this is the first time to run, it is fine to not find any commit data in " +
+          "zookeeper.")
+    }
   }
 
   private[streaming] override def name: String = s"Loghub direct stream [$id]"
