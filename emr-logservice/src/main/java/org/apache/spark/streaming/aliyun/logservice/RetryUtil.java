@@ -37,6 +37,9 @@ final class RetryUtil {
       try {
         return callable.call();
       } catch (LogException ex) {
+        if ("ConsumerGroupAlreadyExist".equals(ex.GetErrorCode())) {
+          throw ex;
+        }
         if (ex.GetHttpCode() < 500) {
           if (retries >= maxRetry) {
             LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
