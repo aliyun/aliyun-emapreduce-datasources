@@ -89,7 +89,7 @@ class LoghubSource(
       val offsets = startingOffsets match {
         case EarliestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchEarliestOffsets())
         case LatestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchLatestOffsets())
-        case SpecificOffsetRangeLimit(_) => throw new UnsupportedEncodingException()
+        case SpecificOffsetRangeLimit(partitionOffsets) => LoghubSourceOffset(partitionOffsets)
       }
       metadataLog.add(0, offsets)
       logInfo(s"Initial offsets: $offsets")
