@@ -171,9 +171,6 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Optional[StructType],
       checkpointLocation: String,
       options: DataSourceOptions): ContinuousReader = {
-    require(schema.isPresent && schema.get.nonEmpty, "Unable to infer the schema. " +
-      "The schema specification is required to create the table.;")
-
     val parameters = options.asMap().asScala.toMap
     val specifiedLoghubParams =
       parameters
@@ -187,8 +184,14 @@ class LoghubSourceProvider extends DataSourceRegister
       STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
 
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+
+    val _schema = schema.orElse({
+      logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
+      LoghubSourceProvider.getDefaultSchema
+    })
     new LoghubContinuousReader(
-      schema.get(),
+      _schema,
+      LoghubSourceProvider.isDefaultSchema(_schema),
       loghubOffsetReader,
       paramsForExecutors(specifiedLoghubParams, uniqueGroupId),
       parameters,

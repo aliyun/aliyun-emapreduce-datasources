@@ -29,7 +29,6 @@ import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
-
 object Utils extends Logging {
 
   private type ValueConverter = String => Any
@@ -154,5 +153,58 @@ object Utils extends Logging {
     } else {
       converter.apply(datum)
     }
+  }
+
+  def createSpecificOffset(
+      logProject: String,
+      logStore: String,
+      offset: Int,
+      accessKeyId: String,
+      accessKeySecret: String,
+      endpoint: String,
+      ignoreError: Boolean = true): String = {
+    val caseInsensitiveParams = Map(
+      "sls.project" -> logProject,
+      "sls.store" -> logStore,
+      "access.key.id" -> accessKeyId,
+      "access.key.secret" -> accessKeySecret,
+      "endpoint" -> endpoint
+    )
+    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+    val earliestOffsets = loghubOffsetReader.fetchEarliestOffsets()
+    val endOffsets = loghubOffsetReader.fetchLatestOffsets()
+    require(earliestOffsets.size == endOffsets.size,
+      s"""The size of earliestOffsets dose not equals size of endOffsets
+        | earliestOffsets: $earliestOffsets
+        |
+        | endOffsets: $endOffsets
+      """.stripMargin)
+    val startOffsets = earliestOffsets.toSeq.sortBy(_._1.shard)
+      .zip(endOffsets.toSeq.sortBy(_._1.shard))
+      .map { case (startOffset, endOffset) =>
+        require(startOffset._1.shard == endOffset._1.shard)
+        if (offset < startOffset._2) {
+          val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start offset [${startOffset._2}], " +
+            s"using [${startOffset._2}] instead of [$offset] as new specific offset."
+          if (ignoreError) {
+            logWarning(msg)
+            startOffset
+          } else {
+            throw new Exception(msg)
+          }
+        } else if (offset > endOffset._2) {
+          val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end offset [${endOffset._2}], " +
+            s"using [${endOffset._2}] instead of [$offset] as new specific offset."
+          if (ignoreError) {
+            logWarning(msg)
+            endOffset
+          } else {
+            throw new Exception(msg)
+          }
+        } else {
+          (startOffset._1, offset)
+        }
+      }.toMap
+    LoghubSourceOffset.partitionOffsets(startOffsets)
   }
 }
