@@ -138,7 +138,6 @@ public class BufferReader {
     } catch (IOException e) {
       LOG.error("Failed to close input stream.", e);
     } finally {
-      System.gc();
       buffer = null;
     }
   }
