@@ -784,7 +784,7 @@ public class OSSClientAgent {
   private static class ObjectMetadataDeserializer
       implements JsonDeserializer<ObjectMetadata> {
     private DateFormat df =
-        new SimpleDateFormat("MMM d, yyyy, K:mm:ss a", Locale.ENGLISH);
+        new SimpleDateFormat("MMM d, yyyy K:mm:ss a", Locale.ENGLISH);
 
     public ObjectMetadata deserialize(JsonElement json, Type typeOfT,
         JsonDeserializationContext context) {
