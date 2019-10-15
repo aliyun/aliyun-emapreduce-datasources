@@ -20,7 +20,7 @@ import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode
@@ -29,6 +29,7 @@ import org.apache.spark.sql.types.StructType
 class TableStoreSourceProvider
     extends DataSourceRegister
     with RelationProvider
+    with CreatableRelationProvider
     with StreamSourceProvider
     with StreamSinkProvider
     with Logging {
@@ -38,8 +39,7 @@ class TableStoreSourceProvider
       sqlContext: SQLContext,
       parameters: Map[String, String],
       partitionColumns: Seq[String],
-      outputMode: OutputMode
-  ): Sink = {
+      outputMode: OutputMode): Sink = {
     new TableStoreSink(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
 
@@ -47,8 +47,7 @@ class TableStoreSourceProvider
       sqlContext: SQLContext,
       schema: Option[StructType],
       providerName: String,
-      parameters: Map[String, String]
-  ): (String, StructType) = {
+      parameters: Map[String, String]): (String, StructType) = {
     (shortName(), TableStoreSource.tableStoreSchema(TableStoreCatalog(parameters).schema))
   }
 
@@ -57,8 +56,7 @@ class TableStoreSourceProvider
       metadataPath: String,
       schema: Option[StructType],
       providerName: String,
-      parameters: Map[String, String]
-  ): Source = {
+      parameters: Map[String, String]): Source = {
     validateOptions(parameters)
     val caseInsensitiveParams = parameters.map {
       case (k, v) => (k.toLowerCase(Locale.ROOT), v)
@@ -75,19 +73,23 @@ class TableStoreSourceProvider
 
   override def createRelation(
       sqlContext: SQLContext,
-      parameters: Map[String, String]
-  ): BaseRelation = {
+      parameters: Map[String, String]): BaseRelation = {
+    validateOptions(parameters)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
 
   def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
     caseInsensitiveParams.getOrElse(
-      "ots.table",
-      throw new MissingArgumentException("Missing TableStore table (='ots.table').")
+      "table.name",
+      throw new MissingArgumentException("Missing TableStore table (='table.name').")
     )
     caseInsensitiveParams.getOrElse(
-      "ots.tunnel",
-      throw new MissingArgumentException("Missing TableStore tunnel (='ots.tunnel').")
+      "instance.name",
+      throw new MissingArgumentException("Missing TableStore table (='instance.name').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "tunnel.id",
+      throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
     )
     caseInsensitiveParams.getOrElse(
       "access.key.id",
@@ -101,6 +103,27 @@ class TableStoreSourceProvider
       "endpoint",
       throw new MissingArgumentException("Missing log store endpoint (='endpoint').")
     )
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      mode: SaveMode,
+      parameters: Map[String, String],
+      data: DataFrame): BaseRelation = {
+    /* This method is suppose to return a relation that reads the data that was written.
+     * We cannot support this for OTS. Therefore, in order to make things consistent,
+     * we return an empty base relation.
+     */
+    new BaseRelation {
+      override def sqlContext: SQLContext = unsupportedException
+      override def schema: StructType = unsupportedException
+      override def needConversion: Boolean = unsupportedException
+      override def sizeInBytes: Long = unsupportedException
+      override def unhandledFilters(filters: Array[Filter]): Array[Filter] = unsupportedException
+      private def unsupportedException =
+        throw new UnsupportedOperationException("BaseRelation from OTS write " +
+          "operation is not usable.")
+    }
   }
 }
 

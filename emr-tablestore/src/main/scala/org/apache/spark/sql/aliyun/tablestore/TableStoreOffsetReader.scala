@@ -77,21 +77,21 @@ class TableStoreOffsetReader(readerOptions: Map[String, String])
     throw new MissingArgumentException("Missing log store endpoint (='endpoint').")
   )
   private val instanceName = readerOptions.getOrElse(
-    "ots.instance",
-    throw new MissingArgumentException("Missing TableStore instance (='ots.instance').")
+    "instance.name",
+    throw new MissingArgumentException("Missing TableStore instance (='instance.name').")
   )
 
   val syncClient: SyncClientInterface =
     TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
 
   private val tableName = readerOptions.getOrElse(
-    "ots.table",
-    throw new MissingArgumentException("Missing TableStore table (='ots.table').")
+    "table.name",
+    throw new MissingArgumentException("Missing TableStore table (='table.name').")
   )
 
   private val tunnelId = readerOptions.getOrElse(
-    "ots.tunnel",
-    throw new MissingArgumentException("Missing TableStore tunnel (='ots.tunnel').")
+    "tunnel.id",
+    throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
   )
 
   private val clientName = readerOptions.getOrElse("ots.client", "spark-client")
@@ -166,8 +166,8 @@ object TableStoreOffsetReader extends Logging with Serializable {
         throw new MissingArgumentException("Missing TableStore endpoint (='endpoint').")
       )
       val instanceName = sourceOptions.getOrElse(
-        "ots.instance",
-        throw new MissingArgumentException("Missing TableStore instance (='instance').")
+        "instance.name",
+        throw new MissingArgumentException("Missing TableStore instance (='instance.name').")
       )
       tunnelClient = new TunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
     }

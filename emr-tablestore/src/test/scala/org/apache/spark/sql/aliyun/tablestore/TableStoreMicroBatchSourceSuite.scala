@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.spark.sql.aliyun.tablestore
 
 import com.alicloud.openservices.tablestore.model.tunnel.{TunnelStage, TunnelType}
@@ -40,7 +57,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "ots.tunnel" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
       )
 
     val source =
@@ -78,7 +95,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "ots.tunnel" -> tunnelId, "maxOffsetsPerChannel" -> "50000")
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "50000")
       )
 
     val source =
@@ -112,7 +129,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "ots.tunnel" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
@@ -151,7 +168,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "ots.tunnel" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
@@ -195,7 +212,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "ots.tunnel" -> tunnelId, "maxOffsetsPerChannel" -> "5000")
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "5000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
