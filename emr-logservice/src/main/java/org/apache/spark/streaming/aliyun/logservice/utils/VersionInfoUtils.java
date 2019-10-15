@@ -21,7 +21,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 public class VersionInfoUtils {
-    private static final String VERSION_INFO_FILE = "spark-versioninfo.properties";
+    private static final String VERSION_INFO_FILE = "emr-versioninfo.properties";
     private static final String USER_AGENT_PREFIX = "aliyun-emapreduce-sdk";
 
     private static String version = null;

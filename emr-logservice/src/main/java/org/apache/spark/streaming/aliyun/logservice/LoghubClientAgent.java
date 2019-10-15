@@ -25,7 +25,7 @@ import com.aliyun.openservices.log.response.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.conn.ConnectTimeoutException;
-import org.apache.spark.streaming.aliyun.logservice.constants.Constants;
+import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
   private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
@@ -36,7 +36,7 @@ public class LoghubClientAgent {
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
-    this.client.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT);
+    this.client.setUserAgent(VersionInfoUtils.getDefaultUserAgent());
   }
 
   public ListShardResponse ListShard(String logProject, String logStore)

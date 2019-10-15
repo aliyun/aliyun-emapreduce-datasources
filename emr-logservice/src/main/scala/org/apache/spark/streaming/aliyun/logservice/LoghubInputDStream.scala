@@ -22,7 +22,7 @@ import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.aliyun.logservice.constants.Constants
+import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 import org.apache.spark.streaming.receiver.Receiver
 
@@ -63,11 +63,11 @@ class LoghubInputDStream(
       }
       val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
       client.setSecurityToken(securityToken)
-      client.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT)
+      client.setUserAgent(VersionInfoUtils.getDefaultUserAgent())
       client
     } else {
       val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
-      client.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT)
+      client.setUserAgent(VersionInfoUtils.getDefaultUserAgent())
       client
     }
 
@@ -86,7 +86,7 @@ class LoghubInputDStream(
             securityToken = MetaClient.getRoleSecurityToken
             val client = new Client(loghubEndpoint, accessKeyId, accessKeySecret)
             client.setSecurityToken(securityToken)
-            client.setUserAgent(Constants.LOG_CONNECTOR_USER_AGENT)
+            client.setUserAgent(VersionInfoUtils.getDefaultUserAgent())
             client.DeleteConsumerGroup(logServiceProject, logStoreName,
               loghubConsumerGroupName)
           } catch {
