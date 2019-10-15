@@ -63,18 +63,18 @@ class TableStoreSource(
   )
 
   private val instanceName = sourceOptions.getOrElse(
-    "ots.instance",
-    throw new MissingArgumentException("Missing TableStore instance (='ots.instance').")
+    "instance.name",
+    throw new MissingArgumentException("Missing TableStore instance (='instance.name').")
   )
 
   private val tableName = sourceOptions.getOrElse(
-    "ots.table",
-    throw new MissingArgumentException("Missing TableStore table (='ots.table').")
+    "table.name",
+    throw new MissingArgumentException("Missing TableStore table (='table.name').")
   )
 
   private val tunnelId = sourceOptions.getOrElse(
-    "ots.tunnel",
-    throw new MissingArgumentException("Missing TableStore tunnel (='ots.tunnel').")
+    "tunnel.id",
+    throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
   )
 
   private val checkpointTable = sourceOptions.getOrElse("ots.checkpoint.table", "__spark_checkpoint__")

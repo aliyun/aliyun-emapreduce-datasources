@@ -44,16 +44,11 @@ class TableStoreRelation(
   )(@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedFilteredScan with InsertableRelation with Serializable with Logging {
 
-  val accessKeyId = parameters.getOrElse("access.key.id",
-    throw new MissingArgumentException("missing required table properties: access.key.id"))
-  val accessKeySecret = parameters.getOrElse("access.key.secret",
-    throw new MissingArgumentException("missing required table properties: access.key.secret"))
-  val endpoint = parameters.getOrElse("endpoint",
-    throw new MissingArgumentException("missing required table properties: endpoint"))
-  val tbName = parameters.getOrElse("table.name",
-    throw new MissingArgumentException("missing required table properties: table.name"))
-  val instanceName = parameters.getOrElse("instance.name",
-    throw new MissingArgumentException("missing required table properties: instance.name"))
+  val accessKeyId = parameters("access.key.id")
+  val accessKeySecret = parameters("access.key.secret")
+  val endpoint = parameters("endpoint")
+  val tbName = parameters("table.name")
+  val instanceName = parameters("instance.name")
   val batchUpdateSize = parameters.getOrElse("batch.update.size", "0")
 
   override def schema: StructType = userSpecifiedschema.getOrElse(TableStoreCatalog(parameters).schema)

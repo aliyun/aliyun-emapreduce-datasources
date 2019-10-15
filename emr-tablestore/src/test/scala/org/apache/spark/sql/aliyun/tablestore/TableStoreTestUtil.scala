@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.spark.sql.aliyun.tablestore
 
 import java.nio.charset.StandardCharsets
@@ -122,16 +139,16 @@ class TableStoreTestUtil extends Logging {
       options: Map[String, String]
   ): DataFrame = {
     val tunnelId =
-      options.getOrElse("ots.tunnel", "d4db52c8-4a87-4051-956e-8eeb171a1fce")
+      options.getOrElse("tunnel.id", "d4db52c8-4a87-4051-956e-8eeb171a1fce")
     val maxOffsetsPerChannel =
       options.getOrElse("maxOffsetsPerChannel", 10000 + "")
     val catalog = options.getOrElse("catalog", "")
 
     _spark.readStream
       .format("tablestore")
-      .option("ots.instance", instanceName)
-      .option("ots.table", tableName)
-      .option("ots.tunnel", tunnelId)
+      .option("instance.name", instanceName)
+      .option("table.name", tableName)
+      .option("tunnel.id", tunnelId)
       .option("endpoint", endpoint)
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
@@ -144,9 +161,9 @@ class TableStoreTestUtil extends Logging {
       origOptions: Map[String, String]
   ): Map[String, String] = {
     Map(
-      "ots.instance" -> instanceName,
-      "ots.table" -> tableName,
-      "ots.tunnel" -> origOptions.getOrElse("ots.tunnel", ""),
+      "instance.name" -> instanceName,
+      "table.name" -> tableName,
+      "tunnel.id" -> origOptions.getOrElse("tunnel.id", ""),
       "endpoint" -> endpoint,
       "access.key.id" -> accessKeyId,
       "access.key.secret" -> accessKeySecret,
