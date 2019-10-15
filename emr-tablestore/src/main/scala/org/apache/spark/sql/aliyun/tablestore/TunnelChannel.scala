@@ -14,23 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.spark.sql.aliyun.tablestore
 
-package org.apache.spark.sql.aliyun.logservice
+/**
+  * A tunnel contains several channels, channel is just like partition/split in TableStore.
+  */
+case class TunnelChannel(tableName: String, tunnelId: String, channelId: String)
 
-import org.apache.spark.internal.Logging
-
-abstract class LoghubData()
-  extends Serializable {
-  def toArray: Array[String]
-}
-
-class SchemaLoghubData(content: Array[(String, String)])
-  extends LoghubData with Logging with Serializable {
-  override def toArray: Array[String] = content.map(_._2)
-}
-
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-    topic: String, source: String, value: String)
-  extends LoghubData {
-  override def toArray: Array[String] = Array(project, store, shardId.toString, dataTime.toString, topic, source, value)
+case class Tunnel(tableName: String, tunnelId: String) {
+  override def toString: String = s"$tableName#$tunnelId"
 }

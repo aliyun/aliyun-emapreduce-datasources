@@ -213,7 +213,7 @@ public class OSSClientAgent {
       GsonBuilder builder = new GsonBuilder();
       builder.registerTypeAdapter(ObjectMetadata.class,
           new ObjectMetadataDeserializer());
-      Gson gson = builder.create();
+      Gson gson = builder.setDateFormat("MMM d, yyyy K:mm:ss a").create();
 
       Method method = this.ossClientClz.getMethod("getObjectMetadata",
           String.class, String.class);
@@ -265,7 +265,7 @@ public class OSSClientAgent {
       GsonBuilder builder = new GsonBuilder();
       builder.registerTypeAdapter(ObjectMetadata.class,
           new ObjectMetadataDeserializer());
-      Gson gson = builder.create();
+      Gson gson = builder.setDateFormat("MMM d, yyyy K:mm:ss a").create();
       Method method2 = OSSObjectClz.getMethod("getObjectMetadata");
       Object metadata = method2.invoke(ret);
       ObjectMetadata objectMetadata = gson.fromJson(gson.toJson(metadata),
@@ -784,7 +784,7 @@ public class OSSClientAgent {
   private static class ObjectMetadataDeserializer
       implements JsonDeserializer<ObjectMetadata> {
     private DateFormat df =
-        new SimpleDateFormat("MMM d, yyyy, K:mm:ss a", Locale.ENGLISH);
+        new SimpleDateFormat("MMM d, yyyy K:mm:ss a", Locale.ENGLISH);
 
     public ObjectMetadata deserialize(JsonElement json, Type typeOfT,
         JsonDeserializationContext context) {

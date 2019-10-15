@@ -16,18 +16,23 @@
  */
 package org.apache.spark.sql.aliyun.tablestore
 
+import java.util.Locale
+
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
 
-class TableStoreSourceProvider extends DataSourceRegister
-  with RelationProvider
-  with StreamSourceProvider
-  with StreamSinkProvider
-  with Logging {
+class TableStoreSourceProvider
+    extends DataSourceRegister
+    with RelationProvider
+    with CreatableRelationProvider
+    with StreamSourceProvider
+    with StreamSinkProvider
+    with Logging {
   override def shortName(): String = "tablestore"
 
   override def createSink(
@@ -43,7 +48,7 @@ class TableStoreSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): (String, StructType) = {
-    (shortName(), TableStoreCatalog(parameters).schema)
+    (shortName(), TableStoreSource.tableStoreSchema(TableStoreCatalog(parameters).schema))
   }
 
   override def createSource(
@@ -52,12 +57,89 @@ class TableStoreSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    new TableStoreSource(parameters, schema)
+    validateOptions(parameters)
+    val caseInsensitiveParams = parameters.map {
+      case (k, v) => (k.toLowerCase(Locale.ROOT), v)
+    }
+    val tableStoreOffsetReader = new TableStoreOffsetReader(caseInsensitiveParams)
+    new TableStoreSource(
+      sqlContext,
+      schema,
+      tableStoreOffsetReader,
+      caseInsensitiveParams,
+      metadataPath
+    )
   }
 
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
+    validateOptions(parameters)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
+  }
+
+  def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+    caseInsensitiveParams.getOrElse(
+      "table.name",
+      throw new MissingArgumentException("Missing TableStore table (='table.name').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "instance.name",
+      throw new MissingArgumentException("Missing TableStore table (='instance.name').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "tunnel.id",
+      throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "access.key.secret",
+      throw new MissingArgumentException("Missing access key secret (='access.key.secret').")
+    )
+    caseInsensitiveParams.getOrElse(
+      "endpoint",
+      throw new MissingArgumentException("Missing log store endpoint (='endpoint').")
+    )
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      mode: SaveMode,
+      parameters: Map[String, String],
+      data: DataFrame): BaseRelation = {
+    /* This method is suppose to return a relation that reads the data that was written.
+     * We cannot support this for OTS. Therefore, in order to make things consistent,
+     * we return an empty base relation.
+     */
+    new BaseRelation {
+      override def sqlContext: SQLContext = unsupportedException
+      override def schema: StructType = unsupportedException
+      override def needConversion: Boolean = unsupportedException
+      override def sizeInBytes: Long = unsupportedException
+      override def unhandledFilters(filters: Array[Filter]): Array[Filter] = unsupportedException
+      private def unsupportedException =
+        throw new UnsupportedOperationException("BaseRelation from OTS write " +
+          "operation is not usable.")
+    }
+  }
+}
+
+object TableStoreSourceProvider extends Logging {
+  val MAX_OFFSETS_PER_TRIGGER = "maxoffsetspertrigger"
+  val MAX_OFFSETS_PER_CHANNEL = "maxoffsetsperchannel"
+
+  val TUNNEL_CLIENT_TAG = "spark-client"
+  val OTS_CHANNEL_FINISHED = "finished"
+
+  val __OTS_RECORD_TYPE__ = "__ots_record_type__"
+  val __OTS_RECORD_TIMESTAMP__ = "__ots_record_timestamp__"
+  val __OTS_COLUMN_TYPE_PREFIX = "__ots_column_type_"
+
+  def isDefaultField(fieldName: String): Boolean = {
+    fieldName == __OTS_RECORD_TYPE__ ||
+    fieldName == __OTS_RECORD_TIMESTAMP__
   }
 }

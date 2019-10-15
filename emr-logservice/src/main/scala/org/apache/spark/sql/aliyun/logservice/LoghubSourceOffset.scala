@@ -72,11 +72,11 @@ object LoghubSourceOffset {
           s"""Expected
              |{
              |  "logProject-A#logStore-B":{
-             |    "0":"1409569200",
-             |    "1":"1409569200"
+             |    "0":1409569200,
+             |    "1":1409569200
              |  },
              |  "logProject-C#logStore-D":{
-             |    "5":"1409569200"
+             |    "5":1409569200
              |  }
              |}, got $str""")
     }

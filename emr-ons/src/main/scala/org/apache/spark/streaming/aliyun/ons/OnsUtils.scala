@@ -16,8 +16,9 @@
  */
 package org.apache.spark.streaming.aliyun.ons
 
+import java.util.Properties
+
 import com.alibaba.fastjson.JSON
-import com.alibaba.fastjson.serializer.SerializeFilter
 import com.aliyun.openservices.ons.api.Message
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.function.{Function => JFunction}
@@ -30,6 +31,52 @@ import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
  * Various utility classes for working with Aliyun ONS.
  */
 object OnsUtils {
+  /**
+   * Create an input stream that pulls message from a Aliyun ONS stream.
+   * {{{
+   *    val ssc: StreamingSparkContext = ...
+   *    val properties = new Properties()
+   *    properties.setProperty("topic", topic)
+   *    properties.setProperty("subExpression", tags)
+   *
+   *    // more properties see [[com.aliyun.openservices.ons.api.PropertyKeyConst]]
+   *    properties.setProperty("ConsumerId", consumerId)
+   *    properties.setProperty("AccessKey", accessKeyId)
+   *    properties.setProperty("SecretKey", accessKeySecret)
+   *
+   *    // set for internet-region, and make sure the public network of spark cluster node is valid
+   *    properties.setProperty("NAMESRV_ADDR", nameSrvAddr)
+   *
+   *    def func: Message => Array[Byte] = msg => msg.getBody
+   *
+   *    val onsStream = OnsUtils.createStream(
+   *     ssc,
+   *     properties,
+   *     StorageLevel.MEMORY_AND_DISK_2,
+   *     func)
+   *
+   *     onsStream.foreachRDD(rdd => {
+   *       ...
+   *     })
+   * }}}
+   * @param ssc StreamingContext object.
+   * @param properties ons consumer properties.
+   * @param storageLevel Storage level to use for storing the received objects.
+   *                     StorageLevel.MEMORY_AND_DISK_2 is recommended.
+   * @param func Extract information from ONS message.
+   * @return
+   */
+  @Experimental
+  def createStream(
+      ssc: StreamingContext,
+      properties: Properties,
+      storageLevel: StorageLevel,
+      func: Message => Array[Byte]): ReceiverInputDStream[Array[Byte]] = {
+    ssc.withNamedScope("ons stream") {
+      new OnsInputDStream(ssc, properties, storageLevel, func)
+    }
+  }
+
   /**
    * Create an input stream that pulls message from a Aliyun ONS stream.
    * {{{
@@ -78,7 +125,13 @@ object OnsUtils {
       storageLevel: StorageLevel,
       func: Message => Array[Byte]): ReceiverInputDStream[Array[Byte]] = {
     ssc.withNamedScope("ons stream") {
-      new OnsInputDStream(ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, func)
+      val properties = new Properties()
+      properties.setProperty("ConsumerId", consumerId)
+      properties.setProperty("topic", topic)
+      properties.setProperty("subExpression", tags)
+      properties.setProperty("AccessKey", accessKeyId)
+      properties.setProperty("SecretKey", accessKeySecret)
+      createStream(ssc, properties, storageLevel, func)
     }
   }
 
@@ -184,8 +237,13 @@ object OnsUtils {
       accessKeySecret: String,
       storageLevel: StorageLevel,
       func: JFunction[Message, Array[Byte]]): JavaReceiverInputDStream[Array[Byte]] = {
-    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel,
-      (msg: Message) => func.call(msg))
+    val properties = new Properties()
+    properties.setProperty("ConsumerId", consumerId)
+    properties.setProperty("topic", topic)
+    properties.setProperty("subExpression", tags)
+    properties.setProperty("AccessKey", accessKeyId)
+    properties.setProperty("SecretKey", accessKeySecret)
+    createStream(jssc.ssc, properties, storageLevel, (msg: Message) => func.call(msg))
   }
 
   private def extractMessage(msg: Message): Array[Byte] = {

@@ -14,23 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.spark.sql.aliyun.tablestore
 
-package org.apache.spark.sql.aliyun.logservice
+/**
+  * @param logPoint: channel checkpoint of Tablestore tunnel service.
+  * @param offset: offset between under this channel checkpoint.
+  */
+case class ChannelOffset(logPoint: String, offset: Long)
 
-import org.apache.spark.internal.Logging
-
-abstract class LoghubData()
-  extends Serializable {
-  def toArray: Array[String]
-}
-
-class SchemaLoghubData(content: Array[(String, String)])
-  extends LoghubData with Logging with Serializable {
-  override def toArray: Array[String] = content.map(_._2)
-}
-
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-    topic: String, source: String, value: String)
-  extends LoghubData {
-  override def toArray: Array[String] = Array(project, store, shardId.toString, dataTime.toString, topic, source, value)
+object ChannelOffset {
+  // BaseData channel or Father Stream channel would finally turn to Terminated.
+  val TERMINATED_CHANNEL_OFFSET = ChannelOffset(TableStoreSourceProvider.OTS_CHANNEL_FINISHED, 0L)
 }

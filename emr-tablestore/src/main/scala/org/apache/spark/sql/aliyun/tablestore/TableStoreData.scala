@@ -14,23 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.spark.sql.aliyun.tablestore
 
-package org.apache.spark.sql.aliyun.logservice
-
+import com.alibaba.fastjson.JSONObject
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
 
-abstract class LoghubData()
-  extends Serializable {
-  def toArray: Array[String]
+abstract class TableStoreData(content: Array[(String, Any)]) extends Serializable {
+  def getContent: Array[Byte]
+
+  def toArray: Array[Any]
 }
 
-class SchemaLoghubData(content: Array[(String, String)])
-  extends LoghubData with Logging with Serializable {
-  override def toArray: Array[String] = content.map(_._2)
-}
+class SchemaTableStoreData(
+    recordType: String,
+    recordTimeStamp: Long,
+    content: Array[(String, Any)])
+  extends TableStoreData(content) with Logging with Serializable {
+  override def getContent: Array[Byte] = {
+    val obj = new JSONObject()
+    obj.put(__OTS_RECORD_TYPE__, recordType)
+    obj.put(__OTS_RECORD_TIMESTAMP__, recordTimeStamp)
+    content.foreach(o => obj.put(o._1, o._2))
+    obj.toJSONString.getBytes
+  }
 
-class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
-    topic: String, source: String, value: String)
-  extends LoghubData {
-  override def toArray: Array[String] = Array(project, store, shardId.toString, dataTime.toString, topic, source, value)
+  override def toArray: Array[Any] = {
+    Array(recordType, recordTimeStamp) ++: content.map(_._2)
+  }
 }

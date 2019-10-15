@@ -22,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConversions._
 
+import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
 
@@ -38,6 +39,7 @@ import org.apache.spark.unsafe.types.UTF8String
 
 class LoghubContinuousReader(
     schema: StructType,
+    defaultSchema: Boolean,
     offsetReader: LoghubOffsetReader,
     loghubParams: util.Map[String, Object],
     sourceOptions: Map[String, String],
@@ -87,7 +89,13 @@ class LoghubContinuousReader(
     startOffsets.toSeq.map {
       case (loghubShard, of) => {
         LoghubContinuousInputPartition(
-          loghubShard.logProject, loghubShard.logStore, loghubShard.shard, of, sourceOptions, readSchema.fieldNames)
+          loghubShard.logProject,
+          loghubShard.logStore,
+          loghubShard.shard,
+          of,
+          sourceOptions,
+          readSchema.fieldNames,
+          defaultSchema)
         : InputPartition[InternalRow]
       }
     }.asJava
@@ -100,14 +108,29 @@ case class LoghubContinuousInputPartition(
     shardId: Int,
     offset: Int,
     sourceOptions: Map[String, String],
-    schemaFieldNames: Array[String]) extends ContinuousInputPartition[InternalRow] {
+    schemaFieldNames: Array[String],
+    defaultSchema: Boolean) extends ContinuousInputPartition[InternalRow] {
   override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
     val off = offset.asInstanceOf[LoghubShardOffset]
-    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, off.offset, sourceOptions, schemaFieldNames)
+    new LoghubContinuousInputPartitionReader(
+      logProject,
+      logStore,
+      shardId,
+      off.offset,
+      sourceOptions,
+      schemaFieldNames,
+      defaultSchema)
   }
 
   override def createPartitionReader(): InputPartitionReader[InternalRow] = {
-    new LoghubContinuousInputPartitionReader(logProject, logStore, shardId, offset, sourceOptions, schemaFieldNames)
+    new LoghubContinuousInputPartitionReader(
+      logProject,
+      logStore,
+      shardId,
+      offset,
+      sourceOptions,
+      schemaFieldNames,
+      defaultSchema)
   }
 }
 
@@ -117,7 +140,8 @@ class LoghubContinuousInputPartitionReader(
     shardId: Int,
     offset: Int,
     sourceOptions: Map[String, String],
-    schemaFieldNames: Array[String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
+    schemaFieldNames: Array[String],
+    defaultSchema: Boolean) extends ContinuousInputPartitionReader[InternalRow] with Logging {
 
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
@@ -158,55 +182,77 @@ class LoghubContinuousInputPartitionReader(
       group.GetLogGroup().getLogsList.foreach(log => {
         val topic = group.GetTopic()
         val source = group.GetSource()
-        try {
-          val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
-            (null, null).asInstanceOf[(String, String)]
-          )
-          log.getContentsList
-            .filter(content => schemaFieldPos.contains(content.getKey))
-            .foreach(content => {
-              columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
-            })
+        if (defaultSchema) {
+          val obj = new JSONObject()
+          log.getContentsList.foreach(content => {
+            obj.put(content.getKey, content.getValue)
+          })
 
           val flg = group.GetFastLogGroup()
           for (i <- 0 until flg.getLogTagsCount) {
-            val tagKey = flg.getLogTags(i).getKey
-            val tagValue = flg.getLogTags(i).getValue
-            if (schemaFieldPos.contains(tagKey)) {
-              columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+            obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+          }
+
+          logData.offer(
+            new RawLoghubData(
+              logProject,
+              logStore,
+              shardId,
+              new java.sql.Timestamp(log.getTime * 1000L),
+              topic,
+              source,
+              obj.toJSONString))
+        } else {
+          try {
+            val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
+              (null, null).asInstanceOf[(String, String)]
+            )
+            log.getContentsList
+              .filter(content => schemaFieldPos.contains(content.getKey))
+              .foreach(content => {
+                columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
+              })
+
+            val flg = group.GetFastLogGroup()
+            for (i <- 0 until flg.getLogTagsCount) {
+              val tagKey = flg.getLogTags(i).getKey
+              val tagValue = flg.getLogTags(i).getValue
+              if (schemaFieldPos.contains(tagKey)) {
+                columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+              }
             }
-          }
 
-          if (schemaFieldPos.contains(__PROJECT__)) {
-            columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
-          }
+            if (schemaFieldPos.contains(__PROJECT__)) {
+              columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
+            }
 
-          if (schemaFieldPos.contains(__STORE__)) {
-            columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
-          }
+            if (schemaFieldPos.contains(__STORE__)) {
+              columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
+            }
 
-          if (schemaFieldPos.contains(__SHARD__)) {
-            columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
-          }
+            if (schemaFieldPos.contains(__SHARD__)) {
+              columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
+            }
 
-          if (schemaFieldPos.contains(__TOPIC__)) {
-            columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
-          }
+            if (schemaFieldPos.contains(__TOPIC__)) {
+              columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
+            }
 
-          if (schemaFieldPos.contains(__SOURCE__)) {
-            columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
-          }
+            if (schemaFieldPos.contains(__SOURCE__)) {
+              columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
+            }
 
-          if (schemaFieldPos.contains(__TIME__)) {
-            columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
-          }
+            if (schemaFieldPos.contains(__TIME__)) {
+              columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
+            }
 
-          count += 1
-          logData.offer(new SchemaLoghubData(columnArray))
-        } catch {
-          case e: NoSuchElementException =>
-            logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-              s"data and continue.")
+            count += 1
+            logData.offer(new SchemaLoghubData(columnArray))
+          } catch {
+            case e: NoSuchElementException =>
+              logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
+                s"data and continue.")
+          }
         }
       })
     })
