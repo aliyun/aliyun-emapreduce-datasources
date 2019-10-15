@@ -24,7 +24,6 @@ import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
@@ -57,7 +56,7 @@ class LoghubSource(
       .map { k => k.drop(10).toString -> sourceOptions(k) }
       .toMap
   @transient private val zkClient = LoghubOffsetReader.getOrCreateZKClient(zkParams)
-  private val batches = new mutable.HashMap[(Option[Offset], Offset), RDD[InternalRow]]()
+  private val batches = new mutable.HashMap[(Option[Offset], Offset), LoghubSourceRDD]()
 
   private val accessKeyId = sourceOptions.getOrElse("access.key.id",
     throw new MissingArgumentException("Missing access key id (='access.key.id')."))
@@ -158,10 +157,7 @@ class LoghubSource(
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore,
       accessKeyId, accessKeySecret, endpoint, shardOffsets, schema.fieldNames, zkParams,
       metadataPath, maxOffsetsPerTrigger.toLong, fallback = fallback)
-      .mapPartitions(it => {
-        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
-        it.map(t => transFunc(t, encoderForDataColumns))
-      })
+
     sqlContext.sparkContext.setLocalProperty(EXECUTION_ID_KEY, null)
     rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
 
@@ -188,7 +184,10 @@ class LoghubSource(
       val expiredBatches = batches.filter(b => !b._1._1.equals(initialStart) || !b._1._2.equals(end))
       expiredBatches.foreach(_._2.unpersist())
       expiredBatches.foreach(b => batches.remove(b._1))
-      batches((initialStart, end))
+      batches((initialStart, end)).mapPartitions(it => {
+        val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+        it.map(t => transFunc(t, encoderForDataColumns))
+      })
     } else {
       val fromShardOffsets = start match {
         case Some(prevBatchEndOffset) =>

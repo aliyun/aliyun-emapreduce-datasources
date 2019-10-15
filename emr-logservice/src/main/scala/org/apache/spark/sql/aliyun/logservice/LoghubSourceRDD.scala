@@ -109,9 +109,13 @@ class LoghubSourceRDD(
             if (logData.isEmpty) {
               fetchNextBatch()
             }
-
-            hasRead += 1
-            logData.poll()
+            if (logData.isEmpty) {
+              finished = true
+              null.asInstanceOf[LoghubData]
+            } else {
+              hasRead += 1
+              logData.poll()
+            }
           } else {
             null.asInstanceOf[LoghubData]
           }
