@@ -20,21 +20,19 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
-import com.aliyun.openservices.log.response.BatchGetLogResponse;
-import com.aliyun.openservices.log.response.ConsumerGroupCheckPointResponse;
-import com.aliyun.openservices.log.response.ConsumerGroupUpdateCheckPointResponse;
-import com.aliyun.openservices.log.response.CreateConsumerGroupResponse;
-import com.aliyun.openservices.log.response.GetCursorResponse;
-import com.aliyun.openservices.log.response.GetCursorTimeResponse;
-import com.aliyun.openservices.log.response.GetHistogramsResponse;
-import com.aliyun.openservices.log.response.ListConsumerGroupResponse;
-import com.aliyun.openservices.log.response.ListShardResponse;
+import com.aliyun.openservices.log.exception.LogException;
+import com.aliyun.openservices.log.response.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.http.conn.ConnectTimeoutException;
+import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
   private Client client;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
+    this.client.setUserAgent(VersionInfoUtils.getDefaultUserAgent());
   }
 
   public ListShardResponse ListShard(String logProject, String logStore)
