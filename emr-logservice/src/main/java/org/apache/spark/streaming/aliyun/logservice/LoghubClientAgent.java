@@ -20,11 +20,7 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
-import com.aliyun.openservices.log.exception.LogException;
 import com.aliyun.openservices.log.response.*;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
