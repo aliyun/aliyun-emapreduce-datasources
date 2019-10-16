@@ -68,6 +68,11 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup, shard));
   }
 
+  public ConsumerGroupCheckPointResponse ListCheckpoints(String project, String logStore, String consumerGroup)
+          throws Exception {
+    return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup));
+  }
+
   public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor,
                                          String endCursor) throws Exception {
     return RetryUtil.call(() -> client.BatchGetLog(project, logStore, shardId, count, cursor, endCursor));
