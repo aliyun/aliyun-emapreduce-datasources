@@ -136,7 +136,6 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
       case _: ZkNoNodeException =>
         logDebug("If this is the first time to run, it is fine to not find any commit data in " +
           "zookeeper.")
-      // Do nothing, make compiler happy.
     }
   }
 
