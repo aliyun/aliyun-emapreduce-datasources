@@ -85,13 +85,13 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
     val concurrentJobs = ssc.conf.getInt(s"spark.streaming.concurrentJobs", 1)
     require(concurrentJobs == 1, "Loghub direct api only supports one job concurrently, " +
       "but \"spark.streaming.concurrentJobs\"=" + concurrentJobs)
-    checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
-    if (StringUtils.isBlank(ssc.checkpointDir)) {
-      checkpointDir = s"/$consumerGroup"
+
+    var zkCheckpointDir = ssc.checkpointDir
+    if (StringUtils.isBlank(zkCheckpointDir)) {
+      zkCheckpointDir = s"/$consumerGroup"
       logInfo(s"Checkpoint dir was not specified, using consumer group $consumerGroup as checkpoint dir")
-    } else {
-      checkpointDir = new Path(ssc.checkpointDir).toUri.getPath
     }
+    checkpointDir = new Path(zkCheckpointDir).toUri.getPath
     createZkClient()
 
     try {
