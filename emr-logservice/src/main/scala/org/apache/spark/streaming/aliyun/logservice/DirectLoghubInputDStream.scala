@@ -16,32 +16,30 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-import java.io.{IOException, ObjectInputStream, UnsupportedEncodingException}
+import java.io.{IOException, ObjectInputStream}
 import java.nio.charset.StandardCharsets
-import java.util
 
 import com.aliyun.openservices.log.common.Consts.CursorMode
-import com.aliyun.openservices.log.common.{ConsumerGroup, ConsumerGroupShardCheckPoint}
+import com.aliyun.openservices.log.common.ConsumerGroup
 import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import com.aliyun.openservices.loghub.client.exceptions.LogHubClientWorkerException
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
+import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
-import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class DirectLoghubInputDStream(_ssc: StreamingContext,
                                project: String,
@@ -106,7 +104,6 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
         throw new RuntimeException("Loghub direct api depends on zookeeper. Make sure that " +
           "zookeeper is on active service.", e)
     }
-
     loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
 
     tryToCreateConsumerGroup()
@@ -122,9 +119,8 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
     if (diff.nonEmpty) {
       val checkpoints = fetchAllCheckpoints()
       diff.foreach(shardId => {
-        val nextCursor = findCheckpointOrCursorForShard(shardId, checkpoints)
-        DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$shardId.shard",
-          nextCursor)
+        val cursor = findCheckpointOrCursorForShard(shardId, checkpoints)
+        DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$shardId.shard", cursor)
       })
     }
 
@@ -191,8 +187,8 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
         try {
           loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
             val shardId = shard.GetShardId()
-            if (shard.getStatus.toLowerCase.equals("readonly") && readOnlyShardCache.contains(shardId)) {
-              // do nothing
+            val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
+            if (isReadonly && readOnlyShardCache.contains(shardId)) {
               logDebug(s"There is no data to consume from shard $shardId.")
             } else {
               val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
@@ -201,7 +197,7 @@ class DirectLoghubInputDStream(_ssc: StreamingContext,
               if (!start.equals(end)) {
                 shardOffsets.+=((shardId, start, end))
               }
-              if (start.equals(end) && shard.getStatus.toLowerCase.equals("readonly")) {
+              if (start.equals(end) && isReadonly) {
                 readOnlyShardCache.put(shardId, end)
               }
             }
