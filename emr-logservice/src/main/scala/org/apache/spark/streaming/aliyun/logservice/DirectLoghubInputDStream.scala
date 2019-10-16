@@ -41,17 +41,18 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class DirectLoghubInputDStream(_ssc: StreamingContext,
-                               project: String,
-                               logStore: String,
-                               consumerGroup: String,
-                               accessKeyId: String,
-                               accessKeySecret: String,
-                               endpoint: String,
-                               zkParams: Map[String, String],
-                               mode: LogHubCursorPosition,
-                               cursorStartTime: Long = -1L
-                              ) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
+class DirectLoghubInputDStream(
+    _ssc: StreamingContext,
+    project: String,
+    logStore: String,
+    consumerGroup: String,
+    accessKeyId: String,
+    accessKeySecret: String,
+    endpoint: String,
+    zkParams: Map[String, String],
+    mode: LogHubCursorPosition,
+    cursorStartTime: Long = -1L
+) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
   @transient private var loghubClient: LoghubClientAgent = null
   @transient private var COMMIT_LOCK = new Object()
