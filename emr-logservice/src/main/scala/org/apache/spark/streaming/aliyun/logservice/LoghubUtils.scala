@@ -69,7 +69,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -122,7 +122,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -185,7 +185,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -245,7 +245,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -290,7 +290,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -338,7 +338,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -387,7 +387,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -439,7 +439,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -486,7 +486,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -513,7 +513,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -540,7 +540,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -569,7 +569,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -600,7 +600,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -634,7 +634,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -669,7 +669,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -705,7 +705,7 @@ object LoghubUtils {
    * @return
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -737,7 +737,7 @@ object LoghubUtils {
    */
   @Experimental
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createDirectStream(
       ssc: StreamingContext,
       project: String,
@@ -773,7 +773,7 @@ object LoghubUtils {
    */
   @Experimental
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createDirectStream(
       ssc: StreamingContext,
       project: String,
@@ -806,7 +806,7 @@ object LoghubUtils {
    */
   @Experimental
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createDirectStream(
       jssc: JavaStreamingContext,
       project: String,
@@ -842,7 +842,7 @@ object LoghubUtils {
    */
   @Experimental
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.readStream.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
   def createDirectStream(
       jssc: JavaStreamingContext,
       project: String,
@@ -859,7 +859,7 @@ object LoghubUtils {
   }
 
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
-    """Please use 'spark.read.format("loghub")' instead.""", "1.9.0-SNAPSHOT")
+    """Please use 'spark.read.format("loghub")' instead.""", "1.8.0")
   def createRDD(
       sc:SparkContext,
       project: String,
