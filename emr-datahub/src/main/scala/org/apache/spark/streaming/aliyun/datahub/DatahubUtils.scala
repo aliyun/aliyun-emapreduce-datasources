@@ -25,6 +25,7 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.JavaStreamingContext
 import org.apache.spark.streaming.dstream.DStream
 
+@deprecated("""Please use 'spark.readStream.format("datahub")' instead.""", "1.8.0")
 object DatahubUtils {
   /**
    * Scala constructor to create a DStream from datahub source.
@@ -248,6 +249,10 @@ object DatahubUtils {
   }
 }
 
+/**
+ * @deprecated As of release 1.8.0, please use spark.readStream.format("datahub") instead.
+ */
+@Deprecated
 class DatahubUtilsHelper {
   /**
    * Java constructor to create a DStream from datahub source.
