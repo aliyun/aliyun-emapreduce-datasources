@@ -217,6 +217,7 @@ object LoghubSourceProvider {
   val __TOPIC__ = "__topic__"
   val __SOURCE__ = "__source__"
   val __VALUE__ = "__value__"
+  val __SEQUENCE_NUMBER__ = "__sequenceNumber__"
 
   def getDefaultSchema: StructType = {
     new StructType()

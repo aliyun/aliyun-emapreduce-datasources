@@ -20,22 +20,21 @@ import java.util
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
-
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
-import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
 import org.apache.spark.sql.sources.v2.reader.streaming._
+import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
+
+import scala.collection.JavaConversions._
 
 class LoghubContinuousReader(
     schema: StructType,
@@ -146,6 +145,7 @@ class LoghubContinuousInputPartitionReader(
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
   private val step: Int = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
+  private val appendSequenceNumber: Boolean = sourceOptions.getOrElse("loghub.appendSequenceNumber", "false").toBoolean
   private var hasRead: Int = 0
   private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
@@ -178,19 +178,27 @@ class LoghubContinuousInputPartitionReader(
       step, nextCursor, endCursor)
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     var count = 0
+    var seqNum = Utils.decodeCursorToTimestamp(nextCursor)
     batchGetLogRes.GetLogGroups().foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => {
-        val topic = group.GetTopic()
-        val source = group.GetSource()
+      val logGroup = group.GetFastLogGroup();
+      val logCount = logGroup.getLogsCount
+      var logIndex = 0
+      for (i <- 0 until logCount) {
+        val log = logGroup.getLogs(i)
+        val topic = logGroup.getTopic
+        val source = logGroup.getSource
         if (defaultSchema) {
           val obj = new JSONObject()
-          log.getContentsList.foreach(content => {
-            obj.put(content.getKey, content.getValue)
-          })
-
-          val flg = group.GetFastLogGroup()
-          for (i <- 0 until flg.getLogTagsCount) {
-            obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+          for (i <- 0 until log.getContentsCount) {
+            val field = log.getContents(i)
+            obj.put(field.getKey, field.getValue)
+          }
+          for (i <- 0 until logGroup.getLogTagsCount) {
+            val tag = logGroup.getLogTags(i)
+            obj.put("__tag__:".concat(tag.getKey), tag.getValue)
+          }
+          if (appendSequenceNumber) {
+            obj.put(__SEQUENCE_NUMBER__, seqNum + "-" + logIndex)
           }
 
           logData.offer(
@@ -207,45 +215,41 @@ class LoghubContinuousInputPartitionReader(
             val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
               (null, null).asInstanceOf[(String, String)]
             )
-            log.getContentsList
-              .filter(content => schemaFieldPos.contains(content.getKey))
-              .foreach(content => {
-                columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
-              })
-
-            val flg = group.GetFastLogGroup()
-            for (i <- 0 until flg.getLogTagsCount) {
-              val tagKey = flg.getLogTags(i).getKey
-              val tagValue = flg.getLogTags(i).getValue
+            for (i <- 0 until log.getContentsCount) {
+              val field = log.getContents(i)
+              if (schemaFieldPos.contains(field.getKey)) {
+                columnArray(schemaFieldPos(field.getKey)) = (field.getKey, field.getValue)
+              }
+            }
+            for (i <- 0 until logGroup.getLogTagsCount) {
+              val tag = logGroup.getLogTags(i)
+              val tagKey = tag.getKey
+              val tagValue = tag.getValue
               if (schemaFieldPos.contains(tagKey)) {
                 columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
               }
             }
-
+            if (appendSequenceNumber && schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
+              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, seqNum + "-" + logIndex)
+            }
             if (schemaFieldPos.contains(__PROJECT__)) {
               columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
             }
-
             if (schemaFieldPos.contains(__STORE__)) {
               columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
             }
-
             if (schemaFieldPos.contains(__SHARD__)) {
               columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
             }
-
             if (schemaFieldPos.contains(__TOPIC__)) {
               columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
             }
-
             if (schemaFieldPos.contains(__SOURCE__)) {
               columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
             }
-
             if (schemaFieldPos.contains(__TIME__)) {
               columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
             }
-
             count += 1
             logData.offer(new SchemaLoghubData(columnArray))
           } catch {
@@ -253,8 +257,10 @@ class LoghubContinuousInputPartitionReader(
               logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
                 s"data and continue.")
           }
+          logIndex += 1
         }
-      })
+      }
+      seqNum += 1
     })
 
     val crt = nextCursor
