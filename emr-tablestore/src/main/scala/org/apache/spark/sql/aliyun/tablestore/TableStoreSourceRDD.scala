@@ -178,8 +178,13 @@ class TableStoreSourceRDD(
                 logInfo("fetch next batch")
                 fetchNextBatch()
               }
-              hasRead += 1
-              logData.poll()
+              if (logData.isEmpty) {
+                finished = true
+                null.asInstanceOf[TableStoreData]
+              } else {
+                hasRead += 1
+                logData.poll()
+              }
             } else {
               logInfo(s"Current logData, hasRead: ${hasRead}, logData: ${logData.size}")
               checkpointer.checkpoint(

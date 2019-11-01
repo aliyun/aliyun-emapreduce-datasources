@@ -21,6 +21,8 @@ import com.aliyun.openservices.log.exception.LogException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 final class RetryUtil {
@@ -30,6 +32,15 @@ final class RetryUtil {
   private static final long initialBackoff = 1000;
   private static final int maxRetry = 10;
 
+  private static final List<String> UNRECOVERABLE_ERROR_CODES = Arrays.asList(
+          "ProjectNotExist",
+          "LogStoreNotExist",
+          "ConsumerGroupAlreadyExist",
+          "ConsumerGroupNotExist",
+          "InvalidCursor",
+          "Unauthorized"
+  );
+
   static <T> T call(Callable<T> callable) throws Exception {
     long backoff = initialBackoff;
     int retries = 0;
@@ -37,24 +48,23 @@ final class RetryUtil {
       try {
         return callable.call();
       } catch (LogException ex) {
-        if ("ConsumerGroupAlreadyExist".equals(ex.GetErrorCode())) {
+        if (UNRECOVERABLE_ERROR_CODES.contains(ex.GetErrorCode())) {
           throw ex;
         }
         if (ex.GetHttpCode() < 500) {
           if (retries >= maxRetry) {
-            LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
             throw ex;
           }
           ++retries;
         } else {
-          // always retry on internal server error
           retries = 0;
         }
+        LOG.warn("Connecting log-service failed: " + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
       } catch (Exception ex) {
         if (retries >= maxRetry) {
-          LOG.error("reconnect to log-service exceed max retry times[" + maxRetry + "].");
           throw ex;
         }
+        LOG.warn("Connecting log-service failed: " + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
         ++retries;
       }
       Thread.sleep(backoff);
