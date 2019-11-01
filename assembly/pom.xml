@@ -123,13 +123,16 @@
                             <include>com.aliyun.emr:emr-jdbc_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-hbase_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-datahub_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-common_${scala.binary.version}</include>
                             <include>com.101tec:zkclient</include>
+                            <include>org.apache.zookeeper:zookeeper</include>
                             <include>com.squareup.retrofit2:*</include>
                             <include>com.squareup.okhttp3:*</include>
                             <include>com.squareup.okio:*</include>
                             <include>com.aliyun.emr:emr-redis_${scala.binary.version}</include>
                             <include>com.redislabs:spark-redis</include>
                             <include>redis.clients:jedis</include>
+                            <include>org.apache.curator:*</include>
                         </includes>
                     </artifactSet>
                     <relocations>
@@ -156,6 +159,10 @@
                         <relocation>
                             <pattern>okio</pattern>
                             <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache.curator</pattern>
+                            <shadedPattern>${emr.shade.packageName}.curator</shadedPattern>
                         </relocation>
                     </relocations>
                     <filters>
