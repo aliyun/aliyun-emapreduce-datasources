@@ -145,7 +145,7 @@ class LoghubContinuousInputPartitionReader(
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
   private val step: Int = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
-  private val appendSequenceNumber: Boolean = sourceOptions.getOrElse("loghub.appendSequenceNumber", "false").toBoolean
+  private val appendSequenceNumber: Boolean = sourceOptions.getOrElse("appendSequenceNumber", "false").toBoolean
   private var hasRead: Int = 0
   private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
   private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
@@ -178,7 +178,7 @@ class LoghubContinuousInputPartitionReader(
       step, nextCursor, endCursor)
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     var count = 0
-    var seqNum = Utils.decodeCursorToTimestamp(nextCursor)
+    var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursor)
     batchGetLogRes.GetLogGroups().foreach(group => {
       val logGroup = group.GetFastLogGroup();
       val logCount = logGroup.getLogsCount
@@ -198,7 +198,7 @@ class LoghubContinuousInputPartitionReader(
             obj.put("__tag__:".concat(tag.getKey), tag.getValue)
           }
           if (appendSequenceNumber) {
-            obj.put(__SEQUENCE_NUMBER__, seqNum + "-" + logIndex)
+            obj.put(__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
           }
 
           logData.offer(
@@ -230,7 +230,7 @@ class LoghubContinuousInputPartitionReader(
               }
             }
             if (appendSequenceNumber && schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
-              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, seqNum + "-" + logIndex)
+              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
             }
             if (schemaFieldPos.contains(__PROJECT__)) {
               columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
@@ -260,7 +260,7 @@ class LoghubContinuousInputPartitionReader(
           logIndex += 1
         }
       }
-      seqNum += 1
+      logGroupIndex += 1
     })
 
     val crt = nextCursor
