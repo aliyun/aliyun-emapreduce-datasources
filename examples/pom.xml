@@ -40,6 +40,12 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-common_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-maxcompute_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -151,6 +157,24 @@
             <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-framework</artifactId>
+            <version>${curator.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-client</artifactId>
+            <version>${curator.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+            <version>${curator.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -207,6 +231,7 @@
                             <include>com.aliyun.emr:emr-kudu_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-jdbc_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-redis_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-common_${scala.binary.version}</include>
                             <include>com.aliyun.datahub:aliyun-sdk-datahub</include>
                             <include>com.aliyun.odps:odps-sdk-core</include>
                             <include>com.aliyun.odps:odps-sdk-commons</include>
@@ -254,6 +279,8 @@
                             <include>org.apache.kudu:kudu-spark2_2.11</include>
                             <include>com.redislabs:spark-redis</include>
                             <include>redis.clients:jedis</include>
+                            <include>org.apache.zookeeper:zookeeper</include>
+                            <inclde>org.apache.curator:*</inclde>
                         </includes>
                     </artifactSet>
                     <relocations>
@@ -280,6 +307,10 @@
                         <relocation>
                             <pattern>okio</pattern>
                             <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache.curator</pattern>
+                            <shadedPattern>${emr.shade.packageName}.curator</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>
