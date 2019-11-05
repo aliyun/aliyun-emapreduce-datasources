@@ -31,6 +31,9 @@ import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskCon
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.NextIterator
 
 class LoghubSourceRDD(
@@ -42,9 +45,10 @@ class LoghubSourceRDD(
       endpoint: String,
       shardOffsets: ArrayBuffer[(Int, Int, Int)],
       schemaFieldNames: Array[String],
+      schemaDDL: String,
       defaultSchema: Boolean,
       sourceOptions: Map[String, String])
-    extends RDD[LoghubData](sc, Nil) with Logging {
+    extends RDD[InternalRow](sc, Nil) with Logging {
 
   @transient var mClient: LoghubClientAgent =
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -57,12 +61,12 @@ class LoghubSourceRDD(
   }
 
   @DeveloperApi
-  override def compute(split: Partition, context: TaskContext): Iterator[LoghubData] = {
+  override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     initialize()
     val shardPartition = split.asInstanceOf[ShardPartition]
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     try {
-      new InterruptibleIterator[LoghubData](context, new NextIterator[LoghubData]() {
+      new InterruptibleIterator[InternalRow](context, new NextIterator[InternalRow]() {
         val startCursor: GetCursorResponse =
           mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.startCursor)
         val endCursor: GetCursorResponse =
@@ -76,6 +80,9 @@ class LoghubSourceRDD(
         private var logData = new LinkedBlockingQueue[LoghubData](4096 * step)
         private val inputMetrics = context.taskMetrics.inputMetrics
 
+        private val schema = StructType.fromDDL(shardPartition.schemaDDL)
+        private val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
+
         context.addTaskCompletionListener {
           _ => closeIfNeeded()
         }
@@ -84,7 +91,7 @@ class LoghubSourceRDD(
 
         def checkHasNext(): Boolean = nextCursorNano < endCursorNano || logData.nonEmpty
 
-        override protected def getNext(): LoghubData = {
+        override protected def getNext(): InternalRow = {
           finished = !checkHasNext()
           if (!finished) {
             if (logData.isEmpty) {
@@ -92,13 +99,16 @@ class LoghubSourceRDD(
             }
             if (logData.isEmpty) {
               finished = true
-              null.asInstanceOf[LoghubData]
+              null.asInstanceOf[InternalRow]
             } else {
               hasRead += 1
-              logData.poll()
+              val data = logData.poll()
+              val row = new GenericInternalRow(schema.length)
+              data.toArray.zipWithIndex.foreach{ case (t, idx) => row(idx) = valueConverters(idx).apply(t)}
+              row.asInstanceOf[InternalRow]
             }
           } else {
-            null.asInstanceOf[LoghubData]
+            null.asInstanceOf[InternalRow]
           }
         }
 
@@ -216,15 +226,15 @@ class LoghubSourceRDD(
       })
     } catch {
       case _: Exception =>
-        Iterator.empty.asInstanceOf[Iterator[LoghubData]]
+        Iterator.empty.asInstanceOf[Iterator[InternalRow]]
     }
   }
 
   override protected def getPartitions: Array[Partition] = {
     val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     shardOffsets.zipWithIndex.map { case (p, idx) =>
-      new ShardPartition(id, idx, p._1, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
+      new ShardPartition(id, idx, p._1, project, logStore, accessKeyId, accessKeySecret,
+        endpoint, schemaDDL, p._2, p._3, logGroupStep).asInstanceOf[Partition]
     }.toArray
   }
 
@@ -237,6 +247,7 @@ class LoghubSourceRDD(
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
+      val schemaDDL: String,
       val startCursor: Int,
       val endCursor: Int,
       val logGroupStep: Int = 100) extends Partition with Logging {

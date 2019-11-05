@@ -45,7 +45,7 @@ class TableStoreSource(
   extends Source with Logging with Serializable {
 
   // private sql scope for testsuite.
-  private[sql] val batches = new mutable.HashMap[(Option[Offset], Offset), RDD[InternalRow]]()
+  private[sql] val batches = new mutable.HashMap[(Option[Offset], Offset), TableStoreSourceRDD]()
 
   private val accessKeyId = sourceOptions.getOrElse(
     "access.key.id",
@@ -163,7 +163,6 @@ class TableStoreSource(
     batches.foreach(e => e._2.unpersist(false))
     batches.clear()
 
-    val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
     val rdd = new TableStoreSourceRDD(
       sqlContext.sparkContext,
       instanceName,
@@ -176,9 +175,7 @@ class TableStoreSource(
       schema,
       maxOffsetsPerChannel.toLong,
       checkpointTable
-    ).map(it => {
-      encoderForDataColumns.toRow(new GenericRow(it.toArray))
-    })
+    )
     sqlContext.sparkContext.setLocalProperty(EXECUTION_ID_KEY, null)
     rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
 
@@ -214,8 +211,10 @@ class TableStoreSource(
       )
       expiredBatches.foreach(_._2.unpersist())
       expiredBatches.foreach(b => batches.remove(b._1))
-      logInfo(s"Batches contains RDD")
-      batches((initialStart, end))
+      val encoderForDataColumns = RowEncoder(schema).resolveAndBind()
+      batches((initialStart, end)).map(it => {
+        encoderForDataColumns.toRow(new GenericRow(it.toArray))
+      })
     } else {
       logInfo(s"Batches not contains RDD")
       val fromChannelOffsets = start match {

@@ -25,8 +25,6 @@ import org.apache.commons.cli.MissingArgumentException
 import org.apache.commons.io.IOUtils
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
@@ -134,15 +132,7 @@ class LoghubSource(
       shardOffsets.+=((shard.shard, earliest(shard), untilShardOffsets(shard)))
     })
     val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId, accessKeySecret,
-      endpoint, shardOffsets, schema.fieldNames, defaultSchema, sourceOptions)
-      .mapPartitions(it => {
-        val valueConverters = schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
-        it.map(t => {
-          val row = new GenericInternalRow(schema.length)
-          t.toArray.zipWithIndex.foreach{ case (t, idx) => row(idx) = valueConverters(idx).apply(t)}
-          row.asInstanceOf[InternalRow]
-        })
-      })
+      endpoint, shardOffsets, schema.fieldNames, schema.toDDL, defaultSchema, sourceOptions)
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)
   }
