@@ -21,7 +21,6 @@ import com.alicloud.openservices.tablestore.model.tunnel.internal.{CheckpointReq
 import com.alicloud.openservices.tablestore.{SyncClientInterface, TunnelClientInterface}
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -89,10 +88,10 @@ class TableStoreSource(
     logInfo("initialPartitionOffsets")
     val metadataLog = new TableStoreInitialOffsetWriter(sqlContext.sparkSession, metadataPath)
     metadataLog.get(0).getOrElse {
-        val offsets = TableStoreSourceOffset(tableStoreOffsetReader.fetchStartOffsets())
-        metadataLog.add(0, offsets)
-        logInfo(s"Initial offsets: $offsets")
-        offsets
+      val offsets = TableStoreSourceOffset(tableStoreOffsetReader.fetchStartOffsets())
+      metadataLog.add(0, offsets)
+      logInfo(s"Initial offsets: $offsets")
+      offsets
     }.channelOffsets
   }
 
@@ -109,6 +108,8 @@ class TableStoreSource(
       case NonFatal(ex) => logInfo(s"Non fatal exception! $ex")
     }
   }
+
+  private var isInitial = true
 
   private[sql] val innerSchema = TableStoreSource.tableStoreSchema(
     userSpecifiedSchema.getOrElse(TableStoreCatalog(sourceOptions).schema)
@@ -149,7 +150,13 @@ class TableStoreSource(
     // Initial Tablestore checkpointer
     initialCheckpointer
 
-    val startOffsets = fetchMergedStartOffsets()
+    val startOffsets = if (isInitial) {
+      isInitial = false
+      tableStoreOffsetReader.fetchOffsetsFromTunnel()
+    } else {
+      fetchMergedStartOffsets()
+    }
+
     logInfo(s"Current startOffsets: ${startOffsets}")
 
     // ChannelId, BeginOffset, EndOffset
