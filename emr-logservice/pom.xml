@@ -26,6 +26,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-common_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
@@ -168,6 +174,7 @@
                     <outputFile>${project.build.directory}/shaded/emr-logservice_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
+                            <include>com.aliyun.emr:emr-common_2.11</include>
                             <include>com.aliyun.openservices:aliyun-log</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
                             <include>com.aliyun.openservices:aliyun-log-producer</include>
@@ -177,6 +184,9 @@
                             <include>net.sf.json-lib:json-lib</include>
                             <include>commons-validator:commons-validator</include>
                             <include>com.alibaba:fastjson</include>
+                            <include>org.apache.zookeeper:zookeeper</include>
+                            <include>com.101tec:zkclient</include>
+                            <inclde>org.apache.curator:*</inclde>
                         </includes>
                     </artifactSet>
                     <relocations>
