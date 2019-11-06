@@ -232,13 +232,14 @@ object Utils extends Logging {
     val zkConnection = new ZkConnection(zkConnect, zkSessionTimeoutMs)
     val zkClient = new ZkClient(zkConnection, zkConnectTimeoutMs, new ZKStringSerializer())
     try {
-      val configPath = if (checkpoint.endsWith("/")) {
-        s"${checkpoint}sources/config"
+      val configPathParent = if (checkpoint.endsWith("/")) {
+        s"${checkpoint}sources"
       } else {
-        s"$checkpoint/sources/config"
+        s"$checkpoint/sources"
       }
+      val configPath = s"$configPathParent/config"
       val configFileExists = zkClient.exists(configPath)
-      val updateConfig = if (configFileExists) {
+      if (configFileExists) {
         val data: String = zkClient.readData(configPath)
         val jsonObject = JSON.parseObject(data)
         val configObject = jsonObject.getJSONObject("config")
@@ -265,9 +266,8 @@ object Utils extends Logging {
           logProjectObject.put(logStore, logStoreObject)
           configObject.put(logProject, logProjectObject)
         }
-        jsonObject
+        zkClient.writeData(configPath, jsonObject.toJSONString)
       } else {
-        zkClient.createPersistent(configPath, true)
         val jsonObject = new JSONObject()
         val configObject = new JSONObject()
         val logProjectObject = new JSONObject()
@@ -279,11 +279,9 @@ object Utils extends Logging {
         configObject.put(logProject, logProjectObject)
         jsonObject.put("config", configObject)
         jsonObject.put("version", "v1")
-        jsonObject
+        zkClient.createPersistent(configPathParent, true)
+        zkClient.createPersistent(configPath, jsonObject.toJSONString)
       }
-
-      val dataString = updateConfig.toJSONString
-      zkClient.writeData(configPath, dataString)
     } catch {
       case e: Exception =>
         throw new Exception(s"Failed to update config for [$logProject/$logStore]", e)
