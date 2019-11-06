@@ -164,12 +164,10 @@ class LoghubSourceRDD(
                   val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
                     (null, null).asInstanceOf[(String, String)]
                   )
-                  for (i <- 0 until fastLogGroup.getLogTagsCount) {
-                    val tag = fastLogGroup.getLogTags(i)
-                    val tagKey = tag.getKey
-                    val tagValue = tag.getValue
-                    if (schemaFieldPos.contains(tagKey)) {
-                      columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
+                  for (i <- 0 until log.getContentsCount) {
+                    val field = log.getContents(i)
+                    if (schemaFieldPos.contains(field.getKey)) {
+                      columnArray(schemaFieldPos(field.getKey)) = (field.getKey, field.getValue)
                     }
                   }
                   for (i <- 0 until fastLogGroup.getLogTagsCount) {
