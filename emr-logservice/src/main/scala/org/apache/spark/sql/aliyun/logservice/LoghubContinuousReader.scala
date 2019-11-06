@@ -181,7 +181,7 @@ class LoghubContinuousInputPartitionReader(
     var count = 0
     var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursor)
     batchGetLogRes.GetLogGroups().foreach(group => {
-      val logGroup = group.GetFastLogGroup();
+      val logGroup = group.GetFastLogGroup()
       val logCount = logGroup.getLogsCount
       var logIndex = 0
       for (i <- 0 until logCount) {
