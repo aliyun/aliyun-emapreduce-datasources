@@ -20,9 +20,12 @@ import java.util
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
+import scala.collection.JavaConversions._
+
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
@@ -34,7 +37,6 @@ import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPa
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
-import scala.collection.JavaConversions._
 
 class LoghubContinuousReader(
     schema: StructType,

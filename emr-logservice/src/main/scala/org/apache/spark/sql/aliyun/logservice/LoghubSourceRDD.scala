@@ -179,7 +179,7 @@ class LoghubSourceRDD(
                       columnArray(schemaFieldPos(s"__tag__:$tagKey")) = (s"__tag__:$tagKey", tagValue)
                     }
                   }
-                  if (appendSequenceNumber && schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
+                  if (schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
                     columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
                   }
                   if (schemaFieldPos.contains(__PROJECT__)) {

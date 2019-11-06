@@ -23,6 +23,7 @@ import java.sql.{Date, Timestamp}
 import java.util.Base64
 
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
+
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row

@@ -228,6 +228,7 @@ object LoghubSourceProvider {
       .add(StructField(__TOPIC__, StringType))
       .add(StructField(__SOURCE__, StringType))
       .add(StructField(__VALUE__, StringType))
+      .add(StructField(__SEQUENCE_NUMBER__, StringType))
   }
 
   def isDefaultSchema(schema: StructType): Boolean = {
