@@ -27,48 +27,37 @@ import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
 
-class DynamicConfigManager(checkpointRoot: String, zkConnect: String, sessionTimeoutMs: Int) {
+class DynamicConfigManager(rootPath: String, zkConnect: String, sessionTimeoutMs: Int) {
   private val curator: CuratorFramework = CuratorFrameworkFactory.newClient(
     zkConnect, new BoundedExponentialBackoffRetry(100, 100, 20))
   curator.start()
 
-  private val zNodeChangeHandlers = new ConcurrentHashMap[String, ZNodeChangeHandler]().asScala
-  private val zNodeChildChangeHandlers = new ConcurrentHashMap[String, ZNodeChildChangeHandler]().asScala
+  private val zNodeChangeHandlers = new ConcurrentHashMap[(String, String), ZNodeChangeHandler]().asScala
 
-  def registerZNodeChangeHandler(zNodeChangeHandler: ZNodeChangeHandler): Unit = {
-    zNodeChangeHandlers.put(zNodeChangeHandler.path, zNodeChangeHandler)
+  def registerZNodeChangeHandler(name: String, zNodeChangeHandler: ZNodeChangeHandler): Unit = {
+    zNodeChangeHandlers.put((zNodeChangeHandler.path, name), zNodeChangeHandler)
   }
 
   def unregisterZNodeChangeHandler(path: String): Unit = {
-    zNodeChangeHandlers.remove(path)
+    zNodeChangeHandlers.keys.filter(k => k._1.equals(path))
+      .foreach(zNodeChangeHandlers.remove)
   }
 
-  def registerZNodeChildChangeHandler(zNodeChildChangeHandler: ZNodeChildChangeHandler): Unit = {
-    zNodeChildChangeHandlers.put(zNodeChildChangeHandler.path, zNodeChildChangeHandler)
-  }
-
-  def unregisterZNodeChildChangeHandler(path: String): Unit = {
-    zNodeChildChangeHandlers.remove(path)
-  }
-
-  private val configPathCache = new PathChildrenCache(curator, checkpointRoot, true)
+  private val configPathCache = new PathChildrenCache(curator, rootPath, true)
 
   private val configPathCacheListener = new PathChildrenCacheListener {
     override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
       val childPath = event.getData.getPath
       event.getType match {
         case PathChildrenCacheEvent.Type.CHILD_ADDED =>
-          if (childPath.equals(s"$checkpointRoot/config")) {
-            zNodeChangeHandlers.get(childPath).foreach(_.handleCreation())
-          }
+          zNodeChangeHandlers.filter(k => k._1._1.equals(childPath))
+            .foreach(k => k._2.handleCreation())
         case PathChildrenCacheEvent.Type.CHILD_REMOVED =>
-          if (childPath.equals(s"$checkpointRoot/config")) {
-            zNodeChangeHandlers.get(childPath).foreach(_.handleDeletion())
-          }
+          zNodeChangeHandlers.filter(k => k._1._1.equals(childPath))
+            .foreach(k => k._2.handleDeletion())
         case PathChildrenCacheEvent.Type.CHILD_UPDATED =>
-          if (childPath.equals(s"$checkpointRoot/config")) {
-            zNodeChangeHandlers.get(childPath).foreach(_.handleDataChange())
-          }
+          zNodeChangeHandlers.filter(k => k._1._1.equals(childPath))
+            .foreach(k => k._2.handleDataChange())
         case PathChildrenCacheEvent.Type.CONNECTION_LOST =>
           curator.start()
         case PathChildrenCacheEvent.Type.CONNECTION_RECONNECTED =>

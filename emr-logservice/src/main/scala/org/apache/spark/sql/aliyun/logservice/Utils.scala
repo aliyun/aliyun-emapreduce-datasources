@@ -22,9 +22,11 @@ import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
 import java.util.Base64
 
+import com.alibaba.fastjson.{JSON, JSONObject}
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
-
+import org.I0Itec.zkclient.{ZkClient, ZkConnection}
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -214,5 +216,94 @@ object Utils extends Logging {
     val timestampAsBytes = Base64.getDecoder.decode(cursor.getBytes(StandardCharsets.UTF_8))
     val timestamp = new String(timestampAsBytes, StandardCharsets.UTF_8)
     timestamp.toLong
+  }
+
+  /**
+   * Used to update loghub source config.
+   *
+   * @param zkConnect
+   * @param checkpoint
+   * @param logProject
+   * @param logStore
+   * @param sourceProps
+   */
+  def updateSourceConfig(
+      zkConnect: String,
+      checkpoint: String,
+      logProject: String,
+      logStore: String,
+      sourceProps: Map[String, String]): Unit = {
+    val zkConnectTimeoutMs = 10000
+    val zkSessionTimeoutMs = 10000
+    val zkConnection = new ZkConnection(zkConnect, zkSessionTimeoutMs)
+    val zkClient = new ZkClient(zkConnection, zkConnectTimeoutMs, new ZKStringSerializer())
+    try {
+      val configPath = if (checkpoint.endsWith("/")) {
+        s"${checkpoint}sources/config"
+      } else {
+        s"$checkpoint/sources/config"
+      }
+      val configFileExists = zkClient.exists(configPath)
+      val updateConfig = if (configFileExists) {
+        val data: String = zkClient.readData(configPath)
+        val jsonObject = JSON.parseObject(data)
+        val configObject = jsonObject.getJSONObject("config")
+        if (configObject.containsKey(logProject)) {
+          val logProjectObject = configObject.getJSONObject(logProject)
+          if (logProjectObject.containsKey(logStore)) {
+            val logStoreObject = logProjectObject.getJSONObject(logStore)
+            sourceProps.foreach(kv => {
+              logStoreObject.put(kv._1, kv._2)
+            })
+          } else {
+            val logStoreObject = new JSONObject()
+            sourceProps.foreach(kv => {
+              logStoreObject.put(kv._1, kv._2)
+            })
+            logProjectObject.put(logStore, logStoreObject)
+          }
+        } else {
+          val logProjectObject = new JSONObject()
+          val logStoreObject = new JSONObject()
+          sourceProps.foreach(kv => {
+            logStoreObject.put(kv._1, kv._2)
+          })
+          logProjectObject.put(logStore, logStoreObject)
+          configObject.put(logProject, logProjectObject)
+        }
+        jsonObject
+      } else {
+        val jsonObject = new JSONObject()
+        val configObject = new JSONObject()
+        val logProjectObject = new JSONObject()
+        val logStoreObject = new JSONObject()
+        sourceProps.foreach(kv => {
+          logStoreObject.put(kv._1, kv._2)
+        })
+        logProjectObject.put(logStore, logStoreObject)
+        configObject.put(logProject, logProjectObject)
+        jsonObject.put("config", configObject)
+        jsonObject.put("version", "v1")
+        jsonObject
+      }
+
+      val dataString = updateConfig.toJSONString
+      zkClient.writeData(configPath, dataString)
+    } catch {
+      case e: Exception =>
+        throw new Exception(s"Failed to update config for [$logProject/$logStore]", e)
+    } finally {
+      zkClient.close()
+    }
+  }
+
+  def updateSourceConfig(
+      zkConnect: String,
+      checkpoint: String,
+      logProject: String,
+      logStore: String,
+      key: String,
+      value: String): Unit = {
+    updateSourceConfig(zkConnect, checkpoint, logProject, logStore, Map(key -> value))
   }
 }

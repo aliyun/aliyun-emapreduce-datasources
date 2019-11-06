@@ -111,6 +111,12 @@
         </dependency>
 
         <dependency>
+            <groupId>net.sf.jopt-simple</groupId>
+            <artifactId>jopt-simple</artifactId>
+            <version>5.0.4</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.binary.version}</artifactId>
             <scope>test</scope>
@@ -186,7 +192,8 @@
                             <include>com.alibaba:fastjson</include>
                             <include>org.apache.zookeeper:zookeeper</include>
                             <include>com.101tec:zkclient</include>
-                            <inclde>org.apache.curator:*</inclde>
+                            <include>org.apache.curator:*</include>
+                            <include>net.sf.jopt-simple:jopt-simple</include>
                         </includes>
                     </artifactSet>
                     <relocations>
