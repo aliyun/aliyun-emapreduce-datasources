@@ -267,6 +267,7 @@ object Utils extends Logging {
         }
         jsonObject
       } else {
+        zkClient.createPersistent(configPath, true)
         val jsonObject = new JSONObject()
         val configObject = new JSONObject()
         val logProjectObject = new JSONObject()
