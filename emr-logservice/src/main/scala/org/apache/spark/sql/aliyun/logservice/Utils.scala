@@ -18,11 +18,13 @@
 package org.apache.spark.sql.aliyun.logservice
 
 import java.math.BigDecimal
+import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
+import java.util.Base64
 
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
-import org.apache.commons.cli.MissingArgumentException
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -206,5 +208,11 @@ object Utils extends Logging {
         }
       }.toMap
     LoghubSourceOffset.partitionOffsets(startOffsets)
+  }
+
+  def decodeCursorToTimestamp(cursor: String): Long = {
+    val timestampAsBytes = Base64.getDecoder.decode(cursor.getBytes(StandardCharsets.UTF_8))
+    val timestamp = new String(timestampAsBytes, StandardCharsets.UTF_8)
+    timestamp.toLong
   }
 }

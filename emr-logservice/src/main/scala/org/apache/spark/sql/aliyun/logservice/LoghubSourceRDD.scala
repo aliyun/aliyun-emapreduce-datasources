@@ -54,6 +54,7 @@ class LoghubSourceRDD(
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
 
   val step = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
+  private val appendSequenceNumber: Boolean = sourceOptions.getOrElse("appendSequenceNumber", "false").toBoolean
 
   private def initialize(): Unit = {
     mClient = LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -125,22 +126,30 @@ class LoghubSourceRDD(
           val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore,
             shardPartition.shardId, step, nextCursorTime, endCursor.GetCursor())
           var count = 0
+          var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursorTime)
           batchGetLogRes.GetLogGroups().foreach(group => {
-            group.GetLogGroup().getLogsList.foreach(log => {
-              val topic = group.GetTopic()
-              val source = group.GetSource()
+            val fastLogGroup = group.GetFastLogGroup()
+            var logIndex = 0
+            val logCount = fastLogGroup.getLogsCount
+            for (i <- 0 until logCount) {
+              val log = fastLogGroup.getLogs(i)
+              val topic = fastLogGroup.getTopic
+              val source = fastLogGroup.getSource
               try {
                 if (defaultSchema) {
                   val obj = new JSONObject()
-                  log.getContentsList.foreach(content => {
-                    obj.put(content.getKey, content.getValue)
-                  })
-
-                  val flg = group.GetFastLogGroup()
-                  for (i <- 0 until flg.getLogTagsCount) {
-                    obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+                  val fieldCount = log.getContentsCount
+                  for (j <- 0 until fieldCount) {
+                    val f = log.getContents(j)
+                    obj.put(f.getKey, f.getValue)
                   }
-
+                  for (i <- 0 until fastLogGroup.getLogTagsCount) {
+                    val tag = fastLogGroup.getLogTags(i)
+                    obj.put("__tag__:".concat(tag.getKey), tag.getValue)
+                  }
+                  if (appendSequenceNumber) {
+                    obj.put(__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
+                  }
                   logData.offer(
                     new RawLoghubData(
                       project,
@@ -154,41 +163,38 @@ class LoghubSourceRDD(
                   val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
                     (null, null).asInstanceOf[(String, String)]
                   )
-                  log.getContentsList
-                    .filter(content => schemaFieldPos.contains(content.getKey))
-                    .foreach(content => {
-                      columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
-                    })
-
-                  val flg = group.GetFastLogGroup()
-                  for (i <- 0 until flg.getLogTagsCount) {
-                    val tagKey = flg.getLogTags(i).getKey
-                    val tagValue = flg.getLogTags(i).getValue
+                  for (i <- 0 until log.getContentsCount) {
+                    val field = log.getContents(i)
+                    if (schemaFieldPos.contains(field.getKey)) {
+                      columnArray(schemaFieldPos(field.getKey)) = (field.getKey, field.getValue)
+                    }
+                  }
+                  for (i <- 0 until fastLogGroup.getLogTagsCount) {
+                    val tag = fastLogGroup.getLogTags(i)
+                    val tagKey = tag.getKey
+                    val tagValue = tag.getValue
                     if (schemaFieldPos.contains(s"__tag__:$tagKey")) {
                       columnArray(schemaFieldPos(s"__tag__:$tagKey")) = (s"__tag__:$tagKey", tagValue)
                     }
                   }
-
+                  if (schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
+                    columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
+                  }
                   if (schemaFieldPos.contains(__PROJECT__)) {
                     columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, project)
                   }
-
                   if (schemaFieldPos.contains(__STORE__)) {
                     columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
                   }
-
                   if (schemaFieldPos.contains(__SHARD__)) {
                     columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardPartition.shardId.toString)
                   }
-
                   if (schemaFieldPos.contains(__TOPIC__)) {
                     columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
                   }
-
                   if (schemaFieldPos.contains(__SOURCE__)) {
                     columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
                   }
-
                   if (schemaFieldPos.contains(__TIME__)) {
                     columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
                   }
@@ -201,7 +207,9 @@ class LoghubSourceRDD(
                   logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
                     s"data and continue.")
               }
-            })
+              logIndex += 1
+            }
+            logGroupIndex += 1
           })
 
           val crt = nextCursorTime
