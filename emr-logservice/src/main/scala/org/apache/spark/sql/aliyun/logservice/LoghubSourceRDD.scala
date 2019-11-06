@@ -143,10 +143,9 @@ class LoghubSourceRDD(
                     val f = log.getContents(j)
                     obj.put(f.getKey, f.getValue)
                   }
-
-                  val flg = group.GetFastLogGroup()
-                  for (i <- 0 until flg.getLogTagsCount) {
-                    obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+                  for (i <- 0 until fastLogGroup.getLogTagsCount) {
+                    val tag = fastLogGroup.getLogTags(i)
+                    obj.put("__tag__:".concat(tag.getKey), tag.getValue)
                   }
                   if (appendSequenceNumber) {
                     obj.put(__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
@@ -171,8 +170,9 @@ class LoghubSourceRDD(
                     }
                   }
                   for (i <- 0 until fastLogGroup.getLogTagsCount) {
-                    val tagKey = fastLogGroup.getLogTags(i).getKey
-                    val tagValue = fastLogGroup.getLogTags(i).getValue
+                    val tag = fastLogGroup.getLogTags(i)
+                    val tagKey = tag.getKey
+                    val tagValue = tag.getValue
                     if (schemaFieldPos.contains(s"__tag__:$tagKey")) {
                       columnArray(schemaFieldPos(s"__tag__:$tagKey")) = (s"__tag__:$tagKey", tagValue)
                     }
