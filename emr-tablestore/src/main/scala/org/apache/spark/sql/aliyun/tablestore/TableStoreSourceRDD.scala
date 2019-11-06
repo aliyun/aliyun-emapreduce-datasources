@@ -55,15 +55,14 @@ class TableStoreSourceRDD(
     maxOffsetsPerChannel: Long = -1L,
     checkpointTable: String) extends RDD[TableStoreData](sc, Nil) with Logging {
   // check whether channel has enough new data.
-  def channelIsEmpty(cp: ChannelPartition): Boolean = {
+  def channelIsEmpty(cp: ChannelPartition): (Boolean, String) = {
     if (cp.startOffset.logPoint == OTS_CHANNEL_FINISHED) {
-      return false
+      return (false, null)
     }
     val tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(
       endpoint, accessKeyId, accessKeySecret, instanceName)
-    tunnelClient.readRecords(
-      new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint)
-    ).getRecords.isEmpty
+    val readRecordsResp = tunnelClient.readRecords(new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint))
+    (readRecordsResp.getRecords.isEmpty, readRecordsResp.getNextToken)
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[TableStoreData] = {
@@ -74,13 +73,13 @@ class TableStoreSourceRDD(
     )
 
     // TODO: Seeking a better solution for below logic
-    if (channelIsEmpty(channelPartition)) {
+    val (isEmpty, nextToken) = channelIsEmpty(channelPartition)
+    if (isEmpty) {
       logInfo(s"channel ${channelPartition} hasn't new records")
-      if (channelPartition.startOffset != ChannelOffset.TERMINATED_CHANNEL_OFFSET) {
-        checkpointer.checkpoint(
-          TunnelChannel(tableName, tunnelId, channelPartition.channelId),
-          channelPartition.startOffset
-        )
+      if (nextToken != null) {
+        checkpointer.checkpoint(TunnelChannel(tableName, tunnelId, channelPartition.channelId), ChannelOffset(nextToken, 0L))
+      } else {
+        checkpointer.checkpoint(TunnelChannel(tableName, tunnelId, channelPartition.channelId), ChannelOffset.TERMINATED_CHANNEL_OFFSET)
       }
       // here, add some backoff timeout, forbid pull data crazy.
       Thread.sleep(100 + new Random(System.currentTimeMillis()).nextInt(1000))

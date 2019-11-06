@@ -6,61 +6,28 @@
         <artifactId>emr_2.11</artifactId>
         <groupId>com.aliyun.emr</groupId>
         <version>1.9.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-baseline-testing_2.11</artifactId>
+    <artifactId>emr-kudu_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Aliyun E-MapReduce Baseline Testing</name>
+    <name>Aliyun E-MapReduce External Kudu Support</name>
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.binary.version}</artifactId>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-codec</groupId>
-                    <artifactId>commons-codec</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.apache.kudu</groupId>
+            <artifactId>kudu-spark2_2.11</artifactId>
+            <version>1.10.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-codec</groupId>
-                    <artifactId>commons-codec</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-tools</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-avro-serializer</artifactId>
-            <version>${confluent.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>${avro.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>${gson.version}</version>
         </dependency>
     </dependencies>
+
     <build>
         <outputDirectory>target/classes</outputDirectory>
         <testOutputDirectory>target/test-classes</testOutputDirectory>
@@ -111,47 +78,14 @@
                 <artifactId>maven-gpg-plugin</artifactId>
             </plugin>
             <plugin>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro-maven-plugin</artifactId>
-                <version>${avro.version}</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>schema</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirectory>src/main/resources/avro/org/apache/spark/emr/baseline/testing/</sourceDirectory>
-                            <includes>
-                                <include>CatalogReturns.avsc</include>
-                                <include>CatalogSales.avsc</include>
-                                <include>DriverBehavior.avsc</include>
-                                <include>Inventory.avsc</include>
-                                <include>StoreReturns.avsc</include>
-                                <include>StoreSales.avsc</include>
-                                <include>WebReturns.avsc</include>
-                                <include>WebSales.avsc</include>
-                            </includes>
-                            <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
-                    <outputFile>${project.build.directory}/../lib/emr-baseline-testing_${scala.binary.version}-${project.version}.jar</outputFile>
+                    <outputFile>${project.build.directory}/shaded/emr-kudu_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
-                            <include>org.apache.kafka:kafka-clients</include>
-                            <include>org.apache.kafka:kafka-tools</include>
-                            <include>org.apache.kafka:kafka_2.11</include>
-                            <include>com.101tec:zkclient</include>
-                            <include>io.confluent:*</include>
-                            <include>org.apache.avro:avro</include>
-                            <include>com.google.code.gson:gson</include>
+                            <include>org.apache.kudu:kudu-spark2_2.11</include>
                         </includes>
                     </artifactSet>
                 </configuration>
