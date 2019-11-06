@@ -17,6 +17,8 @@
 
 package org.apache.kudu.spark.kudu
 
+import org.apache.kudu.client.KuduClient
+
 import org.apache.spark.annotation.{DeveloperApi, InterfaceStability}
 import org.apache.spark.sql._
 import org.apache.spark.sql.types.StructType
@@ -34,6 +36,24 @@ class KuduUpdatableRelation(
   @DeveloperApi
   @InterfaceStability.Evolving
   def merge(data: DataFrame, opTypeColumn: Column): Unit = {
-    new KuduOperator(masterAddrs).writeRows(data, schema, opTypeColumn.toString(), tableName, writeOptions)
+    val syncClient: KuduClient = KuduClientCache.getAsyncClient(masterAddrs).syncClient()
+    val lastPropagatedTimestamp = syncClient.getLastPropagatedTimestamp
+    data.toDF().foreachPartition(it => {
+      val operator = new KuduOperator(masterAddrs)
+      val pendingErrors = operator.writePartitionRows(it, schema, opTypeColumn.toString(), tableName,
+        lastPropagatedTimestamp, writeOptions)
+      if (pendingErrors.getRowErrors.nonEmpty) {
+        val errors = pendingErrors.getRowErrors
+        val sample = errors.take(5).map(_.getErrorStatus).mkString
+        if (pendingErrors.isOverflowed) {
+          throw new RuntimeException(
+            s"PendingErrors overflowed. Failed to write at least ${errors.length} rows " +
+              s"to Kudu; Sample errors: $sample")
+        } else {
+          throw new RuntimeException(
+            s"Failed to write ${errors.length} rows to Kudu; Sample errors: $sample")
+        }
+      }
+    })
   }
 }

@@ -21,29 +21,14 @@ import org.apache.kudu.client.{AsyncKuduClient, KuduClient, KuduSession, RowErro
 import org.apache.kudu.client.SessionConfiguration.FlushMode
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
 class KuduOperator(kuduMaster: String) extends Logging with Serializable {
   @transient lazy val syncClient: KuduClient = asyncClient.syncClient()
-
   @transient lazy val asyncClient: AsyncKuduClient = KuduClientCache.getAsyncClient(kuduMaster)
 
-  def writeRows(
-      data: Dataset[Row],
-      schema: StructType,
-      opTypeColumnName: String,
-      tableName: String,
-      writeOptions: KuduWriteOptions): Unit = {
-    val syncClient: KuduClient = KuduClientCache.getAsyncClient(kuduMaster).syncClient()
-    val lastPropagatedTimestamp = syncClient.getLastPropagatedTimestamp
-    data.toDF().foreachPartition(it => {
-      val operator = new KuduOperator(kuduMaster)
-      operator.writePartitionRows(it, schema, opTypeColumnName, tableName, lastPropagatedTimestamp, writeOptions)
-    })
-  }
-
-  private def writePartitionRows(
+  def writePartitionRows(
       rows: Iterator[Row],
       schema: StructType,
       opTypeColumnName: String,
