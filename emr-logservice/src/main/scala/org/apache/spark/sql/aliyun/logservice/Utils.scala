@@ -220,12 +220,6 @@ object Utils extends Logging {
 
   /**
    * Used to update loghub source config.
-   *
-   * @param zkConnect
-   * @param checkpoint
-   * @param logProject
-   * @param logStore
-   * @param sourceProps
    */
   def updateSourceConfig(
       zkConnect: String,
