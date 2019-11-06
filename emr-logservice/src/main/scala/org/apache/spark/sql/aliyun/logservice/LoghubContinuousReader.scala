@@ -37,7 +37,6 @@ import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPa
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
-
 class LoghubContinuousReader(
     schema: StructType,
     defaultSchema: Boolean,
@@ -231,7 +230,7 @@ class LoghubContinuousInputPartitionReader(
                 columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
               }
             }
-            if (appendSequenceNumber && schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
+            if (schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
               columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
             }
             if (schemaFieldPos.contains(__PROJECT__)) {
