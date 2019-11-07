@@ -242,31 +242,36 @@ object Utils extends Logging {
       if (configFileExists) {
         val data: String = zkClient.readData(configPath)
         val jsonObject = JSON.parseObject(data)
-        val configObject = jsonObject.getJSONObject("config")
-        if (configObject.containsKey(logProject)) {
-          val logProjectObject = configObject.getJSONObject(logProject)
-          if (logProjectObject.containsKey(logStore)) {
-            val logStoreObject = logProjectObject.getJSONObject(logStore)
-            sourceProps.foreach(kv => {
-              logStoreObject.put(kv._1, kv._2)
-            })
+        val version = jsonObject.getString("version")
+        if ("v1".equals(version)) {
+          val configObject = jsonObject.getJSONObject("config")
+          if (configObject.containsKey(logProject)) {
+            val logProjectObject = configObject.getJSONObject(logProject)
+            if (logProjectObject.containsKey(logStore)) {
+              val logStoreObject = logProjectObject.getJSONObject(logStore)
+              sourceProps.foreach(kv => {
+                logStoreObject.put(kv._1, kv._2)
+              })
+            } else {
+              val logStoreObject = new JSONObject()
+              sourceProps.foreach(kv => {
+                logStoreObject.put(kv._1, kv._2)
+              })
+              logProjectObject.put(logStore, logStoreObject)
+            }
           } else {
+            val logProjectObject = new JSONObject()
             val logStoreObject = new JSONObject()
             sourceProps.foreach(kv => {
               logStoreObject.put(kv._1, kv._2)
             })
             logProjectObject.put(logStore, logStoreObject)
+            configObject.put(logProject, logProjectObject)
           }
+          zkClient.writeData(configPath, jsonObject.toJSONString)
         } else {
-          val logProjectObject = new JSONObject()
-          val logStoreObject = new JSONObject()
-          sourceProps.foreach(kv => {
-            logStoreObject.put(kv._1, kv._2)
-          })
-          logProjectObject.put(logStore, logStoreObject)
-          configObject.put(logProject, logProjectObject)
+          throw new Exception(s"""Unsupported dynamic config data version $version, current EMR SDK only support ["v1"]""")
         }
-        zkClient.writeData(configPath, jsonObject.toJSONString)
       } else {
         val jsonObject = new JSONObject()
         val configObject = new JSONObject()
@@ -290,6 +295,9 @@ object Utils extends Logging {
     }
   }
 
+  /**
+   * Used to update loghub source config.
+   */
   def updateSourceConfig(
       zkConnect: String,
       checkpoint: String,
