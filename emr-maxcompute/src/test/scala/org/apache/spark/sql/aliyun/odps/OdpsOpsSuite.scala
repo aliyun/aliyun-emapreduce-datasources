@@ -21,7 +21,7 @@ import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-import com.aliyun.odps.TableSchema
+import com.aliyun.odps.{Column, OdpsType, TableSchema}
 import com.aliyun.odps.data.{Binary, Record}
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.odps.OdpsOps
@@ -30,10 +30,17 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SparkSession}
 
 class OdpsOpsSuite extends SparkFunSuite {
-  val accessKeyId = ""
-  val accessKeySecret = ""
-  val envType = 0
-  val project = ""
+  val accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID")
+  val accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET")
+  val envType = {
+    var envType = System.getenv("TEST_ENV_TYPE")
+    if (envType == null || (!envType.equals("private") && !envType.equals("public"))) {
+      envType = "public"
+    }
+    if (envType.equals("public")) 0 else 1
+  }
+  // Update this with your own testing odps project.
+  val project = "emr_sdk_ut"
   val numPartitions = 2
 
   val urls = Seq(
@@ -46,8 +53,37 @@ class OdpsOpsSuite extends SparkFunSuite {
   val odpsOps = new OdpsOps(ss.sparkContext, accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
   val testBytes = Array[Byte](99.toByte, 134.toByte, 135.toByte, 200.toByte, 205.toByte)
 
+  override def beforeAll(): Unit = {
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    odpsUtils.runSQL(project,
+      """
+        |CREATE TABLE `odps_basic_types` (
+        |	`a` boolean,
+        |	`b` smallint,
+        |	`c` int,
+        |	`d` bigint,
+        |	`e` float,
+        |	`f` double,
+        |	`g` decimal,
+        |	`h` datetime,
+        |	`i` timestamp,
+        |	`j` string,
+        |	`k` tinyint,
+        |	`l` binary
+        |) ;
+      """.stripMargin,
+      Map(
+        "odps.sql.type.system.odps2" -> "true",
+        "odps.sql.submit.mode" -> "script"
+      ))
+  }
+
+  override def afterAll(): Unit = {
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    odpsUtils.runSQL(project, "TRUNCATE TABLE odps_basic_types;")
+  }
+
   test("support basic types") {
-    import ss.implicits._
     val table = "odps_basic_types"
     val struct = StructType(
         StructField("a", BooleanType, true) ::

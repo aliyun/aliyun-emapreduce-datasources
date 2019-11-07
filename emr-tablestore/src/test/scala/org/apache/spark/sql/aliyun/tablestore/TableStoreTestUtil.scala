@@ -22,24 +22,25 @@ import java.util
 import java.util.UUID
 
 import scala.collection.JavaConversions._
+import scala.util.control.NonFatal
+
 import com.alicloud.openservices.tablestore.SyncClient
 import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
 import com.alicloud.openservices.tablestore.model._
 import com.alicloud.openservices.tablestore.model.tunnel._
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 
-import scala.util.control.NonFatal
-
 class TableStoreTestUtil extends Logging {
   private val endpoint =
-    "http://tunnel-monitor.ali-cn-hangzhou.ots.aliyuncs.com"
-  private val instanceName = "tunnel-monitor"
+    "http://instance-emr-ut.cn-hangzhou.ots.aliyuncs.com"
+  private val instanceName = "instance-emr-ut"
   private val tableName = "spark_test"
   private val tunnelName = "user-tunnel"
-  private val accessKeyId = ""
-  private val accessKeySecret = ""
+  private val accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID")
+  private val accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET")
   private lazy val tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(
     endpoint,
     accessKeyId,
@@ -169,7 +170,7 @@ class TableStoreTestUtil extends Logging {
       "access.key.secret" -> accessKeySecret,
       "maxOffsetsPerChannel" -> origOptions.getOrElse(
         "maxOffsetsPerChannel",
-        10000 + ""
+        "10000"
       ),
       "catalog" -> origOptions.getOrElse("catalog", "")
     )

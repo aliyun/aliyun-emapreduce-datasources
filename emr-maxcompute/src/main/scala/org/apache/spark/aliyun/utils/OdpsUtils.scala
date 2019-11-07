@@ -151,6 +151,23 @@ class OdpsUtils(odps: Odps) extends Logging{
   }
 
   /**
+   * Create ODPS table.
+   *
+   * @param project Name of odps project.
+   * @param table Name of odps table.
+   * @param schema refer to {{TableSchema}}.
+   * @param ifNotExists Fail or not if target table exists.
+   */
+  def createTable(
+      project: String,
+      table: String,
+      schema: TableSchema,
+      ifNotExists: Boolean): Unit = {
+    odps.setDefaultProject(project)
+    odps.tables().create(table, schema, ifNotExists)
+  }
+
+  /**
    * Create specific partition of ODPS table.
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
@@ -242,11 +259,12 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @param sqlCmd An ODPS sql
    * @return An instance of ODPS.
    */
-  def runSQL(project: String, sqlCmd: String): Instance =  {
+  def runSQL(project: String, sqlCmd: String, hints: Map[String, String] = Map.empty): Instance =  {
     odps.setDefaultProject(project)
     log.info("SQL command: " + sqlCmd)
     try {
-      SQLTask.run(odps, sqlCmd)
+      import scala.collection.JavaConverters._
+      SQLTask.run(odps, project, sqlCmd, hints.asJava, null)
     } catch {
       case e: OdpsException => e.printStackTrace(); null
     }

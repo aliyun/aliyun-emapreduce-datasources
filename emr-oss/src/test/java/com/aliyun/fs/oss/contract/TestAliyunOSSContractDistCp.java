@@ -17,6 +17,7 @@
  */
 package com.aliyun.fs.oss.contract;
 
+import com.aliyun.fs.oss.AliyunOSSTestUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.tools.contract.AbstractContractDistCpTest;
 
@@ -36,6 +37,6 @@ public class TestAliyunOSSContractDistCp extends AbstractContractDistCpTest {
 
   @Override
   protected AliyunOSSContract createContract(Configuration conf) {
-    return new AliyunOSSContract(conf);
+    return new AliyunOSSContract(AliyunOSSTestUtils.updateConfig(conf));
   }
 }

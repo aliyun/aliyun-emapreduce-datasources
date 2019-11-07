@@ -58,6 +58,28 @@ public class TestAliyunOSSFileSystemStore {
     conf = new Configuration();
     conf.set("mapreduce.job.run-local", "true");
     conf.set("fs.oss.buffer.dirs", "/tmp");
+    String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
+    String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
+    String envType = System.getenv("TEST_ENV_TYPE");
+    if (accessKeyId != null) {
+      conf.set("fs.oss.accessKeyId", accessKeyId);
+    }
+
+    if (accessKeySecret != null) {
+      conf.set("fs.oss.accessKeyId", accessKeySecret);
+    }
+
+    if (envType == null) {
+      envType = "public";
+    } else if (!envType.equals("private") && !envType.equals("public")) {
+      throw new IOException("Unsupported test environment type: " + envType + ", only support private or public");
+    }
+
+    if (envType.equals("public")) {
+      conf.set("fs.oss.endpoint", "oss-cn-hangzhou.aliyuncs.com");
+    } else {
+      conf.set("fs.oss.endpoint", "oss-cn-hangzhou-internal.aliyuncs.com");
+    }
     fs = new NativeOssFileSystem();
     fs.initialize(URI.create(conf.get("test.fs.oss.name")), conf);
     store = fs.getStore();

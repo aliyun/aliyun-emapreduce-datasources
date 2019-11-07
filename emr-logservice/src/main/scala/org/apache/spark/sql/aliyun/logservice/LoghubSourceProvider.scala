@@ -90,7 +90,7 @@ class LoghubSourceProvider extends DataSourceRegister
       sqlContext: SQLContext,
       parameters: Map[String, String],
       schema: StructType): BaseRelation = {
-    Utils.validateOptions(parameters)
+    validateBatchOptions(parameters)
     require(schema.nonEmpty, "Unable to infer the schema. The schema specification " +
       "is required to create the table.;")
 
@@ -116,7 +116,7 @@ class LoghubSourceProvider extends DataSourceRegister
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    Utils.validateOptions(parameters)
+    validateBatchOptions(parameters)
 
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
 
@@ -150,6 +150,8 @@ class LoghubSourceProvider extends DataSourceRegister
           s"${SaveMode.ErrorIfExists} (default).")
       case _ => // ok
     }
+
+    LoghubWriter.write(sqlContext.sparkSession, data.queryExecution, parameters)
 
     /* This method is suppose to return a relation that reads the data that was written.
      * We cannot support this for Loghub. Therefore, in order to make things consistent,
@@ -204,6 +206,40 @@ class LoghubSourceProvider extends DataSourceRegister
       uniqueGroupId: String): java.util.Map[String, Object] =
     ConfigUpdater("executor", specifiedLoghubParams)
       .build()
+
+  def validateBatchOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+    Utils.validateOptions(caseInsensitiveParams)
+
+    LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit) match {
+      case EarliestOffsetRangeLimit => // good to go
+      case LatestOffsetRangeLimit =>
+        throw new IllegalArgumentException("starting offset can't be latest " +
+          "for batch queries on Loghub")
+      case SpecificOffsetRangeLimit(partitionOffsets) =>
+        partitionOffsets.foreach {
+          case (shard, off) if off._1 == LoghubOffsetRangeLimit.LATEST =>
+            throw new IllegalArgumentException(s"startingoffsets for $shard can't " +
+              "be latest for batch queries on Loghub")
+          case _ => // ignore
+        }
+    }
+
+    LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams, ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit) match {
+      case EarliestOffsetRangeLimit =>
+        throw new IllegalArgumentException("ending offset can't be earliest " +
+          "for batch queries on Loghub")
+      case LatestOffsetRangeLimit => // good to go
+      case SpecificOffsetRangeLimit(partitionOffsets) =>
+        partitionOffsets.foreach {
+          case (shard, off) if off._1 == LoghubOffsetRangeLimit.EARLIEST =>
+            throw new IllegalArgumentException(s"endingoffsets for $shard can't " +
+              "be latest for batch queries on Loghub")
+          case _ => // ignore
+        }
+    }
+  }
 }
 
 object LoghubSourceProvider {
@@ -246,7 +282,7 @@ object LoghubSourceProvider {
         LatestOffsetRangeLimit
       case Some(offset) if offset.toLowerCase(Locale.ROOT) == "earliest" =>
         EarliestOffsetRangeLimit
-      case Some(json) => SpecificOffsetRangeLimit(LoghubSourceOffset.partitionOffsets(json))
+      case Some(json) => SpecificOffsetRangeLimit(LoghubSourceOffset.partitionOffsets(json, params))
       case None => defaultOffsets
     }
   }
