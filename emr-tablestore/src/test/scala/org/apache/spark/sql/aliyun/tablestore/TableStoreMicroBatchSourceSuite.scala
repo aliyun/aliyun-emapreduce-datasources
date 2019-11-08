@@ -66,10 +66,9 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     for (_ <- 0 until 5) {
       val offset = source.getOffset
       System.out.println(offset.get)
-      source.batches.values.map { rdd =>
-        System.out.println(rdd.count())
-        assert(rdd.count() == 10000)
-      }
+      val rdd = source.currentBatchRDD
+      System.out.println(rdd.count())
+      assert(rdd.count() == 10000)
     }
   }
 
@@ -103,10 +102,9 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
 
     val offset = source.getOffset
     System.out.println(offset.get)
-    source.batches.values.map { rdd =>
-      System.out.println(rdd.count())
-      assert(rdd.count == 50000)
-    }
+    val rdd = source.currentBatchRDD
+    System.out.println(rdd.count())
+    assert(rdd.count() == 50000)
   }
 
   test("GetOffset in random size stream") {
@@ -141,10 +139,9 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       val offset = source.getOffset
       source.commit(offset.get)
       System.out.println(offset.get)
-      source.batches.values.map { rdd =>
-        System.out.println(rdd.count())
-        assert(rdd.count() == count)
-      }
+      val rdd = source.currentBatchRDD
+      System.out.println(rdd.count())
+      assert(rdd.count() == count)
     }
   }
 
@@ -173,7 +170,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
     val rand = new Random(System.currentTimeMillis())
-    var preOffset: Offset = TableStoreSourceOffset(source.initialPartitionOffsets)
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (i <- 0 to 20) {
       val count = rand.nextInt(1000)
       testUtils.insertData(count)
@@ -217,7 +214,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
     // Base data
-    var preOffset: Offset = TableStoreSourceOffset(source.initialPartitionOffsets)
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (_ <- 0 until 2) {
       val offset = source.getOffset
       println(

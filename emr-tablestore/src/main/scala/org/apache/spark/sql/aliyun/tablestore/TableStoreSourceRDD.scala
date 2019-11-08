@@ -18,6 +18,7 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util.concurrent.LinkedBlockingQueue
 
+import com.alicloud.openservices.tablestore.TunnelClientInterface
 import com.alicloud.openservices.tablestore.model.tunnel.internal.{ReadRecordsRequest, ReadRecordsResponse}
 import com.alicloud.openservices.tablestore.model.{ColumnType, PrimaryKeyType, RecordColumn, StreamRecord}
 import org.apache.spark.internal.Logging
@@ -35,7 +36,6 @@ case class TableStoreSourceRDDOffsetRange(
     tunnelChannel: TunnelChannel,
     startOffset: ChannelOffset,
     endOffset: ChannelOffset) {
-  def table: String = tunnelChannel.tableName
   def tunnel: String = tunnelChannel.tunnelId
   def channel: String = tunnelChannel.channelId
 }
@@ -53,36 +53,39 @@ class TableStoreSourceRDD(
     channelOffsets: ArrayBuffer[(String, ChannelOffset, ChannelOffset)],
     schema: StructType,
     maxOffsetsPerChannel: Long = -1L,
-    checkpointTable: String) extends RDD[TableStoreData](sc, Nil) with Logging {
-  // check whether channel has enough new data.
-  def channelIsEmpty(cp: ChannelPartition): (Boolean, String) = {
-    if (cp.startOffset.logPoint == OTS_CHANNEL_FINISHED) {
-      return (false, null)
+    checkpointTable: String,
+    batchUUID: String) extends RDD[TableStoreData](sc, Nil) with Logging {
+  @transient var tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  @transient var syncClient = TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+
+  private def initialize(): Unit = {
+    tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+    syncClient = TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  }
+
+  def readRecords(tunnelClient: TunnelClientInterface, cp: ChannelPartition): ReadRecordsResponse = {
+    if (cp.startOffset == ChannelOffset.TERMINATED_CHANNEL_OFFSET) {
+      return null
     }
-    val tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(
-      endpoint, accessKeyId, accessKeySecret, instanceName)
-    val readRecordsResp = tunnelClient.readRecords(new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint))
-    (readRecordsResp.getRecords.isEmpty, readRecordsResp.getNextToken)
+    tunnelClient.readRecords(new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint))
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[TableStoreData] = {
+    initialize()
     val channelPartition = split.asInstanceOf[ChannelPartition]
-    val checkpointer = new TableStoreCheckpointer(
-      TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName),
-      checkpointTable
-    )
+    val checkpointer = new MetaCheckpointer(syncClient, checkpointTable)
 
-    // TODO: Seeking a better solution for below logic
-    val (isEmpty, nextToken) = channelIsEmpty(channelPartition)
-    if (isEmpty) {
+    val firstRecords = readRecords(tunnelClient, channelPartition)
+    if (firstRecords != null && firstRecords.getRecords.isEmpty) {
       logInfo(s"channel ${channelPartition} hasn't new records")
+      val nextToken = firstRecords.getNextToken
       if (nextToken != null) {
-        checkpointer.checkpoint(TunnelChannel(tableName, tunnelId, channelPartition.channelId), ChannelOffset(nextToken, 0L))
+        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId), batchUUID, ChannelOffset(nextToken, 0L))
       } else {
-        checkpointer.checkpoint(TunnelChannel(tableName, tunnelId, channelPartition.channelId), ChannelOffset.TERMINATED_CHANNEL_OFFSET)
+        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId), batchUUID, ChannelOffset.TERMINATED_CHANNEL_OFFSET)
       }
-      // here, add some backoff timeout, forbid pull data crazy.
-      Thread.sleep(100 + new Random(System.currentTimeMillis()).nextInt(1000))
+      // here, add some backoff timeout, forbid pull empty data crazy.
+      Thread.sleep(1000 + new Random(System.currentTimeMillis()).nextInt(1000))
       return Iterator.empty.asInstanceOf[Iterator[TableStoreData]]
     }
 
@@ -103,8 +106,6 @@ class TableStoreSourceRDD(
           private val channelId = channelPartition.channelId
           private var isFirstFetch = true
           private val inputMetrics = context.taskMetrics().inputMetrics
-          private val tunnelClient =
-            TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
 
           context.addTaskCompletionListener { _ => closeIfNeeded() }
 
@@ -119,13 +120,7 @@ class TableStoreSourceRDD(
             }
           }
 
-          def fetchNextBatch(): Unit = {
-            if (nextOffset == ChannelOffset.TERMINATED_CHANNEL_OFFSET) {
-              return
-            }
-            val recordsResp: ReadRecordsResponse = tunnelClient.readRecords(
-              new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, channelId, nextOffset.logPoint)
-            )
+          def fillNextBatch(recordsResp: ReadRecordsResponse): Unit = {
             if (totalCount >= 0 && hasRead + recordsResp.getRecords.size > totalCount) {
               logInfo(s"Exceed the count limit, go to next batch, hasRead: ${hasRead}")
               return
@@ -164,10 +159,19 @@ class TableStoreSourceRDD(
             )
           }
 
+          def fetchNextBatch(): Unit = {
+            if (nextOffset != ChannelOffset.TERMINATED_CHANNEL_OFFSET) {
+              val recordsResp = tunnelClient.readRecords(
+                new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, channelId, nextOffset.logPoint)
+              )
+              fillNextBatch(recordsResp)
+            }
+          }
+
           override protected def getNext(): TableStoreData = {
             if (isFirstFetch) {
               logInfo("do first fetch")
-              fetchNextBatch()
+              fillNextBatch(firstRecords)
               logInfo("finish fetch first batch")
               isFirstFetch = false
             }
@@ -185,11 +189,8 @@ class TableStoreSourceRDD(
                 logData.poll()
               }
             } else {
-              logInfo(s"Current logData, hasRead: ${hasRead}, logData: ${logData.size}")
-              checkpointer.checkpoint(
-                TunnelChannel(tableName, tunnelId, channelId),
-                nextOffset
-              )
+              logInfo(s"current logData, hasRead: ${hasRead}, logData: ${logData.size}")
+              checkpointer.checkpoint(TunnelChannel(tunnelId, channelId), batchUUID, nextOffset)
               logInfo(s"set endOffset, channelId: ${channelId}, nextOffset: ${nextOffset}")
               null.asInstanceOf[TableStoreData]
             }
