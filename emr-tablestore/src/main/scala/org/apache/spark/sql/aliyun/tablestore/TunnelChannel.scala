@@ -19,8 +19,8 @@ package org.apache.spark.sql.aliyun.tablestore
 /**
   * A tunnel contains several channels, channel is just like partition/split in TableStore.
   */
-case class TunnelChannel(tableName: String, tunnelId: String, channelId: String)
+case class TunnelChannel(tunnelId: String, channelId: String)
 
-case class Tunnel(tableName: String, tunnelId: String) {
-  override def toString: String = s"$tableName#$tunnelId"
+case class Tunnel(tunnelId: String) {
+  override def toString: String = s"$tunnelId"
 }

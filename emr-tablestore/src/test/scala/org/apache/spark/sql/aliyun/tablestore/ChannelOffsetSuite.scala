@@ -14,28 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.spark.sql.aliyun.tablestore
 
-import org.json4s.DefaultFormats
-import org.json4s.jackson.Serialization
+import org.scalatest.FunSuite
 
-/**
-  * @param logPoint: channel checkpoint of Tablestore tunnel service.
-  * @param offset: offset between under this channel checkpoint.
-  */
-case class ChannelOffset(logPoint: String, offset: Long)
-
-object ChannelOffset {
-  // BaseData channel or Father Stream channel would finally turn to Terminated.
-  val TERMINATED_CHANNEL_OFFSET = ChannelOffset(TableStoreSourceProvider.OTS_CHANNEL_FINISHED, 0L)
-
-  implicit val formats: DefaultFormats.type = DefaultFormats
-
-  def serialize(offset: ChannelOffset): String = {
-    Serialization.write(offset)
-  }
-
-  def deserialize(offset: String): ChannelOffset = {
-    Serialization.read[ChannelOffset](offset)
+class ChannelOffsetSuite extends FunSuite {
+  test("channel offset serialize and deserialize") {
+    val offset = ChannelOffset("testlogPoint", 0)
+    val serialized = ChannelOffset.serialize(offset)
+    println(serialized)
+    val deserialized = ChannelOffset.deserialize(serialized)
+    assert(deserialized.logPoint == "testlogPoint")
+    assert(deserialized.offset == 0)
   }
 }
