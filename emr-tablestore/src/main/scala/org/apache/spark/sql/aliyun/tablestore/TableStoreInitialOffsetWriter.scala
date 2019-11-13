@@ -26,7 +26,7 @@ import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, SerializedOffs
 /** A version of [[HDFSMetadataLog]] specialized for saving the initial offsets. */
 class TableStoreInitialOffsetWriter(sparkSession: SparkSession, metadataPath: String)
   extends HDFSMetadataLog[TableStoreSourceOffset](sparkSession, metadataPath) {
-  val VERSION = 1
+  val VERSION = 2
 
   override def serialize(metadata: TableStoreSourceOffset, out: OutputStream): Unit = {
     out.write(0) // A zero byte is written to support Spark 2.1.0 (SPARK-19517)

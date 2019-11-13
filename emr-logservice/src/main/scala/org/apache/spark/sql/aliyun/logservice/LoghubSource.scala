@@ -185,8 +185,11 @@ class LoghubSource(
             parse(data) \ "config" \ logProject \ logStore \ "maxOffsetsPerTrigger" match {
               case JNothing => // ok
               case JString(value) =>
-                maxOffsetsPerTrigger = value.toLong
-                logWarning(s"Config 'maxOffsetsPerTrigger' for [$logProject/$logStore] is changed to $maxOffsetsPerTrigger.")
+                if (maxOffsetsPerTrigger != value.toLong) {
+                  logInfo(s"Config 'maxOffsetsPerTrigger' for [$logProject/$logStore] is changed to " +
+                    s"${value.toLong} from $maxOffsetsPerTrigger.")
+                  maxOffsetsPerTrigger = value.toLong
+                }
             }
           } else {
             logError(
@@ -222,12 +225,14 @@ class LoghubSource(
            |}"""
     }
 
-    dynamicConfigManager.registerZNodeChangeHandler(handler)
+    dynamicConfigManager.registerZNodeChangeHandler(name, handler)
   }
 
   override def stop(): Unit = {
     loghubOffsetReader.close()
   }
+
+  def name: String = s"LoghubSource[$logProject/$logStore@$endpoint]"
 
   override def toString: String = s"LoghubSource[$loghubOffsetReader]"
 }

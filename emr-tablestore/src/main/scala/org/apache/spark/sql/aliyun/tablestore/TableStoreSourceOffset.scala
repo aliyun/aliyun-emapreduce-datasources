@@ -17,34 +17,22 @@
 package org.apache.spark.sql.aliyun.tablestore
 
 import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
-import org.apache.spark.sql.sources.v2.reader.streaming.PartitionOffset
 
-case class TableStoreSourceOffset(channelOffsets: Map[TunnelChannel, ChannelOffset]) extends Offset {
-  override val json: String = JsonUtils.channelOffsets(channelOffsets)
+case class TableStoreSourceOffset(uuid: String) extends Offset {
+  override val json: String = uuid
 }
 
-case class TableStoreSourceChannelOffset(channel: TunnelChannel, channelOffset: ChannelOffset) extends PartitionOffset
-
-/** Companion object of the [[TableStoreSourceOffset]] */
 private object TableStoreSourceOffset {
-  def getChannelOffsets(offset: Offset): Map[TunnelChannel, ChannelOffset] = {
+  def getUUID(offset: Offset): String = {
     offset match {
-      case o: TableStoreSourceOffset => o.channelOffsets
-      case so: SerializedOffset => TableStoreSourceOffset(so).channelOffsets
-      case _ =>
-        throw new IllegalArgumentException(
-          s"Invalid conversion from offset of ${offset.getClass} to TableStoreSourceOffset"
-        )
+      case o: TableStoreSourceOffset => o.uuid
+      case so: SerializedOffset => TableStoreSourceOffset(so.json).uuid
+      case _ => throw new IllegalArgumentException(
+        s"Invalid conversion from offset of ${offset.getClass} to TableStoreSourceOffset"
+      )
     }
   }
 
-  def apply(offsetTuples: (String, String, String, ChannelOffset)*): TableStoreSourceOffset = {
-    TableStoreSourceOffset(offsetTuples.map {
-      case (table, tunnel, channel, offset) =>
-        (TunnelChannel(table, tunnel, channel), offset)}.toMap)
-  }
-
-  def apply(offset: SerializedOffset): TableStoreSourceOffset =
-    TableStoreSourceOffset(JsonUtils.channelOffsets(offset.json))
-
+  def apply(serializedOffset: SerializedOffset): TableStoreSourceOffset =
+    TableStoreSourceOffset(serializedOffset.json)
 }
