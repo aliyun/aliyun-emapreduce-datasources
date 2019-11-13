@@ -143,9 +143,9 @@ class TableStoreRelation(
           case IntegerType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Int](field).toLong)))
           case FloatType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Float](field).toLong)))
+            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Float](field).toDouble)))
           case DoubleType =>
-            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field).toLong)))
+            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field))))
           case ShortType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Short](field).toLong)))
           case ByteType =>

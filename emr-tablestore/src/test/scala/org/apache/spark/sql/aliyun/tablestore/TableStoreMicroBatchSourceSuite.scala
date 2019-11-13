@@ -63,13 +63,15 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
 
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (_ <- 0 until 5) {
-      val offset = source.getOffset
-      System.out.println(offset.get)
-      source.batches.values.map { rdd =>
-        System.out.println(rdd.count())
-        assert(rdd.count() == 10000)
-      }
+      val endOffset = source.getOffset
+      System.out.println(endOffset.get)
+      source.getBatch(Some(preOffset), endOffset.get)
+      val rdd = source.currentBatchRDD
+      System.out.println(rdd.count())
+      assert(rdd.count() == 10000)
+      preOffset = endOffset.get
     }
   }
 
@@ -101,12 +103,13 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
 
-    val offset = source.getOffset
-    System.out.println(offset.get)
-    source.batches.values.map { rdd =>
-      System.out.println(rdd.count())
-      assert(rdd.count == 50000)
-    }
+    var preOffset = TableStoreSourceOffset(source.initialOffsetUUID)
+    val endOffset = source.getOffset
+    System.out.println(endOffset.get)
+    source.getBatch(Some(preOffset), endOffset.get)
+    val rdd = source.currentBatchRDD
+    System.out.println(rdd.count())
+    assert(rdd.count() == 50000)
   }
 
   test("GetOffset in random size stream") {
@@ -134,17 +137,18 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
     val rand = new Random(System.currentTimeMillis())
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (i <- 0 to 20) {
       val count = rand.nextInt(1000)
       testUtils.insertData(count)
       println(s"Current batch write ${count} records.")
-      val offset = source.getOffset
-      source.commit(offset.get)
-      System.out.println(offset.get)
-      source.batches.values.map { rdd =>
-        System.out.println(rdd.count())
-        assert(rdd.count() == count)
-      }
+      val endOffset = source.getOffset
+      System.out.println(endOffset.get)
+      source.getBatch(Some(preOffset), endOffset.get)
+      val rdd = source.currentBatchRDD
+      System.out.println(rdd.count())
+      assert(rdd.count() == count)
+      preOffset = endOffset.get
     }
   }
 
@@ -173,20 +177,20 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
     val rand = new Random(System.currentTimeMillis())
-    var preOffset: Offset = TableStoreSourceOffset(source.initialPartitionOffsets)
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (i <- 0 to 20) {
       val count = rand.nextInt(1000)
       testUtils.insertData(count)
-      val offset = source.getOffset
+      val endOffset = source.getOffset
       println(
-        s"Current batch write ${count} records, preOffset: ${preOffset}, endOffset: ${offset}"
+        s"Current batch write ${count} records, preOffset: ${preOffset}, endOffset: ${endOffset}"
       )
-      source.getBatch(Some(preOffset), offset.get)
+      source.commit(preOffset)
+      source.getBatch(Some(preOffset), endOffset.get)
       val rdd = source.currentBatchRDD
       System.out.println(rdd.count())
       assert(rdd.count() == count)
-      preOffset = offset.get
-      source.commit(offset.get)
+      preOffset = endOffset.get
     }
   }
 
@@ -217,20 +221,21 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
     // Base data
-    var preOffset: Offset = TableStoreSourceOffset(source.initialPartitionOffsets)
+    var preOffset: Offset = TableStoreSourceOffset(source.initialOffsetUUID)
     for (_ <- 0 until 2) {
       val offset = source.getOffset
       println(
         s"Current batch write 5000 records, preOffset: ${preOffset}, endOffset: ${offset}"
       )
       System.out.println(offset.get)
+      source.commit(preOffset)
       source.getBatch(Some(preOffset), offset.get)
       val rdd = source.currentBatchRDD
       System.out.println(rdd.count())
       assert(rdd.count() == 5000)
       preOffset = offset.get
-      source.commit(offset.get)
     }
+    source.commit(preOffset)
 
     while (!testUtils.checkTunnelReady(tunnelId, TunnelStage.ProcessStream)) {
       Thread.sleep(2000)
@@ -246,6 +251,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       println(
         s"Current batch write ${count} records, preOffset: ${preOffset}, endOffset: ${offset}"
       )
+      source.commit(preOffset)
       source.getBatch(Some(preOffset), offset.get)
       val rdd = source.currentBatchRDD
       System.out.println(rdd.count())
@@ -253,7 +259,6 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
         assert(rdd.count() == count)
       }
       preOffset = offset.get
-      source.commit(offset.get)
     }
   }
 }
