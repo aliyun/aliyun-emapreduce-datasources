@@ -34,13 +34,12 @@ import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 
 class TableStoreTestUtil extends Logging {
-  private val endpoint =
-    "http://instance-emr-ut.cn-hangzhou.ots.aliyuncs.com"
-  private val instanceName = "instance-emr-ut"
+  private val instanceName = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("instance-emr-ut")
+  private val endpoint = s"http://$instanceName.cn-hangzhou.ots.aliyuncs.com"
   private val tableName = "spark_test"
   private val tunnelName = "user-tunnel"
-  private val accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID")
-  private val accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET")
+  private val accessKeyId = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
+  private val accessKeySecret = Option(System.getenv("ALIYUN_ACCESS_KEY_SECRET")).getOrElse("")
   private lazy val tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(
     endpoint,
     accessKeyId,

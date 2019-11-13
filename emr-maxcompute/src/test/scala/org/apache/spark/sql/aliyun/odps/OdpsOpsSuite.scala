@@ -21,7 +21,7 @@ import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-import com.aliyun.odps.{Column, OdpsType, TableSchema}
+import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.{Binary, Record}
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.odps.OdpsOps
@@ -30,12 +30,13 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SparkSession}
 
 class OdpsOpsSuite extends SparkFunSuite {
-  val accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID")
-  val accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET")
-  val envType = {
-    var envType = System.getenv("TEST_ENV_TYPE")
-    if (envType == null || (!envType.equals("private") && !envType.equals("public"))) {
-      envType = "public"
+  val accessKeyId: String = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
+  val accessKeySecret: String = Option(System.getenv("ALIYUN_ACCESS_KEY_SECRET")).getOrElse("")
+
+  val envType: Int = {
+    val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
+    if (envType != "private" && envType != "public") {
+      throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
     }
     if (envType.equals("public")) 0 else 1
   }

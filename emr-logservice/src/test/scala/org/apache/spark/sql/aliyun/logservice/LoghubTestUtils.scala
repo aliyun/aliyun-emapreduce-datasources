@@ -54,34 +54,15 @@ class LoghubTestUtils() {
   val lock = new Object
 
   def validateProps(): Unit = {
-    accessKeyId = System.getProperty("accessKeyId")
-    accessKeySecret = System.getProperty("accessKeySecret")
+    accessKeyId = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
+    accessKeySecret = Option(System.getenv("ALIYUN_ACCESS_KEY_SECRET")).getOrElse("")
 
-    if (accessKeyId == null) {
-      accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID")
-    }
-
-    if (accessKeySecret == null) {
-      accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET")
-    }
-
-    var envType = System.getenv("TEST_ENV_TYPE")
-    if (envType == null) {
-      envType = "public"
-    } else if (envType != "private" && envType != "public") {
+    val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
+    if (envType != "private" && envType != "public") {
       throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
     }
 
-    if (accessKeyId == null || accessKeySecret == null) {
-      throw new Exception(
-        """
-          | Missing 'accessKeyId' or 'accessKeySecret', set them in following ways:
-          | 1. add "-DaccessKeyId=xxx -DaccessKeySecret=xxx" in jvm options
-          | 2. export "ALIYUN_ACCESS_KEY_ID" and "ALIYUN_ACCESS_KEY_SECRET"
-        """.stripMargin)
-    }
-
-    endpoint = envType.toLowerCase match {
+    endpoint = envType match {
       case "private" => "cn-hangzhou-intranet.log.aliyuncs.com"
       case "public" => "cn-hangzhou.log.aliyuncs.com"
     }

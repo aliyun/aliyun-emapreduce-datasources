@@ -19,7 +19,6 @@
 package com.aliyun.fs.oss;
 
 import com.aliyun.fs.oss.common.NativeFileSystemStore;
-import com.aliyun.fs.oss.nat.JetOssNativeFileSystemStore;
 import com.aliyun.fs.oss.nat.NativeOssFileSystem;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -58,20 +57,19 @@ public class TestAliyunOSSFileSystemStore {
     conf = new Configuration();
     conf.set("mapreduce.job.run-local", "true");
     conf.set("fs.oss.buffer.dirs", "/tmp");
+
     String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
     String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
     String envType = System.getenv("TEST_ENV_TYPE");
     if (accessKeyId != null) {
       conf.set("fs.oss.accessKeyId", accessKeyId);
     }
-
     if (accessKeySecret != null) {
       conf.set("fs.oss.accessKeyId", accessKeySecret);
     }
-
     if (envType == null) {
       envType = "public";
-    } else if (!envType.equals("private") && !envType.equals("public")) {
+    } else if (!envType.equalsIgnoreCase("private") && !envType.equalsIgnoreCase("public")) {
       throw new IOException("Unsupported test environment type: " + envType + ", only support private or public");
     }
 
