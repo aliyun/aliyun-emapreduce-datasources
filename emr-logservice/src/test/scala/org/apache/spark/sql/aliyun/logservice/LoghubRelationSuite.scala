@@ -20,6 +20,7 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types.{StringType, StructField, StructType}

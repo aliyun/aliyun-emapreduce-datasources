@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.io.Source
 
 import org.scalatest.time.SpanSugar._
+
 import org.apache.spark.sql.execution.datasources.v2.StreamingDataSourceV2Relation
 import org.apache.spark.sql.execution.streaming._
 import org.apache.spark.sql.execution.streaming.continuous.ContinuousExecution

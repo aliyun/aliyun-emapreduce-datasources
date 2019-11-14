@@ -16,11 +16,12 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
+import java.util.concurrent.TimeUnit
+
 import com.aliyun.openservices.aliyun.log.producer.{Callback, LogProducer, Result}
 import com.aliyun.openservices.log.common.LogItem
 import com.google.common.util.concurrent.ListenableFuture
 import org.apache.commons.cli.MissingArgumentException
-
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.{CatalystTypeConverters, InternalRow}
 import org.apache.spark.sql.catalyst.expressions.Attribute
@@ -47,7 +48,7 @@ class LoghubWriterTask(
       lastSendResultFuture = sendRow(currentRow, producer, logProject, logStore)
     }
     if (lastSendResultFuture != null) {
-      val result = lastSendResultFuture.get()
+      val result = lastSendResultFuture.get(1000L, TimeUnit.MILLISECONDS)
       if (!result.isSuccessful) {
         throw new Exception(s"Failed to send log, errorCode=${result.getErrorCode}, " +
           s"errorMessage=${result.getErrorMessage}, result=$result")
