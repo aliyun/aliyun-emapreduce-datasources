@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -61,25 +61,28 @@ public class TestAliyunOSSFileSystemStore {
     String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
     String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
     String envType = System.getenv("TEST_ENV_TYPE");
+    String region = System.getenv("REGION_NAME");
     if (accessKeyId != null) {
       conf.set("fs.oss.accessKeyId", accessKeyId);
     }
     if (accessKeySecret != null) {
       conf.set("fs.oss.accessKeyId", accessKeySecret);
     }
+    if(region == null) {
+      region = "ch-hangzhou";
+    }
     if (envType == null) {
       envType = "public";
     } else if (!envType.equalsIgnoreCase("private") && !envType.equalsIgnoreCase("public")) {
       throw new IOException("Unsupported test environment type: " + envType + ", only support private or public");
     }
-
     if (envType.equals("public")) {
-      conf.set("fs.oss.endpoint", "oss-cn-hangzhou.aliyuncs.com");
+      conf.set("fs.oss.endpoint", "oss-" + region + ".aliyuncs.com");
     } else {
-      conf.set("fs.oss.endpoint", "oss-cn-hangzhou-internal.aliyuncs.com");
+      conf.set("fs.oss.endpoint", "oss-" + region + "-internal.aliyuncs.com");
     }
     fs = new NativeOssFileSystem();
-    fs.initialize(URI.create(conf.get("test.fs.oss.name")), conf);
+    fs.initialize(URI.create(conf.get("test.fs.oss.name", System.getenv("TEST_FS_OSS_NAME"))), conf);
     store = fs.getStore();
   }
 
@@ -98,7 +101,6 @@ public class TestAliyunOSSFileSystemStore {
     Configuration conf = new Configuration();
     assumeNotNull(conf.get("fs.oss.accessKeyId"));
     assumeNotNull(conf.get("fs.oss.accessKeySecret"));
-    assumeNotNull(conf.get("test.fs.oss.name"));
   }
 
   protected void writeRenameReadCompare(Path path, long len)

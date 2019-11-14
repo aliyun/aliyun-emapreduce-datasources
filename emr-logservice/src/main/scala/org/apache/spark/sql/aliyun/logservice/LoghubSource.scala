@@ -50,6 +50,8 @@ class LoghubSource(
 
   private var maxOffsetsPerTrigger =
     sourceOptions.getOrElse("maxOffsetsPerTrigger", 64 * 1024 + "").toLong
+  private val endpoint = sourceOptions.getOrElse("endpoint",
+    throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
   private val logProject = sourceOptions.getOrElse("sls.project",
     throw new MissingArgumentException("Missing logService project (='sls.project')."))
   private val logStore = sourceOptions.getOrElse("sls.store",

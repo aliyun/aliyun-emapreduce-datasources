@@ -38,7 +38,6 @@ class TableStoreDataSuite extends FunSuite {
   }
 
   test("test tablestore data encoder") {
-    println(testSchema)
     val schemaFieldPos: Map[String, Int] = testSchema.fieldNames
       .filter(
         fieldName => !isDefaultField(fieldName)

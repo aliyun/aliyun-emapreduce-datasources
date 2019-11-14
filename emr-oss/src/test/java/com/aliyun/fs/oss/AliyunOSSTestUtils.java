@@ -47,7 +47,7 @@ public final class AliyunOSSTestUtils {
   public static NativeOssFileSystem createTestFileSystem(Configuration conf)
       throws IOException {
     String fsname = conf.getTrimmed(
-        TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME, "");
+        TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME, System.getenv("TEST_FS_OSS_NAME"));
 
     boolean liveTest = StringUtils.isNotEmpty(fsname);
     URI testURI = null;
@@ -85,19 +85,23 @@ public final class AliyunOSSTestUtils {
     String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
     String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
     String envType = System.getenv("TEST_ENV_TYPE");
+    String region = System.getenv("REGION_NAME");
     if (accessKeyId != null) {
       conf.set("fs.oss.accessKeyId", accessKeyId);
     }
     if (accessKeySecret != null) {
       conf.set("fs.oss.accessKeySecret", accessKeySecret);
     }
+    if (region == null) {
+      region = "cn-hangzhou";
+    }
     if (envType == null || (!envType.equals("private") && !envType.equals("public"))) {
       envType = "public";
     }
     if (envType.equals("public")) {
-      conf.set("fs.oss.endpoint", "oss-cn-hangzhou.aliyuncs.com");
+      conf.set("fs.oss.endpoint", "oss-" + region + ".aliyuncs.com");
     } else {
-      conf.set("fs.oss.endpoint", "oss-cn-hangzhou-internal.aliyuncs.com");
+      conf.set("fs.oss.endpoint", "oss-" + region + "-internal.aliyuncs.com");
     }
 
     return conf;

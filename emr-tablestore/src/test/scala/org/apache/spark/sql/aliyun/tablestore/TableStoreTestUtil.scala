@@ -34,8 +34,9 @@ import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 
 class TableStoreTestUtil extends Logging {
-  private val instanceName = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("instance-emr-ut")
-  private val endpoint = s"http://$instanceName.cn-hangzhou.ots.aliyuncs.com"
+  private val instanceName = Option(System.getenv("OTS_INSTANCE_NAME")).getOrElse("")
+  private val region = Option(System.getenv("REGION_NAME")).getOrElse("cn-hangzhou")
+  private val endpoint = s"http://$instanceName.$region.ots.aliyuncs.com"
   private val tableName = "spark_test"
   private val tunnelName = "user-tunnel"
   private val accessKeyId = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
@@ -57,7 +58,6 @@ class TableStoreTestUtil extends Logging {
     val createResp = tunnelClient.createTunnel(
       new CreateTunnelRequest(tableName, tunnelName, tunnelType)
     )
-    println(s"Create tunnel ${tunnelName} success.")
     createResp.getTunnelId
   }
 
@@ -74,16 +74,14 @@ class TableStoreTestUtil extends Logging {
         }
       }
     }
-    println("checkTunnelReady", describeResp.getChannelInfos.toSeq.toString)
     isReady
   }
 
   private[sql] def deleteTunnel(): Unit = {
     try {
       tunnelClient.deleteTunnel(new DeleteTunnelRequest(tableName, tunnelName))
-      println(s"Delete Tunnel ${tunnelName} success.")
     } catch {
-      case NonFatal(ex) => println(s"Non fatal exception! $ex")
+      case NonFatal(ex) => // ok
     }
   }
 
@@ -93,15 +91,13 @@ class TableStoreTestUtil extends Logging {
     tableMeta.addPrimaryKeyColumn(new PrimaryKeySchema("PkInt", PrimaryKeyType.INTEGER))
     val tableOptions: TableOptions = new TableOptions(-1, 1)
     syncClient.createTable(new CreateTableRequest(tableMeta, tableOptions))
-    System.out.println(s"Create Table ${tableName} success.")
   }
 
   private[sql] def deleteTable(): Unit = {
     try {
       syncClient.deleteTable(new DeleteTableRequest(tableName))
-      System.out.println(s"Delete Table ${tableName} success.")
     } catch {
-      case NonFatal(ex) => println(s"Non fatal exception! $ex")
+      case NonFatal(ex) => // ok
     }
   }
 
@@ -124,14 +120,12 @@ class TableStoreTestUtil extends Logging {
       batchRequest.addRowChange(rowPutChange)
       if (batchRequest.getRowsCount == 200) {
         syncClient.batchWriteRow(batchRequest)
-        println("BatchWrite 200 rows")
         batchRequest = new BatchWriteRowRequest()
       }
     }
     // Write the last batch
     if (batchRequest.getRowsCount > 0) {
       syncClient.batchWriteRow(batchRequest)
-      println(s"BatchWrite ${batchRequest.getRowsCount} rows")
     }
   }
 
@@ -183,7 +177,6 @@ class TableStoreTestUtil extends Logging {
     val schema = TableStoreCatalog(options).schema
     val provider = new TableStoreSourceProvider()
     val fullOptions = getTestOptions(options)
-    System.out.println(fullOptions)
     provider.createSource(
       sqlContext,
       metaDataPath,

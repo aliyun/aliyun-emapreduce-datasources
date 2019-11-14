@@ -31,8 +31,7 @@
 
     <property>
         <name>test.fs.oss.name</name>
-        <value>oss://oss-for-emr-sdk-ut-hz</value>
-        <description>Update this value with your own testing oss path.</description>
+        <value></value>
     </property>
 
     <property>
@@ -42,8 +41,7 @@
 
     <property>
         <name>fs.contract.test.fs.oss</name>
-        <value>oss://oss-for-emr-sdk-ut-hz</value>
-        <description>Update this value with your own testing oss path.</description>
+        <value></value>
     </property>
 
 </configuration>

@@ -41,7 +41,7 @@ class OdpsOpsSuite extends SparkFunSuite {
     if (envType.equals("public")) 0 else 1
   }
   // Update this with your own testing odps project.
-  val project = "emr_sdk_ut"
+  val project: String = Option(System.getenv("ODPS_PROJECT_NAME")).getOrElse("")
   val numPartitions = 2
 
   val urls = Seq(
