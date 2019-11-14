@@ -46,8 +46,10 @@ public final class AliyunOSSTestUtils {
    */
   public static NativeOssFileSystem createTestFileSystem(Configuration conf)
       throws IOException {
-    String fsname = conf.getTrimmed(
-        TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME, System.getenv("TEST_FS_OSS_NAME"));
+    String fsname = conf.getTrimmed(TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME);
+    if (StringUtils.isEmpty(fsname)) {
+      fsname = System.getenv("TEST_FS_OSS_NAME");
+    }
 
     boolean liveTest = StringUtils.isNotEmpty(fsname);
     URI testURI = null;

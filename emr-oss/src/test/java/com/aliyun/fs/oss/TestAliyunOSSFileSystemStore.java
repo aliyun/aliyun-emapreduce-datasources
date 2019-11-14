@@ -20,6 +20,7 @@ package com.aliyun.fs.oss;
 
 import com.aliyun.fs.oss.common.NativeFileSystemStore;
 import com.aliyun.fs.oss.nat.NativeOssFileSystem;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.After;
@@ -82,7 +83,11 @@ public class TestAliyunOSSFileSystemStore {
       conf.set("fs.oss.endpoint", "oss-" + region + "-internal.aliyuncs.com");
     }
     fs = new NativeOssFileSystem();
-    fs.initialize(URI.create(conf.get("test.fs.oss.name", System.getenv("TEST_FS_OSS_NAME"))), conf);
+    String fsname = conf.getTrimmed("test.fs.oss.name");
+    if (StringUtils.isEmpty(fsname)) {
+      fsname = System.getenv("TEST_FS_OSS_NAME");
+    }
+    fs.initialize(URI.create(fsname), conf);
     store = fs.getStore();
   }
 
