@@ -58,10 +58,10 @@ abstract class LoghubSourceTest extends StreamTest with SharedSQLContext {
   }
 
   /**
-    * Add data to LogStore.
-    *
-    * `action` can be used to run actions for each logStore before inserting data.
-    */
+   * Add data to LogStore.
+   *
+   * `action` can be used to run actions for each logStore before inserting data.
+   */
   case class AddLogStoreData(logStore: String, shardId: Option[Int], data: Int*)
     (implicit ensureDataInMultiplePartition: Boolean = false,
       concurrent: Boolean = false,

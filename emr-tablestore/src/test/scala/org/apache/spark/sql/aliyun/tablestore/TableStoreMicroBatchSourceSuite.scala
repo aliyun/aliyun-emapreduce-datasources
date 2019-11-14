@@ -17,13 +17,13 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
+import scala.util.Random
+
 import com.alicloud.openservices.tablestore.model.tunnel.{TunnelStage, TunnelType}
-import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.streaming.Offset
 import org.scalatest.FunSuite
 
-import scala.util.Random
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.execution.streaming.Offset
 
 class TableStoreMicroBatchSourceSuite extends FunSuite {
 
