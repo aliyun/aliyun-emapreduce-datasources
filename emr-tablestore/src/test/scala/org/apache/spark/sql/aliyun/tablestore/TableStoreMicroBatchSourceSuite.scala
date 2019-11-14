@@ -230,9 +230,7 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       source.commit(preOffset)
       source.getBatch(Some(preOffset), offset.get)
       val rdd = source.currentBatchRDD
-      if (i >= 2) {
-        assert(rdd.count() == count)
-      }
+      assert(rdd.count() == count)
       preOffset = offset.get
     }
   }
