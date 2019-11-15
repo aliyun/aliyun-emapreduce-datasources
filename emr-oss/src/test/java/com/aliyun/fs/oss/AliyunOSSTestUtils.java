@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,8 +46,10 @@ public final class AliyunOSSTestUtils {
    */
   public static NativeOssFileSystem createTestFileSystem(Configuration conf)
       throws IOException {
-    String fsname = conf.getTrimmed(
-        TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME, "");
+    String fsname = conf.getTrimmed(TestAliyunOSSFileSystemContract.TEST_FS_OSS_NAME);
+    if (StringUtils.isEmpty(fsname)) {
+      fsname = System.getenv("TEST_FS_OSS_NAME");
+    }
 
     boolean liveTest = StringUtils.isNotEmpty(fsname);
     URI testURI = null;
@@ -62,6 +64,9 @@ public final class AliyunOSSTestUtils {
     }
     conf.set("mapreduce.job.run-local", "true");
     conf.set("fs.oss.buffer.dirs", "/tmp");
+
+    conf = updateConfig(conf);
+
     NativeOssFileSystem ossfs = new NativeOssFileSystem();
     ossfs.initialize(testURI, conf);
     return ossfs;
@@ -76,5 +81,31 @@ public final class AliyunOSSTestUtils {
     String testUniqueForkId = System.getProperty("test.unique.fork.id");
     return testUniqueForkId == null ? "/test" :
         "/" + testUniqueForkId + "/test";
+  }
+
+  public static Configuration updateConfig(Configuration conf) {
+    String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
+    String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
+    String envType = System.getenv("TEST_ENV_TYPE");
+    String region = System.getenv("REGION_NAME");
+    if (accessKeyId != null) {
+      conf.set("fs.oss.accessKeyId", accessKeyId);
+    }
+    if (accessKeySecret != null) {
+      conf.set("fs.oss.accessKeySecret", accessKeySecret);
+    }
+    if (region == null) {
+      region = "cn-hangzhou";
+    }
+    if (envType == null || (!envType.equals("private") && !envType.equals("public"))) {
+      envType = "public";
+    }
+    if (envType.equals("public")) {
+      conf.set("fs.oss.endpoint", "oss-" + region + ".aliyuncs.com");
+    } else {
+      conf.set("fs.oss.endpoint", "oss-" + region + "-internal.aliyuncs.com");
+    }
+
+    return conf;
   }
 }

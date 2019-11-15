@@ -23,7 +23,6 @@ class ChannelOffsetSuite extends FunSuite {
   test("channel offset serialize and deserialize") {
     val offset = ChannelOffset("testlogPoint", 0)
     val serialized = ChannelOffset.serialize(offset)
-    println(serialized)
     val deserialized = ChannelOffset.deserialize(serialized)
     assert(deserialized.logPoint == "testlogPoint")
     assert(deserialized.offset == 0)

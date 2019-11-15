@@ -54,7 +54,7 @@ class LoghubContinuousReader(
   override def commit(end: Offset): Unit = {}
 
   override def deserializeOffset(json: String): Offset = {
-    LoghubSourceOffset(LoghubSourceOffset.partitionOffsets(json))
+    LoghubSourceOffset(LoghubSourceOffset.partitionOffsets(json, sourceOptions))
   }
 
   override def getStartOffset: Offset = offset
@@ -74,7 +74,7 @@ class LoghubContinuousReader(
 
   override def mergeOffsets(offsets: Array[PartitionOffset]): Offset = {
     val mergedMap = offsets.map {
-      case LoghubShardOffset(lp, ls, shard, of) => Map(LoghubShard(lp, ls, shard) -> of)
+      case LoghubShardOffset(lp, ls, shard, of, cursor) => Map(LoghubShard(lp, ls, shard) -> (of, cursor))
     }.reduce(_ ++ _)
     LoghubSourceOffset(mergedMap)
   }
@@ -85,14 +85,14 @@ class LoghubContinuousReader(
 
   override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
     import scala.collection.JavaConverters._
-    val startOffsets = LoghubSourceOffset.getShardOffsets(offset)
+    val startOffsets = LoghubSourceOffset.getShardOffsets(offset, sourceOptions)
     startOffsets.toSeq.map {
       case (loghubShard, of) => {
         LoghubContinuousInputPartition(
           loghubShard.logProject,
           loghubShard.logStore,
           loghubShard.shard,
-          of,
+          of._1,
           sourceOptions,
           readSchema.fieldNames,
           defaultSchema)
@@ -158,7 +158,7 @@ class LoghubContinuousInputPartitionReader(
 
   override def getOffset: PartitionOffset = {
     val offset = logServiceClient.GetCursorTime(logProject, logStore, shardId, nextCursor)
-    LoghubShardOffset(logProject, logStore, shardId, offset.GetCursorTime())
+    LoghubShardOffset(logProject, logStore, shardId, offset.GetCursorTime(), nextCursor)
   }
 
   override def next(): Boolean = {

@@ -111,22 +111,32 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
       .map(shard => LoghubShard(logProject, logStore, shard.GetShardId())).toSet
   }
 
-  def fetchEarliestOffsets(): Map[LoghubShard, Int] = runUninterruptibly {
+  def fetchEarliestOffsets(loghubShards: Set[LoghubShard]): Map[LoghubShard, (Int, String)] = runUninterruptibly {
+    withRetriesWithoutInterrupt {
+      loghubShards.map(shard => {
+        val cursor = logServiceClient.GetCursor(logProject, logStore, shard.shard, CursorMode.BEGIN)
+        val cursorTime = logServiceClient.GetCursorTime(logProject, logStore, shard.shard, cursor.GetCursor())
+        (shard, (cursorTime.GetCursorTime(), cursor.GetCursor()))
+      }).toMap
+    }
+  }
+
+  def fetchEarliestOffsets(): Map[LoghubShard, (Int, String)] = runUninterruptibly {
     withRetriesWithoutInterrupt {
       fetchLoghubShard().map {case loghubShard =>
         val cursor = logServiceClient.GetCursor(logProject, logStore, loghubShard.shard, CursorMode.BEGIN)
         val cursorTime = logServiceClient.GetCursorTime(logProject, logStore, loghubShard.shard, cursor.GetCursor())
-        (loghubShard, cursorTime.GetCursorTime())
+        (loghubShard, (cursorTime.GetCursorTime(), cursor.GetCursor()))
       }.toMap
     }
   }
 
-  def fetchLatestOffsets(): Map[LoghubShard, Int] = runUninterruptibly {
+  def fetchLatestOffsets(): Map[LoghubShard, (Int, String)] = runUninterruptibly {
     withRetriesWithoutInterrupt {
       fetchLoghubShard().map {case loghubShard => {
         val cursor = logServiceClient.GetCursor(logProject, logStore, loghubShard.shard, CursorMode.END)
         val cursorTime = logServiceClient.GetCursorTime(logProject, logStore, loghubShard.shard, cursor.GetCursor())
-        (loghubShard, cursorTime.GetCursorTime())
+        (loghubShard, (cursorTime.GetCursorTime(), cursor.GetCursor()))
       }}.toMap
     }
   }
@@ -139,7 +149,7 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
     val endOffset: Int = if (lag > maxRange) {
       startOffset + maxRange
     } else if (lag > minRange) {
-      fetchLatestOffsets().values.min
+      fetchLatestOffsets().values.map(_._1).min
     } else {
       throw new Exception("Should not be called here.")
     }
@@ -158,9 +168,9 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
         val lag = System.currentTimeMillis() / 1000 - startOffset
         if (lag <= 60) {
           val minCursorTime = fetchLatestOffsets().values.min
-          require(minCursorTime >= startOffset, s"endCursorTime[$minCursorTime] should not be less than " +
+          require(minCursorTime._1 >= startOffset, s"endCursorTime[$minCursorTime] should not be less than " +
             s"startCursorTime[$startOffset].")
-          return minCursorTime
+          return minCursorTime._1
         }
 
         if (latestHistograms == null) {
@@ -248,5 +258,15 @@ object LoghubOffsetReader extends Logging with Serializable {
   def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
     logServiceClient = null
     logServiceClient = getOrCreateLoghubClient(sourceOptions)
+  }
+
+  // just for test
+  private[logservice] def setLogServiceClient(testClient: LoghubClientAgent): Unit = {
+    this.logServiceClient = testClient
+  }
+
+  // just for test
+  private[logservice] def resetLogServiceClient(): Unit = {
+    logServiceClient = null
   }
 }

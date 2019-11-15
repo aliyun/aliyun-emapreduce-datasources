@@ -18,6 +18,7 @@ package org.apache.spark.sql.aliyun.logservice
 
 import com.aliyun.openservices.aliyun.log.producer.{Callback, LogProducer, Result}
 import com.aliyun.openservices.log.common.LogItem
+import com.google.common.util.concurrent.ListenableFuture
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.sql.Row
@@ -40,9 +41,14 @@ class LoghubWriterTask(
    * Write data into log store
    */
   def execute(iterator: Iterator[InternalRow]): Unit = {
+    var lastSendResultFuture: ListenableFuture[Result] = null
     while (iterator.hasNext && failedWrite == null) {
       val currentRow = iterator.next()
-      sendRow(currentRow, producer, logProject, logStore)
+      lastSendResultFuture = sendRow(currentRow, producer, logProject, logStore)
+    }
+    if (lastSendResultFuture != null) {
+      lastSendResultFuture.get()
+      checkForErrors()
     }
   }
 
@@ -72,14 +78,10 @@ abstract class LoghubGroupWriter(inputSchema: Seq[Attribute]) {
       row: InternalRow,
       producer: LogProducer,
       logProject: String,
-      logStore: String): Unit = {
-    try {
-      val genericRecord = converter(internalRowConverter(row)).asInstanceOf[LogItem]
-      producer.send(logProject, logStore, genericRecord, callback)
-    } catch {
-      case e: Exception =>
-        failedWrite = e
-    }
+      logStore: String): ListenableFuture[Result] = {
+    checkForErrors()
+    val genericRecord = converter(internalRowConverter(row)).asInstanceOf[LogItem]
+    producer.send(logProject, logStore, genericRecord, callback)
   }
 
   protected def checkForErrors(): Unit = {

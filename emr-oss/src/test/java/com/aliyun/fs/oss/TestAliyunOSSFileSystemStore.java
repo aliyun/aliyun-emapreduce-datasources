@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +19,8 @@
 package com.aliyun.fs.oss;
 
 import com.aliyun.fs.oss.common.NativeFileSystemStore;
-import com.aliyun.fs.oss.nat.JetOssNativeFileSystemStore;
 import com.aliyun.fs.oss.nat.NativeOssFileSystem;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.After;
@@ -58,8 +58,36 @@ public class TestAliyunOSSFileSystemStore {
     conf = new Configuration();
     conf.set("mapreduce.job.run-local", "true");
     conf.set("fs.oss.buffer.dirs", "/tmp");
+
+    String accessKeyId = System.getenv("ALIYUN_ACCESS_KEY_ID");
+    String accessKeySecret = System.getenv("ALIYUN_ACCESS_KEY_SECRET");
+    String envType = System.getenv("TEST_ENV_TYPE");
+    String region = System.getenv("REGION_NAME");
+    if (accessKeyId != null) {
+      conf.set("fs.oss.accessKeyId", accessKeyId);
+    }
+    if (accessKeySecret != null) {
+      conf.set("fs.oss.accessKeyId", accessKeySecret);
+    }
+    if(region == null) {
+      region = "ch-hangzhou";
+    }
+    if (envType == null) {
+      envType = "public";
+    } else if (!envType.equalsIgnoreCase("private") && !envType.equalsIgnoreCase("public")) {
+      throw new IOException("Unsupported test environment type: " + envType + ", only support private or public");
+    }
+    if (envType.equals("public")) {
+      conf.set("fs.oss.endpoint", "oss-" + region + ".aliyuncs.com");
+    } else {
+      conf.set("fs.oss.endpoint", "oss-" + region + "-internal.aliyuncs.com");
+    }
     fs = new NativeOssFileSystem();
-    fs.initialize(URI.create(conf.get("test.fs.oss.name")), conf);
+    String fsname = conf.getTrimmed("test.fs.oss.name");
+    if (StringUtils.isEmpty(fsname)) {
+      fsname = System.getenv("TEST_FS_OSS_NAME");
+    }
+    fs.initialize(URI.create(fsname), conf);
     store = fs.getStore();
   }
 
@@ -78,7 +106,6 @@ public class TestAliyunOSSFileSystemStore {
     Configuration conf = new Configuration();
     assumeNotNull(conf.get("fs.oss.accessKeyId"));
     assumeNotNull(conf.get("fs.oss.accessKeySecret"));
-    assumeNotNull(conf.get("test.fs.oss.name"));
   }
 
   protected void writeRenameReadCompare(Path path, long len)

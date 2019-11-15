@@ -24,6 +24,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.{BatchGetLogResponse, GetCursorResponse}
+import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
@@ -38,17 +39,22 @@ import org.apache.spark.util.NextIterator
 
 class LoghubSourceRDD(
       @transient sc: SparkContext,
-      project: String,
-      logStore: String,
-      accessKeyId: String,
-      accessKeySecret: String,
-      endpoint: String,
       shardOffsets: ArrayBuffer[(Int, Int, Int)],
       schemaFieldNames: Array[String],
       schemaDDL: String,
       defaultSchema: Boolean,
       sourceOptions: Map[String, String])
     extends RDD[InternalRow](sc, Nil) with Logging {
+  private val logProject = sourceOptions.getOrElse("sls.project",
+    throw new MissingArgumentException("Missing logService project (='sls.project')."))
+  private val logStore = sourceOptions.getOrElse("sls.store",
+    throw new MissingArgumentException("Missing logService store (='sls.store')."))
+  private val accessKeyId = sourceOptions.getOrElse("access.key.id",
+    throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+  private val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
+    throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+  private val endpoint = sourceOptions.getOrElse("endpoint",
+    throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
 
   @transient var mClient: LoghubClientAgent =
     LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
@@ -67,10 +73,11 @@ class LoghubSourceRDD(
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     try {
       new InterruptibleIterator[InternalRow](context, new NextIterator[InternalRow]() {
+        val (startOffset, endOffset) = resolveRange(shardPartition)
         val startCursor: GetCursorResponse =
-          mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.startCursor)
+          mClient.GetCursor(logProject, logStore, shardPartition.shardId, startOffset)
         val endCursor: GetCursorResponse =
-          mClient.GetCursor(project, logStore, shardPartition.shardId, shardPartition.endCursor)
+          mClient.GetCursor(logProject, logStore, shardPartition.shardId, endOffset)
         private var hasRead: Int = 0
         private val nextCursor: GetCursorResponse = startCursor
         private var nextCursorTime = nextCursor.GetCursor()
@@ -123,7 +130,7 @@ class LoghubSourceRDD(
         }
 
         def fetchNextBatch(): Unit = {
-          val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore,
+          val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(logProject, logStore,
             shardPartition.shardId, step, nextCursorTime, endCursor.GetCursor())
           var count = 0
           var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursorTime)
@@ -152,7 +159,7 @@ class LoghubSourceRDD(
                   }
                   logData.offer(
                     new RawLoghubData(
-                      project,
+                      logProject,
                       logStore,
                       shardPartition.shardId,
                       new java.sql.Timestamp(log.getTime * 1000L),
@@ -181,7 +188,7 @@ class LoghubSourceRDD(
                     columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
                   }
                   if (schemaFieldPos.contains(__PROJECT__)) {
-                    columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, project)
+                    columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
                   }
                   if (schemaFieldPos.contains(__STORE__)) {
                     columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
@@ -215,8 +222,8 @@ class LoghubSourceRDD(
           val crt = nextCursorTime
           nextCursorTime = batchGetLogRes.GetNextCursor()
           nextCursorNano = new String(Base64.getDecoder.decode(nextCursorTime)).toLong
-          logDebug(s"project: $project, logStore: $logStore, shardId: ${shardPartition.shardId}, " +
-            s"startCursor: ${shardPartition.startCursor}, endCursor: ${shardPartition.endCursor}, " +
+          logDebug(s"project: $logProject, logStore: $logStore, shardId: ${shardPartition.shardId}, " +
+            s"startCursor: $startOffset, endCursor: $endOffset, " +
             s"currentCursorTime: $crt, nextCursorTime: $nextCursorTime, " +
             s"nextCursorNano: $nextCursorNano, endCursorNano: $endCursorNano, " +
             s"hasRead: $hasRead, batchGet: $count, queueSize: ${logData.size()}")
@@ -228,10 +235,40 @@ class LoghubSourceRDD(
     }
   }
 
+  private def resolveRange(shardPartition: ShardPartition): (Int, Int) = {
+    val loghubOffsetReader = new LoghubOffsetReader(Map(
+      "sls.project" -> logProject,
+      "sls.store" -> logStore,
+      "access.key.id" -> accessKeyId,
+      "access.key.secret" -> accessKeySecret,
+      "endpoint" -> endpoint
+    ))
+    // Obtain TopicPartition offsets with late binding support
+    lazy val earliest = loghubOffsetReader.fetchEarliestOffsets()
+    lazy val latest = loghubOffsetReader.fetchLatestOffsets()
+    val startOffset = if (shardPartition.startCursor < 0) {
+      assert(shardPartition.startCursor == LoghubOffsetRangeLimit.EARLIEST,
+        s"earliest offset ${shardPartition.startCursor} does not equal ${LoghubOffsetRangeLimit.EARLIEST}")
+      earliest(LoghubShard(logProject, logStore, shardPartition.shardId))._1
+    } else {
+      shardPartition.startCursor
+    }
+
+    val endOffset = if (shardPartition.endCursor < 0) {
+      assert(shardPartition.endCursor == LoghubOffsetRangeLimit.LATEST,
+        s"earliest offset ${shardPartition.endCursor} does not equal ${LoghubOffsetRangeLimit.LATEST}")
+      latest(LoghubShard(logProject, logStore, shardPartition.shardId))._1
+    } else {
+      shardPartition.endCursor
+    }
+
+    (startOffset, endOffset)
+  }
+
   override protected def getPartitions: Array[Partition] = {
     val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     shardOffsets.zipWithIndex.map { case (p, idx) =>
-      new ShardPartition(id, idx, p._1, project, logStore, accessKeyId, accessKeySecret,
+      new ShardPartition(id, idx, p._1, logProject, logStore, accessKeyId, accessKeySecret,
         endpoint, schemaDDL, p._2, p._3, logGroupStep).asInstanceOf[Partition]
     }.toArray
   }
