@@ -127,9 +127,9 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       }
       val datahubSource = sources.head
       testUtils.sendMessage(topic, shardId, data.map { _.toString }:_*)
-      Thread.sleep(1000)
+      Thread.sleep(5000)
       val offset = DatahubSourceOffset(testUtils.getLatestOffsets(topic))
-      println(s"Added data, expected offset $offset")
+      logInfo(s"Added data, expected offset $offset")
       (datahubSource, offset)
     }
 
@@ -187,6 +187,7 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
   test("input row metrics") {
     val topic = testUtils.createTopic(defaultSchema)
     testUtils.sendMessage(topic, None, Array("-1"):_*)
+    Thread.sleep(5000)
     require(testUtils.getLatestOffsets(topic).size === 2)
 
     val datahub = spark
@@ -236,7 +237,7 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("access.key.secret", testUtils.accessKeySecret)
       .option("decimal.precision", "5")
       .option("decimal.scale", "5")
-      // use latest to force begin to be 5
+      // use latest to force begin to be 6
       .option("startingoffsets", startingOffsets)
       // use Long.Max to try to trigger overflow
       .option("maxOffsetsPerTrigger", Long.MaxValue)
