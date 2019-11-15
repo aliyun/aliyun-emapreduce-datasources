@@ -17,7 +17,7 @@
 package org.apache.spark.sql.aliyun.logservice
 
 import java.util
-import java.util.concurrent.{Executors, ThreadFactory}
+import java.util.concurrent.{ConcurrentHashMap, Executors, ThreadFactory}
 
 import com.aliyun.openservices.aliyun.log.producer.{LogProducer, ProducerConfig, ProjectConfig}
 import com.aliyun.openservices.log.common.Consts.CursorMode
@@ -205,29 +205,27 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 
 object LoghubOffsetReader extends Logging with Serializable {
   @transient private var logProducer: LogProducer = null
-  @transient private var logServiceClient: LoghubClientAgent = null
+  @transient private[logservice] var logServiceClientPool = new ConcurrentHashMap[(String, String), LoghubClientAgent]()
 
   def getOrCreateLoghubClient(
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String): LoghubClientAgent = {
-    if (logServiceClient == null) {
-      logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+    if (!logServiceClientPool.contains((accessKeyId, endpoint))) {
+      val logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+      logServiceClientPool.put((accessKeyId, endpoint), logServiceClient)
     }
-    logServiceClient
+    logServiceClientPool.get((accessKeyId, endpoint))
   }
 
   def getOrCreateLoghubClient(sourceOptions: Map[String, String]): LoghubClientAgent = {
-    if (logServiceClient == null) {
-      val accessKeyId = sourceOptions.getOrElse("access.key.id",
-        throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-      val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
-        throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
-      val endpoint = sourceOptions.getOrElse("endpoint",
-        throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
-      logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
-    }
-    logServiceClient
+    val accessKeyId = sourceOptions.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
+      throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+    val endpoint = sourceOptions.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
+    getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
   }
 
   def getOrCreateLogProducer(sourceOptions: Map[String, String]): LogProducer = {

@@ -30,7 +30,7 @@ import org.codehaus.jackson.node.ObjectNode
 class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
 
   private val datahubServiceMaxRetry = 3
-  private val client = new DatahubClient(conf)
+  private[spark] val client = new DatahubClient(conf)
 
   def getTopic(projectName: String, topicName: String): GetTopicResult = {
     var retry = 0
@@ -205,8 +205,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
   }
 
   /**
-   * @InvalidParameterException one possible reason is when timestamp of oldest data in datahub
-   *                           is larger than consume offset in offsetCtx cause data is expired
+   * @throws InvalidParameterException
+   *        one possible reason is when timestamp of oldest data in datahub
+   *        is larger than consume offset in offsetCtx cause data is expired
    */
   def getNextOffsetCursor(offsetCtx: OffsetContext): GetCursorResult = {
     var retry = 0

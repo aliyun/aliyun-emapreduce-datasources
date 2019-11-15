@@ -17,7 +17,7 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import java.io.UnsupportedEncodingException
-import java.util.concurrent.{Executors, ThreadFactory}
+import java.util.concurrent.{ConcurrentHashMap, Executors, ThreadFactory}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -171,7 +171,7 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 }
 
 object DatahubOffsetReader extends Logging with Serializable {
-  @transient private var DatahubClient: DatahubClientAgent = null
+  @transient private[datahub] val datahubClientPool = new ConcurrentHashMap[(String, String), DatahubClientAgent]()
   @transient private var zkClient: ZkClient = null
 
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
@@ -213,11 +213,12 @@ object DatahubOffsetReader extends Logging with Serializable {
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String): DatahubClientAgent = {
-    if (DatahubClient == null) {
-      DatahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId,
+    if (!datahubClientPool.contains((accessKeyId, endpoint))) {
+      val datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId,
         accessKeySecret), endpoint))
+      datahubClientPool.put((accessKeyId, endpoint), datahubClient)
     }
-    DatahubClient
+    datahubClientPool.get((accessKeyId, endpoint))
   }
 
   def getOrCreateDatahubClient(sourceOptions: Map[String, String]): DatahubClientAgent = {
@@ -227,15 +228,23 @@ object DatahubOffsetReader extends Logging with Serializable {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     val endpoint = sourceOptions.getOrElse("endpoint",
       throw new MissingArgumentException("Missing endpoint (='endpoint')."))
-    if (DatahubClient == null) {
-      DatahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret),
-        endpoint))
-    }
-    DatahubClient
+    getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
   }
 
   def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    DatahubClient = null
-    DatahubClient = getOrCreateDatahubClient(sourceOptions)
+    val accessKeyId = sourceOptions.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    val endpoint = sourceOptions.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing endpoint (='endpoint')."))
+    datahubClientPool.get((accessKeyId, endpoint)).close()
+    datahubClientPool.remove((accessKeyId, endpoint))
+    getOrCreateDatahubClient(sourceOptions)
+  }
+
+  // only for test
+  private[datahub] def resetClientPool(): Unit = {
+    import scala.collection.JavaConverters._
+    datahubClientPool.asScala.values.foreach(_.close())
+    datahubClientPool.clear()
   }
 }
