@@ -25,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-final class RetryUtil {
+public final class RetryUtil {
   private static final Log LOG = LogFactory.getLog(RetryUtil.class);
 
   private static final long maxBackoff = 10000;

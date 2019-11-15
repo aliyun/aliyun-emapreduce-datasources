@@ -17,16 +17,25 @@
  */
 package org.apache.spark.sql.aliyun.odps.datasource
 
-import org.apache.spark.SparkConf
+import com.aliyun.odps.{Column, OdpsType, TableSchema}
+import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.sql.{SaveMode, SparkSession}
-import org.scalatest.FunSuite
 
-class ODPSDataSourceSuit extends FunSuite {
+class ODPSDataSourceSuite extends SparkFunSuite {
 
-  val accessKeyId = ""
-  val accessKeySecret = ""
-  val envType = 0
-  val project = ""
+  val accessKeyId: String = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
+  val accessKeySecret: String = Option(System.getenv("ALIYUN_ACCESS_KEY_SECRET")).getOrElse("")
+
+  val envType: Int = {
+    val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
+    if (envType != "private" && envType != "public") {
+      throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
+    }
+    if (envType.equals("public")) 0 else 1
+  }
+  // Update this with your own testing odps project.
+  val project: String = Option(System.getenv("ODPS_PROJECT_NAME")).getOrElse("")
   val numPartitions = 2
 
   val urls = Seq(
@@ -36,6 +45,22 @@ class ODPSDataSourceSuit extends FunSuite {
 
   val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local[*]")
   val ss = SparkSession.builder().appName("Test Odps Read").master("local[*]").getOrCreate()
+
+  override def beforeAll(): Unit = {
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val schema = new TableSchema
+    schema.addColumn(new Column("a", OdpsType.INT))
+    schema.addColumn(new Column("b", OdpsType.STRING))
+    odpsUtils.createTable(project, "odps_no_partition_table", schema, true)
+    schema.addPartitionColumn(new Column("c", OdpsType.STRING))
+    odpsUtils.createTable(project, "odps_partition_table", schema, true)
+  }
+
+  override def afterAll(): Unit = {
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    odpsUtils.runSQL(project, "TRUNCATE TABLE odps_no_partition_table;")
+    odpsUtils.runSQL(project, "TRUNCATE TABLE odps_partition_table;")
+  }
 
   import ss.implicits._
 
@@ -72,7 +97,7 @@ class ODPSDataSourceSuit extends FunSuite {
     val collectList = readDF.collect()
     System.out.println("*****" + table + ",after read table," + collectList.size)
     assert(collectList.length == 26)
-    assert((1 to 26).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 26).forall(n => collectList.exists(_.getInt(0) == n)))
   }
 
   test("write/read DataFrame to/from partition odps table should be ok") {
@@ -105,7 +130,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val collectList = readDF.collect()
     assert(collectList.length == 26)
-    assert((1 to 26).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 26).forall(n => collectList.exists(_.getInt(0) == n)))
 
   }
 
@@ -152,7 +177,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val collectList = readDF.collect()
     assert(collectList.length == 52)
-    assert((1 to 52).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 52).forall(n => collectList.exists(_.getInt(0) == n)))
   }
 
 
@@ -200,7 +225,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val collectList = readDF.collect()
     assert(collectList.length == 52)
-    assert((1 to 52).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 52).forall(n => collectList.exists(_.getInt(0) == n)))
 
   }
 
@@ -332,7 +357,7 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val collectList = readDF.collect()
     assert(collectList.length == 26)
-    assert((1 to 26).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 26).forall(n => collectList.exists(_.getInt(0) == n)))
   }
 
 
@@ -380,6 +405,6 @@ class ODPSDataSourceSuit extends FunSuite {
 
     val collectList = readDF.collect()
     assert(collectList.length == 26)
-    assert((1 to 26).forall(n => collectList.exists(_.getLong(0) == n)))
+    assert((1 to 26).forall(n => collectList.exists(_.getInt(0) == n)))
   }
 }

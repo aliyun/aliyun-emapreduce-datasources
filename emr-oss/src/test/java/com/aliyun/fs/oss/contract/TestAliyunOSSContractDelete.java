@@ -18,6 +18,7 @@
 
 package com.aliyun.fs.oss.contract;
 
+import com.aliyun.fs.oss.AliyunOSSTestUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.contract.AbstractContractDeleteTest;
 import org.apache.hadoop.fs.contract.AbstractFSContract;
@@ -29,6 +30,6 @@ public class TestAliyunOSSContractDelete extends AbstractContractDeleteTest {
 
   @Override
   protected AbstractFSContract createContract(Configuration conf) {
-    return new AliyunOSSContract(conf);
+    return new AliyunOSSContract(AliyunOSSTestUtils.updateConfig(conf));
   }
 }

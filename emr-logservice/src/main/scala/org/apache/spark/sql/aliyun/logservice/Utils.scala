@@ -187,7 +187,7 @@ object Utils extends Logging {
       .zip(endOffsets.toSeq.sortBy(_._1.shard))
       .map { case (startOffset, endOffset) =>
         require(startOffset._1.shard == endOffset._1.shard)
-        if (offset < startOffset._2) {
+        if (offset < startOffset._2._1) {
           val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start offset [${startOffset._2}], " +
             s"using [${startOffset._2}] instead of [$offset] as new specific offset."
           if (ignoreError) {
@@ -196,7 +196,7 @@ object Utils extends Logging {
           } else {
             throw new Exception(msg)
           }
-        } else if (offset > endOffset._2) {
+        } else if (offset > endOffset._2._1) {
           val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end offset [${endOffset._2}], " +
             s"using [${endOffset._2}] instead of [$offset] as new specific offset."
           if (ignoreError) {
@@ -206,7 +206,7 @@ object Utils extends Logging {
             throw new Exception(msg)
           }
         } else {
-          (startOffset._1, offset)
+          (startOffset._1, (offset, ""))
         }
       }.toMap
     LoghubSourceOffset.partitionOffsets(startOffsets)

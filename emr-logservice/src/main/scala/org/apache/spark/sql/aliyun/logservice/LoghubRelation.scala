@@ -47,23 +47,16 @@ class LoghubRelation(
       implicit val topicOrdering: Ordering[LoghubShard] = Ordering.by(t => (t.logProject, t.logStore, t.shard))
       val fromTopics = fromPartitionOffsets.keySet.toList.sorted.mkString(",")
       val untilTopics = untilPartitionOffsets.keySet.toList.sorted.mkString(",")
-      throw new IllegalStateException("different shards " +
-        s"for starting offsets shards[$fromTopics] and " +
+      throw new IllegalStateException(s"different shards for starting offsets shards[$fromTopics] and " +
         s"ending offsets shards[$untilTopics]")
     }
 
-    val logProject = sourceOptions("sls.project")
-    val logStore = sourceOptions("sls.store")
-    val accessKeyId = sourceOptions("access.key.id")
-    val accessKeySecret = sourceOptions("access.key.secret")
-    val endpoint = sourceOptions("endpoint")
     val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
-    fromPartitionOffsets.foreach { case (loghubShard, sof) => {
+    fromPartitionOffsets.foreach { case (loghubShard, sof) =>
       val eof = untilPartitionOffsets(loghubShard)
       shardOffsets.+=((loghubShard.shard, sof, eof))
-    }}
-    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, logProject, logStore, accessKeyId,
-      accessKeySecret, endpoint, shardOffsets, schema.fieldNames, schema.toDDL, defaultSchema, sourceOptions)
+    }
+    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, shardOffsets, schema.fieldNames, schema.toDDL, defaultSchema, sourceOptions)
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }
 
@@ -72,29 +65,27 @@ class LoghubRelation(
       loghubOffsets: LoghubOffsetRangeLimit): Map[LoghubShard, Int] = {
     def validateTopicPartitions(
         shards: Set[LoghubShard],
-        shardOffsets: Map[LoghubShard, Int]): Map[LoghubShard, Int] = {
+        shardOffsets: Map[LoghubShard, (Int, String)]): Unit = {
       assert(shards == shardOffsets.keySet,
         "If startingOffsets contains specific offsets, you must specify all LogProject-LogStore-Shard.\n" +
           "Use -1 for latest, -2 for earliest, if you don't care.\n" +
           s"Specified: ${shardOffsets.keySet} Assigned: $shards")
       logDebug(s"Shards assigned to consumer: $shards. Seeking to $shardOffsets")
-      shardOffsets
     }
+
     val shards = loghubReader.fetchLoghubShard()
-    // Obtain TopicPartition offsets with late binding support
     loghubOffsets match {
       case EarliestOffsetRangeLimit =>
-        val earliest = loghubReader.fetchEarliestOffsets()
         shards.map {
-          case tp => tp -> earliest(tp)
+          case tp => tp -> LoghubOffsetRangeLimit.EARLIEST
         }.toMap
       case LatestOffsetRangeLimit =>
-        val latest = loghubReader.fetchLatestOffsets()
         shards.map {
-          case tp => tp -> latest(tp)
+          case tp => tp -> LoghubOffsetRangeLimit.LATEST
         }.toMap
       case SpecificOffsetRangeLimit(shardOffsets) =>
         validateTopicPartitions(shards, shardOffsets)
+        shardOffsets.map(so => (so._1, so._2._1))
     }
   }
 
