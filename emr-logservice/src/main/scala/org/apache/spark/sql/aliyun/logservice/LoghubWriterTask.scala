@@ -47,11 +47,8 @@ class LoghubWriterTask(
       lastSendResultFuture = sendRow(currentRow, producer, logProject, logStore)
     }
     if (lastSendResultFuture != null) {
-      val result = lastSendResultFuture.get()
-      if (!result.isSuccessful) {
-        throw new Exception(s"Failed to send log, errorCode=${result.getErrorCode}, " +
-          s"errorMessage=${result.getErrorMessage}, result=$result")
-      }
+      lastSendResultFuture.get()
+      checkForErrors()
     }
   }
 
@@ -82,6 +79,7 @@ abstract class LoghubGroupWriter(inputSchema: Seq[Attribute]) {
       producer: LogProducer,
       logProject: String,
       logStore: String): ListenableFuture[Result] = {
+    checkForErrors()
     val genericRecord = converter(internalRowConverter(row)).asInstanceOf[LogItem]
     producer.send(logProject, logStore, genericRecord, callback)
   }
