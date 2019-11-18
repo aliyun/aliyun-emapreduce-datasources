@@ -17,12 +17,13 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import java.io.UnsupportedEncodingException
-import java.util.concurrent.{ConcurrentHashMap, Executors, ThreadFactory}
+import java.util.concurrent.{Executors, ThreadFactory}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
@@ -171,7 +172,8 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 }
 
 object DatahubOffsetReader extends Logging with Serializable {
-  @transient private[datahub] val datahubClientPool = new ConcurrentHashMap[(String, String), DatahubClientAgent]()
+  private val lock = new Object
+  @transient private[datahub] val datahubClientPool = new mutable.HashMap[(String, String), DatahubClientAgent]()
   @transient private var zkClient: ZkClient = null
 
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
@@ -213,12 +215,14 @@ object DatahubOffsetReader extends Logging with Serializable {
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String): DatahubClientAgent = {
-    if (!datahubClientPool.contains((accessKeyId, endpoint))) {
-      val datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId,
-        accessKeySecret), endpoint))
-      datahubClientPool.put((accessKeyId, endpoint), datahubClient)
+    lock.synchronized {
+      if (!datahubClientPool.contains((accessKeyId, endpoint))) {
+        val datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId,
+          accessKeySecret), endpoint))
+        datahubClientPool.put((accessKeyId, endpoint), datahubClient)
+      }
+      datahubClientPool((accessKeyId, endpoint))
     }
-    datahubClientPool.get((accessKeyId, endpoint))
   }
 
   def getOrCreateDatahubClient(sourceOptions: Map[String, String]): DatahubClientAgent = {
@@ -236,15 +240,20 @@ object DatahubOffsetReader extends Logging with Serializable {
       throw new MissingArgumentException("Missing access key id (='access.key.id')."))
     val endpoint = sourceOptions.getOrElse("endpoint",
       throw new MissingArgumentException("Missing endpoint (='endpoint')."))
-    datahubClientPool.get((accessKeyId, endpoint)).close()
-    datahubClientPool.remove((accessKeyId, endpoint))
+    lock.synchronized {
+      if (datahubClientPool.contains((accessKeyId, endpoint))) {
+        datahubClientPool((accessKeyId, endpoint)).close()
+        datahubClientPool.remove((accessKeyId, endpoint))
+      }
+    }
     getOrCreateDatahubClient(sourceOptions)
   }
 
   // only for test
   private[datahub] def resetClientPool(): Unit = {
-    import scala.collection.JavaConverters._
-    datahubClientPool.asScala.values.foreach(_.close())
-    datahubClientPool.clear()
+    lock.synchronized {
+      datahubClientPool.values.foreach(_.close())
+      datahubClientPool.clear()
+    }
   }
 }

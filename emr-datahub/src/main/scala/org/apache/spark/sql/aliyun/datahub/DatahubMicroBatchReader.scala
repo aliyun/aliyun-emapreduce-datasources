@@ -296,6 +296,7 @@ class DatahubMicroBatchReader(
     private var nextRow: UnsafeRow = _
 
     override def next(): Boolean = {
+      // read range: [start, end)
       if (nextOffset < offsetRange.untilOffset) {
         if (dataBuffer.isEmpty) {
           fetchData()

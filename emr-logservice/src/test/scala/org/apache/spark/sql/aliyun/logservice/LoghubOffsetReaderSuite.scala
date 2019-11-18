@@ -15,15 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.aliyun.datahub
+package org.apache.spark.sql.aliyun.logservice
 
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
 import org.scalatest.FunSuite
 
-class DatahubOffsetReaderSuite extends FunSuite {
-
+class LoghubOffsetReaderSuite extends FunSuite {
   test("create datahub client used for one region") {
     val accessKeyId = "accessKeyId"
     val accessKeySecret = "accessKeySecret"
@@ -33,17 +32,17 @@ class DatahubOffsetReaderSuite extends FunSuite {
       "access.key.secret" -> accessKeySecret,
       "endpoint" -> endpoint
     )
-    DatahubOffsetReader.resetClientPool()
-    DatahubOffsetReader.getOrCreateDatahubClient(sourceProps)
-    assert(DatahubOffsetReader.datahubClientPool.size == 1)
+    LoghubOffsetReader.resetClientPool()
+    LoghubOffsetReader.getOrCreateLoghubClient(sourceProps)
+    assert(LoghubOffsetReader.logServiceClientPool.size == 1)
 
-    DatahubOffsetReader.resetClientPool()
-    DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
-    assert(DatahubOffsetReader.datahubClientPool.size == 1)
+    LoghubOffsetReader.resetClientPool()
+    LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
+    assert(LoghubOffsetReader.logServiceClientPool.size == 1)
   }
 
   test("create datahub client used for more than one region") {
-    DatahubOffsetReader.resetClientPool()
+    LoghubOffsetReader.resetClientPool()
     Array("cn-hangzhou", "cn-beijing").foreach(region => {
       val accessKeyId = s"accessKeyId-$region"
       val accessKeySecret = s"accessKeySecret-$region"
@@ -53,25 +52,25 @@ class DatahubOffsetReaderSuite extends FunSuite {
         "access.key.secret" -> accessKeySecret,
         "endpoint" -> endpoint
       )
-      DatahubOffsetReader.getOrCreateDatahubClient(sourceProps)
+      LoghubOffsetReader.getOrCreateLoghubClient(sourceProps)
     })
 
-    assert(DatahubOffsetReader.datahubClientPool.size == 2)
+    assert(LoghubOffsetReader.logServiceClientPool.size == 2)
 
-    DatahubOffsetReader.resetClientPool()
+    LoghubOffsetReader.resetClientPool()
     Array("cn-hangzhou", "cn-beijing").foreach(region => {
       val accessKeyId = s"accessKeyId-$region"
       val accessKeySecret = s"accessKeySecret-$region"
       val endpoint = s"endpoint-$region"
-      DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
+      LoghubOffsetReader.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
     })
-    assert(DatahubOffsetReader.datahubClientPool.size == 2)
+    assert(LoghubOffsetReader.logServiceClientPool.size == 2)
   }
 
   test("bad options ") {
     def testMissingOptions(options: Map[String, String])(expectedMsgs: String*): Unit = {
       val ex = intercept[MissingArgumentException] {
-        DatahubOffsetReader.getOrCreateDatahubClient(options)
+        LoghubOffsetReader.getOrCreateLoghubClient(options)
       }
       expectedMsgs.foreach { m =>
         assert(ex.getMessage.toLowerCase(Locale.ROOT).contains(m.toLowerCase(Locale.ROOT)))

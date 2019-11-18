@@ -21,12 +21,13 @@ import java.util
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConverters._
-import scala.util.Random
+
 import com.aliyun.datahub.DatahubClient
 import com.aliyun.datahub.client.model.{Field => CField, FieldType => CFieldType, RecordSchema => CRecordSchema}
 import com.aliyun.datahub.common.data.{Field, FieldType, RecordSchema, RecordType}
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
+
 import org.apache.spark.sql.types._
 
 class DatahubTestUtils {

@@ -25,12 +25,12 @@ import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
-class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with StreamTest {
+abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQLContext with StreamTest {
   import testImplicits._
 
-  private var testUtils: DatahubTestUtils = _
+  protected var testUtils: DatahubTestUtils = _
 
-  private val defaultSchema = StructType(Array(StructField("msg", StringType)))
+  protected val defaultSchema = StructType(Array(StructField("msg", StringType)))
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -58,8 +58,6 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("topic", topic)
       .option("access.key.id", testUtils.accessKeyId)
       .option("access.key.secret", testUtils.accessKeySecret)
-      .option("decimal.precision", "5")
-      .option("decimal.scale", "5")
     withOptions.foreach {
       case (key, value) => df.option(key, value)
     }
@@ -137,7 +135,7 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       s"AddDatahubData(topic = $topic, data = $data, message = $message)"
   }
 
-  test("cannot stop Datahub stream") {
+  test("cannot stop datahub stream") {
     val topic = testUtils.createTopic(defaultSchema)
     testUtils.sendMessage(topic, None, (101 to 105).map(_.toString):_*)
 
@@ -149,13 +147,11 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("topic", topic)
       .option("access.key.id", testUtils.accessKeyId)
       .option("access.key.secret", testUtils.accessKeySecret)
-      .option("decimal.precision", "5")
-      .option("decimal.scale", "5")
 
     val datahub = reader.load()
       .select("msg")
       .as[String]
-    val mapped = datahub.map(msg => msg.toInt + 1)
+    val mapped = datahub.map(_.toInt + 1)
 
     testStream(mapped)(
       makeSureGetOffsetCalled,
@@ -174,8 +170,6 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("topic", topic)
       .option("access.key.id", testUtils.accessKeyId)
       .option("access.key.secret", testUtils.accessKeySecret)
-      .option("decimal.precision", "5")
-      .option("decimal.scale", "5")
 
     testStream(reader.load)(
       makeSureGetOffsetCalled,
@@ -186,9 +180,10 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
 
   test("input row metrics") {
     val topic = testUtils.createTopic(defaultSchema)
-    testUtils.sendMessage(topic, None, Array("-1"):_*)
     Thread.sleep(5000)
-    require(testUtils.getLatestOffsets(topic).size === 2)
+    testUtils.sendMessage(topic, Some(0), Array("-1"):_*)
+    Thread.sleep(5000)
+    require(testUtils.getLatestOffsets(topic).size == 2)
 
     val datahub = spark
       .readStream
@@ -198,8 +193,6 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("topic", topic)
       .option("access.key.id", testUtils.accessKeyId)
       .option("access.key.secret", testUtils.accessKeySecret)
-      .option("decimal.precision", "5")
-      .option("decimal.scale", "5")
       .load()
       .select("msg")
       .as[String]
@@ -208,11 +201,23 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
     testStream(mapped)(
       StartStream(trigger = ProcessingTime(1)),
       makeSureGetOffsetCalled,
-      AddDatahubData(topic, shardId = None, 1, 2, 3),
-      CheckAnswer(2, 3, 4),
+      AddDatahubData(topic, shardId = Some(0), 1, 2, 3),
+      CheckAnswer(0, 2, 3),
       AssertOnQuery { query =>
         val recordsRead = query.recentProgress.map(_.numInputRows).sum
         recordsRead == 3
+      },
+      AddDatahubData(topic, shardId = Some(1), 4, 5, 6),
+      CheckAnswer(0, 2, 3, 5, 6),
+      AssertOnQuery { query =>
+        val recordsRead = query.recentProgress.map(_.numInputRows).sum
+        recordsRead == 5
+      },
+      AddDatahubData(topic, shardId = Some(0), 7, 8, 9),
+      CheckAnswer(0, 2, 3, 4, 5, 6, 8, 9),
+      AssertOnQuery { query =>
+        val recordsRead = query.recentProgress.map(_.numInputRows).sum
+        recordsRead == 8
       }
     )
   }
@@ -220,9 +225,11 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
   test("SPARK-26718 Rate limit set to Long.Max should not overflow integer " +
     "during end offset calculation") {
     val topic = testUtils.createTopic(defaultSchema)
+    Thread.sleep(5000)
     testUtils.sendMessage(topic, Some(0), (0 to 5).map { _.toString }:_*)
+    Thread.sleep(5000)
     val startPartitionOffsets = Map(
-      DatahubShard(testUtils.project, topic , "0") -> 6L,
+      DatahubShard(testUtils.project, topic , "0") -> 5L,
       DatahubShard(testUtils.project, topic, "1") -> 0L
     )
     val startingOffsets = DatahubSourceOffset.partitionOffsets(startPartitionOffsets)
@@ -235,22 +242,49 @@ class DatahubMicroBatchReaderSuite extends QueryTest with SharedSQLContext with 
       .option("topic", topic)
       .option("access.key.id", testUtils.accessKeyId)
       .option("access.key.secret", testUtils.accessKeySecret)
-      .option("decimal.precision", "5")
-      .option("decimal.scale", "5")
-      // use latest to force begin to be 6
+      // use latest to force begin to be 5
       .option("startingoffsets", startingOffsets)
       // use Long.Max to try to trigger overflow
       .option("maxOffsetsPerTrigger", Long.MaxValue)
       .load()
       .select("msg")
       .as[String]
-    val mapped: org.apache.spark.sql.Dataset[_] = loghub.map(d => d.toInt)
+    val mapped: org.apache.spark.sql.Dataset[_] = loghub.map(_.toInt)
 
     testStream(mapped)(
       makeSureGetOffsetCalled,
-      AddDatahubData(topic, shardId = None, 30, 31, 32, 33, 34),
-      CheckAnswer(30, 31, 32, 33, 34),
+      AddDatahubData(topic, shardId = Some(0), 30, 31, 32, 33, 34),
+      CheckAnswer(5, 30, 31, 32, 33),
+      AddDatahubData(topic, shardId = Some(1), 35, 36, 37, 38, 39),
+      CheckAnswer(5, 30, 31, 32, 33, 35, 36, 37, 38),
+      AddDatahubData(topic, shardId = Some(0), 40, 41, 42, 43, 44),
+      CheckAnswer(5, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43),
       StopStream
+    )
+  }
+}
+
+class DatahubMicroBatchV2SourceSuite extends DatahubMicroBatchReaderSuiteBase{
+  test("V2 Source is used by default") {
+    val topic = testUtils.createTopic(defaultSchema)
+
+    val kafka = spark
+      .readStream
+      .format("datahub")
+      .option("endpoint", testUtils.endpoint)
+      .option("project", testUtils.project)
+      .option("topic", topic)
+      .option("access.key.id", testUtils.accessKeyId)
+      .option("access.key.secret", testUtils.accessKeySecret)
+      .load()
+
+    testStream(kafka)(
+      makeSureGetOffsetCalled,
+      AssertOnQuery { query =>
+        query.logicalPlan.collect {
+          case StreamingExecutionRelation(_: DatahubMicroBatchReader, _) => true
+        }.nonEmpty
+      }
     )
   }
 }

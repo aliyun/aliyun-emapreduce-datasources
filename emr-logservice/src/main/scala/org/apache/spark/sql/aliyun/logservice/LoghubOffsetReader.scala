@@ -17,7 +17,13 @@
 package org.apache.spark.sql.aliyun.logservice
 
 import java.util
-import java.util.concurrent.{ConcurrentHashMap, Executors, ThreadFactory}
+import java.util.concurrent.{Executors, ThreadFactory}
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 
 import com.aliyun.openservices.aliyun.log.producer.{LogProducer, ProducerConfig, ProjectConfig}
 import com.aliyun.openservices.log.common.Consts.CursorMode
@@ -27,11 +33,6 @@ import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.internal.Logging
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 import org.apache.spark.util.{ThreadUtils, UninterruptibleThread}
-
-import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.Duration
-import scala.util.control.NonFatal
 
 class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   val loghubReaderThread = Executors.newSingleThreadExecutor(new ThreadFactory {
@@ -214,8 +215,9 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 }
 
 object LoghubOffsetReader extends Logging with Serializable {
+  private val lock = new Object
   @transient private var logProducer: LogProducer = null
-  @transient private[logservice] var logServiceClientPool = new ConcurrentHashMap[(String, String), LoghubClientAgent]()
+  @transient private[logservice] var logServiceClientPool = new mutable.HashMap[(String, String), LoghubClientAgent]()
 
   def getOrCreateLoghubClient(
       accessKeyId: String,
@@ -225,7 +227,7 @@ object LoghubOffsetReader extends Logging with Serializable {
       val logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
       logServiceClientPool.put((accessKeyId, endpoint), logServiceClient)
     }
-    logServiceClientPool.get((accessKeyId, endpoint))
+    logServiceClientPool((accessKeyId, endpoint))
   }
 
   def getOrCreateLoghubClient(sourceOptions: Map[String, String]): LoghubClientAgent = {
@@ -256,17 +258,41 @@ object LoghubOffsetReader extends Logging with Serializable {
   }
 
   def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    logServiceClient = null
-    logServiceClient = getOrCreateLoghubClient(sourceOptions)
+    val accessKeyId = sourceOptions.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    val endpoint = sourceOptions.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
+    lock.synchronized {
+      if (logServiceClientPool.contains((accessKeyId, endpoint))) {
+        logServiceClientPool.remove((accessKeyId, endpoint))
+      }
+    }
+    getOrCreateLogProducer(sourceOptions)
   }
 
-  // just for test
-  private[logservice] def setLogServiceClient(testClient: LoghubClientAgent): Unit = {
-    this.logServiceClient = testClient
+  // only for test
+  private[logservice] def setLogServiceClient(
+      accessKeyId: String,
+      endpoint: String,
+      testClient: LoghubClientAgent): Unit = {
+    lock.synchronized {
+      logServiceClientPool.put((accessKeyId, endpoint), testClient)
+    }
   }
 
-  // just for test
-  private[logservice] def resetLogServiceClient(): Unit = {
-    logServiceClient = null
+  // only for test
+  private[logservice] def resetLogServiceClient(
+      accessKeyId: String,
+      endpoint: String): Unit = {
+    lock.synchronized {
+      logServiceClientPool.remove((accessKeyId, endpoint))
+    }
+  }
+
+  // only for test
+  private[logservice] def resetClientPool(): Unit = {
+    lock.synchronized {
+      logServiceClientPool.clear()
+    }
   }
 }
