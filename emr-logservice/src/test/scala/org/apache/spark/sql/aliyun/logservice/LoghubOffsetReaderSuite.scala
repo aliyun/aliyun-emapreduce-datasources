@@ -23,7 +23,7 @@ import org.apache.commons.cli.MissingArgumentException
 import org.scalatest.FunSuite
 
 class LoghubOffsetReaderSuite extends FunSuite {
-  test("create datahub client used for one region") {
+  test("create loghub client used for one region") {
     val accessKeyId = "accessKeyId"
     val accessKeySecret = "accessKeySecret"
     val endpoint = "endpoint-cn-hangzhou"
@@ -41,7 +41,7 @@ class LoghubOffsetReaderSuite extends FunSuite {
     assert(LoghubOffsetReader.logServiceClientPool.size == 1)
   }
 
-  test("create datahub client used for more than one region") {
+  test("create loghub client used for more than one region") {
     LoghubOffsetReader.resetClientPool()
     Array("cn-hangzhou", "cn-beijing").foreach(region => {
       val accessKeyId = s"accessKeyId-$region"
@@ -86,6 +86,6 @@ class LoghubOffsetReaderSuite extends FunSuite {
     testMissingOptions(Map(
       "access.key.id" -> "accessKeyId",
       "access.key.secret" -> "accessKeySecret"
-    ))("Missing endpoint (='endpoint').")
+    ))("Missing log store endpoint (='endpoint').")
   }
 }
