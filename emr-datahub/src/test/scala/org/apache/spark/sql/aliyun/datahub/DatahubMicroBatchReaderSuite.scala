@@ -47,23 +47,6 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
     super.afterAll()
   }
 
-  private def createDF(
-      topic: String,
-      withOptions: Map[String, String] = Map.empty[String, String]): DataFrame = {
-    val df = spark
-      .read
-      .format("datahub")
-      .option("endpoint", testUtils.endpoint)
-      .option("project", testUtils.project)
-      .option("topic", topic)
-      .option("access.key.id", testUtils.accessKeyId)
-      .option("access.key.secret", testUtils.accessKeySecret)
-    withOptions.foreach {
-      case (key, value) => df.option(key, value)
-    }
-    df.load().selectExpr("CAST(value AS STRING)")
-  }
-
   def makeSureGetOffsetCalled = AssertOnQuery { q =>
     q match {
       case c: ContinuousExecution => c.awaitEpoch(0)
