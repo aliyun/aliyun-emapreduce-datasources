@@ -19,19 +19,22 @@ package com.aliyun.emr.examples.sql.streaming
 
 import java.util.UUID
 
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, SaveMode, SparkSession}
+import org.apache.spark.sql.types._
 
 object StructuredLoghubSinkHive {
   def main(args: Array[String]) {
     if (args.length < 9) {
+      // scalastyle:off
       System.err.println("Usage: StructuredLoghubSinkHive <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <database> <table> <max-offsets-per-trigger> [<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, db, table, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets,
+      db, table, maxOffsetsPerTrigger, _*) = args
     val checkpointLocation =
       if (args.length > 9) args(9) else "/tmp/temporary-" + UUID.randomUUID.toString
 
@@ -46,7 +49,11 @@ object StructuredLoghubSinkHive {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
+    val schema = new StructType(
+      Array(
+        new StructField("__shard__", IntegerType),
+        new StructField("__time__", TimestampType),
+        new StructField("content", StringType)))
     val lines = spark
       .readStream
       .format("loghub")

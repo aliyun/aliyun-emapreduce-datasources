@@ -17,18 +17,21 @@
 package com.aliyun.emr.examples.streaming
 
 import com.aliyun.datahub.model.RecordEntry
-import org.apache.spark.streaming.aliyun.datahub.{CanCommitOffsets, DatahubUtils}
-import org.apache.spark.streaming.{Duration, StreamingContext}
+
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.streaming.{Duration, StreamingContext}
+import org.apache.spark.streaming.aliyun.datahub.{CanCommitOffsets, DatahubUtils}
 
 object UnionDirectDatahub {
   def main(args: Array[String]): Unit = {
     if (args.length < 8) {
+      // scalastyle:off
       println(
         """
           |Usage: TestDirectDatahub endpoint project topic1 topic2 subId1 subId2
           | accessId accessKey duration [zookeeper-host:port]
         """.stripMargin)
+      // scalastyle:on
       sys.exit(1)
     }
     val endpoint = args(0)
@@ -71,7 +74,9 @@ object UnionDirectDatahub {
           read(_),
           zkParam)
       ).checkpoint(Duration(duration)).foreachRDD(rdd => {
+        // scalastyle:off
         println(s"count:${rdd.count()}")
+        // scalastyle:on
         dstream.asInstanceOf[CanCommitOffsets].commitAsync()
       })
       ssc.checkpoint(checkpointDir)

@@ -26,9 +26,9 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive._
 import org.json4s.DefaultFormats
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.ml.util.ParquetFormatModelMetadataLoader
 import org.apache.spark.mllib.classification.LogisticRegressionModel
 import org.apache.spark.mllib.linalg._
-import org.apache.spark.ml.util.ParquetFormatModelMetadataLoader
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.sql.execution.datasources.parquet.ParquetFormatModelLoader
 import org.apache.spark.sql.types._
@@ -83,7 +83,8 @@ class LogisticRegressionUDF extends GenericUDF with Logging {
     val modelPath = _x1.getPrimitiveJavaObject(arguments(0).get())
     val model = LogisticRegressionUDF.loadModel(modelPath)
     val vector = if (isVectorType) {
-      val features = _x2.asInstanceOf[StructObjectInspector].getStructFieldsDataAsList(arguments(1).get())
+      val features = _x2.asInstanceOf[StructObjectInspector]
+        .getStructFieldsDataAsList(arguments(1).get())
       features.get(0).asInstanceOf[Byte] match {
         case 0 =>
           val size = features.get(1).asInstanceOf[Int]
@@ -121,13 +122,15 @@ object LogisticRegressionUDF {
   def loadModel(modelPath: String): LogisticRegressionModel = {
     lock.synchronized {
       if (!initialized) {
-        val (loadedClassName, version, metadata) = ParquetFormatModelMetadataLoader.loadModelMetaData(modelPath)
+        val (loadedClassName, version, metadata) =
+          ParquetFormatModelMetadataLoader.loadModelMetaData(modelPath)
         (loadedClassName, version) match {
           case (clazzName, "1.0") if clazzName == className =>
             implicit val formats = DefaultFormats
             val numFeatures = (metadata \ "numFeatures").extract[Int]
             val numClasses = (metadata \ "numClasses").extract[Int]
-            val (weights, intercept, threshold) = ParquetFormatModelLoader.loadModelData(modelPath, className, requiredSchema)
+            val (weights, intercept, threshold) =
+              ParquetFormatModelLoader.loadModelData(modelPath, className, requiredSchema)
             model = new LogisticRegressionModel(weights, intercept, numFeatures, numClasses)
             threshold match {
               case Some(t) => model.setThreshold(t)
@@ -135,8 +138,8 @@ object LogisticRegressionUDF {
             }
             initialized = true
           case _ => throw new Exception(
-            s"ParquetFormatModelMetadataLoader.loadModel did not recognize model with (className, format version):" +
-              s"($loadedClassName, $version).  Supported:\n" +
+            s"ParquetFormatModelMetadataLoader.loadModel did not recognize model with " +
+              s"(className, format version): ($loadedClassName, $version).  Supported:\n" +
               s"($className, 1.0)")
         }
       }

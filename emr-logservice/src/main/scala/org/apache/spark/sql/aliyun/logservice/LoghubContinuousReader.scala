@@ -20,8 +20,6 @@ import java.util
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
-
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
@@ -32,8 +30,8 @@ import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
-import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.sources.v2.reader.{ContinuousInputPartition, InputPartition, InputPartitionReader}
+import org.apache.spark.sql.sources.v2.reader.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -74,7 +72,8 @@ class LoghubContinuousReader(
 
   override def mergeOffsets(offsets: Array[PartitionOffset]): Offset = {
     val mergedMap = offsets.map {
-      case LoghubShardOffset(lp, ls, shard, of, cursor) => Map(LoghubShard(lp, ls, shard) -> (of, cursor))
+      case LoghubShardOffset(lp, ls, shard, of, cursor) =>
+        Map(LoghubShard(lp, ls, shard) -> (of, cursor))
     }.reduce(_ ++ _)
     LoghubSourceOffset(mergedMap)
   }
@@ -86,18 +85,15 @@ class LoghubContinuousReader(
   override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
     import scala.collection.JavaConverters._
     val startOffsets = LoghubSourceOffset.getShardOffsets(offset, sourceOptions)
-    startOffsets.toSeq.map {
-      case (loghubShard, of) => {
-        LoghubContinuousInputPartition(
-          loghubShard.logProject,
-          loghubShard.logStore,
-          loghubShard.shard,
-          of._1,
-          sourceOptions,
-          readSchema.fieldNames,
-          defaultSchema)
-        : InputPartition[InternalRow]
-      }
+    startOffsets.toSeq.map { case (loghubShard, of) =>
+      LoghubContinuousInputPartition(
+        loghubShard.logProject,
+        loghubShard.logStore,
+        loghubShard.shard,
+        of._1,
+        sourceOptions,
+        readSchema.fieldNames,
+        defaultSchema): InputPartition[InternalRow]
     }.asJava
   }
 }
@@ -110,7 +106,8 @@ case class LoghubContinuousInputPartition(
     sourceOptions: Map[String, String],
     schemaFieldNames: Array[String],
     defaultSchema: Boolean) extends ContinuousInputPartition[InternalRow] {
-  override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
+  override def createContinuousReader(offset: PartitionOffset):
+    InputPartitionReader[InternalRow] = {
     val off = offset.asInstanceOf[LoghubShardOffset]
     new LoghubContinuousInputPartitionReader(
       logProject,
@@ -146,10 +143,13 @@ class LoghubContinuousInputPartitionReader(
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
   private val step: Int = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
-  private val appendSequenceNumber: Boolean = sourceOptions.getOrElse("appendSequenceNumber", "false").toBoolean
+  private val appendSequenceNumber: Boolean =
+    sourceOptions.getOrElse("appendSequenceNumber", "false").toBoolean
   private var hasRead: Int = 0
-  private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
-  private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
+  private var nextCursor: String =
+    logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
+  private var endCursor =
+    logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
   // TODO: This may cost too much memory.
   private val logData = new LinkedBlockingQueue[LoghubData](4096 * step)
   private val rowWriter = new UnsafeRowWriter(schemaFieldNames.length)
@@ -174,9 +174,13 @@ class LoghubContinuousInputPartitionReader(
   }
 
   def fetchNextBatch(): Unit = {
-    endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
-    val batchGetLogRes: BatchGetLogResponse = logServiceClient.BatchGetLog(logProject, logStore, shardId,
-      step, nextCursor, endCursor)
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
+    endCursor =
+      logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
+    val batchGetLogRes: BatchGetLogResponse =
+      logServiceClient.BatchGetLog(logProject, logStore, shardId, step, nextCursor, endCursor)
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     var count = 0
     var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursor)
@@ -231,7 +235,8 @@ class LoghubContinuousInputPartitionReader(
               }
             }
             if (schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
-              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) = (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
+              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) =
+                (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
             }
             if (schemaFieldPos.contains(__PROJECT__)) {
               columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
@@ -249,14 +254,15 @@ class LoghubContinuousInputPartitionReader(
               columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
             }
             if (schemaFieldPos.contains(__TIME__)) {
-              columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
+              columnArray(schemaFieldPos(__TIME__)) =
+                (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
             }
             count += 1
             logData.offer(new SchemaLoghubData(columnArray))
           } catch {
             case e: NoSuchElementException =>
-              logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                s"data and continue.")
+              logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as " +
+                "an invalid data and continue.")
           }
           logIndex += 1
         }

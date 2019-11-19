@@ -18,14 +18,16 @@ package com.aliyun.emr.examples.streaming
 
 import org.apache.spark.SparkConf
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.aliyun.mns.MnsUtils
-import org.apache.spark.streaming.{StreamingContext, Seconds}
 
 object TestMNS {
   def main(args: Array[String]): Unit = {
     if (args.length < 4) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestLoghub <queuename> <accessKeyId> <accessKeySecret> <endpoint>""".stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
     val queuename = args(0)
@@ -37,10 +39,12 @@ object TestMNS {
     val batchInterval = Seconds(10)
     val ssc = new StreamingContext(conf, batchInterval)
 
-    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename, accessKeyId, accessKeySecret, endpoint,
-      StorageLevel.MEMORY_ONLY)
+    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename, accessKeyId,
+      accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
     mnsStream.foreachRDD( rdd => {
+      // scalastyle:off
       rdd.collect().foreach(e => println(new String(e)))
+      // scalastyle:o
     })
 
     ssc.start()

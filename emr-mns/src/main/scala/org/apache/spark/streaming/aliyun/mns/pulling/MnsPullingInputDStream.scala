@@ -29,8 +29,7 @@ class MnsPullingInputDStream(
     accessKeySecret: String,
     endpoint: String,
     storageLevel: StorageLevel,
-    asRawByte: Boolean)
-  extends ReceiverInputDStream[Array[Byte]](_ssc){
+    asRawByte: Boolean) extends ReceiverInputDStream[Array[Byte]](_ssc) {
   val batchMsgSize =
     _ssc.sc.getConf.getInt("spark.mns.batchMsg.size", 16)
   val pollingWaitSeconds =

@@ -30,11 +30,11 @@ import org.apache.hadoop.fs.Path
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.execution.SQLExecution
-import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, Offset, SerializedOffset, Source}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
@@ -48,7 +48,8 @@ class DatahubSource(
     startOffset: DatahubOffsetRangeLimit) extends Source with Serializable with Logging {
   private val currentBatches = new mutable.HashMap[(Offset, Offset), RDD[InternalRow]]()
   private var currentPartitionOffset: Option[Map[DatahubShard, Long]] = None
-  private val zkParams = sourceOptions.filter(_._1.toLowerCase(Locale.ROOT).startsWith("zookeeper."))
+  private val zkParams = sourceOptions
+    .filter(_._1.toLowerCase(Locale.ROOT).startsWith("zookeeper."))
     .map(option => option._1.drop(10) -> option._2)
   @transient private val zkClient = DatahubOffsetReader.getOrCreateZKClient(zkParams)
   private val maxOffsetsPerTrigger = sourceOptions.getOrElse("maxOffsetsPerTrigger", "10000").toLong
@@ -64,7 +65,8 @@ class DatahubSource(
     throw new MissingArgumentException("Missing aliyun access key secret (='access.key.secret')"))
 
   private lazy val initialPartitionOffsets = {
-    val metadataLog = new HDFSMetadataLog[DatahubSourceOffset](sqlContext.sparkSession, metadataPath) {
+    val metadataLog =
+      new HDFSMetadataLog[DatahubSourceOffset](sqlContext.sparkSession, metadataPath) {
       override def serialize(metadata: DatahubSourceOffset, out: OutputStream): Unit = {
         out.write(0) // A zero byte is written to support Spark 2.1.0 (SPARK-19517)
         val writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))
@@ -96,9 +98,12 @@ class DatahubSource(
 
     metadataLog.get(0).getOrElse({
       val offset = startOffset match {
-        case OldestOffsetRangeLimit => DatahubSourceOffset(datahubOffsetReader.fetchEarliestOffsets())
-        case LatestOffsetRangeLimit => DatahubSourceOffset(datahubOffsetReader.fetchLatestOffsets())
-        case SpecificOffsetRangeLimit(_) => throw new UnsupportedEncodingException()
+        case OldestOffsetRangeLimit =>
+          DatahubSourceOffset(datahubOffsetReader.fetchEarliestOffsets())
+        case LatestOffsetRangeLimit =>
+          DatahubSourceOffset(datahubOffsetReader.fetchLatestOffsets())
+        case SpecificOffsetRangeLimit(_) =>
+          throw new UnsupportedEncodingException()
       }
       metadataLog.add(0, offset)
       logInfo(s"Initial offset: $offset")
@@ -134,7 +139,8 @@ class DatahubSource(
     currentBatches.foreach(_._2.unpersist(false))
     currentBatches.clear()
     val rdd = new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId,
-      accessKeySecret, schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger)
+      accessKeySecret, schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath,
+      maxOffsetsPerTrigger)
       .mapPartitions(it => {
         val encoder = RowEncoder(schema).resolveAndBind()
         it.map(data => encoder.toRow(new GenericRow(data.toArray)))
@@ -142,7 +148,8 @@ class DatahubSource(
     sqlContext.sparkContext.setLocalProperty(SQLExecution.EXECUTION_ID_KEY, null)
     rdd.persist(StorageLevel.MEMORY_AND_DISK).count()
 
-    val startOffset = DatahubSourceOffset(shardOffsets.map(so => (DatahubShard(project, topic, so._1), so._2)).toMap)
+    val startOffset = DatahubSourceOffset(
+      shardOffsets.map(so => (DatahubShard(project, topic, so._1), so._2)).toMap)
     val end = shardOffsets.map(so => {
       val path = new Path(metadataPath).toUri.getPath
       val available: String = zkClient.readData(s"$path/datahub/available/$project/$topic/${so._1}",
@@ -178,7 +185,8 @@ class DatahubSource(
     }
 
     val rdd = if (currentBatches.contains((startOffset, end))) {
-      val expiredBatches = currentBatches.filter(b => !b._1._1.equals(startOffset) || !b._1._2.equals(end))
+      val expiredBatches =
+        currentBatches.filter(b => !b._1._1.equals(startOffset) || !b._1._2.equals(end))
       expiredBatches.foreach(_._2.unpersist())
       expiredBatches.foreach(b => currentBatches.remove(b._1))
       currentBatches((startOffset, end))
@@ -198,9 +206,9 @@ class DatahubSource(
       shards.foreach(shard => {
         shardOffsets.+=((shard.shardId, fromShardOffsets(shard), untilShardOffsets(shard)))
       })
-      new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId, accessKeySecret,
-        schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath, maxOffsetsPerTrigger)
-        .mapPartitions(it => {
+      new DatahubSourceRDD(sqlContext.sparkContext, endpoint, project, topic, accessKeyId,
+        accessKeySecret, schema.fieldNames, shardOffsets.toArray, zkParams, metadataPath,
+        maxOffsetsPerTrigger).mapPartitions(it => {
           val encoder = RowEncoder(schema).resolveAndBind(schema.toAttributes)
           it.map(data => encoder.toRow(new GenericRow(data.toArray)))
         })

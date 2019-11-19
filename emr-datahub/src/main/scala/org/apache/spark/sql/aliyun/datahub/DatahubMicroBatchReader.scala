@@ -29,8 +29,8 @@ import com.aliyun.datahub.model.RecordEntry
 import org.apache.commons.io.IOUtils
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.aliyun.datahub.DatahubSourceProvider._
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.aliyun.datahub.DatahubSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, SerializedOffset}
@@ -75,7 +75,7 @@ class DatahubMicroBatchReader(
         case LatestOffsetRangeLimit =>
           DatahubSourceOffset(offsetReader.fetchLatestOffsets())
         case SpecificOffsetRangeLimit(p) =>
-          DatahubSourceOffset(p.toSeq.map(i => (i._1.project, i._1.topic, i._1.shardId, i._2)):_*)
+          DatahubSourceOffset(p.toSeq.map(i => (i._1.project, i._1.topic, i._1.shardId, i._2)): _*)
       }
       metadataLog.add(0, offsets)
       logInfo(s"Initial offsets: $offsets")
@@ -292,7 +292,8 @@ class DatahubMicroBatchReader(
     private val converter: DatahubRecordToUnsafeRowConverter =
       new DatahubRecordToUnsafeRowConverter(schema, sourceOptions)
     private var nextOffset = offsetRange.fromOffset
-    private var nextCursor: String = datahubClientAgent.getCursor(project, topic, shardId, nextOffset).getCursor
+    private var nextCursor: String =
+      datahubClientAgent.getCursor(project, topic, shardId, nextOffset).getCursor
     private var nextRow: UnsafeRow = _
 
     override def next(): Boolean = {
@@ -318,8 +319,13 @@ class DatahubMicroBatchReader(
     private def fetchData(): Unit = {
       val topicResult = datahubClientAgent.getTopic(project, topic)
       val recordSchema = topicResult.getRecordSchema
-      val limit = if (offsetRange.untilOffset - nextOffset >= step) step else offsetRange.untilOffset - nextOffset
-      val recordResult = datahubClientAgent.getRecords(project, topic, shardId, nextCursor, limit.toInt, recordSchema)
+      val limit = if (offsetRange.untilOffset - nextOffset >= step) {
+        step
+      } else {
+        offsetRange.untilOffset - nextOffset
+      }
+      val recordResult = datahubClientAgent
+        .getRecords(project, topic, shardId, nextCursor, limit.toInt, recordSchema)
       recordResult.getRecords.asScala.foreach(record => {
         dataBuffer.offer(record)
       })

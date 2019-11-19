@@ -24,7 +24,8 @@ case object OldestOffsetRangeLimit extends DatahubOffsetRangeLimit
 
 case object LatestOffsetRangeLimit extends DatahubOffsetRangeLimit
 
-case class SpecificOffsetRangeLimit(shardOffsets: Map[DatahubShard, Long]) extends DatahubOffsetRangeLimit
+case class SpecificOffsetRangeLimit(shardOffsets: Map[DatahubShard, Long])
+  extends DatahubOffsetRangeLimit
 
 object DatahubOffsetRangeLimit {
   val LATEST = "-1" // indicates resolution to the latest offset

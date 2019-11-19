@@ -16,17 +16,19 @@
  */
 package com.aliyun.emr.examples
 
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.streaming.aliyun.logservice.LoghubUtils
-import org.apache.spark.{SparkConf, SparkContext}
 
 object TestBatchLoghub {
   def main(args: Array[String]): Unit = {
     if (args.length < 6) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestBatchLoghub <sls project> <sls logstore> <sls endpoint>
           |         <access key id> <access key secret> <start time> <end time=now>
         """.stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
 
@@ -38,14 +40,17 @@ object TestBatchLoghub {
     val startTime = args(5).toLong
 
     val sc = new SparkContext(new SparkConf().setAppName("test batch loghub"))
-    var rdd:JavaRDD[String] = null
+    var rdd: JavaRDD[String] = null
     if (args.length > 6) {
-      rdd = LoghubUtils.createRDD(sc, loghubProject, logStore, accessKeyId, accessKeySecret, endpoint, startTime, args(6).toLong)
+      rdd = LoghubUtils.createRDD(sc, loghubProject, logStore, accessKeyId, accessKeySecret,
+        endpoint, startTime, args(6).toLong)
     } else {
-      rdd = LoghubUtils.createRDD(sc, loghubProject, logStore, accessKeyId, accessKeySecret, endpoint, startTime)
+      rdd = LoghubUtils.createRDD(sc, loghubProject, logStore, accessKeyId, accessKeySecret,
+        endpoint, startTime)
     }
 
+    // scalastyle:off
     println("get log count:" + rdd.count())
-
+    // scalastyle:on
   }
 }

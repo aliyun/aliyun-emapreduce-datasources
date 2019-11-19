@@ -24,9 +24,9 @@ import scala.collection.JavaConverters._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Source
-import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
-import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions, MicroBatchReadSupport, StreamWriteSupport}
 import org.apache.spark.sql.sources._
+import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions, MicroBatchReadSupport, StreamWriteSupport}
+import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
 import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
@@ -49,9 +49,9 @@ class DatahubSourceProvider extends DataSourceRegister
   @deprecated("use DataSourceV2 impl", "1.8.0")
   override def createSource(
       sqlContext: SQLContext,
-      metadataPath: String, 
-      schema: Option[StructType], 
-      providerName: String, 
+      metadataPath: String,
+      schema: Option[StructType],
+      providerName: String,
       parameters: Map[String, String]): Source = {
     new DatahubSource(sqlContext, schema, parameters, metadataPath,
       new DatahubOffsetReader(parameters), getStartOffset(parameters))
@@ -131,12 +131,14 @@ object DatahubSourceProvider {
     """
       |Some data may have been lost because they are not available in Datahub any more; either the
       | data was aged out by Datahub or shard was in 'CLOSED' status and recycled. If you don't want
-      | your streaming query to fail on such cases, set the source option "failOnDataLoss" to "false".
+      | your streaming query to fail on such cases, set the source option "failOnDataLoss" to
+      | "false".
     """.stripMargin
 }
 
 /** Class to conveniently update Datahub config params, while logging the changes */
-private case class ConfigUpdater(module: String, datahubParams: Map[String, String]) extends Logging {
+private case class ConfigUpdater(module: String, datahubParams: Map[String, String])
+  extends Logging {
   private val map = new java.util.HashMap[String, Object](datahubParams.asJava)
 
   def set(key: String, value: Object): this.type = {

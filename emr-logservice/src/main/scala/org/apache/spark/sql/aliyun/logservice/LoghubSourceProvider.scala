@@ -21,11 +21,11 @@ import java.util.{Locale, Optional, UUID}
 import scala.collection.JavaConverters._
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.aliyun.loghub.LoghubSink
-import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
-import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
 import org.apache.spark.sql.sources._
+import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
 import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
@@ -61,8 +61,10 @@ class LoghubSourceProvider extends DataSourceRegister
       parameters: Map[String, String]): Source = {
     Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
-    val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
-      STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams,
+      STARTING_OFFSETS_OPTION_KEY,
+      LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
     val _schema = schema.getOrElse({
       logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
@@ -100,8 +102,10 @@ class LoghubSourceProvider extends DataSourceRegister
       caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
     assert(startingRelationOffsets != LatestOffsetRangeLimit)
 
-    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
-      ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams,
+      ENDING_OFFSETS_OPTION_KEY,
+      LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
 
     new LoghubRelation(
@@ -124,8 +128,10 @@ class LoghubSourceProvider extends DataSourceRegister
       caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
     assert(startingRelationOffsets != LatestOffsetRangeLimit)
 
-    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
-      ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
+      caseInsensitiveParams,
+      ENDING_OFFSETS_OPTION_KEY,
+      LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
 
     val schema = LoghubSourceProvider.getDefaultSchema
@@ -289,7 +295,8 @@ object LoghubSourceProvider {
 }
 
 /** Class to conveniently update Loghub config params, while logging the changes */
-private case class ConfigUpdater(module: String, loghubParams: Map[String, String]) extends Logging {
+private case class ConfigUpdater(module: String, loghubParams: Map[String, String])
+  extends Logging {
   private val map = new java.util.HashMap[String, Object](loghubParams.asJava)
 
   def set(key: String, value: Object): this.type = {

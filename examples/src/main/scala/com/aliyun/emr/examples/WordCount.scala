@@ -19,9 +19,10 @@ package com.aliyun.emr.examples
 
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record
-import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkContext, SparkConf}
+
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.aliyun.odps.OdpsOps
+import org.apache.spark.rdd.RDD
 
 /** Counts words in new text files created in the given directory */
 object WordCount {
@@ -32,8 +33,10 @@ object WordCount {
     val inputRDD: RDD[String] = inputType match {
       case "odps" =>
         if (args.length < 8) {
+          // scalastyle:off
           System.err.println("Usage: WordCount <inputType> <project> <table> " +
             "<numPartitions> <accessKeyId> <accessKeySecret> <odpsUrl> <tunnelUrl>")
+          // scalastyle:on
           System.exit(1)
         }
         val project = args(1)
@@ -44,12 +47,15 @@ object WordCount {
         val odpsUrl = args(6)
         val tunnelUrl = args(7)
         val sc = new SparkContext(conf)
-        OdpsOps(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl).readTable(project, table, read0, numPartition)
+        OdpsOps(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
+          .readTable(project, table, read0, numPartition)
 
       case "oss" =>
         if (args.length < 6) {
+          // scalastyle:off
           System.err.println("Usage: WordCount <inputType> <inputPath> <numPartitions> " +
             "<accessKeyId> <accessKeySecret> <endpoint>")
+          // scalastyle:on
           System.exit(1)
         }
         val inputPath = args(1)
@@ -65,7 +71,9 @@ object WordCount {
 
       case "hdfs" =>
         if (args.length < 3) {
+          // scalastyle:off
           System.err.println("Usage: WordCount <inputType> <inputPath> <numPartitions>")
+          // scalastyle:on
           System.exit(1)
         }
 
@@ -76,7 +84,9 @@ object WordCount {
     }
 
     inputRDD.flatMap(_.split(" ")).map(x => (x, 1)).reduceByKey(_ + _)
+      // scalastyle:off
       .collect().foreach(println)
+    // scalastyle:on
   }
 
   def read0(record: Record, schema: TableSchema): String = {

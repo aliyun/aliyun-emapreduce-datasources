@@ -40,14 +40,16 @@ class KuduSourceProvider extends DefaultSource with Logging {
       TABLE_KEY,
       throw new IllegalArgumentException(
         s"Kudu table name must be specified in create options using key '$TABLE_KEY'"))
-    val kuduMaster = parameters.getOrElse(KUDU_MASTER, InetAddress.getLocalHost.getCanonicalHostName)
-    val operationType = parameters.get(OPERATION).map(KuduSourceProvider.stringToOperationType).getOrElse(Upsert)
+    val kuduMaster =
+      parameters.getOrElse(KUDU_MASTER, InetAddress.getLocalHost.getCanonicalHostName)
+    val operationType =
+      parameters.get(OPERATION).map(KuduSourceProvider.stringToOperationType).getOrElse(Upsert)
     val schemaOption = Option(schema)
     val batchSize = parameters.get(BATCH_SIZE).map(_.toInt).getOrElse(defaultBatchSize)
     val faultTolerantScanner =
       parameters.get(FAULT_TOLERANT_SCANNER).map(_.toBoolean).getOrElse(defaultFaultTolerantScanner)
-    val scanLocality =
-      parameters.get(SCAN_LOCALITY).map(KuduSourceProvider.getScanLocalityType).getOrElse(defaultScanLocality)
+    val scanLocality = parameters.get(SCAN_LOCALITY)
+      .map(KuduSourceProvider.getScanLocalityType).getOrElse(defaultScanLocality)
     val scanRequestTimeoutMs = parameters.get(SCAN_REQUEST_TIMEOUT_MS).map(_.toLong)
     val keepAlivePeriodMs =
       parameters.get(KEEP_ALIVE_PERIOD_MS).map(_.toLong).getOrElse(defaultKeepAlivePeriodMs)
@@ -71,9 +73,11 @@ class KuduSourceProvider extends DefaultSource with Logging {
       parameters.get(REPARTITION).map(_.toBoolean).getOrElse(defaultRepartition)
     val repartitionSort =
       parameters.get(REPARTITION_SORT).map(_.toBoolean).getOrElse(defaultRepartitionSort)
-    val writeOptions = KuduWriteOptions(ignoreDuplicateRowErrors, ignoreNull, repartition, repartitionSort)
+    val writeOptions =
+      KuduWriteOptions(ignoreDuplicateRowErrors, ignoreNull, repartition, repartitionSort)
 
-    new KuduUpdatableRelation(tableName, kuduMaster, operationType, schemaOption, readOptions, writeOptions)(sqlContext)
+    new KuduUpdatableRelation(tableName, kuduMaster, operationType, schemaOption,
+      readOptions, writeOptions)(sqlContext)
   }
 }
 

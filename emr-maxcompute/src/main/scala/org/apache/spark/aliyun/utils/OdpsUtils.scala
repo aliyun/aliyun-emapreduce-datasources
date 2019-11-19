@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.aliyun.utils
 
 import java.sql.SQLException
 
+import com.aliyun.odps.{Partition, _}
 import com.aliyun.odps.`type`.TypeInfo
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.task.SQLTask
-import com.aliyun.odps.{Partition, _}
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.types._
 
@@ -90,7 +89,7 @@ class OdpsUtils(odps: Odps) extends Logging{
     val partitionFilter = partitions.toArray(new Array[Partition](0)).iterator
       .map(e => e.getPartitionSpec)
       .filter(f => f.toString.equals(partitionSpec_.toString))
-    val partitionExist = if(partitionFilter.size == 0) false else true
+    val partitionExist = if (partitionFilter.size == 0) false else true
     if(partitionExist) {
       (true, true)
     } else {
@@ -111,8 +110,9 @@ class OdpsUtils(odps: Odps) extends Logging{
       pname: String): Boolean = {
     try {
       val (_, partitionE) = checkTableAndPartition(project, table, pname)
-      if(!partitionE)
+      if(!partitionE) {
         return true
+      }
       odps.setDefaultProject(project)
       val partitionSpec = new PartitionSpec(pname)
       odps.tables().get(table).deletePartition(partitionSpec)
@@ -137,8 +137,9 @@ class OdpsUtils(odps: Odps) extends Logging{
       table: String): Boolean = {
     try {
       val (tableE, _) = checkTableAndPartition(project, table, "random")
-      if(!tableE)
+      if(!tableE) {
         return true
+      }
       odps.setDefaultProject(project)
       odps.tables().delete(table)
       true
@@ -183,7 +184,7 @@ class OdpsUtils(odps: Odps) extends Logging{
     if(!tableE) {
       logWarning("table " + table + " do not exist, FAILED.")
       return false
-    } else if(partitionE) {
+    } else if (partitionE) {
       logWarning("table " + table + " partition " + pname + " exist, " +
         "no need to create.")
       return true
@@ -209,7 +210,7 @@ class OdpsUtils(odps: Odps) extends Logging{
    * @return
    */
   def getTableSchema(project: String, table: String, isPartition: Boolean):
-      Array[(String, TypeInfo)] =  {
+      Array[(String, TypeInfo)] = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
@@ -255,11 +256,12 @@ class OdpsUtils(odps: Odps) extends Logging{
 
   /**
    * Run sql on ODPS.
+   *
    * @param project The name of ODPS project.
    * @param sqlCmd An ODPS sql
    * @return An instance of ODPS.
    */
-  def runSQL(project: String, sqlCmd: String, hints: Map[String, String] = Map.empty): Instance =  {
+  def runSQL(project: String, sqlCmd: String, hints: Map[String, String] = Map.empty): Instance = {
     odps.setDefaultProject(project)
     log.info("SQL command: " + sqlCmd)
     try {
@@ -278,52 +280,59 @@ class OdpsUtils(odps: Odps) extends Logging{
    */
   def getAllPartitionSpecs(table: String, project: String = null):
       Iterator[PartitionSpec] = {
-    if(project != null)
+    if (project != null) {
       odps.setDefaultProject(project)
+    }
     odps.tables().get(table).getPartitions.toArray(new Array[Partition](0))
       .map(pt => pt.getPartitionSpec).toIterator
   }
 
   /**
    * Check if the table is a partition table
+   *
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
    * @return
    */
-  def isPartitionTable(table: String, project: String = null):Boolean = {
-    if(project != null)
+  def isPartitionTable(table: String, project: String = null): Boolean = {
+    if (project != null) {
       odps.setDefaultProject(project)
+    }
     odps.tables().get(table).isPartitioned
   }
 
   /**
    * Check if the table exists
+   *
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
    * @return
    */
-  def tableExist(table: String, project: String = null):Boolean = {
-    if(project != null)
+  def tableExist(table: String, project: String = null): Boolean = {
+    if (project != null) {
       odps.setDefaultProject(project)
+    }
     odps.tables().exists(table)
   }
 
   /**
    * Check if the partition exists in the table,
+   *
    * `partitionSpec` like `pt='xxx',ds='yyy'`
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
    * @return
    */
-  def partitionExist(partitionSpec:String, table: String, project: String = null):Boolean = {
-    if(project != null)
+  def partitionExist(partitionSpec: String, table: String, project: String = null): Boolean = {
+    if (project != null) {
       odps.setDefaultProject(project)
+    }
     val partitions = odps.tables().get(table).getPartitions
     val partitionFilter = partitions.toArray(new Array[Partition](0)).iterator
       .map(e => e.getPartitionSpec)
       .filter(f => f.toString.equals(partitionSpec.toString))
 
-    if(partitionFilter.size == 0) false else true
+    if (partitionFilter.size == 0) false else true
   }
 
   def getCatalystType(columnName: String, columnType: TypeInfo, nullable: Boolean): StructField = {

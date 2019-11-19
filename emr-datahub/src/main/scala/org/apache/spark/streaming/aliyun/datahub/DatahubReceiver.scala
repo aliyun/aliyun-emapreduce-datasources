@@ -19,6 +19,7 @@ package org.apache.spark.streaming.aliyun.datahub
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.model.RecordEntry
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver

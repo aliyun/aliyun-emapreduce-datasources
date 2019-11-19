@@ -76,7 +76,8 @@ class LoghubSource(
           if (content(0) == 'v') {
             val indexOfNewLine = content.indexOf("\n")
             if (indexOfNewLine > 0) {
-              LoghubSourceOffset(SerializedOffset(content.substring(indexOfNewLine + 1)), sourceOptions)
+              LoghubSourceOffset(
+                SerializedOffset(content.substring(indexOfNewLine + 1)), sourceOptions)
             } else {
               throw new IllegalStateException(
                 s"Log file was malformed: failed to detect the log file version line.")
@@ -90,9 +91,12 @@ class LoghubSource(
 
     metadataLog.get(0).getOrElse {
       val offsets = startingOffsets match {
-        case EarliestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchEarliestOffsets())
-        case LatestOffsetRangeLimit => LoghubSourceOffset(loghubOffsetReader.fetchLatestOffsets())
-        case SpecificOffsetRangeLimit(partitionOffsets) => LoghubSourceOffset(partitionOffsets)
+        case EarliestOffsetRangeLimit =>
+          LoghubSourceOffset(loghubOffsetReader.fetchEarliestOffsets())
+        case LatestOffsetRangeLimit =>
+          LoghubSourceOffset(loghubOffsetReader.fetchLatestOffsets())
+        case SpecificOffsetRangeLimit(partitionOffsets) =>
+          LoghubSourceOffset(partitionOffsets)
       }
       metadataLog.add(0, offsets)
       logInfo(s"Initial offsets: $offsets")
@@ -100,7 +104,8 @@ class LoghubSource(
     }.shardToOffsets
   }
 
-  private val dynamicConfigEnable = sourceOptions.getOrElse("dynamicConfigEnable", "false").toBoolean
+  private val dynamicConfigEnable =
+    sourceOptions.getOrElse("dynamicConfigEnable", "false").toBoolean
   if (dynamicConfigEnable) {
     enableDynamicConfig()
   }
@@ -147,8 +152,8 @@ class LoghubSource(
     newShards.toSeq.foreach(shard => {
       shardOffsets.+=((shard.shard, earliest(shard)._1, untilShardOffsets(shard)._1))
     })
-    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, shardOffsets, schema.fieldNames, schema.toDDL,
-      defaultSchema, sourceOptions)
+    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, shardOffsets, schema.fieldNames,
+      schema.toDDL, defaultSchema, sourceOptions)
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)
   }
@@ -164,8 +169,8 @@ class LoghubSource(
     if (!zkClient.exists(checkpointRoot)) {
       zkClient.createPersistent(checkpointRoot, true)
     }
-    val dynamicConfigManager =
-      DynamicConfigManager.getOrCreateDynamicConfigManager(checkpointRoot, zkConnect, zkSessionTimeoutMs)
+    val dynamicConfigManager = DynamicConfigManager
+      .getOrCreateDynamicConfigManager(checkpointRoot, zkConnect, zkSessionTimeoutMs)
     val handler = new ZNodeChangeHandler {
       private implicit val formats = Serialization.formats(NoTypeHints)
 
@@ -188,14 +193,14 @@ class LoghubSource(
               case JNothing => // ok
               case JString(value) =>
                 if (maxOffsetsPerTrigger != value.toLong) {
-                  logInfo(s"Config 'maxOffsetsPerTrigger' for [$logProject/$logStore] is changed to " +
-                    s"${value.toLong} from $maxOffsetsPerTrigger.")
+                  logInfo(s"Config 'maxOffsetsPerTrigger' for [$logProject/$logStore] is " +
+                    s"changed to ${value.toLong} from $maxOffsetsPerTrigger.")
                   maxOffsetsPerTrigger = value.toLong
                 }
             }
           } else {
             logError(
-              s"""Unsupported dynamic config data version $version, current EMR SDK only support ["v1"].
+              s"""Unsupported dynamic config data version $version, only support ["v1"].
                  |$formatMsg
                """.stripMargin)
           }

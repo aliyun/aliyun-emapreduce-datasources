@@ -27,9 +27,10 @@ import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.model.RecordEntry
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
+
+import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 
 class DatahubRDD(
     @transient _sc: SparkContext,
@@ -46,7 +47,8 @@ class DatahubRDD(
     checkpointDir: String) extends RDD[Array[Byte]](_sc, Nil) with Logging{
 
   @transient private var zkClient = DatahubRDD.getClient(zkParam, accessId, accessKey, endpoint)._1
-  @transient private var datahubClientAgent = DatahubRDD.getClient(zkParam, accessId, accessKey, endpoint)._2
+  @transient private var datahubClientAgent =
+    DatahubRDD.getClient(zkParam, accessId, accessKey, endpoint)._2
 
   override def compute(split: Partition, context: TaskContext): Iterator[Array[Byte]] = {
     zkClient = DatahubRDD.getClient(zkParam, accessId, accessKey, endpoint)._1
@@ -63,9 +65,10 @@ class DatahubRDD(
 
     val partition = split.asInstanceOf[ShardPartition]
     try {
-      new InterruptibleIterator[Array[Byte]](context, new DatahubIterator(datahubClientAgent, endpoint, project, topic,
-        partition.shardId, partition.cursor, partition.count, subId, accessId, accessKey, func, zkClient,
-        checkpointDir, context))
+      new InterruptibleIterator[Array[Byte]](context,
+        new DatahubIterator(datahubClientAgent, endpoint, project, topic, partition.shardId,
+          partition.cursor, partition.count, subId, accessId, accessKey, func, zkClient,
+          checkpointDir, context))
     } catch {
       case e: Exception =>
         logError("Fail to build DatahubIterator.", e)
@@ -100,8 +103,10 @@ private class ShardPartition(
     val count: Int) extends Partition {
   override def index: Int = partitionId
   override def hashCode(): Int = 41 * (41 + rddId) + index
+  override def equals(other: Any): Boolean = super.equals(other)
 }
 
+// scalastyle:off
 object DatahubRDD extends Logging {
   var zkClient: ZkClient = null
   var datahubClient: DatahubClientAgent = null
@@ -114,7 +119,8 @@ object DatahubRDD extends Logging {
     if (zkClient ==  null || datahubClient == null) {
       val zkServers = zkParam.getOrElse("zookeeper.connect", "localhost:2181")
       val sessionTimeout = zkParam.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-      val connectionTimeout = zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
+      val connectionTimeout =
+        zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
       zkClient = new ZkClient(zkServers, sessionTimeout, connectionTimeout)
       zkClient.setZkSerializer(new ZkSerializer {
         override def serialize(data: scala.Any): Array[Byte] = {
@@ -133,14 +139,15 @@ object DatahubRDD extends Logging {
           }
           try {
             new String(bytes, StandardCharsets.UTF_8)
-          } catch{
+          } catch {
             case e: UnsupportedEncodingException =>
               logError("Fail to get data from Zookeeper.", e)
               null
           }
         }
       })
-      datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
+      datahubClient = new DatahubClientAgent(
+        new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
     }
 
     (zkClient, datahubClient)
@@ -159,3 +166,4 @@ object DatahubRDD extends Logging {
     }
   }
 }
+// scalastyle:on

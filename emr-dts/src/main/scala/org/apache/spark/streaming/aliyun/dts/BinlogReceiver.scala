@@ -3,7 +3,7 @@
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License") you may not use this file except in compliance with
+ * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
@@ -19,15 +19,15 @@ package org.apache.spark.streaming.aliyun.dts
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import com.aliyun.drc.clusterclient.{ClusterListener, DefaultClusterClient, RegionContext}
 import com.aliyun.drc.clusterclient.message.ClusterMessage
-import com.aliyun.drc.clusterclient.{ClusterListener, RegionContext, DefaultClusterClient}
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.{StorageLevel, StreamBlockId}
-import org.apache.spark.streaming.receiver.{Receiver, BlockGeneratorListener, BlockGenerator}
+import org.apache.spark.streaming.receiver.{BlockGenerator, BlockGeneratorListener, Receiver}
 
 private[dts] case class ClusterMessages(messages: Array[ClusterMessage]) {
   def isEmpty(): Boolean = messages.isEmpty
@@ -69,7 +69,7 @@ class BinlogReceiver(
     client = new DefaultClusterClient(context)
     val listener = new ClusterListener {
       override def notify(messages: util.List[ClusterMessage]): Unit = {
-        messages.foreach(message => {
+        messages.asScala.foreach(message => {
           blockGenerator.addMultipleDataWithCallback(Iterator(message.getRecord.getId), message)
         })
       }

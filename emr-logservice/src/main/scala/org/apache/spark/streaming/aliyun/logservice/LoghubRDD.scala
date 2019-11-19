@@ -18,15 +18,16 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.io.UnsupportedEncodingException
 
-import org.I0Itec.zkclient.ZkClient
-import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.apache.spark.annotation.DeveloperApi
-import org.apache.spark.internal.Logging
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
-import org.apache.spark.rdd.RDD
-
 import scala.collection.Map
 import scala.collection.mutable.ArrayBuffer
+
+import org.I0Itec.zkclient.ZkClient
+import org.I0Itec.zkclient.serialize.ZkSerializer
+
+import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
+import org.apache.spark.annotation.DeveloperApi
+import org.apache.spark.internal.Logging
+import org.apache.spark.rdd.RDD
 
 class LoghubRDD(
     @transient sc: SparkContext,
@@ -63,16 +64,17 @@ class LoghubRDD(
           val res = mClient.GetHistograms(project, logStore, from, to, "", "*")
           if (!res.IsCompleted()) {
             logWarning(s"Failed to get complete count for [$project]-[$logStore]-[${shard._1}] " +
-              s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. This warning " +
-              s"does not introduce any job failure, but may affect some information about this batch.")
+              s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. " +
+              s"This warning does not introduce any job failure, but may affect some information " +
+              s"about this batch.")
           }
           (res.GetTotalCount() * 1.0D) / numShards
         }).sum.toLong
       } catch {
         case e: Exception =>
-          logWarning(s"Failed to get statistics of rows in [$project]-[$logStore], use 0L instead. " +
-            s"This warning does not introduce any job failure, but may affect some information about " +
-            s"this batch.", e)
+          logWarning(s"Failed to get statistics of rows in [$project]-[$logStore], use 0L " +
+            s"instead. This warning does not introduce any job failure, but may affect some " +
+            s"information about this batch.", e)
           0L
       }
     }
@@ -117,10 +119,12 @@ class LoghubRDD(
       val endCursor: String,
       val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
+    override def equals(other: Any): Boolean = super.equals(other)
     override def index: Int = partitionId
   }
 }
 
+// scalastyle:off
 object LoghubRDD extends Logging {
   private var zkClient: ZkClient = null
   private var mClient: LoghubClientAgent = null
@@ -128,7 +132,7 @@ object LoghubRDD extends Logging {
   def getClient(zkParams: Map[String, String], accessKeyId: String, accessKeySecret: String,
       endpoint: String): (ZkClient, LoghubClientAgent) = {
     if (zkClient == null || mClient == null) {
-      val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost：2181")
+      val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
       val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
       val zkConnectionTimeoutMs =
         zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
@@ -175,3 +179,4 @@ object LoghubRDD extends Logging {
     }
   }
 }
+// scalastyle:on

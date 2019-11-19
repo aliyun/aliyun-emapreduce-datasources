@@ -19,6 +19,7 @@ package org.apache.spark.sql.aliyun.jdbc2
 
 import java.sql.Connection
 
+import org.apache.spark.{SparkEnv, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.aliyun.jdbc2.JdbcUtils._
@@ -28,7 +29,6 @@ import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types._
-import org.apache.spark.{SparkEnv, TaskContext}
 
 class JdbcSink(
     sqlContext: SQLContext,
@@ -129,10 +129,10 @@ class JdbcSink(
     val repartitionedDF = options.numPartitions match {
       case Some(n) if n <= 0 =>
         throw new IllegalArgumentException(
-          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table writing " +
-            "via JDBC. The minimum value is 1.")
+          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in " +
+            "table writing via JDBC. The minimum value is 1.")
       case Some(n) if n < df.rdd.getNumPartitions => df.coalesce(n)
-      case _                                      => df
+      case _ => df
     }
     if (batchIdCol.isEmpty) {
 
@@ -187,8 +187,8 @@ class JdbcSink(
     val repartitionedDF = options.numPartitions match {
       case Some(n) if n <= 0 =>
         throw new IllegalArgumentException(
-          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table writing " +
-            "via JDBC. The minimum value is 1.")
+          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in " +
+            "table writing via JDBC. The minimum value is 1.")
       case Some(n) if n < df.rdd.getNumPartitions => df.coalesce(n)
       case _ => df
     }
@@ -196,7 +196,8 @@ class JdbcSink(
       val rddSchema = df.schema
       val sparkSession = df.sparkSession
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
-        val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + TaskContext.getPartitionId()
+        val partitionId = TaskContext.getPartitionId()
+        val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + partitionId
         val executorParameters = parameters + ("dbtable" -> executorTable)
         val executorOptions = new JDBCOptions(executorParameters)
         val conn = createConnectionFactory(executorOptions).apply()
@@ -208,8 +209,9 @@ class JdbcSink(
              throw new IllegalStateException(s"Executor table $executorTable is not empty")
            }
         }
-        //Write to executor table
-        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None, isCaseSensitive, dialect)
+        // Write to executor table
+        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None,
+          isCaseSensitive, dialect)
         JdbcUtils.saveInternalPartition(getConnection,
           executorTable,
           iterator,
@@ -219,13 +221,13 @@ class JdbcSink(
           dialect,
           isolationLevel)
 
-        //Copy all data from executor table to target table
+        // Copy all data from executor table to target table
         val copyStmt = getCopyStatement(executorTable, targetTable, rddSchema, None, dialect)
         JdbcUtils.executeSimpleStatement(getConnection,
           copyStmt,
           isolationLevel)
 
-        //Truncate the executor table
+        // Truncate the executor table
         truncateTable(conn, executorOptions)
       })
     } else {
@@ -235,7 +237,8 @@ class JdbcSink(
       val rddSchema: StructType = df.schema.add(batchIdCol.get, LongType, false)
       val sparkSession = df.sparkSession
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
-        val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + TaskContext.getPartitionId()
+        val partitionId = TaskContext.getPartitionId()
+        val executorTable = targetTable + "$" + SparkEnv.get.executorId + "_" + partitionId
         val executorParameters = parameters + ("dbtable" -> executorTable)
         val executorOptions = new JDBCOptions(executorParameters)
         val conn = createConnectionFactory(executorOptions).apply()
@@ -247,8 +250,9 @@ class JdbcSink(
             throw new IllegalStateException(s"Executor table $executorTable is not empty")
           }
         }
-        //Write to executor table
-        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None, isCaseSensitive, dialect)
+        // Write to executor table
+        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None,
+          isCaseSensitive, dialect)
         JdbcUtils.saveInternalPartition(getConnection,
           executorTable,
           iterator.map(ir => InternalRow.fromSeq(ir.toSeq(dfSchema) :+ batchId)),
@@ -258,13 +262,13 @@ class JdbcSink(
           dialect,
           isolationLevel)
 
-        //Copy all data from executor table to target table
+        // Copy all data from executor table to target table
         val copyStmt = getCopyStatement(executorTable, targetTable, rddSchema, None, dialect)
         JdbcUtils.executeSimpleStatement(getConnection,
           copyStmt,
           isolationLevel)
 
-        //Truncate the executor table
+        // Truncate the executor table
         truncateTable(conn, executorOptions)
       })
     }

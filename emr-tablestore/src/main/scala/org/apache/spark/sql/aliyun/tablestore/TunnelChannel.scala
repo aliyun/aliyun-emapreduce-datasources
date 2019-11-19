@@ -17,8 +17,8 @@
 package org.apache.spark.sql.aliyun.tablestore
 
 /**
-  * A tunnel contains several channels, channel is just like partition/split in TableStore.
-  */
+ * A tunnel contains several channels, channel is just like partition/split in TableStore.
+ */
 case class TunnelChannel(tunnelId: String, channelId: String)
 
 case class Tunnel(tunnelId: String) {

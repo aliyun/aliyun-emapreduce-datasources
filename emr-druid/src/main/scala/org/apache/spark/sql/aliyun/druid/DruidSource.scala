@@ -17,12 +17,12 @@
 
 package org.apache.spark.sql.aliyun.druid
 
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.streaming.{Offset, Source}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.apache.spark.{Partition, SparkContext, TaskContext}
 
 class DruidSource(
     @transient sqlContext: SQLContext) extends Source{
@@ -53,4 +53,5 @@ class DruidRDD(@transient sc: SparkContext) extends RDD[InternalRow](sc, Nil) {
 class ShardPartition() extends Partition {
   override def hashCode(): Int = 0
   override def index: Int = 0
+  override def equals(other: Any): Boolean = super.equals(other)
 }
