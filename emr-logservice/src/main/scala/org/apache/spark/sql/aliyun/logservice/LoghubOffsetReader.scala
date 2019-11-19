@@ -87,7 +87,6 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
                   logWarning(s"Error in attempt $attempt getting loghub offsets: ", e)
                   attempt += 1
                   Thread.sleep(offsetFetchAttemptIntervalMs)
-                  LoghubOffsetReader.resetConsumer(readerOptions)
               }
             }
           case _ =>
@@ -255,19 +254,6 @@ object LoghubOffsetReader extends Logging with Serializable {
       logProducer.putProjectConfig(new ProjectConfig(logProject, endpoint, accessKeyId, accessKeySecret))
     }
     logProducer
-  }
-
-  def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    val accessKeyId = sourceOptions.getOrElse("access.key.id",
-      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-    val endpoint = sourceOptions.getOrElse("endpoint",
-      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
-    lock.synchronized {
-      if (logServiceClientPool.contains((accessKeyId, endpoint))) {
-        logServiceClientPool.remove((accessKeyId, endpoint))
-      }
-    }
-    getOrCreateLogProducer(sourceOptions)
   }
 
   // only for test

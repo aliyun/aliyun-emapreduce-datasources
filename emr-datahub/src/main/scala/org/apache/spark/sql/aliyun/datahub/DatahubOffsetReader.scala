@@ -89,7 +89,6 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
                   logWarning(s"Error in attempt $attempt getting datahub offsets: ", e)
                   attempt += 1
                   Thread.sleep(offsetFetchAttemptIntervalMs)
-                  DatahubOffsetReader.resetConsumer(readerOptions)
               }
             }
           case _ =>
@@ -233,20 +232,6 @@ object DatahubOffsetReader extends Logging with Serializable {
     val endpoint = sourceOptions.getOrElse("endpoint",
       throw new MissingArgumentException("Missing endpoint (='endpoint')."))
     getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
-  }
-
-  def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    val accessKeyId = sourceOptions.getOrElse("access.key.id",
-      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-    val endpoint = sourceOptions.getOrElse("endpoint",
-      throw new MissingArgumentException("Missing endpoint (='endpoint')."))
-    lock.synchronized {
-      if (datahubClientPool.contains((accessKeyId, endpoint))) {
-        datahubClientPool((accessKeyId, endpoint)).close()
-        datahubClientPool.remove((accessKeyId, endpoint))
-      }
-    }
-    getOrCreateDatahubClient(sourceOptions)
   }
 
   // only for test
