@@ -19,11 +19,8 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
-import org.I0Itec.zkclient.ZkClient
-
-import scala.collection.JavaConversions._
-
 import com.aliyun.openservices.log.response.BatchGetLogResponse
+import org.I0Itec.zkclient.ZkClient
 
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
@@ -56,9 +53,13 @@ class LoghubIterator(
   }
 
   def checkHasNext(): Boolean = {
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
     val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
+      DirectLoghubInputDStream.writeDataToZK(zkClient,
+        s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
     }
 
     hasNext
@@ -93,7 +94,11 @@ class LoghubIterator(
   }
 
   def fetchNextBatch(): Unit = {
-    val batchGetLogRes: BatchGetLogResponse = mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
+    val batchGetLogRes: BatchGetLogResponse =
+      mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       group.GetLogGroup().getLogsList.foreach(log => {

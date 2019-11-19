@@ -24,9 +24,11 @@ import org.apache.spark.sql.streaming.Trigger
 object ContinuousStructuredLoghubSample {
   def main(args: Array[String]) {
     if (args.length < 6) {
+      // scalastyle:off
       System.err.println("Usage: ContinuousStructuredLoghubSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> [<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 

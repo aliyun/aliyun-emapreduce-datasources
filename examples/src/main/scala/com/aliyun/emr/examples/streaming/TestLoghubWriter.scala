@@ -19,19 +19,22 @@ package com.aliyun.emr.examples.streaming
 import com.aliyun.openservices.aliyun.log.producer.{Callback, Result}
 import com.aliyun.openservices.log.common.LogItem
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
+
 import org.apache.spark.SparkConf
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.streaming.aliyun.logservice.LoghubUtils
 import org.apache.spark.streaming.aliyun.logservice.writer._
-import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 
 object TestLoghubWriter {
 
   def main(args: Array[String]): Unit = {
     if (args.length < 8) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestLoghubWriter <sls project> <sls logstore> <sls target logstore> <sls group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds> <zookeeper host:port=localhost:2181>
             """.stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
 
@@ -83,7 +86,9 @@ object TestLoghubWriter {
 
     val callback = new Callback with Serializable {
       override def onCompletion(result: Result): Unit = {
+        // scalastyle:off
         println(s"Send result ${result.isSuccessful}")
+        // scalastyle:on
       }
     }
 

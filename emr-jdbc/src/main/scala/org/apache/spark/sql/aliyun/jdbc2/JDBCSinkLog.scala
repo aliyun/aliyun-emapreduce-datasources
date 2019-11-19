@@ -35,10 +35,11 @@ class JDBCSinkLog(parameters: Map[String, String], sparkSession: SparkSession) {
   val BATCH_ID = "batchId"
   val STATUS = "status"
 
-  //Create a separate JDBC connection with fast load disabled as the sink log table will not be empty when written to
+  // Create a separate JDBC connection with fast load disabled as the sink log table
+  // will not be empty when written to
   def createSinkLogConnectionFactory(parameters: Map[String, String]) : () => Connection = {
     val url = parameters(JDBCOptions.JDBC_URL).replaceAll("TYPE=FASTLOAD", "")
-    val options = new JDBCOptions(parameters+(JDBCOptions.JDBC_URL -> url))
+    val options = new JDBCOptions(parameters + (JDBCOptions.JDBC_URL -> url))
     JdbcUtils.createConnectionFactory(options)
   }
 

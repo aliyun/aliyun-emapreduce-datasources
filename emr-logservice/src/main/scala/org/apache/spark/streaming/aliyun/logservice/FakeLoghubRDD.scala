@@ -16,11 +16,11 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.{Partition, SparkContext, TaskContext}
+import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.rdd.RDD
 
-class FakeLoghubRDD(sc: SparkContext) extends RDD[String](sc, Nil){
+class FakeLoghubRDD(sc: SparkContext) extends RDD[String](sc, Nil) {
   @DeveloperApi
   override def compute(split: Partition, context: TaskContext): Iterator[String] = {
     Iterator.empty.asInstanceOf[Iterator[String]]

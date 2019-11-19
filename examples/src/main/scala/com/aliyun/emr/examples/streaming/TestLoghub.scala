@@ -16,18 +16,20 @@
  */
 package com.aliyun.emr.examples.streaming
 
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.aliyun.logservice.LoghubUtils
-import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
+import org.apache.spark.streaming.aliyun.logservice.LoghubUtils
 
 object TestLoghub {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds>
         """.stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
 
@@ -53,7 +55,9 @@ object TestLoghub {
         StorageLevel.MEMORY_AND_DISK)
 
       loghubStream.checkpoint(batchInterval * 2).foreachRDD(rdd =>
+        // scalastyle:off
         rdd.map(bytes => new String(bytes)).top(10).foreach(println)
+        // scalastyle:on
       )
       ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
       ssc

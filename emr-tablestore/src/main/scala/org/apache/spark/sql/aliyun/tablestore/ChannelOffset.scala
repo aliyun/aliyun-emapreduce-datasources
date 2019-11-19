@@ -20,9 +20,9 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
 
 /**
-  * @param logPoint: channel checkpoint of Tablestore tunnel service.
-  * @param offset: offset between under this channel checkpoint.
-  */
+ * @param logPoint: channel checkpoint of Tablestore tunnel service.
+ * @param offset: offset between under this channel checkpoint.
+ */
 case class ChannelOffset(logPoint: String, offset: Long)
 
 object ChannelOffset {

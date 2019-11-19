@@ -18,12 +18,13 @@
 package com.aliyun.emr.examples.mllib
 
 import _root_.scopt.OptionParser
+
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.optimization.L1Updater
 import org.apache.spark.mllib.optimization.SimpleUpdater
 import org.apache.spark.mllib.optimization.SquaredL2Updater
 import org.apache.spark.mllib.regression.LinearRegressionWithSGD
 import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.{SparkContext, SparkConf}
 
 object LinearRegression {
   object RegType extends Enumeration {
@@ -107,7 +108,7 @@ object LinearRegression {
     conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
     val sc = new SparkContext(conf)
 
-    val examples = MLUtils.loadLibSVMFile(sc,params.input).cache()
+    val examples = MLUtils.loadLibSVMFile(sc, params.input).cache()
 
     val splits = examples.randomSplit(Array(0.8, 0.2))
     val training = splits(0).cache()
@@ -115,7 +116,9 @@ object LinearRegression {
 
     val numTraining = training.count()
     val numTest = test.count()
+    // scalastyle:off
     println(s"Training: $numTraining, test: $numTest.")
+    // scalastyle:on
 
     examples.unpersist(blocking = false)
 
@@ -143,7 +146,9 @@ object LinearRegression {
     }.reduce(_ + _)
     val rmse = math.sqrt(loss / numTest)
 
+    // scalastyle:off
     println(s"Test RMSE = $rmse.")
+    // scalastyle:on
 
     sc.stop()
   }

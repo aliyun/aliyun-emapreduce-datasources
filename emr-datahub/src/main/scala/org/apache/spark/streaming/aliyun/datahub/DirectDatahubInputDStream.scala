@@ -20,24 +20,25 @@ package org.apache.spark.streaming.aliyun.datahub
 import java.io.{IOException, ObjectInputStream, UnsupportedEncodingException}
 import java.nio.charset.StandardCharsets
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.{ArrayBuffer, HashMap}
-import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.exception.InvalidParameterException
-import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.{GetCursorResult, OffsetContext, RecordEntry, ShardState}
+import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
-import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
 class DirectDatahubInputDStream(
@@ -64,10 +65,12 @@ class DirectDatahubInputDStream(
   private var readOnlyShardCache = new mutable.HashMap[String, Long]()
 
   override def start(): Unit = {
-    datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
+    datahubClient = new DatahubClientAgent(
+      new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
     val zkServers = zkParam.getOrElse("zookeeper.connect", "localhost:2181")
     val sessionTimeout = zkParam.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-    val connectionTimeout = zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
+    val connectionTimeout =
+      zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
     zkClient = new ZkClient(zkServers, sessionTimeout, connectionTimeout)
     zkClient.setZkSerializer(new ZkSerializer {
       override def serialize(data: scala.Any): Array[Byte] = {
@@ -98,28 +101,31 @@ class DirectDatahubInputDStream(
     datahubConsumePathRoot = s"$checkpointDir/datahub/consume"
     datahubCommitPathRoot = s"$checkpointDir/datahub/commit"
     if (!zkClient.exists(s"$checkpointDir/datahub")) {
-      zkClient.createPersistent(s"$datahubConsumePathRoot/$project/$topic",true)
+      zkClient.createPersistent(s"$datahubConsumePathRoot/$project/$topic", true)
       zkClient.createPersistent(s"$datahubCommitPathRoot/$project/$topic", true)
     }
 
     val pathExist = zkClient.exists(s"$datahubConsumePathRoot/$project/$topic/$subId")
-    val initial = if(pathExist) {
+    val initial = if (pathExist) {
       zkClient.getChildren(s"$datahubConsumePathRoot/$project/$topic/$subId")
         .toArray()
-    } else Array.empty[String]
+    } else {
+      Array.empty[String]
+    }
     val shards = datahubClient.listShards(project, topic).getShards
 
-    val diff = shards.map(_.getShardId).diff(initial)
+    val diff = shards.asScala.map(_.getShardId).diff(initial)
     diff.foreach(shardId => {
       val oldestCursor = fetchCursorFormDatahub(shardId)
-      val oldestOffset = new OffsetContext.Offset(oldestCursor.getSequence, oldestCursor.getRecordTime)
+      val oldestOffset =
+        new OffsetContext.Offset(oldestCursor.getSequence, oldestCursor.getRecordTime)
       DirectDatahubInputDStream.writeDataToZk(zkClient,
         s"$datahubConsumePathRoot/$project/$topic/$subId/$shardId",
         JacksonParser.toJsonNode(oldestOffset).toString)
     })
   }
 
-  override def stop(): Unit ={
+  override def stop(): Unit = {
     if (zkClient != null) {
       zkClient.close()
       zkClient = null
@@ -138,7 +144,8 @@ class DirectDatahubInputDStream(
       val lastFailed = if (doCommit) {
         false
       } else {
-        val pending = ssc.scheduler.getPendingTimes().exists(time => time.milliseconds == lastJobTime)
+        val pending =
+          ssc.scheduler.getPendingTimes().exists(time => time.milliseconds == lastJobTime)
         if (pending) {
           false
         } else {
@@ -155,37 +162,42 @@ class DirectDatahubInputDStream(
         }
 
         val result = datahubClient.listShards(project, topic)
-        result.getShards.foreach(shardEntry => {
+        result.getShards.asScala.foreach(shardEntry => {
           val shardId = shardEntry.getShardId
           if (readOnlyShardCache.contains(shardId)) {
             logDebug(s"Get no record in read only shard[$shardId], do nothing")
           } else {
             var startOffset: OffsetContext.Offset = null
             try {
-              val consume: String = zkClient.readData(s"$datahubConsumePathRoot/$project/$topic/$subId/$shardId")
+              val consume: String =
+                zkClient.readData(s"$datahubConsumePathRoot/$project/$topic/$subId/$shardId")
               startOffset = JacksonParser.getOffset(consume)
             } catch {
-              case _:ZkNoNodeException =>
+              case _: ZkNoNodeException =>
                 logWarning("Fail to get start offset form zookeeper, retry with datahub")
                 val cursorResult = fetchCursorFormDatahub(shardId)
-                startOffset = new OffsetContext.Offset(cursorResult.getSequence, cursorResult.getRecordTime)
+                startOffset =
+                  new OffsetContext.Offset(cursorResult.getSequence, cursorResult.getRecordTime)
             }
 
             val latestCursor = datahubClient.getCursor(project, topic, shardId, CursorType.LATEST)
-            val endOffset = new OffsetContext.Offset(latestCursor.getSequence, latestCursor.getRecordTime)
+            val endOffset =
+              new OffsetContext.Offset(latestCursor.getSequence, latestCursor.getRecordTime)
             if (startOffset.getSequence <= endOffset.getSequence) {
-              val so = (shardId, JacksonParser.toJsonNode(startOffset).toString, JacksonParser.toJsonNode(endOffset).toString)
+              val so = (shardId, JacksonParser.toJsonNode(startOffset).toString,
+                JacksonParser.toJsonNode(endOffset).toString)
               shardOffsets += so
             }
-            if (ShardState.CLOSED.equals(shardEntry.getState) && latestCursor.getSequence >= endOffset.getSequence) {
+            if (ShardState.CLOSED.equals(shardEntry.getState) &&
+              latestCursor.getSequence >= endOffset.getSequence) {
               readOnlyShardCache.put(shardId, endOffset.getSequence)
             }
           }
         })
 
         lastJobTime = validTime.milliseconds
-        new DatahubRDD(ssc.sc, ssc.graph.batchDuration.milliseconds, endpoint, project, topic, subId, accessId,
-          accessKey, func, shardOffsets, zkParam, checkpointDir)
+        new DatahubRDD(ssc.sc, ssc.graph.batchDuration.milliseconds, endpoint, project, topic,
+          subId, accessId, accessKey, func, shardOffsets, zkParam, checkpointDir)
       } else {
         return None
       }
@@ -219,9 +231,10 @@ class DirectDatahubInputDStream(
     if (doCommit) {
       try {
         val shards = zkClient.getChildren(s"$datahubCommitPathRoot/$project/$topic/$subId")
-        shards.foreach(shard => {
+        shards.asScala.foreach(shard => {
           if (!readOnlyShardCache.contains(shard)) {
-            val commit: String = zkClient.readData(s"$datahubCommitPathRoot/$project/$topic/$subId/$shard")
+            val commit: String =
+              zkClient.readData(s"$datahubCommitPathRoot/$project/$topic/$subId/$shard")
             val offset = JacksonParser.getOffset(commit)
             val currentOffsetContext = datahubClient.initOffsetContext(project, topic, subId, shard)
             currentOffsetContext.setOffset(offset)
@@ -233,11 +246,10 @@ class DirectDatahubInputDStream(
         })
         doCommit = false
       } catch {
-        case _: ZkNoNodeException => {
-          logWarning("If this is the first time to run, it is fine to not find any commit data in " +
-            "zookeeper.")
+        case _: ZkNoNodeException =>
+          logWarning("If this is the first time to run, it is fine to not find any commit " +
+            "data in zookeeper.")
           doCommit = false
-        }
       }
     }
   }
@@ -253,7 +265,8 @@ class DirectDatahubInputDStream(
             throw e
           }
 
-          logInfo("Fail to get cursor from offset context, cause data is expired. Retry with latest cursor")
+          logInfo("Fail to get cursor from offset context, cause data is expired. " +
+            "Retry with latest cursor")
           datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST)
         case e: Exception =>
           logInfo(s"catch exception in fetchCursorFormDatahub, type:${e.getClass}")
@@ -261,16 +274,21 @@ class DirectDatahubInputDStream(
       }
     } else {
       mode match {
-        case CursorType.OLDEST => datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST)
-        case CursorType.LATEST => datahubClient.getCursor(project, topic, shardId, CursorType.LATEST)
-        case CursorType.SEQUENCE => datahubClient.getCursor(project, topic, shardId, CursorType.SEQUENCE)
-        case CursorType.SYSTEM_TIME => datahubClient.getCursor(project, topic, shardId, CursorType.SYSTEM_TIME)
+        case CursorType.OLDEST =>
+          datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST)
+        case CursorType.LATEST =>
+          datahubClient.getCursor(project, topic, shardId, CursorType.LATEST)
+        case CursorType.SEQUENCE =>
+          datahubClient.getCursor(project, topic, shardId, CursorType.SEQUENCE)
+        case CursorType.SYSTEM_TIME =>
+          datahubClient.getCursor(project, topic, shardId, CursorType.SYSTEM_TIME)
       }
     }
   }
 
   private def isDataExpired(shardId: String): Boolean = {
-    val oldestDataTimestamp = datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST).getRecordTime
+    val oldestDataTimestamp =
+      datahubClient.getCursor(project, topic, shardId, CursorType.OLDEST).getRecordTime
     val offsetContextTimestamp = datahubClient.initOffsetContext(project, topic, subId, shardId)
       .getOffset.getTimestamp
     oldestDataTimestamp > offsetContextTimestamp
@@ -287,7 +305,8 @@ class DirectDatahubInputDStream(
       commitLock = new Object()
       val zkServers = zkParam.getOrElse("zookeeper.connect", "localhost:2181")
       val sessionTimeout = zkParam.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-      val connectionTimeout = zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
+      val connectionTimeout =
+        zkParam.getOrElse("zookeeper.connection.timeout.ms", sessionTimeout.toString).toInt
       zkClient = new ZkClient(zkServers, sessionTimeout, connectionTimeout)
       zkClient.setZkSerializer(new ZkSerializer() {
         override def serialize(data: scala.Any): Array[Byte] = {
@@ -312,12 +331,14 @@ class DirectDatahubInputDStream(
         }
       })
 
-      datahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
+      datahubClient = new DatahubClientAgent(
+        new DatahubConfiguration(new AliyunAccount(accessId, accessKey), endpoint))
       restartTime = -1L
       restart = true
     }
   }
 
+  // scalastyle:off
   private class DirectDatahubInputDStreamCheckpointData extends DStreamCheckpointData(this) {
     override def update(time: Time): Unit = {}
 
@@ -330,6 +351,7 @@ class DirectDatahubInputDStream(
       stop()
     }
   }
+  // scalastyle:on
 }
 
 object DirectDatahubInputDStream {

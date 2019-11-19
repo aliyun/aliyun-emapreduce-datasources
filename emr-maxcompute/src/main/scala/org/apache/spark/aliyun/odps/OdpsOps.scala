@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,24 +18,24 @@ package org.apache.spark.aliyun.odps
 
 import java.sql.SQLException
 import java.text.SimpleDateFormat
-import java.util.Date
 
+import scala.reflect.ClassTag
+
+import com.aliyun.odps._
 import com.aliyun.odps.`type`.TypeInfo
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordWriter
-import com.aliyun.odps._
+
+import org.apache.spark.{SparkContext, TaskContext}
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function.{Function2 => JFunction2, Function3 => JFunction3}
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{Decimal, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.{SparkContext, TaskContext}
-
-import scala.reflect.ClassTag
+import org.apache.spark.sql.types.{Decimal, StructType}
 
 class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     accessKeySecret: String, odpsUrl: String, tunnelUrl: String)
@@ -563,8 +562,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
 
     if(overwrite) {
       val success = dropPartition(project, table, partition)
-      if(!success)
+      if(!success) {
         logInfo("delete partition failed.")
+      }
       createPartition(project, table, partition)
     }
 
@@ -766,7 +766,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
   }
 
   def getTableSchema(project: String, table: String, isPartition: Boolean):
-      Array[(String, TypeInfo)] =  {
+      Array[(String, TypeInfo)] = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
     val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
@@ -813,7 +813,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     val partitionFilter = partitions.toArray(new Array[Partition](0)).iterator
       .map(e => e.getPartitionSpec)
       .filter(f => f.toString.equals(partitionSpec_.toString))
-    val partitionExist = if(partitionFilter.size == 0) false else true
+    val partitionExist = if (partitionFilter.size == 0) false else true
     if(partitionExist) {
       (true, true)
     } else {
@@ -827,8 +827,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       pname: String): Boolean = {
     try {
       val (_, partitionE) = checkTableAndPartition(project, table, pname)
-      if(!partitionE)
+      if(!partitionE) {
         return true
+      }
       odps.setDefaultProject(project)
       val partitionSpec = new PartitionSpec(pname)
       odps.tables().get(table).deletePartition(partitionSpec)
@@ -847,8 +848,9 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       table: String): Boolean = {
     try {
       val (tableE, _) = checkTableAndPartition(project, table, "random")
-      if(!tableE)
+      if(!tableE) {
         return true
+      }
       odps.setDefaultProject(project)
       odps.tables().delete(table)
       true
@@ -869,7 +871,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     if(!tableE) {
       logWarning("table " + table + " do not exist, FAILED.")
       return false
-    } else if(partitionE) {
+    } else if (partitionE) {
       logWarning("table " + table + " partition " + pname +
           " exist, no need to create.")
       return true
@@ -894,7 +896,7 @@ object OdpsOps {
       accessKeyId: String,
       accessKeySecret: String,
       odpsUrl: String,
-      tunnelUrl: String) = {
+      tunnelUrl: String): OdpsOps = {
     new OdpsOps(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl)
   }
 }

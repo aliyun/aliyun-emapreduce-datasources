@@ -20,9 +20,14 @@ package org.apache.spark.sql.aliyun.jdbc2
 import java.sql.{Connection, Driver, DriverManager, JDBCType, PreparedStatement, ResultSet, ResultSetMetaData, SQLException}
 import java.util.Locale
 
+import scala.collection.JavaConverters._
+import scala.util.Try
+import scala.util.control.NonFatal
+
 import org.apache.spark.TaskContext
 import org.apache.spark.executor.InputMetrics
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.Resolver
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -30,17 +35,12 @@ import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
 import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, DateTimeUtils, GenericArrayData}
 import org.apache.spark.sql.execution.datasources.jdbc.{DriverRegistry, DriverWrapper, JDBCOptions}
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.JDBC_TABLE_NAME
 import org.apache.spark.sql.jdbc.{JdbcDialect, JdbcDialects, JdbcType}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.SchemaUtils
-import org.apache.spark.sql._
-import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.JDBC_TABLE_NAME
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.NextIterator
-
-import scala.collection.JavaConverters._
-import scala.util.Try
-import scala.util.control.NonFatal
 
 /**
  * Util functions for JDBC tables.
@@ -198,7 +198,8 @@ object JdbcUtils extends Logging {
   }
 
   /**
-   * Returns an Insert SQL statement for copying all rows from the source table into the target table via JDBC conn.
+   * Returns an Insert SQL statement for copying all rows from the source table into
+   * the target table via JDBC conn.
    */
   def getCopyStatement(
       sourceTable: String,
@@ -228,15 +229,15 @@ object JdbcUtils extends Logging {
   def getCommonJDBCType(dt: DataType): Option[JdbcType] = {
     dt match {
       case IntegerType => Option(JdbcType("INTEGER", java.sql.Types.INTEGER))
-      case LongType    => Option(JdbcType("BIGINT", java.sql.Types.BIGINT))
+      case LongType => Option(JdbcType("BIGINT", java.sql.Types.BIGINT))
       case DoubleType =>
         Option(JdbcType("DOUBLE PRECISION", java.sql.Types.DOUBLE))
-      case FloatType   => Option(JdbcType("REAL", java.sql.Types.FLOAT))
-      case ShortType   => Option(JdbcType("INTEGER", java.sql.Types.SMALLINT))
-      case ByteType    => Option(JdbcType("BYTE", java.sql.Types.TINYINT))
+      case FloatType => Option(JdbcType("REAL", java.sql.Types.FLOAT))
+      case ShortType => Option(JdbcType("INTEGER", java.sql.Types.SMALLINT))
+      case ByteType => Option(JdbcType("BYTE", java.sql.Types.TINYINT))
       case BooleanType => Option(JdbcType("BIT(1)", java.sql.Types.BIT))
-      case StringType  => Option(JdbcType("TEXT", java.sql.Types.CLOB))
-      case BinaryType  => Option(JdbcType("BLOB", java.sql.Types.BLOB))
+      case StringType => Option(JdbcType("TEXT", java.sql.Types.CLOB))
+      case BinaryType => Option(JdbcType("BLOB", java.sql.Types.BLOB))
       case TimestampType =>
         Option(JdbcType("TIMESTAMP", java.sql.Types.TIMESTAMP))
       case DateType => Option(JdbcType("DATE", java.sql.Types.DATE))
@@ -1192,7 +1193,7 @@ object JdbcUtils extends Logging {
       val newSchema = tableSchema.map { col =>
         userSchema.find(f => nameEquality(f.name, col.name)) match {
           case Some(c) => col.copy(dataType = c.dataType)
-          case None    => col
+          case None => col
         }
       }
       StructType(newSchema)
@@ -1227,10 +1228,10 @@ object JdbcUtils extends Logging {
     val repartitionedDF = options.numPartitions match {
       case Some(n) if n <= 0 =>
         throw new IllegalArgumentException(
-          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table writing " +
-            "via JDBC. The minimum value is 1.")
+          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table " +
+            "writing via JDBC. The minimum value is 1.")
       case Some(n) if n < df.rdd.getNumPartitions => df.coalesce(n)
-      case _                                      => df
+      case _ => df
     }
     repartitionedDF.rdd.foreachPartition(
       iterator =>

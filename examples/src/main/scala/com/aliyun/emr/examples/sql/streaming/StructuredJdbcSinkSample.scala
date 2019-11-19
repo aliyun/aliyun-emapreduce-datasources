@@ -24,15 +24,17 @@ import org.apache.spark.sql.types._
 object StructuredJdbcSinkSample {
   def main(args: Array[String]) {
     if (args.length < 11) {
+      // scalastyle:off
       System.err.println("Usage: StructuredJdbcSinkSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <max-offsets-per-trigger> <url> <table> <user> <pwd> " +
         "[<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger,
-      url, table, user, pwd, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets,
+      maxOffsetsPerTrigger, url, table, user, pwd, _*) = args
     val checkpointLocation =
       if (args.length > 11) args(11) else "/tmp/temporary-" + UUID.randomUUID.toString
 
@@ -48,7 +50,11 @@ object StructuredJdbcSinkSample {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
+    val schema = new StructType(
+      Array(
+        new StructField("__shard__", IntegerType),
+        new StructField("__time__", TimestampType),
+        new StructField("content", StringType)))
     val lines = spark
       .readStream
       .format("loghub")

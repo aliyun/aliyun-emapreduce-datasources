@@ -20,6 +20,7 @@ import java.util.Properties
 
 import com.alibaba.fastjson.JSON
 import com.aliyun.openservices.ons.api.Message
+
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.storage.StorageLevel
@@ -175,13 +176,15 @@ object OnsUtils {
       storageLevel: StorageLevel,
       func: Message => Array[Byte]): DStream[Array[Byte]] = {
     val invalidTuples1 = consumerIdTopicTags.groupBy(e => (e._1, e._2)).filter(e => e._2.length > 1)
-    val invalidTuples2 = consumerIdTopicTags.map(e => (e._1, e._2)).groupBy(e => e._1).filter(e => e._2.length > 1)
+    val invalidTuples2 = consumerIdTopicTags.map(e => (e._1, e._2))
+      .groupBy(e => e._1).filter(e => e._2.length > 1)
     if (invalidTuples1.size > 1 || invalidTuples2.size > 1) {
       throw new RuntimeException("Inconsistent consumer subscription.")
     } else {
       ssc.union(consumerIdTopicTags.map({
         case (consumerId, topic, tags) =>
-          createStream(ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, func)
+          createStream(ssc, consumerId, topic, tags, accessKeyId, accessKeySecret,
+            storageLevel, func)
       }))
     }
   }
@@ -263,7 +266,8 @@ object OnsUtils {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel, extractMessage _)
+    createStream(jssc.ssc, consumerId, topic, tags, accessKeyId, accessKeySecret,
+      storageLevel, extractMessage _)
   }
 }
 
@@ -277,6 +281,7 @@ class OnsUtilsHelper {
       accessKeyId: String,
       accessKeySecret: String,
       storageLevel: StorageLevel): JavaReceiverInputDStream[Array[Byte]] = {
-    OnsUtils.createDefaultStreams(jssc, consumerId, topic, tags, accessKeyId, accessKeySecret, storageLevel)
+    OnsUtils.createDefaultStreams(jssc, consumerId, topic, tags, accessKeyId,
+      accessKeySecret, storageLevel)
   }
 }

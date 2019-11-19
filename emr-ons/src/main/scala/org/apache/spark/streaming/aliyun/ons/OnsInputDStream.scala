@@ -19,6 +19,7 @@ package org.apache.spark.streaming.aliyun.ons
 import java.util.Properties
 
 import com.aliyun.openservices.ons.api.Message
+
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.ReceiverInputDStream

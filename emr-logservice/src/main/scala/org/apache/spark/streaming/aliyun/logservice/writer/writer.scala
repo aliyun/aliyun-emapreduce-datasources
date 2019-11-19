@@ -16,10 +16,10 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
+import scala.reflect.ClassTag
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.DStream
-
-import scala.reflect.ClassTag
 
 package object writer {
   /**

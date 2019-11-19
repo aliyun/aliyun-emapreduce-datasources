@@ -18,19 +18,20 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util.concurrent.LinkedBlockingQueue
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
+
 import com.alicloud.openservices.tablestore.TunnelClientInterface
-import com.alicloud.openservices.tablestore.model.tunnel.internal.{ReadRecordsRequest, ReadRecordsResponse}
 import com.alicloud.openservices.tablestore.model.{ColumnType, PrimaryKeyType, RecordColumn, StreamRecord}
+import com.alicloud.openservices.tablestore.model.tunnel.internal.{ReadRecordsRequest, ReadRecordsResponse}
+
+import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.NextIterator
-import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
-
-import scala.collection.JavaConversions._
-import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
 
 case class TableStoreSourceRDDOffsetRange(
     tunnelChannel: TunnelChannel,
@@ -40,7 +41,8 @@ case class TableStoreSourceRDDOffsetRange(
   def channel: String = tunnelChannel.channelId
 }
 
-case class TableStoreSourceRDDPartition(index: Int, offsetRange: TableStoreSourceRDDOffsetRange) extends Partition
+case class TableStoreSourceRDDPartition(index: Int, offsetRange: TableStoreSourceRDDOffsetRange)
+  extends Partition
 
 class TableStoreSourceRDD(
     sc: SparkContext,
@@ -55,19 +57,25 @@ class TableStoreSourceRDD(
     maxOffsetsPerChannel: Long = -1L,
     checkpointTable: String,
     batchUUID: String) extends RDD[TableStoreData](sc, Nil) with Logging {
-  @transient var tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
-  @transient var syncClient = TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  @transient var tunnelClient = TableStoreOffsetReader
+    .getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  @transient var syncClient = TableStoreOffsetReader
+    .getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
 
   private def initialize(): Unit = {
-    tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
-    syncClient = TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+    tunnelClient = TableStoreOffsetReader
+      .getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+    syncClient = TableStoreOffsetReader
+      .getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
   }
 
-  def readRecords(tunnelClient: TunnelClientInterface, cp: ChannelPartition): ReadRecordsResponse = {
+  def readRecords(tunnelClient: TunnelClientInterface, cp: ChannelPartition):
+    ReadRecordsResponse = {
     if (cp.startOffset == ChannelOffset.TERMINATED_CHANNEL_OFFSET) {
       return null
     }
-    tunnelClient.readRecords(new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint))
+    tunnelClient.readRecords(
+      new ReadRecordsRequest(tunnelId, TUNNEL_CLIENT_TAG, cp.channelId, cp.startOffset.logPoint))
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[TableStoreData] = {
@@ -80,9 +88,11 @@ class TableStoreSourceRDD(
       logInfo(s"channel ${channelPartition} hasn't new records")
       val nextToken = firstRecords.getNextToken
       if (nextToken != null) {
-        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId), batchUUID, ChannelOffset(nextToken, 0L))
+        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId),
+          batchUUID, ChannelOffset(nextToken, 0L))
       } else {
-        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId), batchUUID, ChannelOffset.TERMINATED_CHANNEL_OFFSET)
+        checkpointer.checkpoint(TunnelChannel(tunnelId, channelPartition.channelId),
+          batchUUID, ChannelOffset.TERMINATED_CHANNEL_OFFSET)
       }
       // here, add some backoff timeout, forbid pull empty data crazy.
       Thread.sleep(1000 + new Random(System.currentTimeMillis()).nextInt(1000))
@@ -109,13 +119,14 @@ class TableStoreSourceRDD(
 
           context.addTaskCompletionListener { _ => closeIfNeeded() }
 
-          logInfo(s"In rdd compute, ${endpoint}, ${instanceName}, ${tableName}, ${tunnelId}, ${channelId}")
+          logInfo(s"In rdd compute, ${endpoint}, ${instanceName}, ${tableName}, ${tunnelId}, " +
+            s"${channelId}")
 
           def checkHasNext(): Boolean = {
             if (totalCount < 0) {
-              logData.nonEmpty
+              logData.asScala.nonEmpty
             } else {
-              val hasNext = hasRead <= totalCount && logData.nonEmpty
+              val hasNext = hasRead <= totalCount && logData.asScala.nonEmpty
               hasNext
             }
           }
@@ -126,7 +137,7 @@ class TableStoreSourceRDD(
               return
             }
             var count = 0
-            recordsResp.getRecords.foreach(record => {
+            recordsResp.getRecords.asScala.foreach(record => {
               val recordType = record.getRecordType.name
               val recordTimeStamp = record.getSequenceInfo.getTimestamp
               val columnArray = Array.tabulate(schemaFieldPosSize)(
@@ -135,7 +146,8 @@ class TableStoreSourceRDD(
               schemaFieldPos.foreach { case (fieldName, idx) =>
                 var colVal: Option[Any] = None
                 if (fieldName.contains(__OTS_COLUMN_TYPE_PREFIX)) {
-                  colVal = extractColumnType(record, fieldName.stripPrefix(__OTS_COLUMN_TYPE_PREFIX))
+                  colVal = extractColumnType(record,
+                    fieldName.stripPrefix(__OTS_COLUMN_TYPE_PREFIX))
                 } else {
                   colVal = extractValue(record, fieldName)
                 }
@@ -154,8 +166,9 @@ class TableStoreSourceRDD(
               nextOffset = ChannelOffset(recordsResp.getNextToken, 0L)
             }
             logInfo(
-              s"channelId: ${channelPartition.channelId}, currentOffset: $crt, nextOffset: $nextOffset, " +
-                s"hasRead: $hasRead, get: $count, queue: ${logData.size}, totalCount: ${totalCount}"
+              s"channelId: ${channelPartition.channelId}, currentOffset: $crt, " +
+                s"nextOffset: $nextOffset, hasRead: $hasRead, get: $count, " +
+                s"queue: ${logData.size}, totalCount: ${totalCount}"
             )
           }
 
@@ -202,7 +215,8 @@ class TableStoreSourceRDD(
               logData.clear()
               logData = null
             } catch {
-              case e: Exception => logWarning("Got exception when close TableStore channel iterator.", e)
+              case e: Exception =>
+                logWarning("Got exception when close TableStore channel iterator.", e)
             }
           }
 
@@ -246,7 +260,7 @@ class TableStoreSourceRDD(
       val endOffset: ChannelOffset,
       val count: Long = -1L) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + channelId.hashCode
-
+    override def equals(other: Any): Boolean = super.equals(other)
     override def index: Int = partitionId
   }
 
@@ -281,7 +295,8 @@ object TableStoreSourceRDD extends Logging {
             case ByteType => Some(pkColumn.getValue.asLong().toByte)
             case _ =>
               throw new IllegalArgumentException(
-                s"data type mismatch, expected: ${schema(pkColumn.getName).dataType} real: ${pkColumn.getValue.getType}"
+                s"data type mismatch, expected: ${schema(pkColumn.getName).dataType} " +
+                  s"real: ${pkColumn.getValue.getType}"
               )
           }
         case PrimaryKeyType.STRING => Some(pkColumn.getValue.asString())
@@ -296,7 +311,8 @@ object TableStoreSourceRDD extends Logging {
       val schemaType = schema(col.getName).dataType
       val columnType = col.getValue.getType
       if (!checkTypeMatched(schemaType, columnType)) {
-        logWarning(s"column [${col.getName}] data type mismatch, expected: ${schemaType} real: ${columnType}")
+        logWarning(s"column [${col.getName}] data type mismatch, expected: ${schemaType} " +
+          s"real: ${columnType}")
         return None
       }
       columnType match {
@@ -365,6 +381,6 @@ object TableStoreSourceRDD extends Logging {
   }
 
   private def getAttributeColumnsMap(record: StreamRecord): Map[String, RecordColumn] = {
-    record.getColumns.map(column => (column.getColumn.getName, column)).toMap
+    record.getColumns.asScala.map(column => (column.getColumn.getName, column)).toMap
   }
 }

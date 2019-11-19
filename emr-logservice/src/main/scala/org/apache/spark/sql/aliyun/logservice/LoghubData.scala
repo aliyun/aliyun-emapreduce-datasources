@@ -32,5 +32,6 @@ class SchemaLoghubData(content: Array[(String, String)])
 class RawLoghubData(project: String, store: String, shardId: Int, dataTime: java.sql.Timestamp,
     topic: String, source: String, value: String)
   extends LoghubData {
-  override def toArray: Array[String] = Array(project, store, shardId.toString, dataTime.toString, topic, source, value)
+  override def toArray: Array[String] = Array(project, store, shardId.toString,
+    dataTime.toString, topic, source, value)
 }

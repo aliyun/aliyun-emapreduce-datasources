@@ -22,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
+import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
 
 class DynamicConfigManager(rootPath: String, zkConnect: String, sessionTimeoutMs: Int) {
@@ -32,7 +32,8 @@ class DynamicConfigManager(rootPath: String, zkConnect: String, sessionTimeoutMs
     zkConnect, new BoundedExponentialBackoffRetry(100, 100, 20))
   curator.start()
 
-  private val zNodeChangeHandlers = new ConcurrentHashMap[(String, String), ZNodeChangeHandler]().asScala
+  private val zNodeChangeHandlers =
+    new ConcurrentHashMap[(String, String), ZNodeChangeHandler]().asScala
 
   def registerZNodeChangeHandler(name: String, zNodeChangeHandler: ZNodeChangeHandler): Unit = {
     zNodeChangeHandlers.put((zNodeChangeHandler.path, name), zNodeChangeHandler)
