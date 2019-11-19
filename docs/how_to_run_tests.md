@@ -23,6 +23,7 @@ As there are some integration tests, we need to prepare some aliyun cloud resour
 |ALIYUN_ACCESS_KEY_SECRET|The aliyun access key secret | Yes |
 |REGION_NAME| The region you want to run tests on. | Yes |
 |TEST_ENV_TYPE| The testing network type, 'public' by default. 'public' means accessing aliyun cloud through public network environment. 'private' means accessing aliyun cloud through aliyun private network environment.| Yes|
+|TEST_FS_OSS_NAME|The bucket name in OSS, the format is `oss://${bucket_name}`| Required for OSS tests |
 |LOGSTORE_PROJECT_NAME|The name of logstore project| Required for logservice datasource tests|
 |OTS_INSTANCE_NAME| The name of tablestore intance | Required for tablestore datasource tests|
 |DATAHUB_PROJECT_NAME| The name of datahub project | Required for datahub datasource tests|
@@ -40,6 +41,7 @@ export ALIYUN_ACCESS_KEY_ID=xxx
 export ALIYUN_ACCESS_KEY_SECRET=xxx
 export REGION_NAME=cn-hangzhou
 export TEST_ENV_TYPE=public
+export TEST_FS_OSS_NAME=oss://${bucket_name}
 export LOGSTORE_PROJECT_NAME=xxx
 export OTS_INSTANCE_NAME=xxx
 export DATAHUB_PROJECT_NAME=xxx
@@ -47,7 +49,7 @@ export ODPS_PROJECT_NAME=xxx
 ```
 - Set them in command line
 ```
-ALIYUN_ACCESS_KEY_ID=xxx ALIYUN_ACCESS_KEY_SECRET=xxx REGION_NAME=cn-hangzhou TEST_ENV_TYPE=public
+ALIYUN_ACCESS_KEY_ID=xxx ALIYUN_ACCESS_KEY_SECRET=xxx REGION_NAME=cn-hangzhou TEST_ENV_TYPE=public TEST_FS_OSS_NAME=oss://${bucket_name}
 LOGSTORE_PROJECT_NAME=xxx OTS_INSTANCE_NAME=xxx DATAHUB_PROJECT_NAME=xxx ODPS_PROJECT_NAME=xxx mvn clean test
 ```
 - Set them in `Run/Debug Configuration` in IntelliJ IDEA/Eclipse: Then you can run or debug one unit test in IntelliJ IDEA/Eclipse
@@ -57,7 +59,7 @@ LOGSTORE_PROJECT_NAME=xxx OTS_INSTANCE_NAME=xxx DATAHUB_PROJECT_NAME=xxx ODPS_PR
 The following is an example of a command to run all tests:
 
 ```
-ALIYUN_ACCESS_KEY_ID=xxx ALIYUN_ACCESS_KEY_SECRET=xxx REGION_NAME=cn-hangzhou TEST_ENV_TYPE=public
+ALIYUN_ACCESS_KEY_ID=xxx ALIYUN_ACCESS_KEY_SECRET=xxx REGION_NAME=cn-hangzhou TEST_ENV_TYPE=public TEST_FS_OSS_NAME=oss://${bucket_name}
 LOGSTORE_PROJECT_NAME=xxx OTS_INSTANCE_NAME=xxx DATAHUB_PROJECT_NAME=xxx ODPS_PROJECT_NAME=xxx mvn clean test
 ```
 
