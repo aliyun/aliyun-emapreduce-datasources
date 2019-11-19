@@ -16,13 +16,14 @@
  */
 package org.apache.spark.sql.aliyun.tablestore
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable
+
 import com.alicloud.openservices.tablestore.SyncClientInterface
 import com.alicloud.openservices.tablestore.model._
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.tablestore.MetaCheckpointer._
-
-import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 class MetaCheckpointer(@transient syncClient: SyncClientInterface, tableName: String)
   extends Logging with Serializable {
@@ -32,7 +33,8 @@ class MetaCheckpointer(@transient syncClient: SyncClientInterface, tableName: St
     pkBuilder.addPrimaryKeyColumn(UUID_COLUMN, PrimaryKeyValue.fromString(uuid))
     pkBuilder.addPrimaryKeyColumn(CHANNEL_ID_COLUMN, PrimaryKeyValue.fromString(channel.channelId))
     val rowPutChange = new RowPutChange(tableName, pkBuilder.build())
-    rowPutChange.addColumn(CHANNEL_OFFSET_COLUMN, ColumnValue.fromString(ChannelOffset.serialize(offset)))
+    rowPutChange.addColumn(CHANNEL_OFFSET_COLUMN,
+      ColumnValue.fromString(ChannelOffset.serialize(offset)))
     rowPutChange.addColumn(VERSION_COLUMN, ColumnValue.fromLong(CURRENT_VERSION))
     logInfo(s"persist checkpoint, channel: ${channel}, offset: ${offset} ")
     syncClient.putRow(new PutRowRequest(rowPutChange))
@@ -48,7 +50,8 @@ class MetaCheckpointer(@transient syncClient: SyncClientInterface, tableName: St
       pkBuilder.addPrimaryKeyColumn(UUID_COLUMN, PrimaryKeyValue.fromString(uuid))
       pkBuilder.addPrimaryKeyColumn(CHANNEL_ID_COLUMN, PrimaryKeyValue.fromString(tc.channelId))
       val rowPutChange = new RowPutChange(tableName, pkBuilder.build())
-      rowPutChange.addColumn(CHANNEL_OFFSET_COLUMN, ColumnValue.fromString(ChannelOffset.serialize(offset)))
+      rowPutChange.addColumn(CHANNEL_OFFSET_COLUMN,
+        ColumnValue.fromString(ChannelOffset.serialize(offset)))
       rowPutChange.addColumn(VERSION_COLUMN, ColumnValue.fromLong(CURRENT_VERSION))
       batchRequest.addRowChange(rowPutChange)
       idx += 1
@@ -94,9 +97,10 @@ class MetaCheckpointer(@transient syncClient: SyncClientInterface, tableName: St
     var isFinished = false
     while (!isFinished) {
       val getRangeResponse = syncClient.getRange(new GetRangeRequest(rangeRowQueryCriteria))
-      getRangeResponse.getRows.foreach { row =>
+      getRangeResponse.getRows.asScala.foreach { row =>
         val channelId = row.getPrimaryKey.getPrimaryKeyColumn(CHANNEL_ID_COLUMN).getValue.asString
-        val channelOffset = ChannelOffset.deserialize(row.getLatestColumn(CHANNEL_OFFSET_COLUMN).getValue.asString)
+        val channelOffset =
+          ChannelOffset.deserialize(row.getLatestColumn(CHANNEL_OFFSET_COLUMN).getValue.asString)
         retMap.put(TunnelChannel(tunnelId, channelId), channelOffset)
       }
 

@@ -17,6 +17,7 @@
 package com.aliyun.emr.examples.streaming
 
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
+
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.streaming.aliyun.logservice.{CanCommitOffsets, LoghubUtils}
@@ -24,10 +25,12 @@ import org.apache.spark.streaming.aliyun.logservice.{CanCommitOffsets, LoghubUti
 object TestDirectLoghub {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestDirectLoghub <sls project> <sls logstore> <loghub group name> <sls endpoint>
           |         <access key id> <access key secret> <batch interval seconds> <zookeeper host:port=localhost:2181>
         """.stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
 
@@ -57,10 +60,12 @@ object TestDirectLoghub {
         LogHubCursorPosition.END_CURSOR)
 
       loghubStream.checkpoint(batchInterval).foreachRDD(rdd => {
+        // scalastyle:off
         println(s"count by key: ${rdd.map(s => {
           s.sorted
           (s.length, s)
         }).countByKey().size}")
+        // scalastyle:on
         loghubStream.asInstanceOf[CanCommitOffsets].commitAsync()
       })
       ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory

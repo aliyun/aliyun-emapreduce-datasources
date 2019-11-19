@@ -3,7 +3,7 @@
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License") you may not use this file except in compliance with
+ * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
@@ -17,6 +17,7 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 import com.aliyun.openservices.loghub.client.config.{LogHubConfig, LogHubCursorPosition}
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
@@ -81,5 +82,5 @@ private[logservice] class LoghubReceiver(
     }
   }
 
-  def getBatchInterval = this.batchInterval
+  def getBatchInterval: Long = this.batchInterval
 }

@@ -19,6 +19,7 @@ package org.apache.spark.streaming.aliyun.mns.pulling
 import java.util
 
 import com.aliyun.mns.model.Message
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.aliyun.mns.adapter.{CloudQueueAgent, MNSAgentUtil, MNSClientAgent}
@@ -58,7 +59,9 @@ private[mns] class MnsPullingReceiver(
           try {
             val batchPopMessage =
               queue.batchPopMessage(batchMsgSize, pollingWaitSeconds)
+            // scalastyle:off
             import scala.collection.JavaConversions._
+            // scalastyle:on
             if (batchPopMessage == null) {
               log.warn("Batch get nothing, wait for 5 seconds.")
               Thread.sleep(5000L)

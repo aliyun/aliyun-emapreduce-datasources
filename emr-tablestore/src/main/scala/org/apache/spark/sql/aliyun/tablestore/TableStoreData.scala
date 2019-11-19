@@ -17,6 +17,7 @@
 package org.apache.spark.sql.aliyun.tablestore
 
 import com.alibaba.fastjson.JSONObject
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
 

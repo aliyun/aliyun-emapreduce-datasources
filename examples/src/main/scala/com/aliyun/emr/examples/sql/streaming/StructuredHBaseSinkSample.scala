@@ -25,15 +25,17 @@ import org.apache.spark.sql.types._
 object StructuredHBaseSinkSample {
   def main(args: Array[String]) {
     if (args.length < 9) {
+      // scalastyle:off
       System.err.println("Usage: StructuredHBaseSinkSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <max-offsets-per-trigger> <catalog> <hbaseConfiguration> " +
         "[<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets, maxOffsetsPerTrigger,
-      catalog, hbaseConfiguration, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, endpoint, startingOffsets,
+      maxOffsetsPerTrigger, catalog, hbaseConfiguration, _*) = args
     val checkpointLocation =
       if (args.length > 9) args(9) else "/tmp/temporary-" + UUID.randomUUID.toString
 
@@ -47,7 +49,11 @@ object StructuredHBaseSinkSample {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
+    val schema = new StructType(
+      Array(
+        new StructField("__shard__", IntegerType),
+        new StructField("__time__", TimestampType),
+        new StructField("content", StringType)))
     val lines = spark
       .readStream
       .format("loghub")
@@ -65,7 +71,8 @@ object StructuredHBaseSinkSample {
 
     val wordCounts = lines.flatMap(_.split(" ")).groupBy("value").count()
 
-    val query = wordCounts.select(current_timestamp.as("key").cast(StringType), col("*")).writeStream
+    val query = wordCounts.select(current_timestamp.as("key").cast(StringType), col("*"))
+      .writeStream
       .outputMode("complete")
       .format("hbase")
       .option("catalog", catalog)

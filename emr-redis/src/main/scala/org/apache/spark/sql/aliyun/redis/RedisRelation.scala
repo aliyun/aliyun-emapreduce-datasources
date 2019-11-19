@@ -18,29 +18,29 @@ package org.apache.spark.sql.aliyun.redis
 
 import java.util.UUID
 
-import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
+import com.redislabs.provider.redis.{toRedisContext, ReadWriteConfig, RedisConfig, RedisDataTypeHash, RedisDataTypeString, RedisEndpoint, RedisNode}
 import com.redislabs.provider.redis.rdd.Keys
 import com.redislabs.provider.redis.util.ConnectionUtils.withConnection
 import com.redislabs.provider.redis.util.Logging
 import com.redislabs.provider.redis.util.PipelineUtils._
-import com.redislabs.provider.redis.{ReadWriteConfig, RedisConfig, RedisDataTypeHash, RedisDataTypeString, RedisEndpoint, RedisNode, toRedisContext}
-import org.apache.spark.sql.aliyun.redis.RedisRelation._
 import org.apache.commons.lang3.SerializationUtils
-import org.apache.spark.sql.redis.RedisPersistence
 import redis.clients.jedis.{PipelineBase, Protocol}
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.aliyun.redis.RedisRelation._
 import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.redis.RedisPersistence
 import org.apache.spark.sql.sources.{BaseRelation, Filter, InsertableRelation, PrunedFilteredScan}
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 
-/***
+/**
  * refer to [[org.apache.spark.sql.redis.RedisSourceRelation]] and change
  * [[org.apache.spark.sql.redis.RedisSourceRelation]].dataKeyId() for idempotent write
+ *
  * @param sqlContext
  * @param parameters
  * @param userSpecifiedSchema
@@ -77,7 +77,8 @@ class RedisRelation(override val sqlContext: SQLContext,
     // override global config with dataframe specific settings
     global.copy(
       scanCount = parameters.get(SqlOptionScanCount).map(_.toInt).getOrElse(global.scanCount),
-      maxPipelineSize = parameters.get(SqlOptionMaxPipelineSize).map(_.toInt).getOrElse(global.maxPipelineSize)
+      maxPipelineSize =
+        parameters.get(SqlOptionMaxPipelineSize).map(_.toInt).getOrElse(global.maxPipelineSize)
     )
   }
 
@@ -90,8 +91,9 @@ class RedisRelation(override val sqlContext: SQLContext,
    */
   @volatile private var currentSchema: StructType = _
 
-  /** parameters (sorted alphabetically) **/
-  private val filterKeysByTypeEnabled = parameters.get(SqlOptionFilterKeysByType).exists(_.toBoolean)
+  // parameters (sorted alphabetically)
+  private val filterKeysByTypeEnabled =
+    parameters.get(SqlOptionFilterKeysByType).exists(_.toBoolean)
   private val inferSchemaEnabled = parameters.get(SqlOptionInferSchema).exists(_.toBoolean)
   private val iteratorGroupingSize = parameters.get(SqlOptionIteratorGroupingSize).map(_.toInt)
     .getOrElse(SqlOptionIteratorGroupingSizeDefault)
@@ -100,7 +102,7 @@ class RedisRelation(override val sqlContext: SQLContext,
   private val keysPatternOpt: Option[String] = parameters.get(SqlOptionKeysPattern)
   private val numPartitions = parameters.get(SqlOptionNumPartitions).map(_.toInt)
     .getOrElse(SqlOptionNumPartitionsDefault)
-  private val persistenceModel = parameters.getOrDefault(SqlOptionModel, SqlOptionModelHash)
+  private val persistenceModel = parameters.asJava.getOrDefault(SqlOptionModel, SqlOptionModelHash)
   private val persistence = RedisPersistence(persistenceModel)
   private val tableNameOpt: Option[String] = parameters.get(SqlOptionTableName)
   private val ttl = parameters.get(SqlOptionTTL).map(_.toInt).getOrElse(0)
@@ -128,8 +130,8 @@ class RedisRelation(override val sqlContext: SQLContext,
 
   // check specified parameters
   if (tableNameOpt.isDefined && keysPatternOpt.isDefined) {
-    throw new IllegalArgumentException(s"Both options '$SqlOptionTableName' and '$SqlOptionTableName' are set. " +
-      s"You should only use either one.")
+    throw new IllegalArgumentException(s"Both options '$SqlOptionTableName' and " +
+      s"'$SqlOptionTableName' are set. You should only use either one.")
   }
 
   override def schema: StructType = {
@@ -232,14 +234,16 @@ class RedisRelation(override val sqlContext: SQLContext,
    * @return table name
    */
   private def tableName(): String = {
-    tableNameOpt.getOrElse(throw new IllegalArgumentException(s"Option '$SqlOptionTableName' is not set."))
+    tableNameOpt.getOrElse(
+      throw new IllegalArgumentException(s"Option '$SqlOptionTableName' is not set."))
   }
 
   /**
    * @return redis key for the row
    */
   private def dataKeyId(row: Row): String = {
-    val id = keyColumn.map(id => row.getAs[Any](id)).map(_.toString).getOrElse(s"$batchId:${uuid()}")
+    val id = keyColumn.map(id =>
+      row.getAs[Any](id)).map(_.toString).getOrElse(s"$batchId:${uuid()}")
     dataKey(tableName(), id)
   }
 

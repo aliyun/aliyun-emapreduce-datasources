@@ -3,7 +3,7 @@
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License") you may not use this file except in compliance with
+ * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
@@ -16,7 +16,7 @@
  */
 package org.apache.spark.streaming.aliyun.dts
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.drc.clusterclient.message.ClusterMessage
@@ -26,7 +26,7 @@ import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.api.java.{JavaStreamingContext, JavaReceiverInputDStream}
+import org.apache.spark.streaming.api.java.{JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.ReceiverInputDStream
 
 /**
@@ -118,7 +118,8 @@ object DtsUtils extends Logging {
       guid: String,
       storageLevel: StorageLevel,
       usePublicIp: Boolean): ReceiverInputDStream[String] = {
-    new BinlogDStream(ssc, accessKeyId, accessKeySecret, guid, defaultMessageFunc, storageLevel, usePublicIp)
+    new BinlogDStream(ssc, accessKeyId, accessKeySecret, guid, defaultMessageFunc,
+      storageLevel, usePublicIp)
   }
 
   /**
@@ -168,8 +169,8 @@ object DtsUtils extends Logging {
       func: JFunction[ClusterMessage, String],
       storageLevel: StorageLevel,
       usePublicIp: Boolean): JavaReceiverInputDStream[String] = {
-    createStream(jssc.ssc, accessKeyId, accessKeySecret, guid, (msg: ClusterMessage) => func.call(msg),
-      storageLevel, usePublicIp)
+    createStream(jssc.ssc, accessKeyId, accessKeySecret, guid,
+      (msg: ClusterMessage) => func.call(msg), storageLevel, usePublicIp)
   }
 
   /**
@@ -215,10 +216,10 @@ object DtsUtils extends Logging {
   def defaultMessageFunc(message: ClusterMessage): String = {
     try {
       val obj = new JSONObject()
-      message.getRecord.getAttributes.foreach(attribute => {
+      message.getRecord.getAttributes.asScala.foreach(attribute => {
         obj.put(attribute._1, attribute._2)
       })
-      message.getRecord.getFieldList.foreach(field => {
+      message.getRecord.getFieldList.asScala.foreach(field => {
         val fieldObj = new JSONObject()
         fieldObj.put("Field name", field.name)
         fieldObj.put("Field type", field.`type`)

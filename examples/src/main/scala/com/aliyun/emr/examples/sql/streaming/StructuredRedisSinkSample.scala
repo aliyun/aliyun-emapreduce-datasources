@@ -20,16 +20,18 @@ package com.aliyun.emr.examples.sql.streaming
 import java.util.UUID
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{col, current_timestamp}
+import org.apache.spark.sql.types._
 
 object StructuredRedisSinkSample {
   def main(args: Array[String]) {
     if (args.length < 10) {
+      // scalastyle:off
       System.err.println("Usage: StructuredRedisSinkSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <endpoint> " +
         "<starting-offsets> <max-offsets-per-trigger> <host> <port> <dbnum> " +
         "[<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 

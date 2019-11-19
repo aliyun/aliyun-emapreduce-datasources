@@ -30,7 +30,8 @@ import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 class LoghubWriterTask(
     sourceOptions: Map[String, String],
     inputSchema: Seq[Attribute]) extends LoghubGroupWriter(inputSchema) {
-  val logServiceClient: LoghubClientAgent = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
+  val logServiceClient: LoghubClientAgent =
+    LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
   var producer: LogProducer = LoghubOffsetReader.getOrCreateLogProducer(sourceOptions)
   val logProject: String = sourceOptions.getOrElse("sls.project",
     throw new MissingArgumentException("Missing logService project (='sls.project')."))

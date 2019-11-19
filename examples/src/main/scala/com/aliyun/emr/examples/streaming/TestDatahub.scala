@@ -17,19 +17,22 @@
 package com.aliyun.emr.examples.streaming
 
 import com.aliyun.datahub.model.RecordEntry
+
 import org.apache.spark.SparkConf
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.streaming.aliyun.datahub.DatahubUtils
 import org.apache.spark.streaming.dstream.DStream
-import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 
 object TestDatahub {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
+      // scalastyle:off
       System.err.println(
         """Usage: TestDatahub <project> <topic> <subscribe Id> <access key id>
           |         <access key secret> <endpoint> <batch interval seconds> [<shard Id>]
         """.stripMargin)
+      // scalastyle:on
       System.exit(1)
     }
 
@@ -50,7 +53,7 @@ object TestDatahub {
       val conf = new SparkConf().setAppName("Test Datahub")
       val ssc = new StreamingContext(conf, batchInterval)
       var datahubStream: DStream[Array[Byte]] = null
-      if (isShardDefined){
+      if (isShardDefined) {
         val shardId = args(7)
         datahubStream = DatahubUtils.createStream(
           ssc,
@@ -76,7 +79,9 @@ object TestDatahub {
           StorageLevel.MEMORY_AND_DISK)
       }
 
+      // scalastyle:off
       datahubStream.checkpoint(batchInterval * 2).foreachRDD(rdd => println(rdd.count()))
+      // scalastyle:on
       ssc.checkpoint("hdfs:///tmp/spark/streaming") // set checkpoint directory
       ssc
     }

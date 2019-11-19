@@ -44,11 +44,12 @@ class LoghubRelation(
       }
     }
     if (fromPartitionOffsets.keySet != untilPartitionOffsets.keySet) {
-      implicit val topicOrdering: Ordering[LoghubShard] = Ordering.by(t => (t.logProject, t.logStore, t.shard))
+      implicit val topicOrdering: Ordering[LoghubShard] =
+        Ordering.by(t => (t.logProject, t.logStore, t.shard))
       val fromTopics = fromPartitionOffsets.keySet.toList.sorted.mkString(",")
       val untilTopics = untilPartitionOffsets.keySet.toList.sorted.mkString(",")
-      throw new IllegalStateException(s"different shards for starting offsets shards[$fromTopics] and " +
-        s"ending offsets shards[$untilTopics]")
+      throw new IllegalStateException(s"different shards for starting offsets " +
+        s"shards[$fromTopics] and ending offsets shards[$untilTopics]")
     }
 
     val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
@@ -56,7 +57,8 @@ class LoghubRelation(
       val eof = untilPartitionOffsets(loghubShard)
       shardOffsets.+=((loghubShard.shard, sof, eof))
     }
-    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, shardOffsets, schema.fieldNames, schema.toDDL, defaultSchema, sourceOptions)
+    val rdd = new LoghubSourceRDD(sqlContext.sparkContext, shardOffsets, schema.fieldNames,
+      schema.toDDL, defaultSchema, sourceOptions)
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }
 
@@ -66,8 +68,8 @@ class LoghubRelation(
     def validateTopicPartitions(
         shards: Set[LoghubShard],
         shardOffsets: Map[LoghubShard, (Int, String)]): Unit = {
-      assert(shards == shardOffsets.keySet,
-        "If startingOffsets contains specific offsets, you must specify all LogProject-LogStore-Shard.\n" +
+      assert(shards == shardOffsets.keySet, "If startingOffsets contains specific offsets, " +
+        "you must specify all LogProject-LogStore-Shard.\n" +
           "Use -1 for latest, -2 for earliest, if you don't care.\n" +
           s"Specified: ${shardOffsets.keySet} Assigned: $shards")
       logDebug(s"Shards assigned to consumer: $shards. Seeking to $shardOffsets")

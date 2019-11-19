@@ -16,17 +16,19 @@
  */
 package org.apache.spark.streaming.aliyun.datahub
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.exception.OffsetResetedException
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
+
 import org.apache.spark.internal.Logging
 
-class DatahubWorker(projectName: String, topicName: String, shardId: String, subId: String,
-                    conf: DatahubConfiguration, receiver: DatahubReceiver, func: RecordEntry => String)
-    extends Runnable with Logging {
+class DatahubWorker(
+    projectName: String, topicName: String, shardId: String, subId: String,
+    conf: DatahubConfiguration, receiver: DatahubReceiver, func: RecordEntry => String)
+  extends Runnable with Logging {
   val client = new DatahubClientAgent(conf)
   override def run(): Unit = {
     var recordNum = 0L
@@ -39,7 +41,8 @@ class DatahubWorker(projectName: String, topicName: String, shardId: String, sub
     } else {
       cursor = client.getNextOffsetCursor(offsetCtx).getCursor
     }
-    logInfo(s"Start consume records, begin offset context ${offsetCtx.toObjectNode.toString}, cursor: $cursor")
+    logInfo(s"Start consume records, begin offset context ${offsetCtx.toObjectNode.toString}, " +
+      s"cursor: $cursor")
     while (true) {
       try {
         val recordResult = client.getRecords(projectName, topicName, shardId, cursor, 1000,
@@ -48,7 +51,7 @@ class DatahubWorker(projectName: String, topicName: String, shardId: String, sub
         if (records.size() == 0) {
           Thread.sleep(100)
         } else {
-          for (record <- records) {
+          for (record <- records.asScala) {
             offsetCtx.setOffset(record.getOffset)
             recordNum += 1
             receiver.store(func(record).getBytes)
@@ -62,7 +65,8 @@ class DatahubWorker(projectName: String, topicName: String, shardId: String, sub
         case _: OffsetResetedException =>
           client.updateOffsetContext(offsetCtx)
           cursor = client.getNextOffsetCursor(offsetCtx).getCursor
-          logInfo(s"Restart consume shard: $shardId, reset ${offsetCtx.toObjectNode.toString}, cursor: $cursor")
+          logInfo(s"Restart consume shard: $shardId, reset ${offsetCtx.toObjectNode.toString}, " +
+            s"cursor: $cursor")
         case e: Exception =>
          throw e
       }

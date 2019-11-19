@@ -35,7 +35,10 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
 
 object ParquetFormatModelLoader {
-  def loadModelData(modelPath: String, modelClass: String, requiredSchema: StructType): (Vector, Double, Option[Double]) = {
+  def loadModelData(
+      modelPath: String,
+      modelClass: String,
+      requiredSchema: StructType): (Vector, Double, Option[Double]) = {
     val sqlConf = new SQLConf()
     val hadoopConf = new Configuration()
 
@@ -48,7 +51,10 @@ object ParquetFormatModelLoader {
 
     val path = new Path(s"$modelPath/data")
     val fs = FileSystem.get(path.toUri, hadoopConf)
-    val files = fs.listStatus(path).filter(_.isFile).filter(f => !f.getPath.getName.endsWith("_SUCCESS"))
+    val files = fs
+      .listStatus(path)
+      .filter(_.isFile)
+      .filter(f => !f.getPath.getName.endsWith("_SUCCESS"))
     val fileStatus = files.head
     val split = new org.apache.parquet.hadoop.ParquetInputSplit(
       fileStatus.getPath, 0, fileStatus.getLen, fileStatus.getLen, Array.empty, null)

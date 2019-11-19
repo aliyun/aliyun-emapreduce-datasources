@@ -26,11 +26,12 @@ import org.apache.spark.sql.functions._
 object StructuredTableStoreAggSample extends Logging {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
+      // scalastyle:off
       System.err.println(
         "Usage: StructuredTableStoreWordCount <ots-instanceName>" +
           "<ots-tableName> <ots-tunnelId> <access-key-id> <access-key-secret> <ots-endpoint>" +
-          "<max-offsets-per-channel> [<checkpoint-location>]"
-      )
+          "<max-offsets-per-channel> [<checkpoint-location>]")
+      // scalastyle:on
     }
 
     val Array(
@@ -44,13 +45,18 @@ object StructuredTableStoreAggSample extends Logging {
       _*
     ) = args
 
+    // scalastyle:off
     System.out.println(args.toSeq.toString)
+    // scalastyle:on
 
     val checkpointLocation =
       if (args.length > 7) args(7) else "/tmp/temporary-" + UUID.randomUUID.toString
 
-    val spark =
-      SparkSession.builder.appName("StructuredTableStoreAggSample").master("local[16]").getOrCreate()
+    val spark = SparkSession
+      .builder
+      .appName("StructuredTableStoreAggSample")
+      .master("local[16]")
+      .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
 
@@ -63,11 +69,12 @@ object StructuredTableStoreAggSample extends Logging {
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
       .option("maxOffsetsPerChannel", maxOffsetsPerChannel) // default 10000
+      // scalastyle:off
       .option(
         "catalog",
         """{"columns": {"UserId": {"col": "UserId", "type": "string"}, "OrderId": {"col": "OrderId", "type": "string"},
-          |"price": {"cols": "price", "type": "double"}, "timestamp": {"cols": "timestamp", "type": "long"}}}""".stripMargin
-      )
+          |"price": {"cols": "price", "type": "double"}, "timestamp": {"cols": "timestamp", "type": "long"}}}""".stripMargin)
+      // scalastyle:on
       .load()
       .groupBy(window(to_timestamp(col("timestamp") / 1000), "30 seconds"))
       .agg(count("*") as "count", sum("price") as "totalPrice")

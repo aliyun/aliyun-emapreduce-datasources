@@ -34,7 +34,8 @@ class TableStoreSink(
     if (batchId <= latestBatchId) {
       logInfo(s"Skipping already committed batch $batchId")
     } else {
-      new TableStoreWriter().write(parameters, sqlContext.sparkSession, data.queryExecution, parameters)
+      new TableStoreWriter()
+        .write(parameters, sqlContext.sparkSession, data.queryExecution, parameters)
       latestBatchId = batchId
     }
   }

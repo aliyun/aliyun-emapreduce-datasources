@@ -35,7 +35,8 @@ object TableStoreCatalog {
     val jString = parameters(tableCatalog)
     val jObj = parse(jString).asInstanceOf[JObject]
     val schema = StructType(
-      getColsPreservingOrder(jObj).map(e => StructField(e._1, CatalystSqlParser.parseDataType(e._2(`type`)))))
+      getColsPreservingOrder(jObj).map(e =>
+        StructField(e._1, CatalystSqlParser.parseDataType(e._2(`type`)))))
     new TableStoreCatalog(schema)
   }
 

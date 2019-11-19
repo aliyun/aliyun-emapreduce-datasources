@@ -18,8 +18,6 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.util
 
-import scala.collection.JavaConversions._
-
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.LogGroupData
 import com.aliyun.openservices.log.common.Logs.Log
@@ -44,6 +42,9 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver)
 
   override def process(list: util.List[LogGroupData],
       iLogHubCheckPointTracker: ILogHubCheckPointTracker): String = {
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
     try {
       list.foreach(group => {
         group.GetLogGroup().getLogsList.foreach(log => {
@@ -67,6 +68,9 @@ class SimpleLogHubProcessor(receiver: LoghubReceiver)
   }
 
   private def process(group: LogGroupData, log: Log): Unit = {
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
     try {
       val topic = group.GetTopic()
       val source = group.GetSource()

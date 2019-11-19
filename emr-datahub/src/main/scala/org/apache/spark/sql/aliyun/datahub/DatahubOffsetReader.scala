@@ -19,10 +19,10 @@ package org.apache.spark.sql.aliyun.datahub
 import java.io.UnsupportedEncodingException
 import java.util.concurrent.{Executors, ThreadFactory}
 
-import scala.concurrent.duration.Duration
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
-import scala.collection.JavaConversions._
 
 import com.aliyun.datahub.DatahubConfiguration
 import com.aliyun.datahub.auth.AliyunAccount
@@ -64,9 +64,11 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   private val topic = readerOptions.getOrElse("topic",
     throw new MissingArgumentException("Missing datahub topic (='topic')."))
   private val maxOffsetFetchAttempts = readerOptions.getOrElse("fetchOffset.numRetries", "3").toInt
-  private val offsetFetchAttemptIntervalMs = readerOptions.getOrElse("fetchOffset.retryIntervalMs", "1000").toLong
+  private val offsetFetchAttemptIntervalMs =
+    readerOptions.getOrElse("fetchOffset.retryIntervalMs", "1000").toLong
 
-  var datahubClient: DatahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(readerOptions)
+  var datahubClient: DatahubClientAgent =
+    DatahubOffsetReader.getOrCreateDatahubClient(readerOptions)
 
   private def withRetriesWithoutInterrupt(
       body: => Map[DatahubShard, Long]): Map[DatahubShard, Long] = {
@@ -110,26 +112,28 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 
   def fetchDatahubShard(): Set[DatahubShard] = {
     assert(Thread.currentThread().isInstanceOf[UninterruptibleThread])
-    datahubClient.listShards(project, topic).getShards()
+    datahubClient.listShards(project, topic).getShards().asScala
       .map(shard => DatahubShard(project, topic, shard.getShardId())).toSet
   }
 
   def fetchEarliestOffsets(): Map[DatahubShard, Long] = runUninterruptibly {
     withRetriesWithoutInterrupt {
-      fetchDatahubShard().map { case datahubShard => {
-        val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
+      fetchDatahubShard().map { case datahubShard =>
+        val cursor =
+          datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
         (datahubShard, cursor.getSequence)
-      }}.toMap
+      }.toMap
     }
   }
 
   def fetchEarliestOffsets(newPartitions: Set[DatahubShard]): Map[DatahubShard, Long] = {
     runUninterruptibly {
       withRetriesWithoutInterrupt {
-        val partitionOffsets = fetchDatahubShard().map { case datahubShard => {
-          val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
+        val partitionOffsets = fetchDatahubShard().map { case datahubShard =>
+          val cursor =
+            datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.OLDEST)
           (datahubShard, cursor.getSequence)
-        }}.toMap
+        }.toMap
 
         partitionOffsets.filter(po => newPartitions.contains(po._1))
       }
@@ -139,7 +143,8 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   def fetchLatestOffsets(): Map[DatahubShard, Long] = runUninterruptibly {
     withRetriesWithoutInterrupt {
       fetchDatahubShard().map { case datahubShard =>
-        val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
+        val cursor =
+          datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
         (datahubShard, cursor.getSequence)
       }.toMap
     }
@@ -149,14 +154,16 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
     runUninterruptibly {
       withRetriesWithoutInterrupt {
         val partitionOffsets = fetchDatahubShard().map { case datahubShard =>
-          val cursor = datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
+          val cursor =
+            datahubClient.getCursor(project, topic, datahubShard.shardId, CursorType.LATEST)
           (datahubShard, cursor.getSequence)
         }.toMap
 
         if (knownOffsets.isDefined) {
           val missingShards = knownOffsets.get.keys.toSeq.diff(partitionOffsets.keys.toSeq)
           if (missingShards.nonEmpty) {
-            throw new IllegalStateException(s"Found some shard missing in latest state: $missingShards")
+            throw new IllegalStateException(
+              s"Found some shard missing in latest state: $missingShards")
           }
         }
 
@@ -177,7 +184,8 @@ object DatahubOffsetReader extends Logging with Serializable {
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
     if (zkClient == null) {
       val zkConnect = zkParams.getOrElse("connect.address",
-        throw new MissingArgumentException("Missing 'zookeeper.connect.address' option when create datahub source."))
+        throw new MissingArgumentException(
+          "Missing 'zookeeper.connect.address' option when create datahub source."))
       val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
       val zkConnectionTimeoutMs =
         zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
@@ -228,8 +236,8 @@ object DatahubOffsetReader extends Logging with Serializable {
     val endpoint = sourceOptions.getOrElse("endpoint",
       throw new MissingArgumentException("Missing endpoint (='endpoint')."))
     if (DatahubClient == null) {
-      DatahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret),
-        endpoint))
+      DatahubClient = new DatahubClientAgent(
+        new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
     }
     DatahubClient
   }

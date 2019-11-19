@@ -20,7 +20,7 @@ import java.util
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.aliyun.datahub.common.data.{Field, FieldType}
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
@@ -87,14 +87,11 @@ class DatahubContinuousReader(
   override def toString(): String = s"DatahubSource[$offsetReader]"
 
   override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
-    import scala.collection.JavaConverters._
     val startOffsets = DatahubSourceOffset.getShardOffsets(offset)
-    startOffsets.toSeq.map {
-      case (datahubShard, of) => {
-        DatahubContinuousInputPartition(
-          datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
-        : InputPartition[InternalRow]
-      }
+    startOffsets.toSeq.map { case (datahubShard, of) =>
+      DatahubContinuousInputPartition(
+        datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
+      : InputPartition[InternalRow]
     }.asJava
   }
 }
@@ -105,7 +102,8 @@ case class DatahubContinuousInputPartition(
     shardId: String,
     offset: Long,
     sourceOptions: Map[String, String]) extends ContinuousInputPartition[InternalRow] {
-  override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
+  override def createContinuousReader(offset: PartitionOffset):
+    InputPartitionReader[InternalRow] = {
     val off = offset.asInstanceOf[DatahubShardOffset]
     new DatahubContinuousInputPartitionReader(project, topic, shardId, off.offset, sourceOptions)
   }
@@ -120,17 +118,20 @@ class DatahubContinuousInputPartitionReader(
     topic: String,
     shardId: String,
     offset: Long,
-    sourceOptions: Map[String, String]) extends ContinuousInputPartitionReader[InternalRow] with Logging {
+    sourceOptions: Map[String, String])
+  extends ContinuousInputPartitionReader[InternalRow] with Logging {
 
   private var datahubClient = DatahubOffsetReader.getOrCreateDatahubClient(sourceOptions)
 
   private val step: Int = 100
   private var hasRead: Int = 0
   private var nextOffset = offset
-  private var endOffset = datahubClient.getCursor(project, topic, shardId, CursorType.LATEST).getSequence()
+  private var endOffset =
+    datahubClient.getCursor(project, topic, shardId, CursorType.LATEST).getSequence()
   private val dataBuffer = new LinkedBlockingQueue[RecordEntry](step)
   private var currentRecord: RecordEntry = null
-  private val fields: List[Field] = datahubClient.getTopic(project, topic).getRecordSchema.getFields.toList
+  private val fields: List[Field] =
+    datahubClient.getTopic(project, topic).getRecordSchema.getFields.asScala.toList
   private val rowWriter = new UnsafeRowWriter(4 + fields.length)
 
   override def getOffset: PartitionOffset = DatahubShardOffset(project, topic, shardId, nextOffset)
@@ -154,9 +155,10 @@ class DatahubContinuousInputPartitionReader(
     val limit = endOffset - nextOffset
     if (limit > 0) {
       val cursor = datahubClient.getCursor(project, topic, shardId, nextOffset).getCursor
-      val recordResult = datahubClient.getRecords(project, topic, shardId, cursor, limit.toInt, schema)
+      val recordResult =
+        datahubClient.getRecords(project, topic, shardId, cursor, limit.toInt, schema)
       val num = recordResult.getRecordCount
-      recordResult.getRecords.foreach(record => {
+      recordResult.getRecords.asScala.foreach(record => {
         dataBuffer.offer(record)
         nextOffset = record.getOffset.getSequence + 1
       })
@@ -181,13 +183,14 @@ class DatahubContinuousInputPartitionReader(
         f.getType match {
           case FieldType.BIGINT => rowWriter.write(index + 4, currentRecord.getBigint(field))
           case FieldType.BOOLEAN => rowWriter.write(index + 4, currentRecord.getBoolean(field))
-          case FieldType.DECIMAL => {
+          case FieldType.DECIMAL =>
             val rec = currentRecord.getDecimal(field)
             rowWriter.write(index + 4, Decimal(rec), rec.precision(), rec.scale())
-          }
           case FieldType.DOUBLE => rowWriter.write(index + 4, currentRecord.getDouble(field))
-          case FieldType.TIMESTAMP => rowWriter.write(index + 4, currentRecord.getTimeStampAsUs(field))
-          case _ => rowWriter.write(index + 4, UTF8String.fromString(String.valueOf(currentRecord.get(field))))
+          case FieldType.TIMESTAMP =>
+            rowWriter.write(index + 4, currentRecord.getTimeStampAsUs(field))
+          case _ => rowWriter.write(index + 4,
+            UTF8String.fromString(String.valueOf(currentRecord.get(field))))
         }
     })
 

@@ -29,9 +29,10 @@ class KuduUpdatableRelation(
     override val operationType: OperationType,
     override val userSchema: Option[StructType],
     override val readOptions: KuduReadOptions = new KuduReadOptions,
-    override val writeOptions: KuduWriteOptions = new KuduWriteOptions)(override val sqlContext: SQLContext)
-  extends KuduRelation(tableName, masterAddrs, operationType, userSchema, readOptions, writeOptions)(sqlContext)
-  with Serializable {
+    override val writeOptions: KuduWriteOptions = new KuduWriteOptions)
+    (override val sqlContext: SQLContext)
+  extends KuduRelation(tableName, masterAddrs, operationType, userSchema,
+    readOptions, writeOptions)(sqlContext) with Serializable {
 
   @DeveloperApi
   @InterfaceStability.Evolving
@@ -40,8 +41,8 @@ class KuduUpdatableRelation(
     val lastPropagatedTimestamp = syncClient.getLastPropagatedTimestamp
     data.toDF().foreachPartition(it => {
       val operator = new KuduOperator(masterAddrs)
-      val pendingErrors = operator.writePartitionRows(it, schema, opTypeColumn.toString(), tableName,
-        lastPropagatedTimestamp, writeOptions)
+      val pendingErrors = operator.writePartitionRows(it, schema, opTypeColumn.toString(),
+        tableName, lastPropagatedTimestamp, writeOptions)
       if (pendingErrors.getRowErrors.nonEmpty) {
         val errors = pendingErrors.getRowErrors
         val sample = errors.take(5).map(_.getErrorStatus).mkString

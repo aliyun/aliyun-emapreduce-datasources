@@ -17,12 +17,13 @@
 package org.apache.spark.sql.aliyun.redis
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.types.StructType
 
-class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) extends Sink with Logging {
+class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String])
+  extends Sink with Logging {
   // determine whether to overwrite data to redis to recover from failure when restart application
   private var initialed = false
 
@@ -39,7 +40,8 @@ class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String]) exte
       !saveMode.equals("overwrite")) {
       val table = sourceOptions(SqlOptionTableName)
       val keysPatternForRewrite = s"$table:$batchId:*"
-      val updatedOptions = sourceOptions.updated(SqlOptionKeysPatternForRewrite, keysPatternForRewrite)
+      val updatedOptions =
+        sourceOptions.updated(SqlOptionKeysPatternForRewrite, keysPatternForRewrite)
       val relation = new RedisRelation(sqlContext, updatedOptions, None, batchId)
       relation.insert(df, overwrite = true)
     } else {
