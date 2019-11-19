@@ -37,7 +37,7 @@ class LoghubTestUtils() {
   var client: Client = null
   var producer: LogProducer = null
 
-  val logProject = "emr-sdk-ut-project"
+  var logProject = "emr-sdk-ut-project"
   val logStorePool = new mutable.HashMap[String, Boolean]()
 
   var sourceProps: Map[String, String] = null
@@ -75,6 +75,8 @@ class LoghubTestUtils() {
       "endpoint" -> endpoint
     )
     producer = LoghubOffsetReader.getOrCreateLogProducer(sourceProps)
+
+    logProject = Option(System.getenv("LOGSTORE_PROJECT_NAME")).getOrElse("")
   }
 
   validateProps()
