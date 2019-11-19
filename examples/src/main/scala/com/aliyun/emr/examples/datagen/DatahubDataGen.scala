@@ -18,32 +18,37 @@ package com.aliyun.emr.examples.datagen
 
 import java.util
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.util.Random
+
 import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.common.data.FieldType
 import com.aliyun.datahub.model.RecordEntry
-import org.apache.spark.sql.types.{DataTypes, StructField}
 
-import scala.util.Random
+import org.apache.spark.sql.types.{DataTypes, StructField}
 
 object DatahubDataGen {
   def main(args: Array[String]): Unit = {
     if (args.length < 4) {
-      System.err.println("Usage: DatahubDataGen <project> <topic> <access-key-id> <access-key-secret>")
+      // scalastyle:off
+      System.err.println(
+        "Usage: DatahubDataGen <project> <topic> <access-key-id> <access-key-secret>")
+      // scalastyle:on
       System.exit(1)
     }
 
     val Array(project, topic, endpoint, accessKeyId, accessKeySecret) = args
 
-    val dclient = new DatahubClient(new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
+    val dclient = new DatahubClient(new DatahubConfiguration(
+      new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
     val schema = dclient.getTopic(project, topic).getRecordSchema
 
     while(true) {
       val recordEntries = new util.ArrayList[RecordEntry]()
       for(i <- 0 to 100) {
         val data = new RecordEntry(schema)
-        schema.getFields.foreach(f => {
+        schema.getFields.asScala.foreach(f => {
           f.getType match {
             case FieldType.STRING => data.setString(f.getName, "i am a string")
             case FieldType.BIGINT => data.setBigint(f.getName, Random.nextLong())

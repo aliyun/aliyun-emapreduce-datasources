@@ -18,22 +18,24 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util.UUID
 
-import com.alicloud.openservices.tablestore.model._
-import com.alicloud.openservices.tablestore.model.tunnel.internal.{CheckpointRequest, GetCheckpointRequest}
+import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
+
 import com.alicloud.openservices.tablestore.{SyncClientInterface, TunnelClientInterface}
+import com.alicloud.openservices.tablestore.model._
+import com.alicloud.openservices.tablestore.model.tunnel.internal.CheckpointRequest
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.aliyun.tablestore.MetaCheckpointer._
 import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.execution.streaming.{Offset, Source}
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.apache.spark.sql.aliyun.tablestore.MetaCheckpointer._
-
-import scala.collection.mutable.ArrayBuffer
-import scala.util.control.NonFatal
 
 class TableStoreSource(
     @transient sqlContext: SQLContext,
@@ -73,13 +75,14 @@ class TableStoreSource(
     throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
   )
 
-  private val checkpointTable = sourceOptions.getOrElse("checkpoint.table", "__spark_meta_checkpoint__")
+  private val checkpointTable =
+    sourceOptions.getOrElse("checkpoint.table", "__spark_meta_checkpoint__")
 
-  @transient var tunnelClient: TunnelClientInterface =
-    TableStoreOffsetReader.getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  @transient var tunnelClient: TunnelClientInterface = TableStoreOffsetReader
+    .getOrCreateTunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
 
-  @transient var syncClient: SyncClientInterface =
-    TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  @transient var syncClient: SyncClientInterface = TableStoreOffsetReader
+    .getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
 
   private[sql] lazy val initialOffsetUUID = {
     logInfo("initialOffsetUUID")
@@ -134,7 +137,7 @@ class TableStoreSource(
   }
 
   // Used for testSuite.
-  private[sql] var currentBatchRDD = sqlContext.sparkContext.emptyRDD[InternalRow]
+  private[sql] var currentBatchRDD: RDD[InternalRow] = sqlContext.sparkContext.emptyRDD[InternalRow]
 
   /**
    * Returns the data that is between the offsets

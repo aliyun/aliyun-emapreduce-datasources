@@ -24,6 +24,7 @@ import org.apache.spark.sql.streaming.Trigger
 object StructuredDatahubSample {
   def main(args: Array[String]): Unit = {
     if (args.length < 8) {
+      // scalastyle:off
       println(
         """
           |Usage: Usage: StructuredDatahubSample <endpoint> <project> <topic> <access key id>
@@ -31,10 +32,12 @@ object StructuredDatahubSample {
           |       [checkpoint directory=/tmp/datahub/test/checkpoint]
           |
         """.stripMargin)
+      // scalastyle:on
       sys.exit(1)
     }
 
-    val Array(endpoint, project, topic, accessKeyId, accessKeySecret, zkHosts, maxOffset, triggerInterval, _*) = args
+    val Array(endpoint, project, topic, accessKeyId, accessKeySecret,
+      zkHosts, maxOffset, triggerInterval, _*) = args
     val checkpointDir = if (args.length > 8) {
       args(8)
     } else {

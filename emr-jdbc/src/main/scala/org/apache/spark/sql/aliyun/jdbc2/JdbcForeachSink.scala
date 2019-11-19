@@ -20,13 +20,17 @@ import java.sql._
 
 import org.apache.spark.sql.ForeachWriter
 
-class JdbcForeachSink(url: String, user: String, pwd: String) extends ForeachWriter[(String, String)] {
-  val driver = "com.mysql.jdbc.Driver"
-  var connection:Connection = _
-  var statement:Statement = _
+class JdbcForeachSink(url: String, user: String, pwd: String)
+  extends ForeachWriter[(String, String)] {
 
-  def open(partitionId: Long,version: Long): Boolean = {
+  val driver = "com.mysql.jdbc.Driver"
+  var connection: Connection = _
+  var statement: Statement = _
+
+  def open(partitionId: Long, version: Long): Boolean = {
+    // scalastyle:off classforname
     Class.forName(driver)
+    // scalastyle:on classforname
     connection = DriverManager.getConnection(url, user, pwd)
     statement = connection.createStatement
     true

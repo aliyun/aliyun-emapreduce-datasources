@@ -16,13 +16,9 @@
  */
 package org.apache.spark.sql.aliyun
 
-/***
+/**
  * refer to [[org.apache.spark.sql.redis]] and used by
  * [[org.apache.spark.sql.aliyun.redis.RedisRelation]]
- * @param sqlContext
- * @param parameters
- * @param userSpecifiedSchema
- * @param batchId
  */
 package object redis {
 

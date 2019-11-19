@@ -19,7 +19,7 @@ package org.apache.spark.sql.aliyun.datahub
 
 import java.sql.Timestamp
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.datahub.common.data.FieldType
@@ -85,18 +85,23 @@ object DatahubSchema extends Logging {
       endpoint: String,
       sourceOptions: Map[String, String]): StructType = {
     var schema = new StructType()
-    val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
-    client.getTopic(project, topic).getRecordSchema.getFields.foreach(field => {
+    val client =
+      DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
+    client.getTopic(project, topic).getRecordSchema.getFields.asScala.foreach(field => {
       val struct = field.getType match {
-        case FieldType.BIGINT => StructField(field.getName, DataTypes.LongType, !field.getNotnull)
-        case FieldType.BOOLEAN => StructField(field.getName, DataTypes.BooleanType, !field.getNotnull)
-        case FieldType.DECIMAL => {
+        case FieldType.BIGINT =>
+          StructField(field.getName, DataTypes.LongType, !field.getNotnull)
+        case FieldType.BOOLEAN =>
+          StructField(field.getName, DataTypes.BooleanType, !field.getNotnull)
+        case FieldType.DECIMAL =>
           val precision = sourceOptions("decimal.precision").toInt
           val scale = sourceOptions("decimal.scale").toInt
-          StructField(field.getName, DataTypes.createDecimalType(precision, scale), !field.getNotnull)
-        }
-        case FieldType.DOUBLE => StructField(field.getName, DataTypes.DoubleType, !field.getNotnull)
-        case FieldType.TIMESTAMP => StructField(field.getName, DataTypes.LongType, !field.getNotnull)
+          StructField(field.getName,
+            DataTypes.createDecimalType(precision, scale), !field.getNotnull)
+        case FieldType.DOUBLE =>
+          StructField(field.getName, DataTypes.DoubleType, !field.getNotnull)
+        case FieldType.TIMESTAMP =>
+          StructField(field.getName, DataTypes.LongType, !field.getNotnull)
         case _ => StructField(field.getName, DataTypes.StringType, !field.getNotnull)
       }
       schema = schema.add(struct)
@@ -115,19 +120,24 @@ object DatahubSchema extends Logging {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     val endpoint = caseInsensitiveParams.getOrElse("endpoint",
       throw new MissingArgumentException("Missing datahub endpoint (='endpoint')."))
-    val client = DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
-    val existDecimal = client.getTopic(project, topic).getRecordSchema.getFields.exists(x=> {
-      x.getType == FieldType.DECIMAL
-    })
+    val client =
+      DatahubOffsetReader.getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
+    val existDecimal = client.getTopic(project, topic)
+      .getRecordSchema.getFields.asScala.exists(x => {
+        x.getType == FieldType.DECIMAL
+      })
     if (existDecimal) {
       val precision = caseInsensitiveParams.getOrElse("decimal.precision",
-        throw new MissingArgumentException("Missing datahub decimal precision (='decimal.precision')." +
+        throw new MissingArgumentException(
+          "Missing datahub decimal precision (='decimal.precision')." +
           " 'decimal.precision' must be set when there is decimal type in schema.")).toInt
       val scale = caseInsensitiveParams.getOrElse("decimal.scale",
-        throw new MissingArgumentException("Missing datahub decimal precision (='decimal.scale'). " +
+        throw new MissingArgumentException(
+          "Missing datahub decimal precision (='decimal.scale'). " +
           "'decimal.scale' must be set when there is decimal type in schema.")).toInt
       if (precision > DecimalType.MAX_PRECISION || scale > DecimalType.MAX_SCALE) {
-        throw new IllegalArgumentException(s"Option decimal.precision[${precision}] or decimal.scale[$scale] " +
+        throw new IllegalArgumentException(
+          s"Option decimal.precision[${precision}] or decimal.scale[$scale] " +
           s"exceed max value in spark. Max precision is ${DecimalType.MAX_PRECISION }, " +
           s"max scale is ${DecimalType.MAX_SCALE}.")
       }

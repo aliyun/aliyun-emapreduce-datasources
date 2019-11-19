@@ -19,6 +19,12 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.io.{IOException, ObjectInputStream}
 import java.nio.charset.StandardCharsets
 
+// scalastyle:off
+import scala.collection.JavaConversions._
+// scalastyle:on
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.ConsumerGroup
 import com.aliyun.openservices.log.exception.LogException
@@ -29,18 +35,16 @@ import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
-import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.util.Utils
 
-import scala.collection.JavaConversions._
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-
+// scalastyle:off
 class DirectLoghubInputDStream(
     _ssc: StreamingContext,
     project: String,
@@ -51,8 +55,8 @@ class DirectLoghubInputDStream(
     endpoint: String,
     zkParams: Map[String, String],
     mode: LogHubCursorPosition,
-    cursorStartTime: Long = -1L
-) extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
+    cursorStartTime: Long = -1L)
+  extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
   @transient private var zkClient: ZkClient = null
   @transient private var loghubClient: LoghubClientAgent = null
   @transient private var COMMIT_LOCK = new Object()
@@ -72,13 +76,13 @@ class DirectLoghubInputDStream(
   override def start(): Unit = {
     if (enablePreciseCount) {
       logWarning(s"Enable precise count on loghub rdd, we will submit a count job in each batch. " +
-        s"This value is showed in each batch job in streaming tab in Web UI. This may increase the " +
-        s"total process time in each batch. You can disable the behavior by setting " +
+        s"This value is showed in each batch job in streaming tab in Web UI. This may increase " +
+        s"the total process time in each batch. You can disable the behavior by setting " +
         s"'spark.streaming.loghub.count.precise.enable'=false")
     } else {
-      logWarning(s"Disable precise count on loghub rdd, we will get an approximate count of loghub rdd, " +
-        s"via the `GetHistograms` api of log service. You can enable the behavior by setting " +
-        s"'spark.streaming.loghub.count.precise.enable'=true")
+      logWarning(s"Disable precise count on loghub rdd, we will get an approximate count of " +
+        s"loghub rdd, via the `GetHistograms` api of log service. You can enable the behavior " +
+        s"by setting 'spark.streaming.loghub.count.precise.enable'=true")
     }
     // TODO: support concurrent jobs
     val concurrentJobs = ssc.conf.getInt(s"spark.streaming.concurrentJobs", 1)
@@ -88,7 +92,8 @@ class DirectLoghubInputDStream(
     var zkCheckpointDir = ssc.checkpointDir
     if (StringUtils.isBlank(zkCheckpointDir)) {
       zkCheckpointDir = s"/$consumerGroup"
-      logInfo(s"Checkpoint dir was not specified, using consumer group $consumerGroup as checkpoint dir")
+      logInfo(s"Checkpoint dir was not specified, using consumer group $consumerGroup as " +
+        s"checkpoint dir")
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
     createZkClient()
@@ -109,25 +114,25 @@ class DirectLoghubInputDStream(
 
     tryToCreateConsumerGroup()
 
-    import scala.collection.JavaConversions._
     val initial = if (zkClient.exists(s"$checkpointDir/consume/$project/$logStore")) {
       zkClient.getChildren(s"$checkpointDir/consume/$project/$logStore")
         .filter(_.endsWith(".shard")).map(_.stripSuffix(".shard").toInt).toArray
     } else {
       Array.empty[String]
     }
-    val diff = loghubClient.ListShard(project, logStore).GetShards().map(_.GetShardId()).diff(initial)
+    val diff =
+      loghubClient.ListShard(project, logStore).GetShards().map(_.GetShardId()).diff(initial)
     if (diff.nonEmpty) {
       val checkpoints = fetchAllCheckpoints()
       diff.foreach(shardId => {
         val cursor = findCheckpointOrCursorForShard(shardId, checkpoints)
-        DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$shardId.shard", cursor)
+        DirectLoghubInputDStream.writeDataToZK(zkClient,
+          s"$checkpointDir/consume/$project/$logStore/$shardId.shard", cursor)
       })
     }
 
     // Clean commit data in zookeeper in case of restarting streaming job but lose checkpoint file
     // in `checkpointDir`
-    import scala.collection.JavaConversions._
     try {
       zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
         zkClient.delete(s"$checkpointDir/commit/$project/$logStore/$child")
@@ -191,8 +196,10 @@ class DirectLoghubInputDStream(
             if (isReadonly && readOnlyShardCache.contains(shardId)) {
               logDebug(s"There is no data to consume from shard $shardId.")
             } else {
-              val start: String = zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
-              val end = loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              val start: String =
+                zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
+              val end =
+                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
               logInfo(s"ShardID $shardId, start $start end $end")
               if (!start.equals(end)) {
                 shardOffsets.+=((shardId, start, end))
@@ -210,7 +217,8 @@ class DirectLoghubInputDStream(
             loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
               val shardId = shard.GetShardId()
               val start: String = findCheckpointOrCursorForShard(shardId, checkpoints)
-              val end = loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              val end =
+                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
               logInfo(s"ShardID $shardId, start $start end $end")
               shardOffsets.+=((shardId, start, end))
             })
@@ -263,22 +271,23 @@ class DirectLoghubInputDStream(
 
   private def commitAll(): Unit = {
     if (doCommit) {
-      import scala.collection.JavaConversions._
       try {
         zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
           val shardId = child.substring(0, child.indexOf(".")).toInt
           if (!readOnlyShardCache.contains(shardId)) {
             val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
-            log.debug(s"Updating checkpoint $data of shard $shardId to consumer group $consumerGroup")
+            log.debug(s"Updating checkpoint $data of shard $shardId to consumer " +
+              s"group $consumerGroup")
             loghubClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, data)
-            DirectLoghubInputDStream.writeDataToZK(zkClient, s"$checkpointDir/consume/$project/$logStore/$child", data)
+            DirectLoghubInputDStream.writeDataToZK(zkClient,
+              s"$checkpointDir/consume/$project/$logStore/$child", data)
           }
         })
         doCommit = false
       } catch {
         case _: ZkNoNodeException =>
-          logWarning("If this is the first time to run, it is fine to not find any commit data in " +
-            "zookeeper.")
+          logWarning("If this is the first time to run, it is fine to not find any commit " +
+            "data in zookeeper.")
           doCommit = false
       }
     }
@@ -323,13 +332,14 @@ class DirectLoghubInputDStream(
 
   private def tryToCreateConsumerGroup(): Unit = {
     try {
-      loghubClient.CreateConsumerGroup(project, logStore, new ConsumerGroup(consumerGroup, 10, true))
+      loghubClient
+        .CreateConsumerGroup(project, logStore, new ConsumerGroup(consumerGroup, 10, true))
     } catch {
       case e: LogException =>
         if (e.GetErrorCode.compareToIgnoreCase("ConsumerGroupAlreadyExist") == 0) {
           try {
-            val consumerGroups = loghubClient.ListConsumerGroup(project, logStore).GetConsumerGroups()
-            import scala.collection.JavaConversions._
+            val consumerGroups =
+              loghubClient.ListConsumerGroup(project, logStore).GetConsumerGroups()
             consumerGroups.count(cg => cg.getConsumerGroupName.equals(consumerGroup)) match {
               case 1 =>
                 logInfo("Create consumer group successfully.")
@@ -338,8 +348,8 @@ class DirectLoghubInputDStream(
             }
           } catch {
             case e1: LogException =>
-              throw new LogHubClientWorkerException("error occurs when get consumer group, errorCode: " +
-                e1.GetErrorCode + ", errorMessage: " + e1.GetErrorMessage)
+              throw new LogHubClientWorkerException("error occurs when get consumer group, " +
+                "errorCode: " + e1.GetErrorCode + ", errorMessage: " + e1.GetErrorMessage)
           }
         } else {
           throw new LogHubClientWorkerException("error occurs when create consumer group, " +
@@ -364,7 +374,8 @@ class DirectLoghubInputDStream(
     checkpoints
   }
 
-  private def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]): String = {
+  private def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]):
+    String = {
     val checkpoint = checkpoints.getOrElse(shardId, null)
     if (checkpoint != null) {
       logInfo(s"Shard $shardId will start from checkpoint $checkpoint")
@@ -394,6 +405,7 @@ class DirectLoghubInputDStream(
     stop()
   }
 }
+// scalastyle:on
 
 object DirectLoghubInputDStream {
   def writeDataToZK(zkClient: ZkClient, path: String, data: String): Unit = {

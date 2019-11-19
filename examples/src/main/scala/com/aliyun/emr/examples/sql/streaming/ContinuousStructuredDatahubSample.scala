@@ -25,11 +25,13 @@ import org.apache.spark.sql.streaming.Trigger
 object ContinuousStructuredDatahubSample extends Logging {
   def main(args: Array[String]): Unit = {
     if (args.length < 5) {
+      // scalastyle:off
       println(
         """
           |Usage: <endpoint> <project> <topic> <zk host:port>
           |       <access key id> <access key secret> [checkpoint directory]
         """.stripMargin)
+      // scalastyle:on
       sys.exit(1)
     }
     val Array(endpoint, project, topic, zkHost, accessKeyId, accessKeySecret, _*) = args

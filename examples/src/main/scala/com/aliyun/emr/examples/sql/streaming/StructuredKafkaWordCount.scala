@@ -23,8 +23,10 @@ import org.apache.spark.sql.SparkSession
 object StructuredKafkaWordCount {
   def main(args: Array[String]) {
     if (args.length < 3) {
+      // scalastyle:off
       System.err.println("Usage: StructuredKafkaWordCount <bootstrapSevers> <topicIn> <topicOut> " +
         "[<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 

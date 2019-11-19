@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,21 +19,22 @@ package org.apache.spark.aliyun.odps.datasource
 import java.io.EOFException
 import java.sql.{Date, SQLException}
 
-import com.aliyun.odps.tunnel.TableTunnel
-import com.aliyun.odps.tunnel.io.TunnelRecordReader
+import scala.collection.mutable.ArrayBuffer
+
 import com.aliyun.odps.{Odps, PartitionSpec}
 import com.aliyun.odps.account.AliyunAccount
-import org.apache.spark.aliyun.odps.OdpsPartition
-import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
-import org.apache.spark.unsafe.types.UTF8String
-import org.apache.spark.util.NextIterator
+import com.aliyun.odps.tunnel.TableTunnel
+import com.aliyun.odps.tunnel.io.TunnelRecordReader
+
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
+import org.apache.spark.aliyun.odps.OdpsPartition
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
-
-import scala.collection.mutable.ArrayBuffer
+import org.apache.spark.unsafe.types.UTF8String
+import org.apache.spark.util.NextIterator
 
 class ODPSRDD(
     sc: SparkContext,
@@ -61,9 +61,9 @@ class ODPSRDD(
       val tunnel = new TableTunnel(odps)
       tunnel.setEndpoint(tunnelUrl)
       var downloadSession: TableTunnel#DownloadSession = null
-      if (partitionSpec.equals("Non-Partitioned"))
+      if (partitionSpec.equals("Non-Partitioned")) {
         downloadSession = tunnel.createDownloadSession(project, table)
-      else {
+      } else {
         val parSpec = new PartitionSpec(partitionSpec)
         downloadSession = tunnel.createDownloadSession(project, table, parSpec)
       }
@@ -126,7 +126,8 @@ class ODPSRDD(
                         case date1: java.sql.Date =>
                           mutableRow.update(idx, DateTimeUtils.fromJavaDate(date1))
                         case date2: java.util.Date =>
-                          mutableRow.setInt(idx, DateTimeUtils.fromJavaDate(new Date(date2.getTime)))
+                          mutableRow.setInt(idx,
+                            DateTimeUtils.fromJavaDate(new Date(date2.getTime)))
                         case null => mutableRow.update(idx, null)
                         case _ => throw new SQLException(s"Unknown type" +
                           s" ${value.getClass.getCanonicalName}")
@@ -240,9 +241,9 @@ class ODPSRDD(
     val tunnel = new TableTunnel(odps)
     tunnel.setEndpoint(tunnelUrl)
     var downloadSession: TableTunnel#DownloadSession = null
-    if (partitionSpec == null || partitionSpec.equals("Non-Partitioned"))
+    if (partitionSpec == null || partitionSpec.equals("Non-Partitioned")) {
       downloadSession = tunnel.createDownloadSession(project, table)
-    else {
+    } else {
       val parSpec = new PartitionSpec(partitionSpec)
       downloadSession = tunnel.createDownloadSession(project, table, parSpec)
     }
@@ -273,7 +274,8 @@ class ODPSRDD(
           table,
           partitionSpec
         )
-    }.filter(p => p.count > 0) //remove the last count==0 to prevent exceptions from reading odps table.
+    }.filter(p => p.count > 0)
+      // remove the last count==0 to prevent exceptions from reading odps table.
       .map(_.asInstanceOf[Partition])
     ret
   }

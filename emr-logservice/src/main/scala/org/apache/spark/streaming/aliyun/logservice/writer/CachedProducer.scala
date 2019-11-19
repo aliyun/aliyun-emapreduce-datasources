@@ -37,7 +37,8 @@ object CachedProducer {
         val maxIOThread = producerConfig.getOrElse("sls.ioThreadCount", "1").toInt
         config.setIoThreadCount(maxIOThread)
         producer = new LogProducer(config)
-        producer.putProjectConfig(new ProjectConfig(project, endpoint, accessKeyId, accessKeySecret))
+        producer.putProjectConfig(
+          new ProjectConfig(project, endpoint, accessKeyId, accessKeySecret))
         sys.addShutdownHook(producer.close())
       }
       producer

@@ -24,7 +24,9 @@ object UpdateSourceConfig {
     try {
       val opts = new ConfigCommandOptions(args)
       if (args.length == 0) {
+        // scalastyle:off
         println(opts.parser)
+        // scalastyle:on
       }
 
       val zkConnectOpt = opts.options.valueOf(opts.zkConnectOpt)
@@ -39,8 +41,8 @@ object UpdateSourceConfig {
 
 class ConfigCommandOptions(args: Array[String]) {
   val parser = new OptionParser(false)
-  val zkConnectOpt = parser.accepts("zookeeper", "REQUIRED: The connection string for the zookeeper connection in the form host:port. " +
-    "Multiple URLS can be given to allow fail-over.")
+  val zkConnectOpt = parser.accepts("zookeeper", "REQUIRED: The connection string for the " +
+    "zookeeper connection in the form host:port. Multiple URLS can be given to allow fail-over.")
     .withRequiredArg
     .describedAs("urls")
     .ofType(classOf[String])

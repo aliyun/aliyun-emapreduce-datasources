@@ -28,25 +28,25 @@ import org.apache.spark.streaming.dstream.ReceiverInputDStream
  */
 object MnsUtils {
   /**
-    * {{{
-    *    val queuename = "queueSample"
-    *    val accessKeyId = "kj7aY*******UYx6"
-    *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
-    *    val endpoint = "http://184*********815.mns-test.aliyuncs.com:1234"
-    *
-    *    val conf = new SparkConf().setAppName("Test MNS")
-    *    val ssc = new StreamingContext(conf, Milliseconds(2000))
-    *    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename,
-    *      accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
-    * }}}
-    * @param ssc StreamingContext.
-    * @param queueName The name of MNS queue.
-    * @param accessKeyId The Aliyun Access Key Id.
-    * @param accessKeySecret The Aliyun Access Key Secret.
-    * @param endpoint The endpoint of MNS service.
-    * @param storageLevel Storage level to use for storing the received objects.
-    * @return
-    */
+   * {{{
+   *    val queuename = "queueSample"
+   *    val accessKeyId = "kj7aY*******UYx6"
+   *    val accessKeySecret = "AiNMAlxz*************1PxaPaL8t"
+   *    val endpoint = "http://184*********815.mns-test.aliyuncs.com:1234"
+   *
+   *    val conf = new SparkConf().setAppName("Test MNS")
+   *    val ssc = new StreamingContext(conf, Milliseconds(2000))
+   *    val mnsStream = MnsUtils.createPullingStreamAsBytes(ssc, queuename,
+   *      accessKeyId, accessKeySecret, endpoint, StorageLevel.MEMORY_ONLY)
+   * }}}
+   * @param ssc StreamingContext.
+   * @param queueName The name of MNS queue.
+   * @param accessKeyId The Aliyun Access Key Id.
+   * @param accessKeySecret The Aliyun Access Key Secret.
+   * @param endpoint The endpoint of MNS service.
+   * @param storageLevel Storage level to use for storing the received objects.
+   * @return
+   */
   def createPullingStreamAsBytes(
       ssc: StreamingContext,
       queueName: String,

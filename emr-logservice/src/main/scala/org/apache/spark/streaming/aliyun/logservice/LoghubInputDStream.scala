@@ -20,6 +20,7 @@ import com.aliyun.ms.MetaClient
 import com.aliyun.ms.utils.EndpointEnum
 import com.aliyun.openservices.log.Client
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
+
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils
@@ -39,7 +40,7 @@ class LoghubInputDStream(
     cursorPosition: LogHubCursorPosition,
     mLoghubCursorStartTime: Int,
     forceSpecial: Boolean)
-  extends ReceiverInputDStream[Array[Byte]](_ssc){
+  extends ReceiverInputDStream[Array[Byte]](_ssc) {
   val mConsumeInOrder =
     _ssc.sc.getConf.getBoolean("spark.logservice.fetch.inOrder", true)
   val mHeartBeatIntervalMillis =

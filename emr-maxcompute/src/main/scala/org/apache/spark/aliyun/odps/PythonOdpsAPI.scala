@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,22 +18,23 @@ package org.apache.spark.aliyun.odps
 
 import java.io.{DataOutputStream, FileOutputStream}
 
-import org.apache.spark.api.python.PythonRDD
-import org.apache.spark.SparkException
-import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
+// scalastyle:off
+import scala.collection.JavaConversions._
+// scalastyle:on
+import scala.collection.mutable
+
+import com.aliyun.odps.OdpsType
 import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.Record
-import com.aliyun.odps.OdpsType
-import net.razorvine.pickle.{Pickler, Unpickler}
 import java.text.SimpleDateFormat
 import java.util.{List => JList}
+import net.razorvine.pickle.{Pickler, Unpickler}
 
+import org.apache.spark.SparkException
+import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
+import org.apache.spark.api.python.PythonRDD
 import org.apache.spark.internal.Logging
-
-import scala.collection.JavaConversions._
 import org.apache.spark.rdd.RDD
-
-import scala.collection.mutable
 
 class PythonOdpsAPI(
       @transient jsc: JavaSparkContext,
@@ -80,7 +80,8 @@ class PythonOdpsAPI(
     val colsLen = odpsOps.getTableSchema(project, table, false).length
     val colsTuple = prepareColsTuple(cols, bytesCols, colsLen)
     val rdd = deserialize(pyRdd, batched)
-    odpsOps.saveToTable(project, table, partition, rdd, writeTransfer(colsTuple) _, defaultCreatePartition, isOverWrite)
+    odpsOps.saveToTable(project, table, partition, rdd, writeTransfer(colsTuple) _,
+      defaultCreatePartition, isOverWrite)
   }
 
   def saveToTable(
@@ -93,7 +94,10 @@ class PythonOdpsAPI(
     odpsOps.saveToTable(project, table, rdd, writeTransfer(colsTuple))
   }
 
-  private def prepareColsTuple(cols: Array[Int], bytesCols: Array[Int], columnsLen: Int): Array[(Int, Int)] = {
+  private def prepareColsTuple(
+      cols: Array[Int],
+      bytesCols: Array[Int],
+      columnsLen: Int): Array[(Int, Int)] = {
     val m1 = new mutable.HashMap[Int, Int]()
     val selectedCols = if (cols.length == 0) {
       Array.range(0, columnsLen)
@@ -103,7 +107,7 @@ class PythonOdpsAPI(
     selectedCols.foreach(e => m1.put(e, 0))
 
     val m2 = new mutable.HashMap[Int, Int]()
-    val selectedBytesCols = if(bytesCols.length == 0){
+    val selectedBytesCols = if (bytesCols.length == 0) {
       new Array[Int](0)
     } else {
       bytesCols
@@ -117,7 +121,8 @@ class PythonOdpsAPI(
     }.toArray
   }
 
-  private def readTransfer(colsTuple: Array[(Int, Int)])(record: Record, schema: TableSchema): Array[_] = {
+  private def readTransfer(colsTuple: Array[(Int, Int)])
+    (record: Record, schema: TableSchema): Array[_] = {
     colsTuple.sortBy(_._1).map { e =>
       val idx = e._1
       val isBytes = e._2
@@ -131,12 +136,13 @@ class PythonOdpsAPI(
           if (dt != null) {
             dateFormat.format(record.getDatetime(idx))
           } else null
-        case OdpsType.STRING => if(isBytes == 1) record.getBytes(idx) else record.getString(idx)
+        case OdpsType.STRING => if (isBytes == 1) record.getBytes(idx) else record.getString(idx)
       }
     }
   }
 
-  private def writeTransfer(colsTuple: Array[(Int, Int)])(elements: Array[_], record: Record, schema: TableSchema) {
+  private def writeTransfer(colsTuple: Array[(Int, Int)])
+    (elements: Array[_], record: Record, schema: TableSchema) {
     colsTuple.sortBy(_._1).zip(elements).foreach { t =>
       val idx = t._1._1
       val isBytes = t._1._2
@@ -149,7 +155,9 @@ class PythonOdpsAPI(
         case OdpsType.DATETIME =>
           val date = dateFormat.parse(element.asInstanceOf[String])
           record.setDatetime(idx, date)
-        case OdpsType.STRING => if(isBytes == 1) record.setString(idx, element.asInstanceOf[Array[Byte]])
+        case OdpsType.STRING => if (isBytes == 1) {
+          record.setString(idx, element.asInstanceOf[Array[Byte]])
+        }
         else record.setString(idx, element.asInstanceOf[String])
       }
     }
@@ -189,7 +197,6 @@ class PythonOdpsAPI(
   }
 
   private def deserialize(pyRDD: RDD[Array[Byte]], batched: Boolean): RDD[Array[_]] = {
-
     pyRDD.mapPartitions { iter =>
       val unpickle = new Unpickler()
       val unpickled =
@@ -221,7 +228,7 @@ class PythonOdpsAPI(
 }
 
 class PythonOdpsAPIHelper {
-  
+
   def createPythonOdpsAPI(
       @transient sc: JavaSparkContext,
       accessKeyId: String,

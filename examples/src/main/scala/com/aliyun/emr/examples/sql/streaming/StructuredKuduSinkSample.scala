@@ -24,9 +24,11 @@ import org.apache.spark.sql.SparkSession
 object StructuredKuduSinkSample {
   def main(args: Array[String]): Unit = {
     if (args.length < 9) {
+      // scalastyle:off
       System.err.println("Usage: StructuredKuduSinkSample <logService-project> <logService-store> " +
         "<access-key-id> <access-key-secret> <endpoint> <starting-offsets> <max-offsets-per-trigger> " +
         "<kudu-master-url> <kudu-table> [<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 

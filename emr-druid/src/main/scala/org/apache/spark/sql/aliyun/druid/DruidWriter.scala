@@ -30,12 +30,13 @@ import io.druid.granularity.{QueryGranularities, QueryGranularity}
 import io.druid.jackson.AggregatorsModule
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
+import org.joda.time.{DateTime, Period}
+
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{AnalysisException, SparkSession}
-import org.joda.time.{DateTime, Period}
 
 object DruidWriter {
   def write(
@@ -45,13 +46,15 @@ object DruidWriter {
     val schema = getSchema(parameters)
     val timestampColumn = parameters.getOrElse("timestampSpec.column", "timestamp")
     import com.metamx.tranquility.spark.BeamRDD._
-    queryExecution.toRdd.map(SchemaInternalRow(schema, _, timestampColumn)).propagate(new EventBeamFactory(parameters, schema))
+    queryExecution.toRdd
+      .map(SchemaInternalRow(schema, _, timestampColumn))
+      .propagate(new EventBeamFactory(parameters, schema))
   }
 
   def getSchema(parameters: Map[String, String]): StructType = {
     val dimension = parameters.getOrElse("rollup.dimensions",
-      throw new AnalysisException(s"Option rollup.dimensions is required when create table without colunmn info. " +
-        s"Format dimension1,dimension2...."))
+      throw new AnalysisException(s"Option rollup.dimensions is required when create table " +
+        s"without colunmn info. Format dimension1,dimension2...."))
     val dimensions = dimension.split(",")
     val timestampColumn = parameters.getOrElse("timestampSpec.column", "timestamp")
     val existTimestamp = dimensions.exists(_.equals(timestampColumn))
@@ -62,11 +65,12 @@ object DruidWriter {
   }
 }
 
-class EventBeamFactory(druidConfiguration: Map[String, String], schema: StructType) extends BeamFactory[SchemaInternalRow]
-{
+class EventBeamFactory(druidConfiguration: Map[String, String], schema: StructType)
+  extends BeamFactory[SchemaInternalRow] {
   def makeBeam: Beam[SchemaInternalRow] = EventBeamFactory.BeamInstance(druidConfiguration, schema)
 }
 
+// scalastyle:off
 object EventBeamFactory extends Logging {
   private var curator: CuratorFramework = _
   private val mapper = new ObjectMapper()
@@ -89,16 +93,19 @@ object EventBeamFactory extends Logging {
             val firehouse = druidConfiguration.getOrElse("firehouse",
               throw new AnalysisException(s"option firehouse is required.")
             )
+            // scalastyle:off
             val metricsSpec = druidConfiguration.getOrElse("rollup.aggregators",
               throw new AnalysisException(s"option metricsSpec is required. format: " +
                 s"""{\\"metricsSpec\\":[{\\"type\\":\\"count\\",\\"name\\":\\"count\\"},{\\"type\\":\\"doubleSum\\",\\"fieldName\\":\\"x\\",\\"name\\":\\"x\\"}]}""")
             )
-            val rollupQueryGranularities = druidConfiguration.getOrElse("rollup.query.granularities",
-              throw new AnalysisException(s"option rollup.query.granularities is required.")
-            )
+            // scalastyle:on
+            val rollupQueryGranularities =
+              druidConfiguration.getOrElse("rollup.query.granularities",
+                throw new AnalysisException(s"option rollup.query.granularities is required.")
+              )
             val discoveryPath = druidConfiguration.getOrElse("discovery.path", "/druid/discovery")
             val tuningSegmentGranularity = druidConfiguration
-              .getOrElse("tuning.segment.granularity","DAY")
+              .getOrElse("tuning.segment.granularity", "DAY")
             val segmentGranularity = Granularity.valueOf(tuningSegmentGranularity.toUpperCase)
             val tuningWindowPeriod = druidConfiguration
               .getOrElse("tuning.window.period", "PT10M")
@@ -120,7 +127,7 @@ object EventBeamFactory extends Logging {
             val queryGranularities = rollupQueryGranularities.toLowerCase() match {
               case "all" => QueryGranularities.ALL
               case "none" => QueryGranularities.NONE
-              case time =>  QueryGranularity.fromString(time)
+              case time => QueryGranularity.fromString(time)
             }
 
             val location = DruidLocation(indexService, firehouse, dataSource)
@@ -134,7 +141,8 @@ object EventBeamFactory extends Logging {
               .curator(curator)
               .discoveryPath(discoveryPath)
               .location(location)
-              .rollup(DruidRollup(SpecificDruidDimensions(dimensions), aggregators.getAggregators, queryGranularities))
+              .rollup(DruidRollup(SpecificDruidDimensions(dimensions),
+                aggregators.getAggregators, queryGranularities))
               .tuning(
                 ClusteredBeamTuning(
                   segmentGranularity = segmentGranularity,
@@ -144,7 +152,7 @@ object EventBeamFactory extends Logging {
                   warmingPeriod = warmingPeriod
                 )
               )
-              .timestampSpec(new TimestampSpec(timestampColumn, timestampFormat, null))//optional
+              .timestampSpec(new TimestampSpec(timestampColumn, timestampFormat, null)) // optional
               .buildBeam()
           }
         }
@@ -162,11 +170,13 @@ object EventBeamFactory extends Logging {
           )
           val curatorRetryBaseSleepMs = configuration
             .getOrElse("curator.retry.base.sleep", "100").toInt
-          val curatorRetryMaxSleepMs = configuration.getOrElse("curator.retry.max.sleep", "3000").toInt
+          val curatorRetryMaxSleepMs =
+            configuration.getOrElse("curator.retry.max.sleep", "3000").toInt
           val curatorMaxRetries = configuration
             .getOrElse("curator.max.retries", "5").toInt
           curator = CuratorFrameworkFactory.newClient(curatorConnect,
-            new BoundedExponentialBackoffRetry(curatorRetryBaseSleepMs, curatorRetryMaxSleepMs, curatorMaxRetries)
+            new BoundedExponentialBackoffRetry(
+              curatorRetryBaseSleepMs, curatorRetryMaxSleepMs, curatorMaxRetries)
           )
           curator.start()
         }
@@ -186,6 +196,7 @@ object EventBeamFactory extends Logging {
     }
   }
 }
+// scalastyle:on
 
 case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColumn: String) {
   private val fieldNames = schema.fieldNames
@@ -198,7 +209,7 @@ case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColu
   def toMap: collection.mutable.Map[String, Any] = {
     var rowMap = collection.mutable.Map[String, Any]("timestamp" -> timeInMs / 1000)
     for (ordinal <- fieldNames.indices) {
-      val key =fieldNames(ordinal)
+      val key = fieldNames(ordinal)
 
       if (!"timestamp".equals(key)) {
         val dataType = schema(ordinal).dataType
@@ -226,7 +237,8 @@ case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColu
           case _: StringType =>
             rowMap += (key ->row.getUTF8String(ordinal).toString)
           case _ =>
-            throw new UnsupportedOperationException("Unsupported data type " + dataType.simpleString)
+            throw new UnsupportedOperationException(
+              "Unsupported data type " + dataType.simpleString)
         }
       }
     }
@@ -241,7 +253,8 @@ case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColu
     } else if (timeInNS(t)) {
       TimeUnit.NANOSECONDS.toSeconds(t)
     } else {
-      throw new Exception(s"Invalid timestamp[${t}],timestamp should be second, millisecond or nanosecond.")
+      throw new Exception(
+        s"Invalid timestamp[$t], timestamp should be second, millisecond or nanosecond.")
     }
   }
 
@@ -253,11 +266,12 @@ case class SchemaInternalRow(schema: StructType, row: InternalRow, timestampColu
     } else if (timeInNS(time)) {
       TimeUnit.NANOSECONDS.toMicros(time)
     } else {
-      throw new Exception(s"Invalid timestamp[${time}], timestamp should be second, millisecond or nanosecond.")
+      throw new Exception(
+        s"Invalid timestamp[$time], timestamp should be second, millisecond or nanosecond.")
     }
   }
 
-  def timeInSec(time: Long) = time.toString.length == 10
-  def timeInMS(time: Long) = time.toString.length == 13
-  def timeInNS(time: Long) = time.toString.length == 16
+  def timeInSec(time: Long): Boolean = time.toString.length == 10
+  def timeInMS(time: Long): Boolean = time.toString.length == 13
+  def timeInNS(time: Long): Boolean = time.toString.length == 16
 }

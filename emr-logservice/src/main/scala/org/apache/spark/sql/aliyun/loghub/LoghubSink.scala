@@ -17,9 +17,9 @@
 package org.apache.spark.sql.aliyun.loghub
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.apache.spark.sql.aliyun.logservice.LoghubWriter
 import org.apache.spark.sql.execution.streaming.Sink
-import org.apache.spark.sql.{DataFrame, SQLContext}
 
 class LoghubSink(
     sqlContext: SQLContext,

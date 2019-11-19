@@ -21,6 +21,7 @@ import java.util.Properties
 import com.aliyun.openservices.ons.api._
 import com.aliyun.openservices.ons.api.PropertyKeyConst._
 import com.aliyun.openservices.ons.api.impl.ONSFactoryImpl
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.receiver.Receiver
@@ -44,8 +45,11 @@ private[ons] class OnsReceiver(
         if (topic == null || subExpression == null) {
           throw new Exception("Missing property topic or subExpression")
         }
-        require(properties.containsKey(ConsumerId) && properties.containsKey(AccessKey) &&
-          properties.containsKey(SecretKey), "Missing property ConsumerId or AccessKey or SecretKey")
+        require(
+          properties.containsKey(ConsumerId) &&
+          properties.containsKey(AccessKey) &&
+          properties.containsKey(SecretKey),
+          "Missing property ConsumerId or AccessKey or SecretKey")
         val onsFactoryImpl = new ONSFactoryImpl
         consumer = onsFactoryImpl.createConsumer(properties)
         consumer.subscribe(topic, subExpression, new MessageListener() {

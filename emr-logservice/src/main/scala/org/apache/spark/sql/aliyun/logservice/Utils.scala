@@ -53,7 +53,8 @@ object Utils extends Logging {
   def toConverter(dataType: DataType): (Any) => Any = {
     dataType match {
       case BinaryType =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case ByteType | ShortType | IntegerType | LongType |
            FloatType | DoubleType | StringType | BooleanType => identity
       case d: DecimalType =>
@@ -69,9 +70,11 @@ object Utils extends Logging {
       case DateType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Date].getTime
       case ArrayType(_, _) =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case MapType(StringType, _, _) =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case structType: StructType =>
         val fieldConverters = structType.fields.map(field => toConverter(field.dataType))
         (item: Any) => {
@@ -85,7 +88,8 @@ object Utils extends Logging {
 
             while (convertersIterator.hasNext) {
               val converter = convertersIterator.next()
-              val logContent = new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
+              val logContent =
+                new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
               record.PushBack(logContent)
             }
             record
@@ -188,8 +192,9 @@ object Utils extends Logging {
       .map { case (startOffset, endOffset) =>
         require(startOffset._1.shard == endOffset._1.shard)
         if (offset < startOffset._2._1) {
-          val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start offset [${startOffset._2}], " +
-            s"using [${startOffset._2}] instead of [$offset] as new specific offset."
+          val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start " +
+            s"offset [${startOffset._2}], using [${startOffset._2}] instead of [$offset] as new " +
+            "specific offset."
           if (ignoreError) {
             logWarning(msg)
             startOffset
@@ -197,8 +202,9 @@ object Utils extends Logging {
             throw new Exception(msg)
           }
         } else if (offset > endOffset._2._1) {
-          val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end offset [${endOffset._2}], " +
-            s"using [${endOffset._2}] instead of [$offset] as new specific offset."
+          val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end " +
+            s"offset [${endOffset._2}], using [${endOffset._2}] instead of [$offset] as new " +
+            "specific offset."
           if (ignoreError) {
             logWarning(msg)
             endOffset
@@ -270,7 +276,8 @@ object Utils extends Logging {
           }
           zkClient.writeData(configPath, jsonObject.toJSONString)
         } else {
-          throw new Exception(s"""Unsupported dynamic config data version $version, current EMR SDK only support ["v1"]""")
+          throw new Exception(
+            s"""Unsupported dynamic config data version $version, only support ["v1"]""")
         }
       } else {
         val jsonObject = new JSONObject()

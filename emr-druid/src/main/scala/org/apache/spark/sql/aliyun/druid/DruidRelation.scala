@@ -18,9 +18,9 @@
 package org.apache.spark.sql.aliyun.druid
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{Row, SQLContext}
 
 class DruidRelation(
     override val sqlContext: SQLContext,
