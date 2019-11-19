@@ -32,6 +32,7 @@ public class AliyunOSSContract extends AbstractBondedFSContract {
   public AliyunOSSContract(Configuration conf) {
     super(conf);
     //insert the base features
+    getConf().set("fs.contract.test.fs.oss", System.getenv("TEST_FS_OSS_NAME"));
     addConfResource(CONTRACT_XML);
   }
 

@@ -25,9 +25,30 @@ import org.json4s.jackson.Serialization
 import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
 import org.apache.spark.sql.sources.v2.reader.streaming.{Offset => OffsetV2, PartitionOffset}
 
+// scalastyle:off
 case class DatahubSourceOffset(shardToOffsets: Map[DatahubShard, Long]) extends OffsetV2 {
   override def json(): String = DatahubSourceOffset.partitionOffsets(shardToOffsets)
+
+  override def equals(obj: scala.Any): Boolean = {
+    obj match {
+      case _ @ DatahubSourceOffset(offsets) =>
+        if (offsets.keySet != shardToOffsets.keySet) {
+          false
+        } else {
+          var findUnEquals = false
+          offsets.foreach { case (shard, off1) =>
+            val off2 = shardToOffsets(shard)
+            if (off1 != off2) {
+              findUnEquals = true
+            }
+          }
+          !findUnEquals
+        }
+      case _ => false
+    }
+  }
 }
+// scalastyle:on
 
 case class DatahubShardOffset(project: String, topic: String, shard: String, offset: Long)
   extends PartitionOffset

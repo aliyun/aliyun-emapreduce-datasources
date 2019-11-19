@@ -19,9 +19,8 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util
 import java.util.concurrent.{Executors, ThreadFactory}
 
-// scalastyle:off
-import scala.collection.JavaConversions._
-// scalastyle:on
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
@@ -90,7 +89,6 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
                   logWarning(s"Error in attempt $attempt getting loghub offsets: ", e)
                   attempt += 1
                   Thread.sleep(offsetFetchAttemptIntervalMs)
-                  LoghubOffsetReader.resetConsumer(readerOptions)
               }
             }
           case _ =>
@@ -111,7 +109,7 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   }
 
   def fetchLoghubShard(): Set[LoghubShard] = {
-    logServiceClient.ListShard(logProject, logStore).GetShards()
+    logServiceClient.ListShard(logProject, logStore).GetShards().asScala
       .map(shard => LoghubShard(logProject, logStore, shard.GetShardId())).toSet
   }
 
@@ -192,12 +190,12 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
           latestHistograms = getLatestHistograms(startOffset)
         }
 
-        val maxOffset = latestHistograms.map(_.mToTime).max
+        val maxOffset = latestHistograms.asScala.map(_.mToTime).max
         if (startOffset >= maxOffset) {
           latestHistograms = getLatestHistograms(startOffset)
         }
 
-        latestHistograms.map(_.mFromTime).reduceLeft((l, r) => {
+        latestHistograms.asScala.map(_.mFromTime).reduceLeft((l, r) => {
           if (l >= r) {
             throw new Exception("Histograms should be ordered by time in second.")
           }
@@ -206,7 +204,7 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 
         var endCursorTime = startOffset
         var count = 0L
-        latestHistograms.filter(_.mFromTime >= startOffset)
+        latestHistograms.asScala.filter(_.mFromTime >= startOffset)
           .foreach(e => {
             if (count < maxOffsetsPerTrigger.get) {
               endCursorTime = e.mToTime
@@ -228,30 +226,30 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 }
 
 object LoghubOffsetReader extends Logging with Serializable {
+  private val lock = new Object
   @transient private var logProducer: LogProducer = null
-  @transient private var logServiceClient: LoghubClientAgent = null
+  @transient private[logservice] var logServiceClientPool =
+    new mutable.HashMap[(String, String), LoghubClientAgent]()
 
   def getOrCreateLoghubClient(
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String): LoghubClientAgent = {
-    if (logServiceClient == null) {
-      logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+    if (!logServiceClientPool.contains((accessKeyId, endpoint))) {
+      val logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+      logServiceClientPool.put((accessKeyId, endpoint), logServiceClient)
     }
-    logServiceClient
+    logServiceClientPool((accessKeyId, endpoint))
   }
 
   def getOrCreateLoghubClient(sourceOptions: Map[String, String]): LoghubClientAgent = {
-    if (logServiceClient == null) {
-      val accessKeyId = sourceOptions.getOrElse("access.key.id",
-        throw new MissingArgumentException("Missing access key id (='access.key.id')."))
-      val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
-        throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
-      val endpoint = sourceOptions.getOrElse("endpoint",
-        throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
-      logServiceClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
-    }
-    logServiceClient
+    val accessKeyId = sourceOptions.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    val accessKeySecret = sourceOptions.getOrElse("access.key.secret",
+      throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+    val endpoint = sourceOptions.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing log store endpoint (='endpoint')."))
+    getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
   }
 
   def getOrCreateLogProducer(sourceOptions: Map[String, String]): LogProducer = {
@@ -272,18 +270,29 @@ object LoghubOffsetReader extends Logging with Serializable {
     logProducer
   }
 
-  def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    logServiceClient = null
-    logServiceClient = getOrCreateLoghubClient(sourceOptions)
+  // only for test
+  private[logservice] def setLogServiceClient(
+      accessKeyId: String,
+      endpoint: String,
+      testClient: LoghubClientAgent): Unit = {
+    lock.synchronized {
+      logServiceClientPool.put((accessKeyId, endpoint), testClient)
+    }
   }
 
-  // just for test
-  private[logservice] def setLogServiceClient(testClient: LoghubClientAgent): Unit = {
-    this.logServiceClient = testClient
+  // only for test
+  private[logservice] def resetLogServiceClient(
+      accessKeyId: String,
+      endpoint: String): Unit = {
+    lock.synchronized {
+      logServiceClientPool.remove((accessKeyId, endpoint))
+    }
   }
 
-  // just for test
-  private[logservice] def resetLogServiceClient(): Unit = {
-    logServiceClient = null
+  // only for test
+  private[logservice] def resetClientPool(): Unit = {
+    lock.synchronized {
+      logServiceClientPool.clear()
+    }
   }
 }

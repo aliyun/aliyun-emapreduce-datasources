@@ -55,7 +55,7 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
       val cursorResponseMock = mock(classOf[GetCursorResponse])
       when(cursorResponseMock.GetCursor()).thenReturn("empty")
       when(clientMock.GetCursor("project", "store", 1, 1000L)).thenReturn(cursorResponseMock)
-      LoghubOffsetReader.setLogServiceClient(clientMock)
+      LoghubOffsetReader.setLogServiceClient(testUtils.accessKeyId, testUtils.endpoint, clientMock)
 
       assert(LoghubSourceOffset.getShardOffsets(
         LoghubSourceOffset(result, testUtils.sourceProps), testUtils.sourceProps).keySet === Set(loghubShard))
@@ -71,7 +71,7 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
           assert(false, "Should throw a IllegalArgumentException.")
       }
     } finally {
-      LoghubOffsetReader.resetLogServiceClient()
+      LoghubOffsetReader.resetLogServiceClient(testUtils.accessKeyId, testUtils.endpoint)
     }
   }
 
@@ -85,7 +85,7 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
       val cursorResponseMock2 = mock(classOf[GetCursorResponse])
       when(cursorResponseMock2.GetCursor()).thenReturn("empty")
       when(clientMock.GetCursor("logProject-C", "logStore-D", 5, 1409569202L)).thenReturn(cursorResponseMock2)
-      LoghubOffsetReader.setLogServiceClient(clientMock)
+      LoghubOffsetReader.setLogServiceClient(testUtils.accessKeyId, testUtils.endpoint, clientMock)
 
       val parsed = LoghubSourceOffset.partitionOffsets(
         """{"logProject-A#logStore-B":{"0":1409569200,"1":1409569201},"logProject-C#logStore-D":{"5":1409569202}}""",
@@ -94,7 +94,7 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
       assert(parsed(LoghubShard("logProject-A", "logStore-B", 1))._1 === 1409569201)
       assert(parsed(LoghubShard("logProject-C", "logStore-D", 5))._1 === 1409569202)
     } finally {
-      LoghubOffsetReader.resetLogServiceClient()
+      LoghubOffsetReader.resetLogServiceClient(testUtils.accessKeyId, testUtils.endpoint)
     }
   }
 }

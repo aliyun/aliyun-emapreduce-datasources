@@ -20,6 +20,7 @@ import java.io.UnsupportedEncodingException
 import java.util.concurrent.{Executors, ThreadFactory}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
@@ -90,7 +91,6 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
                   logWarning(s"Error in attempt $attempt getting datahub offsets: ", e)
                   attempt += 1
                   Thread.sleep(offsetFetchAttemptIntervalMs)
-                  DatahubOffsetReader.resetConsumer(readerOptions)
               }
             }
           case _ =>
@@ -178,7 +178,9 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
 }
 
 object DatahubOffsetReader extends Logging with Serializable {
-  @transient private var DatahubClient: DatahubClientAgent = null
+  private val lock = new Object
+  @transient private[datahub] val datahubClientPool =
+    new mutable.HashMap[(String, String), DatahubClientAgent]()
   @transient private var zkClient: ZkClient = null
 
   def getOrCreateZKClient(zkParams: Map[String, String]): ZkClient = {
@@ -221,11 +223,14 @@ object DatahubOffsetReader extends Logging with Serializable {
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String): DatahubClientAgent = {
-    if (DatahubClient == null) {
-      DatahubClient = new DatahubClientAgent(new DatahubConfiguration(new AliyunAccount(accessKeyId,
-        accessKeySecret), endpoint))
+    lock.synchronized {
+      if (!datahubClientPool.contains((accessKeyId, endpoint))) {
+        val datahubClient = new DatahubClientAgent(
+          new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
+        datahubClientPool.put((accessKeyId, endpoint), datahubClient)
+      }
+      datahubClientPool((accessKeyId, endpoint))
     }
-    DatahubClient
   }
 
   def getOrCreateDatahubClient(sourceOptions: Map[String, String]): DatahubClientAgent = {
@@ -235,15 +240,14 @@ object DatahubOffsetReader extends Logging with Serializable {
       throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
     val endpoint = sourceOptions.getOrElse("endpoint",
       throw new MissingArgumentException("Missing endpoint (='endpoint')."))
-    if (DatahubClient == null) {
-      DatahubClient = new DatahubClientAgent(
-        new DatahubConfiguration(new AliyunAccount(accessKeyId, accessKeySecret), endpoint))
-    }
-    DatahubClient
+    getOrCreateDatahubClient(accessKeyId, accessKeySecret, endpoint)
   }
 
-  def resetConsumer(sourceOptions: Map[String, String]): Unit = synchronized {
-    DatahubClient = null
-    DatahubClient = getOrCreateDatahubClient(sourceOptions)
+  // only for test
+  private[datahub] def resetClientPool(): Unit = {
+    lock.synchronized {
+      datahubClientPool.values.foreach(_.close())
+      datahubClientPool.clear()
+    }
   }
 }
