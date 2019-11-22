@@ -71,7 +71,8 @@ class DirectLoghubInputDStream(
   @transient private var startTime: Long = -1L
   @transient private var restart: Boolean = false
   private var lastJobTime: Long = -1L
-  private var readOnlyShardCache = new mutable.HashMap[Int, String]()
+  private var endReachedShards = new mutable.HashMap[Int, String]()
+  private val readOnlyShards = new mutable.HashSet[Int]()
 
   override def start(): Unit = {
     if (enablePreciseCount) {
@@ -165,7 +166,7 @@ class DirectLoghubInputDStream(
     }
 
     COMMIT_LOCK.synchronized {
-      val shardOffsets = new ArrayBuffer[(Int, String, String)]()
+      val shardOffsets = new ArrayBuffer[(Int, String, String, Boolean)]()
       val lastFailed: Boolean = {
         if (doCommit) {
           false
@@ -193,19 +194,21 @@ class DirectLoghubInputDStream(
           loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
             val shardId = shard.GetShardId()
             val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
-            if (isReadonly && readOnlyShardCache.contains(shardId)) {
+            if (isReadonly) {
+              readOnlyShards.add(shardId)
+            }
+            if (isReadonly && endReachedShards.contains(shardId)) {
               logDebug(s"There is no data to consume from shard $shardId.")
             } else {
               val start: String =
                 zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
-              val end =
-                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              val end = loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
               logInfo(s"ShardID $shardId, start $start end $end")
               if (!start.equals(end)) {
-                shardOffsets.+=((shardId, start, end))
+                shardOffsets.+=((shardId, start, end, isReadonly))
               }
               if (start.equals(end) && isReadonly) {
-                readOnlyShardCache.put(shardId, end)
+                endReachedShards.put(shardId, end)
               }
             }
           })
@@ -217,10 +220,10 @@ class DirectLoghubInputDStream(
             loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
               val shardId = shard.GetShardId()
               val start: String = findCheckpointOrCursorForShard(shardId, checkpoints)
-              val end =
-                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+              val end = loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
               logInfo(s"ShardID $shardId, start $start end $end")
-              shardOffsets.+=((shardId, start, end))
+              val readOnly = "readonly".equalsIgnoreCase(shard.getStatus)
+              shardOffsets.+=((shardId, start, end, readOnly))
             })
         }
         lastJobTime = validTime.milliseconds
@@ -274,11 +277,12 @@ class DirectLoghubInputDStream(
       try {
         zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
           val shardId = child.substring(0, child.indexOf(".")).toInt
-          if (!readOnlyShardCache.contains(shardId)) {
+          if (!endReachedShards.contains(shardId)) {
             val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
             log.debug(s"Updating checkpoint $data of shard $shardId to consumer " +
               s"group $consumerGroup")
-            loghubClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, data)
+            val readOnly = readOnlyShards.contains(shardId)
+            loghubClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, data, readOnly)
             DirectLoghubInputDStream.writeDataToZK(zkClient,
               s"$checkpointDir/consume/$project/$logStore/$child", data)
           }
@@ -302,7 +306,7 @@ class DirectLoghubInputDStream(
       logDebug(s"${this.getClass.getSimpleName}.readObject used")
       ois.defaultReadObject()
       generatedRDDs = new mutable.HashMap[Time, RDD[String]]()
-      readOnlyShardCache = new mutable.HashMap[Int, String]()
+      endReachedShards = new mutable.HashMap[Int, String]()
       COMMIT_LOCK = new Object()
       createZkClient()
     }

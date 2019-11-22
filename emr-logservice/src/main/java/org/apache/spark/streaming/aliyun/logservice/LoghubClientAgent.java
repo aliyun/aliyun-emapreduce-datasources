@@ -20,11 +20,15 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
+import com.aliyun.openservices.log.exception.LogException;
 import com.aliyun.openservices.log.response.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
   private Client client;
+  private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
     this.client = new Client(endpoint, accessId, accessKey);
@@ -45,9 +49,20 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.GetCursor(project, logStore, shardId, fromTime));
   }
 
-  public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
-                                                                int shard, String checkpoint) throws Exception {
-    return RetryUtil.call(() -> client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint));
+  public void UpdateCheckPoint(String project, String logStore, String consumerGroup,
+                               int shard, String checkpoint,
+                               boolean readOnly) throws Exception {
+    RetryUtil.call(() -> {
+      try {
+        return client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
+      } catch (LogException ex) {
+        if (readOnly && ex.GetErrorCode().equalsIgnoreCase("ShardNotExist")) {
+          LOG.warn("Read only shard maybe deleted: " + shard);
+          return null;
+        }
+        throw ex;
+      }
+    });
   }
 
   public CreateConsumerGroupResponse CreateConsumerGroup(String project, String logStore, ConsumerGroup consumerGroup)
@@ -57,11 +72,6 @@ public class LoghubClientAgent {
 
   public ListConsumerGroupResponse ListConsumerGroup(String project, String logStore) throws Exception {
     return RetryUtil.call(() -> client.ListConsumerGroup(project, logStore));
-  }
-
-  public ConsumerGroupCheckPointResponse GetCheckPoint(String project, String logStore, String consumerGroup, int shard)
-      throws Exception {
-    return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup, shard));
   }
 
   public ConsumerGroupCheckPointResponse ListCheckpoints(String project, String logStore, String consumerGroup)

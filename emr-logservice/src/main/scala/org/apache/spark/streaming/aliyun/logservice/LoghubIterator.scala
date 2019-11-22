@@ -19,6 +19,7 @@ package org.apache.spark.streaming.aliyun.logservice
 import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
+import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.log.response.BatchGetLogResponse
 import org.I0Itec.zkclient.ZkClient
 
@@ -38,11 +39,13 @@ class LoghubIterator(
     count: Int,
     checkpointDir: String,
     context: TaskContext,
+    shardReadOnly: Boolean = false,
     logGroupStep: Int = 100)
   extends NextIterator[String] with Logging {
 
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
+  private var shardDeleted: Boolean = false
   // TODO: This may cost too much memory.
   private var logData = new LinkedBlockingQueue[String](4096 * logGroupStep)
 
@@ -56,6 +59,9 @@ class LoghubIterator(
     // scalastyle:off
     import scala.collection.JavaConversions._
     // scalastyle:on
+    if (shardDeleted) {
+      return false
+    }
     val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
     if (!hasNext) {
       DirectLoghubInputDStream.writeDataToZK(zkClient,
@@ -93,37 +99,62 @@ class LoghubIterator(
     }
   }
 
+  def fetchBatch(): BatchGetLogResponse = {
+    try {
+      return mClient.BatchGetLog(project, logStore, shardId,
+        logGroupStep, nextCursor, endCursor)
+    } catch {
+      case e: LogException =>
+        if (shardReadOnly && e.GetErrorCode().equals("ShardNotExist")) {
+          shardDeleted = true
+          logWarning(s"The read only shard $shardId has been deleted")
+        } else {
+          throw e
+        }
+    }
+    null
+  }
+
   def fetchNextBatch(): Unit = {
+    // scalastyle:on
+    val response: BatchGetLogResponse = fetchBatch()
+    if (response != null) {
+      parseResponseAndMoveToNextCursor(response)
+    }
+  }
+
+  def parseResponseAndMoveToNextCursor(response: BatchGetLogResponse): Unit = {
     // scalastyle:off
     import scala.collection.JavaConversions._
-    // scalastyle:on
-    val batchGetLogRes: BatchGetLogResponse =
-      mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
     var count = 0
-    batchGetLogRes.GetLogGroups().foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => {
-        val topic = group.GetTopic()
-        val source = group.GetSource()
+    response.GetLogGroups().foreach(group => {
+      val fastLogGroup = group.GetFastLogGroup()
+      val logCount = fastLogGroup.getLogsCount
+      val topic = fastLogGroup.getTopic
+      val source = fastLogGroup.getSource
+      for (i <- 0 until logCount) {
+        val record = fastLogGroup.getLogs(i)
         val obj = new JSONObject()
-        obj.put(__TIME__, Integer.valueOf(log.getTime))
+        obj.put(__TIME__, record.getTime)
         obj.put(__TOPIC__, topic)
         obj.put(__SOURCE__, source)
-        log.getContentsList.foreach(content => {
-          obj.put(content.getKey, content.getValue)
-        })
-
-        val flg = group.GetFastLogGroup()
-        for (i <- 0 until flg.getLogTagsCount) {
-          obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+        val fieldCount = record.getContentsCount
+        for (j <- 0 until fieldCount) {
+          val f = record.getContents(j)
+          obj.put(f.getKey, f.getValue)
         }
-
+        val tagCount = fastLogGroup.getLogTagsCount
+        for (j <- 0 until tagCount) {
+          val tag = fastLogGroup.getLogTags(j)
+          obj.put("__tag__:".concat(tag.getKey), tag.getValue)
+        }
         count += 1
         logData.offer(obj.toJSONString)
-      })
+      }
     })
-    val crt = nextCursor
-    nextCursor = batchGetLogRes.GetNextCursor()
-    logDebug(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
+    val currentCursor = nextCursor
+    nextCursor = response.GetNextCursor()
+    logDebug(s"shardId: $shardId, currentCursor: $currentCursor, nextCursor: $nextCursor," +
       s" endCursor: $endCursor, hasRead: $hasRead, count: $count," +
       s" get: $count, queue: ${logData.size()}")
   }

@@ -38,7 +38,7 @@ class LoghubRDD(
     endpoint: String,
     duration: Long,
     zkParams: Map[String, String],
-    shardOffsets: ArrayBuffer[(Int, String, String)],
+    shardOffsets: ArrayBuffer[(Int, String, String, Boolean)],
     checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
   @transient var mClient: LoghubClientAgent =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
@@ -87,7 +87,8 @@ class LoghubRDD(
     try {
       val loghubIterator = new LoghubIterator(zkClient, mClient, project, logStore,
         shardPartition.shardId, shardPartition.startCursor, shardPartition.endCursor,
-        shardPartition.count.toInt, checkpointDir, context, shardPartition.logGroupStep)
+        shardPartition.count.toInt, checkpointDir, context, shardPartition.readOnly,
+        shardPartition.logGroupStep)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
       case _: Exception =>
@@ -101,7 +102,8 @@ class LoghubRDD(
     val count = rate * duration / 1000
     shardOffsets.zipWithIndex.map { case (p, idx) =>
       new ShardPartition(id, idx, p._1, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
+        accessKeyId, accessKeySecret, endpoint, p._2, p._3, p._4,
+        logGroupStep).asInstanceOf[Partition]
     }.toArray
   }
 
@@ -117,6 +119,7 @@ class LoghubRDD(
       endpoint: String,
       val startCursor: String,
       val endCursor: String,
+      val readOnly: Boolean,
       val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def equals(other: Any): Boolean = super.equals(other)
