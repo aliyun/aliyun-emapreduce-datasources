@@ -20,12 +20,12 @@ package org.apache.spark.sql.aliyun.tablestore
 import scala.util.Random
 
 import com.alicloud.openservices.tablestore.model.tunnel.{TunnelStage, TunnelType}
-import org.scalatest.FunSuite
 
+import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.streaming.Offset
 
-class TableStoreMicroBatchSourceSuite extends FunSuite {
+class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
 
   private val testUtils = new TableStoreTestUtil()
   private val logLevel = "INFO"
@@ -51,10 +51,14 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, \"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, \"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
+    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
+      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
+      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
+      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
+      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
+      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
+      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
+      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
         Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
@@ -88,10 +92,14 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, \"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, \"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
+    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
+      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
+      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
+      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
+      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
+      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
+      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
+      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
         Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "50000")
@@ -120,10 +128,14 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, \"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, \"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
+    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
+      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
+      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
+      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
+      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
+      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
+      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
+      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
         Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
@@ -156,10 +168,14 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, \"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, \"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
+    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
+      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
+      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
+      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
+      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
+      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
+      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
+      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
         Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
@@ -195,10 +211,14 @@ class TableStoreMicroBatchSourceSuite extends FunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, \"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, \"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, \"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
+    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
+      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
+      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
+      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
+      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
+      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
+      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
+      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
         Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "5000")

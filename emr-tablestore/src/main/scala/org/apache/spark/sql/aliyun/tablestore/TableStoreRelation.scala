@@ -33,15 +33,15 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.sql.sources.{BaseRelation, Filter, InsertableRelation, PrunedFilteredScan}
+import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
 
 class TableStoreRelation(
     parameters: Map[String, String],
-    userSpecifiedschema: Option[StructType])(@transient val sqlContext: SQLContext)
+    userSpecifiedSchema: Option[StructType])(@transient val sqlContext: SQLContext)
   extends BaseRelation
-    with PrunedFilteredScan
+    with TableScan
     with InsertableRelation
     with Serializable
     with Logging {
@@ -54,9 +54,9 @@ class TableStoreRelation(
   val batchUpdateSize = parameters.getOrElse("batch.update.size", "0")
 
   override def schema: StructType =
-    userSpecifiedschema.getOrElse(TableStoreCatalog(parameters).schema)
+    userSpecifiedSchema.getOrElse(TableStoreCatalog(parameters).schema)
 
-  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+  override def buildScan(): RDD[Row] = {
     val hadoopConf = new Configuration()
     TableStore.setCredential(hadoopConf, new Credential(accessKeyId, accessKeySecret, null))
     val ep = new Endpoint(endpoint, instanceName)
