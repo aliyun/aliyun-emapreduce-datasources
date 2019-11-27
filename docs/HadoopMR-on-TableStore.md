@@ -111,7 +111,7 @@ OK, let the program run.
 
 ```
 $ rm -rf out
-$ HADOOP_CLASSPATH=emr-tablestore-2.0.0.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
+$ HADOOP_CLASSPATH=emr-tablestore-2.0.0-SNAPSHOT.jar:tablestore-4.1.0-jar-with-dependencies.jar::joda-time-2.9.4.jar:YourRowCounter.jar bin/hadoop YourRowCounterClass
 ...
 $ find out -type f
 out/_SUCCESS
@@ -122,7 +122,7 @@ $ cat out/part-r-00000
 TOTAL   9
 ```
 
-FYI, in emr-examples_2.11-2.0.0.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.hadoop.RowCounter`.
+FYI, in emr-examples_2.11-2.0.0-SNAPSHOT.jar, we provides an executable row-counting program, `com.aliyun.openservices.tablestore.hadoop.RowCounter`.
 
 ## TableStore as Data Sink
 
