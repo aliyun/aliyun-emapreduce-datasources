@@ -17,9 +17,9 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
-import org.scalatest.FunSuite
+import org.apache.spark.SparkFunSuite
 
-class ChannelOffsetSuite extends FunSuite {
+class ChannelOffsetSuite extends SparkFunSuite {
   test("channel offset serialize and deserialize") {
     val offset = ChannelOffset("testlogPoint", 0)
     val serialized = ChannelOffset.serialize(offset)

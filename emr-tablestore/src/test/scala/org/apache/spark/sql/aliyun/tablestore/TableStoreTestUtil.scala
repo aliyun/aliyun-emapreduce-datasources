@@ -21,17 +21,17 @@ import java.nio.charset.StandardCharsets
 import java.util
 import java.util.UUID
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 import com.alicloud.openservices.tablestore.SyncClient
-import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
 import com.alicloud.openservices.tablestore.model._
+import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
 import com.alicloud.openservices.tablestore.model.tunnel._
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{DataFrame, SparkSession, SQLContext}
 import org.apache.spark.sql.execution.streaming.Source
-import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
 
 class TableStoreTestUtil extends Logging {
   private val instanceName = Option(System.getenv("OTS_INSTANCE_NAME")).getOrElse("")
@@ -64,12 +64,14 @@ class TableStoreTestUtil extends Logging {
   private[sql] def checkTunnelReady(tunnelId: String, tunnelStage: TunnelStage): Boolean = {
     val describeResp = tunnelClient.describeTunnel(new DescribeTunnelRequest(tableName, tunnelName))
     var isReady: Boolean = false
-    describeResp.getChannelInfos.foreach { channelInfo =>
+    describeResp.getChannelInfos.asScala.foreach { channelInfo =>
       if (channelInfo.getChannelStatus == ChannelStatus.OPEN) {
-        if (tunnelStage == TunnelStage.ProcessBaseData && channelInfo.getChannelType == ChannelType.BaseData) {
+        if (tunnelStage == TunnelStage.ProcessBaseData &&
+          channelInfo.getChannelType == ChannelType.BaseData) {
           isReady = true
         }
-        if (tunnelStage == TunnelStage.ProcessStream && channelInfo.getChannelType == ChannelType.Stream) {
+        if (tunnelStage == TunnelStage.ProcessStream &&
+          channelInfo.getChannelType == ChannelType.Stream) {
           isReady = true
         }
       }
@@ -102,7 +104,7 @@ class TableStoreTestUtil extends Logging {
   }
 
   private[sql] def insertData(rowCount: Int): Unit = {
-    var batchRequest: BatchWriteRowRequest = new BatchWriteRowRequest();
+    var batchRequest: BatchWriteRowRequest = new BatchWriteRowRequest()
     for (i <- Range(0, rowCount)) {
       val pkBuilder: PrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder()
       pkBuilder.addPrimaryKeyColumn("PkString", PrimaryKeyValue.fromString(i.toString))
@@ -129,9 +131,7 @@ class TableStoreTestUtil extends Logging {
     }
   }
 
-  private[sql] def createTestSourceDataFrame(
-      options: Map[String, String]
-  ): DataFrame = {
+  private[sql] def createTestSourceDataFrame(options: Map[String, String]): DataFrame = {
     val tunnelId =
       options.getOrElse("tunnel.id", "d4db52c8-4a87-4051-956e-8eeb171a1fce")
     val maxOffsetsPerChannel =
@@ -151,9 +151,7 @@ class TableStoreTestUtil extends Logging {
       .load()
   }
 
-  private[sql] def getTestOptions(
-      origOptions: Map[String, String]
-  ): Map[String, String] = {
+  private[sql] def getTestOptions(origOptions: Map[String, String]): Map[String, String] = {
     Map(
       "instance.name" -> instanceName,
       "table.name" -> tableName,
@@ -171,8 +169,7 @@ class TableStoreTestUtil extends Logging {
 
   private[sql] def createTestSource(
       sqlContext: SQLContext,
-      options: Map[String, String]
-  ): Source = {
+      options: Map[String, String]): Source = {
     val metaDataPath = "/tmp/temporary-" + UUID.randomUUID.toString
     val schema = TableStoreCatalog(options).schema
     val provider = new TableStoreSourceProvider()
@@ -188,8 +185,7 @@ class TableStoreTestUtil extends Logging {
 
   private[sql] def genStreamRecord(
       pk: PrimaryKey,
-      columns: util.List[RecordColumn]
-  ): StreamRecord = {
+      columns: util.List[RecordColumn]): StreamRecord = {
     val record = new StreamRecord()
     record.setRecordType(RecordType.PUT)
     record.setPrimaryKey(pk)

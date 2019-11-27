@@ -17,15 +17,24 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
-import org.apache.spark.SparkFunSuite
-import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider.isDefaultField
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.expressions.GenericRow
+import com.alicloud.openservices.tablestore.model.tunnel.{TunnelStage, TunnelType}
 
-class TableStoreDataSuite extends SparkFunSuite {
+import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.test.SharedSQLContext
+
+class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   private val testUtils = new TableStoreTestUtil()
 
-  private val testSchema = {
+  override def beforeEach(): Unit = {
+    testUtils.deleteTunnel()
+    testUtils.deleteTable()
+    testUtils.createTable()
+    Thread.sleep(2000)
+  }
+
+  private def createDF(
+    tunnelId: String,
+    withOptions: Map[String, String] = Map.empty[String, String]) = {
     val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
       "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
       "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
@@ -36,26 +45,26 @@ class TableStoreDataSuite extends SparkFunSuite {
       "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog)
+        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
       )
-    TableStoreSource.tableStoreSchema(TableStoreCatalog(options).schema)
+    val df = spark
+      .read
+      .format("tablestore")
+    (withOptions ++ options).foreach {
+      case (key, value) => df.option(key, value)
+    }
+    df.load()
   }
 
-  test("test tablestore data encoder") {
-    val schemaFieldPos: Map[String, Int] = testSchema.fieldNames
-      .filter(
-        fieldName => !isDefaultField(fieldName)
-      )
-      .zipWithIndex
-      .toMap
-    val schemaFieldPosSize = schemaFieldPos.size
-    val columnArray = Array.tabulate(schemaFieldPosSize)(
-      _ => (null, null).asInstanceOf[(String, Any)]
-    )
-    columnArray(4) = ("col1", null)
-    //    val td = Array(("PkString", "1"), (null, null), ("PkInt", 2), (null, null), ("col1", ""))
-    val data = new SchemaTableStoreData("PUT", 12345678, columnArray)
-    val encoderForDataColumns = RowEncoder(testSchema).resolveAndBind()
-    encoderForDataColumns.toRow(new GenericRow(data.toArray))
+  test("select * or column from tablestore relation") {
+    val tunnelId = testUtils.createTunnel(TunnelType.BaseData)
+    while (!testUtils.checkTunnelReady(tunnelId, TunnelStage.ProcessBaseData)) {
+      Thread.sleep(2000)
+    }
+    testUtils.insertData(50000)
+
+    val df = createDF(tunnelId, Map.empty)
+    assert(df.select("PkString").count() == 50000)
+    assert(df.select("*").count() == 50000)
   }
 }
