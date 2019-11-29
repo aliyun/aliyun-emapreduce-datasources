@@ -193,3 +193,45 @@ class TableStoreTestUtil extends Logging {
     record
   }
 }
+
+object TableStoreTestUtil{
+  val catalog: String =
+    """
+      |{
+      |  "columns":{
+      |    "PkString":{
+      |      "col":"PkString",
+      |      "type":"string"
+      |    },
+      |    "PkInt":{
+      |      "col":"PkInt",
+      |      "type":"long"
+      |    },
+      |    "col1":{
+      |      "col":"col1",
+      |      "type":"string"
+      |    },
+      |    "col2":{
+      |      "col":"col2",
+      |      "type":"long"
+      |    },
+      |    "col3":{
+      |      "col":"col3",
+      |      "type":"binary"
+      |    },
+      |    "timestamp":{
+      |      "col":"col4",
+      |      "type":"long"
+      |    },
+      |    "col5":{
+      |      "col":"col5",
+      |      "type":"double"
+      |    },
+      |    "col6":{
+      |      "col":"col6",
+      |      "type":"boolean"
+      |    }
+      |  }
+      |}
+    """.stripMargin
+}
