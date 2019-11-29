@@ -45,23 +45,19 @@ class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
     while (!testUtils.checkTunnelReady(tunnelId, TunnelStage.ProcessBaseData)) {
       Thread.sleep(2000)
     }
+
     val spark = SparkSession.builder
       .appName("TestGetOffset")
       .master("local[5]")
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map(
+          "catalog" -> TableStoreTestUtil.catalog,
+          "tunnel.id" -> tunnelId,
+          "maxOffsetsPerChannel" -> "10000")
       )
 
     val source =
@@ -91,18 +87,12 @@ class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
       .master("local[5]")
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
-
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "50000")
+        Map(
+          "catalog" -> TableStoreTestUtil.catalog,
+          "tunnel.id" -> tunnelId,
+          "maxOffsetsPerChannel" -> "50000")
       )
 
     val source =
@@ -128,17 +118,12 @@ class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map(
+          "catalog" -> TableStoreTestUtil.catalog,
+          "tunnel.id" -> tunnelId,
+          "maxOffsetsPerChannel" -> "10000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
@@ -168,17 +153,12 @@ class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "10000")
+        Map(
+          "catalog" -> TableStoreTestUtil.catalog,
+          "tunnel.id" -> tunnelId,
+          "maxOffsetsPerChannel" -> "10000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
@@ -211,17 +191,12 @@ class TableStoreMicroBatchSourceSuite extends SparkFunSuite {
       .getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog, "tunnel.id" -> tunnelId, "maxOffsetsPerChannel" -> "5000")
+        Map(
+          "catalog" -> TableStoreTestUtil.catalog,
+          "tunnel.id" -> tunnelId,
+          "maxOffsetsPerChannel" -> "5000")
       )
     val source =
       testUtils.createTestSource(spark.sqlContext, options).asInstanceOf[TableStoreSource]
