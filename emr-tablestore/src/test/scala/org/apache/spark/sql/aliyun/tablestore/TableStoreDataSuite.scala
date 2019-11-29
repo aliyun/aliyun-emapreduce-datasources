@@ -26,17 +26,9 @@ class TableStoreDataSuite extends SparkFunSuite {
   private val testUtils = new TableStoreTestUtil()
 
   private val testSchema = {
-    val catalog = "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"}," +
-      "\"PkInt\":{\"col\":\"PkInt\",\"type\":\"long\"}," +
-      "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}, " +
-      "\"col2\":{\"col\":\"col2\",\"type\":\"long\"}," +
-      "\"col3\":{\"col\":\"col3\",\"type\":\"binary\"}, " +
-      "\"timestamp\":{\"col\":\"col4\",\"type\":\"long\"}, " +
-      "\"col5\":{\"col\":\"col5\",\"type\":\"double\"}, " +
-      "\"col6\":{\"col\":\"col6\",\"type\":\"boolean\"}}}"
     val options =
       testUtils.getTestOptions(
-        Map("catalog" -> catalog)
+        Map("catalog" -> TableStoreTestUtil.catalog)
       )
     TableStoreSource.tableStoreSchema(TableStoreCatalog(options).schema)
   }
