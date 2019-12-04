@@ -1,5 +1,6 @@
 [![version](https://badge.fury.io/gh/aliyun%2Faliyun-emapreduce-sdk.png)](https://badge.fury.io/gh/aliyun%2Faliyun-emapreduce-sdk)
 [![build](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk.svg?branch=master-2.x)](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk)
+[![HitCount](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk.svg)](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk)
 
 # E-MapReduce SDK
 
