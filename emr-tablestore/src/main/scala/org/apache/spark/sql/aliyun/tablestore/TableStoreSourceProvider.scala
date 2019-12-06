@@ -58,7 +58,7 @@ class TableStoreSourceProvider
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    validateOptions(parameters)
+    validateOptions(parameters, true)
     val caseInsensitiveParams = parameters.map {
       case (k, v) => (k.toLowerCase(Locale.ROOT), v)
     }
@@ -75,11 +75,11 @@ class TableStoreSourceProvider
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    validateOptions(parameters)
+    validateOptions(parameters, false)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
 
-  def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+  def validateOptions(caseInsensitiveParams: Map[String, String], isStream: Boolean): Unit = {
     caseInsensitiveParams.getOrElse(
       "table.name",
       throw new MissingArgumentException("Missing TableStore table (='table.name').")
@@ -88,10 +88,12 @@ class TableStoreSourceProvider
       "instance.name",
       throw new MissingArgumentException("Missing TableStore table (='instance.name').")
     )
-    caseInsensitiveParams.getOrElse(
-      "tunnel.id",
-      throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
-    )
+    if (isStream) {
+      caseInsensitiveParams.getOrElse(
+        "tunnel.id",
+        throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
+      )
+    }
     caseInsensitiveParams.getOrElse(
       "access.key.id",
       throw new MissingArgumentException("Missing access key id (='access.key.id').")
