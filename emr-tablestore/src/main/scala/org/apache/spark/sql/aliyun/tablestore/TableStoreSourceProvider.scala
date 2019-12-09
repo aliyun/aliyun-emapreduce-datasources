@@ -58,7 +58,7 @@ class TableStoreSourceProvider
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    validateOptions(parameters, true)
+    validateOptions(parameters, isStream = true)
     val caseInsensitiveParams = parameters.map {
       case (k, v) => (k.toLowerCase(Locale.ROOT), v)
     }
@@ -75,7 +75,7 @@ class TableStoreSourceProvider
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    validateOptions(parameters, false)
+    validateOptions(parameters, isStream = false)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
 
