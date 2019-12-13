@@ -37,27 +37,40 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
 
+
 class TableStoreRelation(
     parameters: Map[String, String],
     userSpecifiedSchema: Option[StructType])(@transient val sqlContext: SQLContext)
   extends BaseRelation
-    with TableScan
+    with PrunedFilteredScan
     with InsertableRelation
     with Serializable
     with Logging {
 
-  val accessKeyId = parameters("access.key.id")
-  val accessKeySecret = parameters("access.key.secret")
-  val endpoint = parameters("endpoint")
-  val tbName = parameters("table.name")
-  val instanceName = parameters("instance.name")
-  val batchUpdateSize = parameters.getOrElse("batch.update.size", "0")
+  val accessKeyId: String = parameters("access.key.id")
+  val accessKeySecret: String = parameters("access.key.secret")
+  val endpoint: String = parameters("endpoint")
+  val tbName: String = parameters("table.name")
+  val instanceName: String = parameters("instance.name")
+  val batchUpdateSize: String = parameters.getOrElse("batch.update.size", "0")
+
+  val computeMode: String = parameters.getOrElse("compute.mode", "KV")
+  val maxSplitsCount: Int = parameters.getOrElse("max.split.count", "1000").toInt
+  val splitSizeInMbs: Long = parameters.getOrElse("split.size.mbs", "100").toLong
 
   override def schema: StructType =
     userSpecifiedSchema.getOrElse(TableStoreCatalog(parameters).schema)
 
-  override def buildScan(): RDD[Row] = {
+  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val hadoopConf = new Configuration()
+    hadoopConf.set(TableStoreInputFormat.TABLE_NAME, tbName)
+    val computeParams = new ComputeParams(maxSplitsCount, splitSizeInMbs, computeMode)
+    hadoopConf.set(TableStoreInputFormat.COMPUTE_PARAMS, computeParams.serialize)
+    val otsFilter = TableStoreFilter.buildFilters(filters, this)
+    val otsRequiredColumns = requiredColumns.toList.asJava
+    hadoopConf.set(TableStoreInputFormat.FILTER,
+      new TableStoreFilterWritable(otsFilter, otsRequiredColumns).serialize)
+
     TableStore.setCredential(hadoopConf, new Credential(accessKeyId, accessKeySecret, null))
     val ep = new Endpoint(endpoint, instanceName)
     TableStore.setEndpoint(hadoopConf, ep)
@@ -70,7 +83,7 @@ class TableStoreRelation(
 
     val rdd = rawRdd.mapPartitions(it =>
       it.map {case (_, rw) =>
-        val values = schema.fieldNames.map(fieldName => extractValue(rw.getRow, fieldName))
+        val values = requiredColumns.map(fieldName => extractValue(rw.getRow, fieldName))
         Row.fromSeq(values)
       }
     )
