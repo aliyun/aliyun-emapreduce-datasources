@@ -155,17 +155,19 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
   private def getLatestHistograms(startOffset: Int): Array[Histogram] = {
     val lag = System.currentTimeMillis() / 1000 - startOffset
 
-    val maxRange = 60 * 5
-    val minRange = 60
-    val ranges: Array[(Int, Int)] = if (lag > maxRange) {
-      val numRanges = math.min(lag, 3600 * 6) / maxRange
+    val maxRange = readerOptions
+      .getOrElse("fetchOffset.maxRange.seconds", (3600 * 6).toString).toInt
+    val maxStep = 60 * 5 // in seconds
+    val minStep = 60 // in seconds
+    val ranges: Array[(Int, Int)] = if (lag > maxStep) {
+      val numRanges = math.min(lag, maxRange) / maxStep
       Array.tabulate(numRanges.toInt)(idx => {
-        (startOffset + (idx - 1) * maxRange, startOffset + idx * maxRange)
+        (startOffset + (idx - 1) * maxStep, startOffset + idx * maxStep)
       })
-    } else if (lag > minRange) {
-      val numRanges = math.min(lag, 300) / minRange
+    } else if (lag > minStep) {
+      val numRanges = math.min(lag, maxStep) / minStep
       Array.tabulate(numRanges.toInt)(idx => {
-        (startOffset + (idx - 1) * minRange, startOffset + idx * minRange)
+        (startOffset + (idx - 1) * minStep, startOffset + idx * minStep)
       })
     } else {
       throw new Exception("Should not be called here.")
