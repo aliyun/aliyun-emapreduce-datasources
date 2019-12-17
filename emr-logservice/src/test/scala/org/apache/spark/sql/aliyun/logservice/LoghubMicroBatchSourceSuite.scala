@@ -387,7 +387,8 @@ abstract class LoghubMicroBatchSourceSuiteBase extends LoghubSourceSuiteBase {
     val loghub = spark
       .readStream
       .format("loghub")
-      .schema(StructType(Array(StructField("msg", StringType), StructField("__time__", TimestampType))))
+      .schema(StructType(Array(
+        StructField("msg", StringType), StructField("__time__", TimestampType))))
       .option("sls.project", testUtils.logProject)
       .option("sls.store", logStore)
       .option("access.key.id", testUtils.accessKeyId)

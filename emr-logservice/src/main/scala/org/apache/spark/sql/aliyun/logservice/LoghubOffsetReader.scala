@@ -57,7 +57,7 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
       body
     }
   }
-  private var latestHistograms: util.ArrayList[Histogram] = null
+  private var latestHistograms: Array[Histogram] = null
 
   private val logProject = readerOptions.getOrElse("sls.project",
     throw new MissingArgumentException("Missing logService project (='sls.project')."))
@@ -152,25 +152,52 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
     }
   }
 
-  private def getLatestHistograms(startOffset: Int): util.ArrayList[Histogram] = {
+  private def getLatestHistograms(startOffset: Int): Array[Histogram] = {
     val lag = System.currentTimeMillis() / 1000 - startOffset
-    var tries = 10
+
     val maxRange = 60 * 5
     val minRange = 60
-    val endOffset: Int = if (lag > maxRange) {
-      startOffset + maxRange
+    val ranges: Array[(Int, Int)] = if (lag > maxRange) {
+      val numRanges = math.min(lag, 3600 * 6) / maxRange
+      Array.tabulate(numRanges.toInt)(idx => {
+        (startOffset + (idx - 1) * maxRange, startOffset + idx * maxRange)
+      })
     } else if (lag > minRange) {
-      fetchLatestOffsets().values.map(_._1).min
+      val numRanges = math.min(lag, 300) / minRange
+      Array.tabulate(numRanges.toInt)(idx => {
+        (startOffset + (idx - 1) * minRange, startOffset + idx * minRange)
+      })
     } else {
       throw new Exception("Should not be called here.")
     }
 
-    var result =
-      logServiceClient.GetHistograms(logProject, logStore, startOffset, endOffset, "", "*")
+    val latestHistograms = ranges.map { case (startOffset, endOffset) =>
+      getRangeHistograms(startOffset, endOffset).asScala.toArray
+    }.reduce(_ ++ _)
+
+    latestHistograms.map(_.mFromTime).reduceLeft((l, r) => {
+      if (l >= r) {
+        throw new Exception("Histograms should be ordered by time in second.")
+      }
+      r
+    })
+
+    latestHistograms
+  }
+
+  private def getRangeHistograms(startOffset: Int, endOffset: Int): util.ArrayList[Histogram] = {
+    var tries = 10
+    var result = logServiceClient
+      .GetHistograms(logProject, logStore, startOffset, endOffset, "", "*")
     while (!result.IsCompleted() && tries > 0) {
-      result = logServiceClient.GetHistograms(logProject, logStore, startOffset,
-        startOffset + maxRange, "", "*")
+      result = logServiceClient
+        .GetHistograms(logProject, logStore, startOffset, endOffset, "", "*")
       tries -= 1
+    }
+    if (!result.IsCompleted()) {
+      logWarning(s"The result of histograms of $logProject/$logStore between " +
+        s"$startOffset and $endOffset is not completed. So it may not be accurate to " +
+        s"calculate offset range.")
     }
     result.GetHistograms()
   }
@@ -180,31 +207,24 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
       withRetriesWithoutInterrupt {
         val lag = System.currentTimeMillis() / 1000 - startOffset
         if (lag <= 60) {
-          val minCursorTime = fetchLatestOffsets().values.min
-          require(minCursorTime._1 >= startOffset, s"endCursorTime[$minCursorTime] should " +
+          val minCursorTime = fetchLatestOffsets().values.map(_._1).min
+          require(minCursorTime >= startOffset, s"endCursorTime[$minCursorTime] should " +
             s"not be less than startCursorTime[$startOffset].")
-          return minCursorTime._1
+          return minCursorTime
         }
 
         if (latestHistograms == null) {
           latestHistograms = getLatestHistograms(startOffset)
         }
 
-        val maxOffset = latestHistograms.asScala.map(_.mToTime).max
+        val maxOffset = latestHistograms.map(_.mToTime).max
         if (startOffset >= maxOffset) {
           latestHistograms = getLatestHistograms(startOffset)
         }
 
-        latestHistograms.asScala.map(_.mFromTime).reduceLeft((l, r) => {
-          if (l >= r) {
-            throw new Exception("Histograms should be ordered by time in second.")
-          }
-          r
-        })
-
         var endCursorTime = startOffset
         var count = 0L
-        latestHistograms.asScala.filter(_.mFromTime >= startOffset)
+        latestHistograms.filter(_.mFromTime >= startOffset)
           .foreach(e => {
             if (count < maxOffsetsPerTrigger.get) {
               endCursorTime = e.mToTime
