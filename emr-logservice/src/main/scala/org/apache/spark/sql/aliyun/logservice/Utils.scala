@@ -88,8 +88,9 @@ object Utils extends Logging {
 
             while (convertersIterator.hasNext) {
               val converter = convertersIterator.next()
-              val logContent =
-                new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
+	      val logContent =
+                new LogContent(fieldNamesIterator.next(),
+                  converter(Option(rowIterator.next()).getOrElse("")).toString)
               record.PushBack(logContent)
             }
             record
