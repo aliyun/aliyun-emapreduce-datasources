@@ -144,6 +144,10 @@
                             <pattern>okio</pattern>
                             <shadedPattern>${emr.shade.packageName}.okio</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>retrofit2</pattern>
+                            <shadedPattern>${emr.shade.packageName}.retrofit2</shadedPattern>
+                        </relocation>
                     </relocations>
                 </configuration>
                 <executions>

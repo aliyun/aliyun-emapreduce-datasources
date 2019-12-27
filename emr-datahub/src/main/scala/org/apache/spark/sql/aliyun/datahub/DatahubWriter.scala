@@ -18,25 +18,27 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.sources.v2.writer.{DataWriter, DataWriterFactory, WriterCommitMessage}
-import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
+import org.apache.spark.sql.sources.v2.writer.{DataSourceWriter, DataWriter, DataWriterFactory, WriterCommitMessage}
 import org.apache.spark.sql.types.StructType
 
-class DatahubStreamWriter(
+class DatahubWriter(
     project: Option[String],
     topic: Option[String],
     datahubOptions: Map[String, String],
-    schema: Option[StructType]) extends StreamWriter {
-  override def commit(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {}
+    schema: Option[StructType]) extends DataSourceWriter {
 
-  override def abort(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {}
+  override def commit(messages: Array[WriterCommitMessage]): Unit = {
+  }
 
-  override def createWriterFactory(): DatahubStreamWriterFactory = {
-    DatahubStreamWriterFactory(project, topic, datahubOptions, schema)
+  override def abort(messages: Array[WriterCommitMessage]): Unit = {
+  }
+
+  override def createWriterFactory(): DatahubWriterFactory = {
+    DatahubWriterFactory(project, topic, datahubOptions, schema)
   }
 }
 
-case class DatahubStreamWriterFactory(
+case class DatahubWriterFactory(
     project: Option[String],
     topic: Option[String],
     datahubParams: Map[String, String],
@@ -49,12 +51,3 @@ case class DatahubStreamWriterFactory(
     new DatahubDataWriter(project, topic, datahubParams, schema)
   }
 }
-
-class DatahubStreamDataWriter(
-    project: Option[String],
-    topic: Option[String],
-    datahubParams: Map[String, String],
-    schema: Option[StructType]) extends DatahubDataWriter(project, topic, datahubParams, schema) {
-}
-
-case object DatahubWriterCommitMessage extends WriterCommitMessage

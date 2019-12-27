@@ -45,9 +45,11 @@ class DatahubTestUtils {
     throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
   }
 
-  val endpoint: String = envType match {
-    case "private" => s"http://dh-$region.aliyun-inc.com"
-    case "public" => s"https://dh-$region.aliyuncs.com"
+  val endpoint: String = Option(System.getenv("DATAHUB_ENDPOINT")).getOrElse {
+    envType match {
+      case "private" => s"http://dh-$region.aliyun-inc.com"
+      case "public" => s"https://dh-$region.aliyuncs.com"
+    }
   }
 
   private def newTopic(): String = s"topic_for_emr_sdk_ut_${id.incrementAndGet()}"

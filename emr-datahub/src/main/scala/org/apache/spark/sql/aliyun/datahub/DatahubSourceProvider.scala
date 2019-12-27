@@ -18,23 +18,34 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import java.util.{Locale, Optional, UUID}
+import java.util.concurrent.locks.{ReadWriteLock, ReentrantReadWriteLock}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
+
+import com.aliyun.datahub.client.{DatahubClient, DatahubClientBuilder}
+import com.aliyun.datahub.client.auth.AliyunAccount
+import com.aliyun.datahub.client.common.DatahubConfig
+import com.aliyun.datahub.client.http.HttpConfig
+import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{SaveMode, SQLContext}
 import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions, MicroBatchReadSupport, StreamWriteSupport}
+import org.apache.spark.sql.sources.v2._
 import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
+import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
 import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.streaming.aliyun.datahub.DatahubClientAgent
 
 class DatahubSourceProvider extends DataSourceRegister
   with StreamSourceProvider
   with MicroBatchReadSupport
   with ContinuousReadSupport
+  with WriteSupport
   with StreamWriteSupport{
   override def shortName(): String = "datahub"
 
@@ -115,11 +126,41 @@ class DatahubSourceProvider extends DataSourceRegister
       schema: StructType,
       mode: OutputMode,
       options: DataSourceOptions): StreamWriter = {
-    new DatahubStreamWriter()
+    val opts = options.asMap().asScala.toMap
+    val project = opts.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
+    val topic = opts.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
+    new DatahubStreamWriter(project, topic, opts, None)
+  }
+
+  override def createWriter(
+      writeUUID: String,
+      schema: StructType,
+      mode: SaveMode,
+      options: DataSourceOptions): Optional[DataSourceWriter] = {
+    val opts = options.asMap().asScala.toMap
+    val project = opts.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
+    val topic = opts.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
+    Optional.of(new DatahubWriter(project, topic, opts, None))
   }
 }
 
 object DatahubSourceProvider {
+
+  val OPTION_KEY_PROJECT = "project"
+  val OPTION_KEY_TOPIC = "topic"
+  val OPTION_KEY_ACCESS_ID = "access.key.id"
+  val OPTION_KEY_ACCESS_KEY = "access.key.secret"
+  val OPTION_KEY_ENDPOINT = "endpoint"
+  val OPTION_KEY_RETRIES = "retry"
+  val OPTION_KEY_BATCH_SIZE = "batch.size"
+  val OPTION_KEY_BATCH_NUM = "batch.number"
+
+  // TODO: expose all the options for DatahubConfig & HttpConfig
+
+  private[datahub] val datahubClientPool =
+    new mutable.HashMap[(String, String), DatahubClient]()
+  private val rwlock: ReadWriteLock = new ReentrantReadWriteLock()
+
   val INSTRUCTION_FOR_FAIL_ON_DATA_LOSS_FALSE =
     """
       |Some data may have been lost because they are not available in Datahub any more; either the
@@ -134,6 +175,42 @@ object DatahubSourceProvider {
       | your streaming query to fail on such cases, set the source option "failOnDataLoss" to
       | "false".
     """.stripMargin
+
+  // Upgrade to the interfaces of Datahub Java SDK Version 2.12.2
+  def getOrCreateDatahubClientV2(sourceOptions: Map[String, String]): DatahubClient = {
+    val accessId = sourceOptions.getOrElse("access.key.id",
+      throw new MissingArgumentException("Missing access key id (='access.key.id')."))
+    val accessKey = sourceOptions.getOrElse("access.key.secret",
+      throw new MissingArgumentException("Missing access key secret (='access.key.secret')."))
+    val endpoint = sourceOptions.getOrElse("endpoint",
+      throw new MissingArgumentException("Missing endpoint (='endpoint')."))
+    val retries = sourceOptions.getOrElse(OPTION_KEY_RETRIES, "3").toInt
+
+    rwlock.readLock().lock()
+    val client = datahubClientPool.get((accessId, endpoint))
+    rwlock.readLock().unlock()
+
+    client match {
+      case Some(datahubClient) => datahubClient
+
+      case None =>
+        rwlock.writeLock().lock()
+        val datahubConfig = new DatahubConfig(endpoint,
+                                              new AliyunAccount(accessId, accessKey),
+                                              true)
+        val httpConfig: HttpConfig = new HttpConfig()
+        httpConfig.setMaxRetryCount(3)
+
+        val datahubClient = DatahubClientBuilder.newBuilder()
+          .setDatahubConfig(datahubConfig)
+          .setHttpConfig(httpConfig)
+          .build()
+
+        datahubClientPool.put((accessId, endpoint), datahubClient)
+        rwlock.writeLock().unlock()
+        datahubClient
+    }
+  }
 }
 
 /** Class to conveniently update Datahub config params, while logging the changes */
