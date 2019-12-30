@@ -166,6 +166,10 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
         if (latestHistograms == null) {
           latestHistograms = getLatestHistograms(startOffset)
         }
+        if (latestHistograms.isEmpty) {
+          val earliestOffset = fetchEarliestOffsets().values.max
+          latestHistograms = getLatestHistograms(earliestOffset)
+        }
 
         val maxOffset = latestHistograms.map(_.mToTime).max
         if (startOffset >= maxOffset) {
