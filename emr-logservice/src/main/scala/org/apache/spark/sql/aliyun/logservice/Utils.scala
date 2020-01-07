@@ -18,9 +18,13 @@
 package org.apache.spark.sql.aliyun.logservice
 
 import java.math.BigDecimal
+import java.nio.charset.StandardCharsets
 import java.sql.{Date, Timestamp}
+import java.util.Base64
 
+import com.alibaba.fastjson.{JSON, JSONObject}
 import com.aliyun.openservices.log.common.{LogContent, LogItem}
+import org.I0Itec.zkclient.{ZkClient, ZkConnection}
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
@@ -49,7 +53,8 @@ object Utils extends Logging {
   def toConverter(dataType: DataType): (Any) => Any = {
     dataType match {
       case BinaryType =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case ByteType | ShortType | IntegerType | LongType |
            FloatType | DoubleType | StringType | BooleanType => identity
       case d: DecimalType =>
@@ -65,9 +70,11 @@ object Utils extends Logging {
       case DateType => (item: Any) =>
         if (item == null) null else item.asInstanceOf[Date].getTime
       case ArrayType(_, _) =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case MapType(StringType, _, _) =>
-        throw new UnsupportedOperationException(s"Unsupported type $dataType when sink to log store.")
+        throw new UnsupportedOperationException(
+          s"Unsupported type $dataType when sink to log store.")
       case structType: StructType =>
         val fieldConverters = structType.fields.map(field => toConverter(field.dataType))
         (item: Any) => {
@@ -81,7 +88,8 @@ object Utils extends Logging {
 
             while (convertersIterator.hasNext) {
               val converter = convertersIterator.next()
-              val logContent = new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
+              val logContent = new LogContent(fieldNamesIterator.next(),
+                converter(Option(rowIterator.next()).getOrElse("")).toString)
               record.PushBack(logContent)
             }
             record
@@ -161,8 +169,7 @@ object Utils extends Logging {
       offset: Int,
       accessKeyId: String,
       accessKeySecret: String,
-      endpoint: String,
-      ignoreError: Boolean = true): String = {
+      endpoint: String): String = {
     val caseInsensitiveParams = Map(
       "sls.project" -> logProject,
       "sls.store" -> logStore,
@@ -170,41 +177,114 @@ object Utils extends Logging {
       "access.key.secret" -> accessKeySecret,
       "endpoint" -> endpoint
     )
-    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
-    val earliestOffsets = loghubOffsetReader.fetchEarliestOffsets()
-    val endOffsets = loghubOffsetReader.fetchLatestOffsets()
-    require(earliestOffsets.size == endOffsets.size,
-      s"""The size of earliestOffsets dose not equals size of endOffsets
-        | earliestOffsets: $earliestOffsets
-        |
-        | endOffsets: $endOffsets
-      """.stripMargin)
-    val startOffsets = earliestOffsets.toSeq.sortBy(_._1.shard)
-      .zip(endOffsets.toSeq.sortBy(_._1.shard))
-      .map { case (startOffset, endOffset) =>
-        require(startOffset._1.shard == endOffset._1.shard)
-        if (offset < startOffset._2) {
-          val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start offset [${startOffset._2}], " +
-            s"using [${startOffset._2}] instead of [$offset] as new specific offset."
-          if (ignoreError) {
-            logWarning(msg)
-            startOffset
+    var loghubOffsetReader: LoghubOffsetReader = null
+    try {
+      loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+      val startOffsets = loghubOffsetReader.fetchLoghubShard().map(shard => {
+        (shard, (offset, ""))
+      }).toMap
+      LoghubSourceOffset.partitionOffsets(startOffsets)
+    } finally {
+      if (loghubOffsetReader != null) {
+        loghubOffsetReader.close()
+      }
+    }
+  }
+
+  def decodeCursorToTimestamp(cursor: String): Long = {
+    val timestampAsBytes = Base64.getDecoder.decode(cursor.getBytes(StandardCharsets.UTF_8))
+    val timestamp = new String(timestampAsBytes, StandardCharsets.UTF_8)
+    timestamp.toLong
+  }
+
+  /**
+   * Used to update loghub source config.
+   */
+  def updateSourceConfig(
+      zkConnect: String,
+      checkpoint: String,
+      logProject: String,
+      logStore: String,
+      sourceProps: Map[String, String]): Unit = {
+    val zkConnectTimeoutMs = 10000
+    val zkSessionTimeoutMs = 10000
+    val zkConnection = new ZkConnection(zkConnect, zkSessionTimeoutMs)
+    val zkClient = new ZkClient(zkConnection, zkConnectTimeoutMs, new ZKStringSerializer())
+    try {
+      val configPathParent = if (checkpoint.endsWith("/")) {
+        s"${checkpoint}sources"
+      } else {
+        s"$checkpoint/sources"
+      }
+      val configPath = s"$configPathParent/config"
+      val configFileExists = zkClient.exists(configPath)
+      if (configFileExists) {
+        val data: String = zkClient.readData(configPath)
+        val jsonObject = JSON.parseObject(data)
+        val version = jsonObject.getString("version")
+        if ("v1".equals(version)) {
+          val configObject = jsonObject.getJSONObject("config")
+          if (configObject.containsKey(logProject)) {
+            val logProjectObject = configObject.getJSONObject(logProject)
+            if (logProjectObject.containsKey(logStore)) {
+              val logStoreObject = logProjectObject.getJSONObject(logStore)
+              sourceProps.foreach(kv => {
+                logStoreObject.put(kv._1, kv._2)
+              })
+            } else {
+              val logStoreObject = new JSONObject()
+              sourceProps.foreach(kv => {
+                logStoreObject.put(kv._1, kv._2)
+              })
+              logProjectObject.put(logStore, logStoreObject)
+            }
           } else {
-            throw new Exception(msg)
+            val logProjectObject = new JSONObject()
+            val logStoreObject = new JSONObject()
+            sourceProps.foreach(kv => {
+              logStoreObject.put(kv._1, kv._2)
+            })
+            logProjectObject.put(logStore, logStoreObject)
+            configObject.put(logProject, logProjectObject)
           }
-        } else if (offset > endOffset._2) {
-          val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end offset [${endOffset._2}], " +
-            s"using [${endOffset._2}] instead of [$offset] as new specific offset."
-          if (ignoreError) {
-            logWarning(msg)
-            endOffset
-          } else {
-            throw new Exception(msg)
-          }
+          zkClient.writeData(configPath, jsonObject.toJSONString)
         } else {
-          (startOffset._1, offset)
+          throw new Exception(
+            s"""Unsupported dynamic config data version $version, only support ["v1"]""")
         }
-      }.toMap
-    LoghubSourceOffset.partitionOffsets(startOffsets)
+      } else {
+        val jsonObject = new JSONObject()
+        val configObject = new JSONObject()
+        val logProjectObject = new JSONObject()
+        val logStoreObject = new JSONObject()
+        sourceProps.foreach(kv => {
+          logStoreObject.put(kv._1, kv._2)
+        })
+        logProjectObject.put(logStore, logStoreObject)
+        configObject.put(logProject, logProjectObject)
+        jsonObject.put("config", configObject)
+        jsonObject.put("version", "v1")
+        zkClient.createPersistent(configPathParent, true)
+        zkClient.createPersistent(configPath, jsonObject.toJSONString)
+      }
+    } catch {
+      case e: Exception =>
+        throw new Exception(s"Failed to update config for [$logProject/$logStore]", e)
+    } finally {
+      zkClient.close()
+    }
+  }
+
+  /**
+   * Used to update loghub source config.
+   */
+  def updateSourceConfig(
+      zkConnect: String,
+      checkpoint: String,
+      logProject: String,
+      logStore: String,
+      key: String,
+      value: String): Unit = {
+    updateSourceConfig(zkConnect, checkpoint, logProject, logStore, Map(key -> value))
   }
 }

@@ -18,6 +18,7 @@
 
 package com.aliyun.fs.oss.contract;
 
+import com.aliyun.fs.oss.AliyunOSSTestUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -36,7 +37,7 @@ public class TestAliyunOSSContractSeek extends AbstractContractSeekTest {
 
   @Override
   protected AbstractFSContract createContract(Configuration conf) {
-    return new AliyunOSSContract(conf);
+    return new AliyunOSSContract(AliyunOSSTestUtils.updateConfig(conf));
   }
 
   @Test

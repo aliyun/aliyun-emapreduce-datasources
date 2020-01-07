@@ -24,14 +24,16 @@ import org.apache.spark.sql.types._
 object StructuredTableStoreSinkSample {
   def main(args: Array[String]) {
     if (args.length < 10) {
+      // scalastyle:off
       System.err.println("Usage: StructuredTableStoreSinkSample <logService-project> " +
         "<logService-store> <access-key-id> <access-key-secret> <sls-endpoint> <ots-endpoint> " +
         "<ots-table-name> <ots-instance-name> <starting-offsets> <max-offsets-per-trigger> [<checkpoint-location>]")
+      // scalastyle:on
       System.exit(1)
     }
 
-    val Array(project, logStore, accessKeyId, accessKeySecret, slsEndpoint, otsEndpoint, otsTableName, otsInstanceName,
-      startingOffsets, maxOffsetsPerTrigger, _*) = args
+    val Array(project, logStore, accessKeyId, accessKeySecret, slsEndpoint, otsEndpoint,
+      otsTableName, otsInstanceName, startingOffsets, maxOffsetsPerTrigger, _*) = args
     val checkpointLocation =
       if (args.length > 10) args(10) else "/tmp/temporary-" + UUID.randomUUID.toString
 
@@ -45,7 +47,11 @@ object StructuredTableStoreSinkSample {
     import spark.implicits._
 
     // Create DataSet representing the stream of input lines from loghub
-    val schema = new StructType(Array(new StructField("__shard__", IntegerType), new StructField("__time__", TimestampType), new StructField("content", StringType)))
+    val schema = new StructType(
+      Array(
+        new StructField("__shard__", IntegerType),
+        new StructField("__time__", TimestampType),
+        new StructField("content", StringType)))
     val lines = spark
       .readStream
       .format("loghub")
@@ -72,7 +78,9 @@ object StructuredTableStoreSinkSample {
       .option("table.name", otsTableName)
       .option("instance.name", otsInstanceName)
       .option("batch.update.size", "100")
+      // scalastyle:off
       .option("catalog", """{"columns":{"value":{"col":"value","type":"string"},"count":{"col":"count","type":"long"}}}""")
+      // scalastyle:on
       .option("checkpointLocation", checkpointLocation)
       .start()
 

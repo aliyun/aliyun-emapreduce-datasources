@@ -21,25 +21,29 @@ import java.nio.charset.StandardCharsets
 import java.util
 import java.util.UUID
 
-import scala.collection.JavaConversions._
-import com.alicloud.openservices.tablestore.SyncClient
-import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
-import com.alicloud.openservices.tablestore.model._
-import com.alicloud.openservices.tablestore.model.tunnel._
-import org.apache.spark.internal.Logging
-import org.apache.spark.sql.execution.streaming.Source
-import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
-
+import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
+import com.alicloud.openservices.tablestore.SyncClient
+import com.alicloud.openservices.tablestore.model._
+import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
+import com.alicloud.openservices.tablestore.model.tunnel._
+
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{DataFrame, SparkSession, SQLContext}
+import org.apache.spark.sql.execution.streaming.Source
+import org.apache.spark.sql.sources.BaseRelation
+
+import scala.collection.mutable
+
 class TableStoreTestUtil extends Logging {
-  private val endpoint =
-    "http://tunnel-monitor.ali-cn-hangzhou.ots.aliyuncs.com"
-  private val instanceName = "tunnel-monitor"
+  private val instanceName = Option(System.getenv("OTS_INSTANCE_NAME")).getOrElse("")
+  private val region = Option(System.getenv("REGION_NAME")).getOrElse("cn-hangzhou")
+  private val endpoint = s"http://$instanceName.$region.ots.aliyuncs.com"
   private val tableName = "spark_test"
   private val tunnelName = "user-tunnel"
-  private val accessKeyId = ""
-  private val accessKeySecret = ""
+  private val accessKeyId = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
+  private val accessKeySecret = Option(System.getenv("ALIYUN_ACCESS_KEY_SECRET")).getOrElse("")
   private lazy val tunnelClient = TableStoreOffsetReader.getOrCreateTunnelClient(
     endpoint,
     accessKeyId,
@@ -57,33 +61,32 @@ class TableStoreTestUtil extends Logging {
     val createResp = tunnelClient.createTunnel(
       new CreateTunnelRequest(tableName, tunnelName, tunnelType)
     )
-    println(s"Create tunnel ${tunnelName} success.")
     createResp.getTunnelId
   }
 
   private[sql] def checkTunnelReady(tunnelId: String, tunnelStage: TunnelStage): Boolean = {
     val describeResp = tunnelClient.describeTunnel(new DescribeTunnelRequest(tableName, tunnelName))
     var isReady: Boolean = false
-    describeResp.getChannelInfos.foreach { channelInfo =>
+    describeResp.getChannelInfos.asScala.foreach { channelInfo =>
       if (channelInfo.getChannelStatus == ChannelStatus.OPEN) {
-        if (tunnelStage == TunnelStage.ProcessBaseData && channelInfo.getChannelType == ChannelType.BaseData) {
+        if (tunnelStage == TunnelStage.ProcessBaseData &&
+          channelInfo.getChannelType == ChannelType.BaseData) {
           isReady = true
         }
-        if (tunnelStage == TunnelStage.ProcessStream && channelInfo.getChannelType == ChannelType.Stream) {
+        if (tunnelStage == TunnelStage.ProcessStream &&
+          channelInfo.getChannelType == ChannelType.Stream) {
           isReady = true
         }
       }
     }
-    println("checkTunnelReady", describeResp.getChannelInfos.toSeq.toString)
     isReady
   }
 
   private[sql] def deleteTunnel(): Unit = {
     try {
       tunnelClient.deleteTunnel(new DeleteTunnelRequest(tableName, tunnelName))
-      println(s"Delete Tunnel ${tunnelName} success.")
     } catch {
-      case NonFatal(ex) => println(s"Non fatal exception! $ex")
+      case NonFatal(ex) => // ok
     }
   }
 
@@ -93,20 +96,18 @@ class TableStoreTestUtil extends Logging {
     tableMeta.addPrimaryKeyColumn(new PrimaryKeySchema("PkInt", PrimaryKeyType.INTEGER))
     val tableOptions: TableOptions = new TableOptions(-1, 1)
     syncClient.createTable(new CreateTableRequest(tableMeta, tableOptions))
-    System.out.println(s"Create Table ${tableName} success.")
   }
 
   private[sql] def deleteTable(): Unit = {
     try {
       syncClient.deleteTable(new DeleteTableRequest(tableName))
-      System.out.println(s"Delete Table ${tableName} success.")
     } catch {
-      case NonFatal(ex) => println(s"Non fatal exception! $ex")
+      case NonFatal(ex) => // ok
     }
   }
 
   private[sql] def insertData(rowCount: Int): Unit = {
-    var batchRequest: BatchWriteRowRequest = new BatchWriteRowRequest();
+    var batchRequest: BatchWriteRowRequest = new BatchWriteRowRequest()
     for (i <- Range(0, rowCount)) {
       val pkBuilder: PrimaryKeyBuilder = PrimaryKeyBuilder.createPrimaryKeyBuilder()
       pkBuilder.addPrimaryKeyColumn("PkString", PrimaryKeyValue.fromString(i.toString))
@@ -124,20 +125,16 @@ class TableStoreTestUtil extends Logging {
       batchRequest.addRowChange(rowPutChange)
       if (batchRequest.getRowsCount == 200) {
         syncClient.batchWriteRow(batchRequest)
-        println("BatchWrite 200 rows")
         batchRequest = new BatchWriteRowRequest()
       }
     }
     // Write the last batch
     if (batchRequest.getRowsCount > 0) {
       syncClient.batchWriteRow(batchRequest)
-      println(s"BatchWrite ${batchRequest.getRowsCount} rows")
     }
   }
 
-  private[sql] def createTestSourceDataFrame(
-      options: Map[String, String]
-  ): DataFrame = {
+  private[sql] def createTestSourceDataFrame(options: Map[String, String]): DataFrame = {
     val tunnelId =
       options.getOrElse("tunnel.id", "d4db52c8-4a87-4051-956e-8eeb171a1fce")
     val maxOffsetsPerChannel =
@@ -157,33 +154,32 @@ class TableStoreTestUtil extends Logging {
       .load()
   }
 
-  private[sql] def getTestOptions(
-      origOptions: Map[String, String]
-  ): Map[String, String] = {
-    Map(
+  private[sql] def getTestOptions(origOptions: Map[String, String]): Map[String, String] = {
+    val baseMap = mutable.Map(
       "instance.name" -> instanceName,
       "table.name" -> tableName,
-      "tunnel.id" -> origOptions.getOrElse("tunnel.id", ""),
       "endpoint" -> endpoint,
       "access.key.id" -> accessKeyId,
       "access.key.secret" -> accessKeySecret,
       "maxOffsetsPerChannel" -> origOptions.getOrElse(
         "maxOffsetsPerChannel",
-        10000 + ""
+        "10000"
       ),
       "catalog" -> origOptions.getOrElse("catalog", "")
-    )
+      )
+      if (origOptions.contains("tunnel.id")) {
+        baseMap("tunnel.id") = origOptions("tunnel.id")
+    }
+    baseMap.toMap
   }
 
   private[sql] def createTestSource(
       sqlContext: SQLContext,
-      options: Map[String, String]
-  ): Source = {
+      options: Map[String, String]): Source = {
     val metaDataPath = "/tmp/temporary-" + UUID.randomUUID.toString
     val schema = TableStoreCatalog(options).schema
     val provider = new TableStoreSourceProvider()
     val fullOptions = getTestOptions(options)
-    System.out.println(fullOptions)
     provider.createSource(
       sqlContext,
       metaDataPath,
@@ -193,14 +189,63 @@ class TableStoreTestUtil extends Logging {
     )
   }
 
+  private[sql] def createTestRelation(
+      sqlContext: SQLContext,
+      options: Map[String, String]): BaseRelation = {
+    val provider = new TableStoreSourceProvider()
+    val fullOptions = getTestOptions(options)
+    provider.createRelation(sqlContext, fullOptions)
+  }
+
   private[sql] def genStreamRecord(
       pk: PrimaryKey,
-      columns: util.List[RecordColumn]
-  ): StreamRecord = {
+      columns: util.List[RecordColumn]): StreamRecord = {
     val record = new StreamRecord()
     record.setRecordType(RecordType.PUT)
     record.setPrimaryKey(pk)
     record.setColumns(columns)
     record
   }
+}
+
+object TableStoreTestUtil{
+  val catalog: String =
+    """
+      |{
+      |  "columns":{
+      |    "PkString":{
+      |      "col":"PkString",
+      |      "type":"string"
+      |    },
+      |    "PkInt":{
+      |      "col":"PkInt",
+      |      "type":"long"
+      |    },
+      |    "col1":{
+      |      "col":"col1",
+      |      "type":"string"
+      |    },
+      |    "col2":{
+      |      "col":"col2",
+      |      "type":"long"
+      |    },
+      |    "col3":{
+      |      "col":"col3",
+      |      "type":"binary"
+      |    },
+      |    "timestamp":{
+      |      "col":"col4",
+      |      "type":"long"
+      |    },
+      |    "col5":{
+      |      "col":"col5",
+      |      "type":"double"
+      |    },
+      |    "col6":{
+      |      "col":"col6",
+      |      "type":"boolean"
+      |    }
+      |  }
+      |}
+    """.stripMargin
 }

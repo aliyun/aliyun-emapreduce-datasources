@@ -20,8 +20,6 @@ import java.util
 import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
-
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.response.BatchGetLogResponse
@@ -54,7 +52,7 @@ class LoghubContinuousReader(
   override def commit(end: Offset): Unit = {}
 
   override def deserializeOffset(json: String): Offset = {
-    LoghubSourceOffset(LoghubSourceOffset.partitionOffsets(json))
+    LoghubSourceOffset(LoghubSourceOffset.partitionOffsets(json, sourceOptions))
   }
 
   override def getStartOffset: Offset = offset
@@ -74,7 +72,8 @@ class LoghubContinuousReader(
 
   override def mergeOffsets(offsets: Array[PartitionOffset]): Offset = {
     val mergedMap = offsets.map {
-      case LoghubShardOffset(lp, ls, shard, of) => Map(LoghubShard(lp, ls, shard) -> of)
+      case LoghubShardOffset(lp, ls, shard, of, cursor) =>
+        Map(LoghubShard(lp, ls, shard) -> (of, cursor))
     }.reduce(_ ++ _)
     LoghubSourceOffset(mergedMap)
   }
@@ -85,19 +84,16 @@ class LoghubContinuousReader(
 
   override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
     import scala.collection.JavaConverters._
-    val startOffsets = LoghubSourceOffset.getShardOffsets(offset)
-    startOffsets.toSeq.map {
-      case (loghubShard, of) => {
-        LoghubContinuousInputPartition(
-          loghubShard.logProject,
-          loghubShard.logStore,
-          loghubShard.shard,
-          of,
-          sourceOptions,
-          readSchema.fieldNames,
-          defaultSchema)
-        : InputPartition[InternalRow]
-      }
+    val startOffsets = LoghubSourceOffset.getShardOffsets(offset, sourceOptions)
+    startOffsets.toSeq.map { case (loghubShard, of) =>
+      LoghubContinuousInputPartition(
+        loghubShard.logProject,
+        loghubShard.logStore,
+        loghubShard.shard,
+        of._1,
+        sourceOptions,
+        readSchema.fieldNames,
+        defaultSchema): InputPartition[InternalRow]
     }.asJava
   }
 }
@@ -110,7 +106,8 @@ case class LoghubContinuousInputPartition(
     sourceOptions: Map[String, String],
     schemaFieldNames: Array[String],
     defaultSchema: Boolean) extends ContinuousInputPartition[InternalRow] {
-  override def createContinuousReader(offset: PartitionOffset): InputPartitionReader[InternalRow] = {
+  override def createContinuousReader(offset: PartitionOffset):
+    InputPartitionReader[InternalRow] = {
     val off = offset.asInstanceOf[LoghubShardOffset]
     new LoghubContinuousInputPartitionReader(
       logProject,
@@ -146,9 +143,13 @@ class LoghubContinuousInputPartitionReader(
   private var logServiceClient = LoghubOffsetReader.getOrCreateLoghubClient(sourceOptions)
 
   private val step: Int = sourceOptions.getOrElse("loghub.batchGet.step", "100").toInt
+  private val appendSequenceNumber: Boolean =
+    sourceOptions.getOrElse("appendSequenceNumber", "false").toBoolean
   private var hasRead: Int = 0
-  private var nextCursor: String = logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
-  private var endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
+  private var nextCursor: String =
+    logServiceClient.GetCursor(logProject, logStore, shardId, offset).GetCursor()
+  private var endCursor =
+    logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
   // TODO: This may cost too much memory.
   private val logData = new LinkedBlockingQueue[LoghubData](4096 * step)
   private val rowWriter = new UnsafeRowWriter(schemaFieldNames.length)
@@ -157,7 +158,7 @@ class LoghubContinuousInputPartitionReader(
 
   override def getOffset: PartitionOffset = {
     val offset = logServiceClient.GetCursorTime(logProject, logStore, shardId, nextCursor)
-    LoghubShardOffset(logProject, logStore, shardId, offset.GetCursorTime())
+    LoghubShardOffset(logProject, logStore, shardId, offset.GetCursorTime(), nextCursor)
   }
 
   override def next(): Boolean = {
@@ -173,24 +174,36 @@ class LoghubContinuousInputPartitionReader(
   }
 
   def fetchNextBatch(): Unit = {
-    endCursor = logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
-    val batchGetLogRes: BatchGetLogResponse = logServiceClient.BatchGetLog(logProject, logStore, shardId,
-      step, nextCursor, endCursor)
+    // scalastyle:off
+    import scala.collection.JavaConversions._
+    // scalastyle:on
+    endCursor =
+      logServiceClient.GetCursor(logProject, logStore, shardId, CursorMode.END).GetCursor()
+    val batchGetLogRes: BatchGetLogResponse =
+      logServiceClient.BatchGetLog(logProject, logStore, shardId, step, nextCursor, endCursor)
     val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
     var count = 0
+    var logGroupIndex = Utils.decodeCursorToTimestamp(nextCursor)
     batchGetLogRes.GetLogGroups().foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => {
-        val topic = group.GetTopic()
-        val source = group.GetSource()
+      val logGroup = group.GetFastLogGroup()
+      val logCount = logGroup.getLogsCount
+      var logIndex = 0
+      for (i <- 0 until logCount) {
+        val log = logGroup.getLogs(i)
+        val topic = logGroup.getTopic
+        val source = logGroup.getSource
         if (defaultSchema) {
           val obj = new JSONObject()
-          log.getContentsList.foreach(content => {
-            obj.put(content.getKey, content.getValue)
-          })
-
-          val flg = group.GetFastLogGroup()
-          for (i <- 0 until flg.getLogTagsCount) {
-            obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+          for (i <- 0 until log.getContentsCount) {
+            val field = log.getContents(i)
+            obj.put(field.getKey, field.getValue)
+          }
+          for (i <- 0 until logGroup.getLogTagsCount) {
+            val tag = logGroup.getLogTags(i)
+            obj.put("__tag__:".concat(tag.getKey), tag.getValue)
+          }
+          if (appendSequenceNumber) {
+            obj.put(__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
           }
 
           logData.offer(
@@ -207,54 +220,54 @@ class LoghubContinuousInputPartitionReader(
             val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
               (null, null).asInstanceOf[(String, String)]
             )
-            log.getContentsList
-              .filter(content => schemaFieldPos.contains(content.getKey))
-              .foreach(content => {
-                columnArray(schemaFieldPos(content.getKey)) = (content.getKey, content.getValue)
-              })
-
-            val flg = group.GetFastLogGroup()
-            for (i <- 0 until flg.getLogTagsCount) {
-              val tagKey = flg.getLogTags(i).getKey
-              val tagValue = flg.getLogTags(i).getValue
+            for (i <- 0 until log.getContentsCount) {
+              val field = log.getContents(i)
+              if (schemaFieldPos.contains(field.getKey)) {
+                columnArray(schemaFieldPos(field.getKey)) = (field.getKey, field.getValue)
+              }
+            }
+            for (i <- 0 until logGroup.getLogTagsCount) {
+              val tag = logGroup.getLogTags(i)
+              val tagKey = tag.getKey
+              val tagValue = tag.getValue
               if (schemaFieldPos.contains(tagKey)) {
                 columnArray(schemaFieldPos(tagKey)) = (tagKey, tagValue)
               }
             }
-
+            if (schemaFieldPos.contains(__SEQUENCE_NUMBER__)) {
+              columnArray(schemaFieldPos(__SEQUENCE_NUMBER__)) =
+                (__SEQUENCE_NUMBER__, logGroupIndex + "-" + logIndex)
+            }
             if (schemaFieldPos.contains(__PROJECT__)) {
               columnArray(schemaFieldPos(__PROJECT__)) = (__PROJECT__, logProject)
             }
-
             if (schemaFieldPos.contains(__STORE__)) {
               columnArray(schemaFieldPos(__STORE__)) = (__STORE__, logStore)
             }
-
             if (schemaFieldPos.contains(__SHARD__)) {
               columnArray(schemaFieldPos(__SHARD__)) = (__SHARD__, shardId.toString)
             }
-
             if (schemaFieldPos.contains(__TOPIC__)) {
               columnArray(schemaFieldPos(__TOPIC__)) = (__TOPIC__, topic)
             }
-
             if (schemaFieldPos.contains(__SOURCE__)) {
               columnArray(schemaFieldPos(__SOURCE__)) = (__SOURCE__, source)
             }
-
             if (schemaFieldPos.contains(__TIME__)) {
-              columnArray(schemaFieldPos(__TIME__)) = (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
+              columnArray(schemaFieldPos(__TIME__)) =
+                (__TIME__, new java.sql.Timestamp(log.getTime * 1000L).toString)
             }
-
             count += 1
             logData.offer(new SchemaLoghubData(columnArray))
           } catch {
             case e: NoSuchElementException =>
-              logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                s"data and continue.")
+              logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as " +
+                "an invalid data and continue.")
           }
+          logIndex += 1
         }
-      })
+      }
+      logGroupIndex += 1
     })
 
     val crt = nextCursor

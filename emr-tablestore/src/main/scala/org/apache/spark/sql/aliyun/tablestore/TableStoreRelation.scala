@@ -19,13 +19,12 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.alicloud.openservices.tablestore.SyncClient
 import com.alicloud.openservices.tablestore.model._
 import com.alicloud.openservices.tablestore.model.{Row => TSRow}
 import com.aliyun.openservices.tablestore.hadoop._
-import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.serde2.SerDeException
 import org.apache.hadoop.io.Writable
@@ -34,15 +33,18 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.sql.sources.{BaseRelation, Filter, InsertableRelation, PrunedFilteredScan}
+import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
 
 class TableStoreRelation(
     parameters: Map[String, String],
-    userSpecifiedschema: Option[StructType]
-  )(@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedFilteredScan with InsertableRelation with Serializable with Logging {
+    userSpecifiedSchema: Option[StructType])(@transient val sqlContext: SQLContext)
+  extends BaseRelation
+    with TableScan
+    with InsertableRelation
+    with Serializable
+    with Logging {
 
   val accessKeyId = parameters("access.key.id")
   val accessKeySecret = parameters("access.key.secret")
@@ -51,9 +53,10 @@ class TableStoreRelation(
   val instanceName = parameters("instance.name")
   val batchUpdateSize = parameters.getOrElse("batch.update.size", "0")
 
-  override def schema: StructType = userSpecifiedschema.getOrElse(TableStoreCatalog(parameters).schema)
+  override def schema: StructType =
+    userSpecifiedSchema.getOrElse(TableStoreCatalog(parameters).schema)
 
-  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+  override def buildScan(): RDD[Row] = {
     val hadoopConf = new Configuration()
     TableStore.setCredential(hadoopConf, new Credential(accessKeyId, accessKeySecret, null))
     val ep = new Endpoint(endpoint, instanceName)
@@ -83,14 +86,17 @@ class TableStoreRelation(
     val jobConfig = job.getConfiguration
     val tempDir = Utils.createTempDir()
     if (jobConfig.get("mapreduce.output.fileoutputformat.outputdir") == null) {
-      jobConfig.set("mapreduce.output.fileoutputformat.outputdir", tempDir.getPath + "/outputDataset")
+      jobConfig.set("mapreduce.output.fileoutputformat.outputdir",
+        tempDir.getPath + "/outputDataset")
     }
     jobConfig.set(TableStoreOutputFormat.OUTPUT_TABLE, tbName)
-    jobConfig.set(TableStore.CREDENTIAL, new Credential(accessKeyId, accessKeySecret, null).serialize())
+    jobConfig.set(TableStore.CREDENTIAL,
+      new Credential(accessKeyId, accessKeySecret, null).serialize())
     jobConfig.set(TableStore.ENDPOINT, new Endpoint(endpoint, instanceName).serialize())
     jobConfig.set(TableStoreOutputFormat.MAX_UPDATE_BATCH_SIZE, batchUpdateSize)
 
-    val rdd = data.rdd //df.queryExecution.toRdd
+    // df.queryExecution.toRdd
+    val rdd = data.rdd
 
     rdd.mapPartitions(it => {
       val tbMeta = fetchTableMeta()
@@ -102,7 +108,7 @@ class TableStoreRelation(
     val batch = new BatchWriteWritable()
     val pkeyNames = new util.HashSet[String]()
     val pkeyCols = new util.ArrayList[PrimaryKeyColumn]()
-    tbMeta.getPrimaryKeyList.foreach(otsSchema => {
+    tbMeta.getPrimaryKeyList.asScala.foreach(otsSchema => {
       val name = otsSchema.getName
       pkeyNames.add(name)
       val pkeyCol = otsSchema.getType match {
@@ -143,9 +149,9 @@ class TableStoreRelation(
           case IntegerType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Int](field).toLong)))
           case FloatType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Float](field).toLong)))
+            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Float](field).toDouble)))
           case DoubleType =>
-            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field).toLong)))
+            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field))))
           case ShortType =>
             attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Short](field).toLong)))
           case ByteType =>
@@ -173,7 +179,7 @@ class TableStoreRelation(
     val upper = new util.ArrayList[PrimaryKeyColumn]()
 
     val meta = fetchTableMeta()
-    for (schema <- meta.getPrimaryKeyList) {
+    for (schema <- meta.getPrimaryKeyList.asScala) {
       lower.add(new PrimaryKeyColumn(schema.getName, PrimaryKeyValue.INF_MIN))
       upper.add(new PrimaryKeyColumn(schema.getName, PrimaryKeyValue.INF_MAX))
     }
@@ -219,14 +225,16 @@ class TableStoreRelation(
               pkColumn.getValue.asLong().toByte
             case _ =>
               throw new SerDeException(s"data type mismatch, " +
-                s"expected: ${schema(pkColumn.getName).dataType} real: ${pkColumn.getValue.getType}")
+                s"expected: ${schema(pkColumn.getName).dataType} " +
+                s"real: ${pkColumn.getValue.getType}")
           }
         case PrimaryKeyType.STRING =>
           pkColumn.getValue.asString()
         case PrimaryKeyType.BINARY =>
           pkColumn.getValue.asBinary()
         case _ =>
-          throw new SerDeException(s"unknown data type of primary key: ${pkColumn.getValue.getType}")
+          throw new SerDeException(s"unknown data type of primary " +
+            s"key: ${pkColumn.getValue.getType}")
       }
     } else if (isPropertyKey) {
       val col = row.getLatestColumn(filedName)

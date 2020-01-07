@@ -21,15 +21,15 @@ import java.nio.charset.StandardCharsets
 import java.sql.Timestamp
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.aliyun.datahub.model.OffsetContext
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.hadoop.fs.Path
 
-import org.apache.spark.internal.Logging
 import org.apache.spark._
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
 
@@ -47,7 +47,8 @@ class DatahubSourceRDD(
     maxOffsetPerTrigger: Long = -1) extends RDD[DatahubData](_sc, Nil) with Logging {
 
   @transient private var zkClient = DatahubOffsetReader.getOrCreateZKClient(zkParam)
-  @transient private var datahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
+  @transient private var datahubClientAgent =
+    DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
 
   override def compute(split: Partition, context: TaskContext): Iterator[DatahubData] = {
     val shardPartition = split.asInstanceOf[ShardPartition]
@@ -104,14 +105,15 @@ class DatahubSourceRDD(
 
         private def checkHasNext: Boolean = {
           if (shardPartition.count <= 0 ) {
-            dataBuffer.nonEmpty
+            dataBuffer.asScala.nonEmpty
           } else {
             val hasNext = hasRead < shardPartition.count || !dataBuffer.isEmpty
             if (!hasNext) {
               // commit next offset
               val nextSeq = lastOffset.getSequence + 1
-              writeDataToZk(zkClient, s"$checkpointDir/datahub/available/$project/$topic/${shardPartition.shardId}",
-                nextSeq.toString)
+              val path =
+                s"$checkpointDir/datahub/available/$project/$topic/${shardPartition.shardId}"
+              writeDataToZk(zkClient, path, nextSeq.toString)
             }
             hasNext
           }
@@ -120,10 +122,14 @@ class DatahubSourceRDD(
         private def fetchData() = {
           val topicResult = datahubClientAgent.getTopic(project, topic)
           val schema = topicResult.getRecordSchema
-          val limit = if (shardPartition.count - hasRead >= step) step else shardPartition.count - hasRead
-          val recordResult = datahubClientAgent.getRecords(project, topic, shardPartition.shardId, nextCursor,
-            limit, schema)
-          recordResult.getRecords.foreach(record => {
+          val limit = if (shardPartition.count - hasRead >= step) {
+            step
+          } else {
+            shardPartition.count - hasRead
+          }
+          val recordResult = datahubClientAgent.getRecords(project, topic, shardPartition.shardId,
+            nextCursor, limit, schema)
+          recordResult.getRecords.asScala.foreach(record => {
             try {
               val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
                 (null, null).asInstanceOf[(String, Any)]
@@ -137,18 +143,19 @@ class DatahubSourceRDD(
                 new Timestamp(record.getSystemTime), columnArray))
             } catch {
               case e: NoSuchElementException =>
-                logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as an invalid " +
-                  s"data and continue.")
+                logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as " +
+                  "an invalid data and continue.")
             }
             lastOffset = record.getOffset
           })
           nextCursor = recordResult.getNextCursor
           hasRead = hasRead + recordResult.getRecordCount
-          logDebug(s"shardId: ${shardPartition.shardId}, nextCursor: $nextCursor, hasRead: $hasRead, count: ${shardPartition.count}")
+          logDebug(s"shardId: ${shardPartition.shardId}, nextCursor: $nextCursor, " +
+            s"hasRead: $hasRead, count: ${shardPartition.count}")
 
         }
 
-        private def writeDataToZk(zkClient: ZkClient, path:String, data:String) = {
+        private def writeDataToZk(zkClient: ZkClient, path: String, data: String) = {
           val dir = new Path(path).toUri.getPath
           if (!zkClient.exists(dir)) {
             zkClient.createPersistent(dir, true)
@@ -188,4 +195,5 @@ private class ShardPartition(
     val count: Int) extends Partition {
   override def index: Int = partitionId
   override def hashCode(): Int = 41 * (41 + rddId) + index
+  override def equals(other: Any): Boolean = super.equals(other)
 }

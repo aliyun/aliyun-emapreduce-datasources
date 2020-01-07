@@ -18,6 +18,8 @@ emr-hbase/target/*
 emr-jdbc/target/*
 emr-redis/target/*
 emr-sql/target/*
+emr-kudu/target/*
+emr-common/target/*
 assembly/target/*
 *.iml
 log.txt

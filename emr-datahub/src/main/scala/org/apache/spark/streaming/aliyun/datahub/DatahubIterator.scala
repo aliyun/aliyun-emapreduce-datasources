@@ -19,10 +19,11 @@ package org.apache.spark.streaming.aliyun.datahub
 
 import java.util.concurrent.LinkedBlockingQueue
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import com.aliyun.datahub.model.{OffsetContext, RecordEntry}
 import org.I0Itec.zkclient.ZkClient
+
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
 import org.apache.spark.util.NextIterator
@@ -93,7 +94,7 @@ private class DatahubIterator(
       logDebug("Fetch 0 records from datahub, sleep 100ms and fetch again")
       Thread.sleep(100)
     } else {
-      recordResult.getRecords.foreach(record => {
+      recordResult.getRecords.asScala.foreach(record => {
         dataBuffer.offer(func(record).getBytes())
         lastOffset = record.getOffset
       })
@@ -103,7 +104,7 @@ private class DatahubIterator(
     }
   }
 
-  private def writeDataToZk(zkClient: ZkClient, path:String, data:String) = {
+  private def writeDataToZk(zkClient: ZkClient, path: String, data: String) = {
     if (!zkClient.exists(path)) {
       zkClient.createPersistent(path, true)
     }

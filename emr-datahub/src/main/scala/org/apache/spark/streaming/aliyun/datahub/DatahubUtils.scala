@@ -16,15 +16,17 @@
  */
 package org.apache.spark.streaming.aliyun.datahub
 
+import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.auth.AliyunAccount
 import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model.RecordEntry
-import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
+
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.JavaStreamingContext
 import org.apache.spark.streaming.dstream.DStream
 
+@deprecated("""Please use 'spark.readStream.format("datahub")' instead.""", "1.8.0")
 object DatahubUtils {
   /**
    * Scala constructor to create a DStream from datahub source.
@@ -74,8 +76,8 @@ object DatahubUtils {
       shardId: String,
       func: RecordEntry => String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
-    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, shardId, func,
-      storageLevel)
+    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret,
+      endpoint, shardId, func, storageLevel)
   }
 
   /**
@@ -108,11 +110,11 @@ object DatahubUtils {
 
     for (shardEntry <- shardEntries) {
       if (dStream == null) {
-        dStream = createStream(ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint,
-          shardEntry.getShardId, func, storageLevel)
+        dStream = createStream(ssc, projectName, topicName, subId, accessKeyId, accessKeySecret,
+          endpoint, shardEntry.getShardId, func, storageLevel)
       } else {
-        dStream = dStream.union(createStream(ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint,
-          shardEntry.getShardId, func, storageLevel))
+        dStream = dStream.union(createStream(ssc, projectName, topicName, subId, accessKeyId,
+          accessKeySecret, endpoint, shardEntry.getShardId, func, storageLevel))
       }
     }
 
@@ -129,7 +131,8 @@ object DatahubUtils {
       endpoint: String,
       func: RecordEntry => String,
       storageLevel: StorageLevel): DStream[Array[Byte]] = {
-    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret, endpoint, func, storageLevel)
+    createStream(jssc.ssc, projectName, topicName, subId, accessKeyId, accessKeySecret,
+      endpoint, func, storageLevel)
   }
 
   /**
@@ -185,7 +188,8 @@ object DatahubUtils {
       func: RecordEntry => String,
       mode: CursorType,
       zkParam: Map[String, String]): DStream[Array[Byte]] = {
-    createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
+    createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey,
+      func, mode, zkParam)
   }
 
   /**
@@ -248,6 +252,10 @@ object DatahubUtils {
   }
 }
 
+/**
+ * @deprecated As of release 1.8.0, please use spark.readStream.format("datahub") instead.
+ */
+@deprecated
 class DatahubUtilsHelper {
   /**
    * Java constructor to create a DStream from datahub source.
@@ -343,7 +351,8 @@ class DatahubUtilsHelper {
       func: RecordEntry => String,
       mode: CursorType,
       zkParam: Map[String, String]): DStream[Array[Byte]] = {
-    DatahubUtils.createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey, func, mode, zkParam)
+    DatahubUtils.createDirectStream(jssc.ssc, endpoint, project, topic, subId, accessId, accessKey,
+      func, mode, zkParam)
   }
 
   /**

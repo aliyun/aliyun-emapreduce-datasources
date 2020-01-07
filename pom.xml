@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.11</artifactId>
-    <version>1.8.0</version>
+    <version>2.0.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Aliyun E-MapReduce Root</name>
@@ -27,6 +27,7 @@
 
     <modules>
         <module>emr-oss</module>
+        <module>emr-common</module>
         <module>emr-jdbc</module>
         <module>emr-maxcompute</module>
         <module>emr-logservice</module>
@@ -39,6 +40,7 @@
         <module>emr-kafka</module>
         <module>emr-redis</module>
         <module>emr-druid</module>
+        <module>emr-kudu</module>
         <module>examples</module>
         <module>emr-baseline-testing</module>
         <module>emr-sql</module>
@@ -71,6 +73,7 @@
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
         <okhttp3.version>3.12.0</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
+        <zookeeper.version>3.4.10</zookeeper.version>
         <commons.lang3.version>3.3.2</commons.lang3.version>
         <kafka.version>0.10.1.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
@@ -84,6 +87,7 @@
         <spark.redis.version>2.4.0</spark.redis.version>
         <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
         <json4s.jackson.version>3.5.3</json4s.jackson.version>
+        <curator.version>4.2.0</curator.version>
         <avro.mapred.classifier>hadoop2</avro.mapred.classifier>
         <PermGen>64m</PermGen>
         <MaxPermGen>512m</MaxPermGen>
@@ -106,6 +110,10 @@
                 <artifactId>spark-core_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
                 <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>com.fasterxml.jackson.core</groupId>
                         <artifactId>jackson-databind</artifactId>
@@ -137,6 +145,22 @@
                 <artifactId>spark-sql_${scala.binary.version}</artifactId>
                 <version>${spark.version}</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-sql_${scala.binary.version}</artifactId>
+                <version>${spark.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
+                <version>${spark.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
@@ -303,6 +327,13 @@
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-common</artifactId>
+                <version>${hadoop.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client</artifactId>
                 <version>${hadoop.version}</version>
                 <scope>provided</scope>
             </dependency>
@@ -655,6 +686,28 @@
                         <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                         <autoReleaseAfterClose>true</autoReleaseAfterClose>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.scalastyle</groupId>
+                    <artifactId>scalastyle-maven-plugin</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <verbose>false</verbose>
+                        <failOnViolation>true</failOnViolation>
+                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        <failOnWarning>false</failOnWarning>
+                        <sourceDirectory>${basedir}/src/main/scala</sourceDirectory>
+                        <testSourceDirectory>${basedir}/src/test/scala</testSourceDirectory>
+                        <configLocation>scalastyle-config.xml</configLocation>
+                        <outputFile>${basedir}/target/scalastyle-output.xml</outputFile>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

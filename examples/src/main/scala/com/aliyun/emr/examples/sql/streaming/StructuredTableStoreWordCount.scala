@@ -24,11 +24,12 @@ import org.apache.spark.sql.SparkSession
 object StructuredTableStoreWordCount {
   def main(args: Array[String]): Unit = {
     if (args.length < 7) {
+      // scalastyle:off
       System.err.println(
         "Usage: StructuredTableStoreWordCount <ots-instanceName>" +
           "<ots-tableName> <ots-tunnelId> <access-key-id> <access-key-secret> <ots-endpoint>" +
-          "<max-offsets-per-channel> [<checkpoint-location>]"
-      )
+          "<max-offsets-per-channel> [<checkpoint-location>]")
+      // scalastyle:on
     }
 
     val Array(
@@ -41,8 +42,6 @@ object StructuredTableStoreWordCount {
       maxOffsetsPerChannel,
       _*
     ) = args
-
-    System.out.println(args.toSeq.toString)
 
     val checkpointLocation =
       if (args.length > 7) args(7)
@@ -66,19 +65,24 @@ object StructuredTableStoreWordCount {
       .option("access.key.id", accessKeyId)
       .option("access.key.secret", accessKeySecret)
       .option("maxOffsetsPerChannel", maxOffsetsPerChannel)
+      // scalastyle:off
       .option(
         "catalog",
         "{\"columns\":{\"PkString\":{\"col\":\"PkString\",\"type\":\"string\"},\"PkInt\":{\"col\":\"PkInt\",\"type\":\"int\"}," +
-          "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}}}"
-      )
+          "\"col1\":{\"col\":\"col1\",\"type\":\"string\"}}}")
+      // scalastyle:on
       .load()
       .selectExpr("PkString", "PkInt", "__ots_record_type__")
       .as[(String, Integer, String)]
 
+    // scalastyle:off
     println(lines.printSchema())
+    // scalastyle:on
     val wordCounts = lines
       .flatMap(line => {
-        System.out.println(s"wordCount line: ${line}")
+        // scalastyle:off
+        System.out.println(s"wordCount line: $line")
+        // scalastyle:on
         line._1.split(" ")
       })
       .groupBy("value")

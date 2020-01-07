@@ -19,16 +19,18 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util.concurrent.{Executors, ThreadFactory}
 
-import com.alicloud.openservices.tablestore.model.tunnel.internal.GetCheckpointRequest
+import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+
+import com.alicloud.openservices.tablestore.{ClientConfiguration, SyncClient, SyncClientInterface, TunnelClient, TunnelClientInterface}
+import com.alicloud.openservices.tablestore.model.AlwaysRetryStrategy
 import com.alicloud.openservices.tablestore.model.tunnel.{ChannelStatus, DescribeTunnelRequest, ListTunnelRequest}
-import com.alicloud.openservices.tablestore.{SyncClient, SyncClientInterface, TunnelClient, TunnelClientInterface}
+import com.alicloud.openservices.tablestore.model.tunnel.internal.GetCheckpointRequest
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.util.{ThreadUtils, UninterruptibleThread}
-
-import scala.collection.JavaConversions._
-import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
 
 class TableStoreOffsetReader(readerOptions: Map[String, String])
   extends Logging {
@@ -48,9 +50,6 @@ class TableStoreOffsetReader(readerOptions: Map[String, String])
 
   val execContext = ExecutionContext.fromExecutorService(tablestoreReaderThread)
 
-  /**
-   * This method ensures that the closure is called in an [[UninterpretableThread]].
-   */
   private[sql] def runUninterruptibly[T](body: => T): T = {
     if (!Thread.currentThread().isInstanceOf[UninterruptibleThread]) {
       val future = Future {
@@ -62,7 +61,8 @@ class TableStoreOffsetReader(readerOptions: Map[String, String])
     }
   }
 
-  val tunnelClient: TunnelClientInterface = TableStoreOffsetReader.getOrCreateTunnelClient(readerOptions)
+  val tunnelClient: TunnelClientInterface =
+    TableStoreOffsetReader.getOrCreateTunnelClient(readerOptions)
 
   private val accessKeyId = readerOptions.getOrElse(
     "access.key.id",
@@ -81,8 +81,8 @@ class TableStoreOffsetReader(readerOptions: Map[String, String])
     throw new MissingArgumentException("Missing TableStore instance (='instance.name').")
   )
 
-  val syncClient: SyncClientInterface =
-    TableStoreOffsetReader.getOrCreateSyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+  val syncClient: SyncClientInterface = TableStoreOffsetReader.getOrCreateSyncClient(
+    endpoint, accessKeyId, accessKeySecret, instanceName)
 
   private val tableName = readerOptions.getOrElse(
     "table.name",
@@ -99,28 +99,45 @@ class TableStoreOffsetReader(readerOptions: Map[String, String])
   def fetchTunnelChannels(): Set[TunnelChannel] = {
     val listResp = tunnelClient.listTunnel(new ListTunnelRequest(tableName))
     var tunnelName = ""
-    listResp.getTunnelInfos.foreach(tunnel =>
+    listResp.getTunnelInfos.asScala.foreach(tunnel =>
       if (tunnel.getTunnelId == tunnelId) {
         tunnelName = tunnel.getTunnelName
       }
     )
-    val describeResp = tunnelClient.describeTunnel(new DescribeTunnelRequest(tableName, tunnelName))
-    describeResp.getChannelInfos
+    val describeResp =
+      tunnelClient.describeTunnel(new DescribeTunnelRequest(tableName, tunnelName))
+    describeResp.getChannelInfos.asScala
       .filter(channel => channel.getChannelStatus == ChannelStatus.OPEN)
-      .map(channel => TunnelChannel(tableName, tunnelId, channel.getChannelId))
+      .map(channel => TunnelChannel(tunnelId, channel.getChannelId))
       .toSet
   }
 
+  // Cause fetch offsets from tunnel would request to tunnel master, and tunnel master is
+  // single node, here we will limit the refresh frequent.
+  private val refreshIntervalMillis = 5000
+  private var latestFetchTimestamp = 0L
+  private var latestTunnelOffset = Map.empty[TunnelChannel, ChannelOffset]
+  private val lock = new Object
+
   def fetchOffsetsFromTunnel(): Map[TunnelChannel, ChannelOffset] = {
-    fetchTunnelChannels()
-      .map { tc =>
-        val getCheckpointResp = tunnelClient.getCheckpoint(
-          new GetCheckpointRequest(tc.tunnelId, clientName, tc.channelId)
-        )
-        (tc, ChannelOffset(getCheckpointResp.getCheckpoint, 0L))
+    if (latestFetchTimestamp + refreshIntervalMillis < System.currentTimeMillis) {
+      lock.synchronized {
+        if (latestFetchTimestamp + refreshIntervalMillis < System.currentTimeMillis()) {
+          latestFetchTimestamp = System.currentTimeMillis()
+          latestTunnelOffset = fetchTunnelChannels()
+            .map { tc =>
+              val getCheckpointResp = tunnelClient.getCheckpoint(
+                new GetCheckpointRequest(tc.tunnelId, clientName, tc.channelId)
+              )
+              (tc, ChannelOffset(getCheckpointResp.getCheckpoint, 0L))
+            }
+            .filter(co => co._2 != ChannelOffset.TERMINATED_CHANNEL_OFFSET)
+            .toMap
+          logInfo(s"fetch channel offsets from tunnel, detail: ${latestTunnelOffset}")
+        }
       }
-      .filter(co => co._2 != ChannelOffset.TERMINATED_CHANNEL_OFFSET)
-      .toMap
+    }
+    latestTunnelOffset
   }
 
   // Fetch open channels and filter terminated channels.
@@ -146,7 +163,10 @@ object TableStoreOffsetReader extends Logging with Serializable {
     accessKeySecret: String, instanceName: String): TunnelClientInterface = {
     if (tunnelClient == null) {
       logInfo("create new tunnelClient")
-      tunnelClient = new TunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+      val clientConfig = new ClientConfiguration()
+      clientConfig.setRetryStrategy(new AlwaysRetryStrategy(10, 1000))
+      tunnelClient =
+        new TunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName, clientConfig)
     }
     tunnelClient
   }
@@ -169,7 +189,10 @@ object TableStoreOffsetReader extends Logging with Serializable {
         "instance.name",
         throw new MissingArgumentException("Missing TableStore instance (='instance.name').")
       )
-      tunnelClient = new TunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+      val clientConfig = new ClientConfiguration()
+      clientConfig.setRetryStrategy(new AlwaysRetryStrategy(10, 1000))
+      tunnelClient =
+        new TunnelClient(endpoint, accessKeyId, accessKeySecret, instanceName, clientConfig)
     }
     tunnelClient
   }
@@ -178,7 +201,10 @@ object TableStoreOffsetReader extends Logging with Serializable {
     accessKeySecret: String, instanceName: String): SyncClientInterface = {
     if (syncClient == null) {
       logInfo("crate new syncClient")
-      syncClient = new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
+      val clientConfig = new ClientConfiguration()
+      clientConfig.setRetryStrategy(new AlwaysRetryStrategy(10, 1000))
+      syncClient =
+        new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName, clientConfig)
     }
     syncClient
   }

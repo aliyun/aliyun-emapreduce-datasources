@@ -17,20 +17,21 @@
 
 package org.apache.spark.streaming.aliyun.datahub
 
+import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.common.data.RecordSchema
 import com.aliyun.datahub.exception.{InvalidParameterException, MalformedRecordException, ResourceNotFoundException}
-import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import com.aliyun.datahub.model._
-import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
-import org.apache.spark.internal.Logging
+import com.aliyun.datahub.model.GetCursorRequest.CursorType
 import org.codehaus.jackson.JsonNode
 import org.codehaus.jackson.map.ObjectMapper
 import org.codehaus.jackson.node.ObjectNode
 
+import org.apache.spark.internal.Logging
+
 class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
 
   private val datahubServiceMaxRetry = 3
-  private val client = new DatahubClient(conf)
+  private[spark] val client = new DatahubClient(conf)
 
   def getTopic(projectName: String, topicName: String): GetTopicResult = {
     var retry = 0
@@ -40,21 +41,20 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
           return client.getTopic(projectName, topicName)
         }
       catch {
-        case e: ResourceNotFoundException => {
+        case e: ResourceNotFoundException =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getTopic, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getTopic exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
   }
 
-  def getCursor(projectName: String, topicName: String, shardId: String, cursorType: CursorType): GetCursorResult = {
+  def getCursor(projectName: String, topicName: String, shardId: String, cursorType: CursorType):
+    GetCursorResult = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
@@ -62,14 +62,12 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         return client.getCursor(projectName, topicName, shardId, cursorType)
       }
       catch {
-        case e @(_:ResourceNotFoundException | _:InvalidParameterException ) => {
+        case e @ (_: ResourceNotFoundException | _: InvalidParameterException ) =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getCursor, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getCursor exceed max retry times[$datahubServiceMaxRetry].")
@@ -80,23 +78,22 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
       projectName: String,
       topicName: String,
       shardId: String,
-      offset: OffsetContext.Offset):GetCursorResult = {
+      offset: OffsetContext.Offset): GetCursorResult = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
       try {
-        val request = new GetCursorRequest(projectName, topicName, shardId, CursorType.SEQUENCE, offset.getSequence)
+        val request = new GetCursorRequest(projectName, topicName, shardId,
+          CursorType.SEQUENCE, offset.getSequence)
         return client.getCursor(request)
       }
       catch {
-        case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
+        case e @ (_: ResourceNotFoundException | _: InvalidParameterException) =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getCursor, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getCursor exceed max retry times[$datahubServiceMaxRetry].")
@@ -112,18 +109,17 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
       try {
-        val request = new GetCursorRequest(projectName, topicName, shardId, CursorType.SEQUENCE, sequence)
+        val request =
+          new GetCursorRequest(projectName, topicName, shardId, CursorType.SEQUENCE, sequence)
         return client.getCursor(request)
       }
       catch {
-        case e @(_:ResourceNotFoundException | _:InvalidParameterException) => {
+        case e @ (_: ResourceNotFoundException | _: InvalidParameterException) =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getCursor, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getCursor exceed max retry times[$datahubServiceMaxRetry].")
@@ -149,11 +145,10 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
                   _: InvalidParameterException) => {
           throw e
         }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getRecords, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getRecords exceed max retry times[$datahubServiceMaxRetry].")
@@ -168,21 +163,23 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         return client.listShard(project, topic)
       }
       catch {
-        case e: InvalidParameterException => {
+        case e: InvalidParameterException =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when listShards, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to listShards exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
   }
 
-  def initOffsetContext(projectName: String, topicName: String, subscribeId: String, shardId: String): OffsetContext = {
+  def initOffsetContext(
+      projectName: String,
+      topicName: String,
+      subscribeId: String,
+      shardId: String): OffsetContext = {
     var retry = 0
     var currentException: Exception = null
     while (retry <= datahubServiceMaxRetry) {
@@ -190,14 +187,12 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         return client.initOffsetContext(projectName, topicName, subscribeId, shardId)
       }
       catch {
-        case e: InvalidParameterException => {
+        case e: InvalidParameterException =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when initOffsetContext, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to initOffsetContext exceed max retry times[$datahubServiceMaxRetry].")
@@ -205,8 +200,9 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
   }
 
   /**
-   * @InvalidParameterException one possible reason is when timestamp of oldest data in datahub
-   *                           is larger than consume offset in offsetCtx cause data is expired
+   * @throws InvalidParameterException
+   *        one possible reason is when timestamp of oldest data in datahub
+   *        is larger than consume offset in offsetCtx cause data is expired
    */
   def getNextOffsetCursor(offsetCtx: OffsetContext): GetCursorResult = {
     var retry = 0
@@ -216,14 +212,12 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         return client.getNextOffsetCursor(offsetCtx)
       }
       catch {
-        case e @ (_: ResourceNotFoundException | _: InvalidParameterException) => {
+        case e @ (_: ResourceNotFoundException | _: InvalidParameterException) =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when getNextOffsetCursor, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to getNextOffsetCursor exceed max retry times[$datahubServiceMaxRetry].")
@@ -238,14 +232,12 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         return client.commitOffset(offsetCtx)
       }
       catch {
-        case e: InvalidParameterException => {
+        case e: InvalidParameterException =>
           throw e
-        }
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when commitOffset, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to commitOffset exceed max retry times[$datahubServiceMaxRetry].")
@@ -260,11 +252,10 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
         client.updateOffsetContext(offsetCtx)
       }
       catch {
-        case e: Exception => {
+        case e: Exception =>
           retry += 1
           currentException = e
           logError(s"catch exception when updateOffsetContext, start to retry $retry-times")
-        }
       }
     }
     logError(s"retry to updateOffsetContext exceed max retry times[$datahubServiceMaxRetry].")
@@ -283,9 +274,13 @@ object JacksonParser {
     offsetContextObjectNode.getBinaryValue
     val offset = new OffsetContext.Offset(offsetContextObjectNode.get("Sequence").asLong(),
       offsetContextObjectNode.get("Timestamp").asLong())
-    new OffsetContext(offsetContextObjectNode.get("Project").asText(), offsetContextObjectNode.get("Topic").asText(),
+    new OffsetContext(
+      offsetContextObjectNode.get("Project").asText(),
+      offsetContextObjectNode.get("Topic").asText(),
       offsetContextObjectNode.get("SubId").asText(),
-      offsetContextObjectNode.get("ShardId").asText(), offset, offsetContextObjectNode.get("Version").asLong(),
+      offsetContextObjectNode.get("ShardId").asText(),
+      offset,
+      offsetContextObjectNode.get("Version").asLong(),
       offsetContextObjectNode.get("SessionId").asText())
   }
 

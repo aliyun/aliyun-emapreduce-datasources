@@ -16,13 +16,26 @@
  */
 package org.apache.spark.sql.aliyun.tablestore
 
+import org.json4s.DefaultFormats
+import org.json4s.jackson.Serialization
+
 /**
-  * @param logPoint: channel checkpoint of Tablestore tunnel service.
-  * @param offset: offset between under this channel checkpoint.
-  */
+ * @param logPoint: channel checkpoint of Tablestore tunnel service.
+ * @param offset: offset between under this channel checkpoint.
+ */
 case class ChannelOffset(logPoint: String, offset: Long)
 
 object ChannelOffset {
   // BaseData channel or Father Stream channel would finally turn to Terminated.
   val TERMINATED_CHANNEL_OFFSET = ChannelOffset(TableStoreSourceProvider.OTS_CHANNEL_FINISHED, 0L)
+
+  implicit val formats: DefaultFormats.type = DefaultFormats
+
+  def serialize(offset: ChannelOffset): String = {
+    Serialization.write(offset)
+  }
+
+  def deserialize(offset: String): ChannelOffset = {
+    Serialization.read[ChannelOffset](offset)
+  }
 }

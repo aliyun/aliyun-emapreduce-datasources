@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,18 +18,19 @@ package org.apache.spark.aliyun.odps
 
 import java.io.EOFException
 
+import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
+
+import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
-import com.aliyun.odps.tunnel.io.TunnelRecordReader
 import com.aliyun.odps.tunnel.TableTunnel
-import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
+import com.aliyun.odps.tunnel.io.TunnelRecordReader
+
 import org.apache.spark._
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.NextIterator
-
-import scala.collection.mutable.ArrayBuffer
-import scala.reflect.ClassTag
 
 class OdpsPartition(rddId: Int,
     idx: Int,
@@ -46,6 +46,8 @@ class OdpsPartition(rddId: Int,
   extends Partition {
 
   override def hashCode(): Int = 41 * (41 + rddId) + idx
+
+  override def equals(other: Any): Boolean = super.equals(other)
 
   override val index: Int = idx
 }
@@ -63,7 +65,8 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
     numPartition: Int,
     transfer: (Record, TableSchema) => T) {
 
-    this(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl, project, table, "Non-Partitioned", numPartition, transfer)
+    this(sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl, project, table,
+      "Non-Partitioned", numPartition, transfer)
   }
 
   /** Implemented by subclasses to compute a given partition. */
@@ -78,9 +81,9 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
       val tunnel = new TableTunnel(odps)
       tunnel.setEndpoint(tunnelUrl)
       var downloadSession: TableTunnel#DownloadSession = null
-      if(part.equals("Non-Partitioned"))
+      if(part.equals("Non-Partitioned")) {
         downloadSession = tunnel.createDownloadSession(project, table)
-      else {
+      } else {
         val partitionSpec = new PartitionSpec(part)
         downloadSession = tunnel.createDownloadSession(project, table, partitionSpec)
       }
@@ -136,9 +139,9 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
     val tunnel = new TableTunnel(odps)
     tunnel.setEndpoint(tunnelUrl)
     var downloadSession: TableTunnel#DownloadSession = null
-    if(part.equals("Non-Partitioned"))
+    if(part.equals("Non-Partitioned")) {
       downloadSession = tunnel.createDownloadSession(project, table)
-    else {
+    } else {
       val partitionSpec = new PartitionSpec(part)
       downloadSession = tunnel.createDownloadSession(project, table, partitionSpec)
     }
@@ -169,7 +172,8 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
           table,
           part
         )
-    }.filter(p => p.count > 0) //remove the last count==0 to prevent exceptions from reading odps table.
+    }.filter(p => p.count > 0)
+      // remove the last count==0 to prevent exceptions from reading odps table.
       .map(_.asInstanceOf[Partition])
     ret
   }

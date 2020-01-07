@@ -5,7 +5,7 @@
     <parent>
         <artifactId>emr_2.11</artifactId>
         <groupId>com.aliyun.emr</groupId>
-        <version>1.8.0</version>
+        <version>2.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -26,6 +26,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-common_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
@@ -39,6 +45,13 @@
 
         <dependency>
             <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <scope>provided</scope>
             <exclusions>
@@ -47,6 +60,20 @@
                     <artifactId>commons-codec</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -105,8 +132,32 @@
         </dependency>
 
         <dependency>
+            <groupId>net.sf.jopt-simple</groupId>
+            <artifactId>jopt-simple</artifactId>
+            <version>5.0.4</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.binary.version}</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -168,6 +219,7 @@
                     <outputFile>${project.build.directory}/shaded/emr-logservice_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
+                            <include>com.aliyun.emr:emr-common_2.11</include>
                             <include>com.aliyun.openservices:aliyun-log</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
                             <include>com.aliyun.openservices:aliyun-log-producer</include>
@@ -177,6 +229,10 @@
                             <include>net.sf.json-lib:json-lib</include>
                             <include>commons-validator:commons-validator</include>
                             <include>com.alibaba:fastjson</include>
+                            <include>org.apache.zookeeper:zookeeper</include>
+                            <include>com.101tec:zkclient</include>
+                            <include>org.apache.curator:*</include>
+                            <include>net.sf.jopt-simple:jopt-simple</include>
                         </includes>
                     </artifactSet>
                     <relocations>

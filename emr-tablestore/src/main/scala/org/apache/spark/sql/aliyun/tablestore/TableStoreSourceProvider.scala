@@ -19,8 +19,9 @@ package org.apache.spark.sql.aliyun.tablestore
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode
@@ -57,7 +58,7 @@ class TableStoreSourceProvider
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    validateOptions(parameters)
+    validateOptions(parameters, isStream = true)
     val caseInsensitiveParams = parameters.map {
       case (k, v) => (k.toLowerCase(Locale.ROOT), v)
     }
@@ -74,11 +75,11 @@ class TableStoreSourceProvider
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    validateOptions(parameters)
+    validateOptions(parameters, isStream = false)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
 
-  def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+  def validateOptions(caseInsensitiveParams: Map[String, String], isStream: Boolean): Unit = {
     caseInsensitiveParams.getOrElse(
       "table.name",
       throw new MissingArgumentException("Missing TableStore table (='table.name').")
@@ -87,10 +88,12 @@ class TableStoreSourceProvider
       "instance.name",
       throw new MissingArgumentException("Missing TableStore table (='instance.name').")
     )
-    caseInsensitiveParams.getOrElse(
-      "tunnel.id",
-      throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
-    )
+    if (isStream) {
+      caseInsensitiveParams.getOrElse(
+        "tunnel.id",
+        throw new MissingArgumentException("Missing TableStore tunnel (='tunnel.id').")
+      )
+    }
     caseInsensitiveParams.getOrElse(
       "access.key.id",
       throw new MissingArgumentException("Missing access key id (='access.key.id').")

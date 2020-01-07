@@ -16,7 +16,10 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
+import scala.collection.JavaConverters._
+
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
+
 import org.apache.spark.SparkContext
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
@@ -26,8 +29,6 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.api.java.{JavaDStream, JavaInputDStream, JavaReceiverInputDStream, JavaStreamingContext}
 import org.apache.spark.streaming.dstream.{DStream, ReceiverInputDStream}
-
-import scala.collection.JavaConverters._
 
 /**
  * Various utility classes for working with Aliyun LogService.
@@ -273,6 +274,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -291,6 +293,7 @@ object LoghubUtils {
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
     """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
+  // scalastyle:off
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -321,9 +324,11 @@ object LoghubUtils {
         forceSpecial)
     }
   }
+  // scalastyle:on
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -369,6 +374,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -388,6 +394,7 @@ object LoghubUtils {
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
     """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
+  // scalastyle:off
   def createStream(
       ssc: StreamingContext,
       logServiceProject: String,
@@ -421,9 +428,11 @@ object LoghubUtils {
       ))
     }
   }
+  // scalastyle:on
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param ssc StreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -473,6 +482,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -503,6 +513,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -526,6 +537,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -558,6 +570,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -583,6 +596,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -601,6 +615,7 @@ object LoghubUtils {
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
     """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
+  // scalastyle:off
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -617,9 +632,11 @@ object LoghubUtils {
       loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
       storageLevel, cursorPosition, mLoghubCursorStartTime, forceSpecial)
   }
+  // scalastyle:on
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -651,6 +668,7 @@ object LoghubUtils {
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -670,6 +688,7 @@ object LoghubUtils {
    */
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
     """Please use 'spark.readStream.format("loghub")' instead.""", "1.8.0")
+  // scalastyle:off
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -687,9 +706,11 @@ object LoghubUtils {
       loghubEndpoint, numReceivers, accessKeyId, accessKeySecret, storageLevel,
       cursorPosition, mLoghubCursorStartTime, forceSpecial)
   }
+  // scalastyle:on
 
   /**
    * Create loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param logServiceProject The name of `LogService` project.
    * @param logStoreName The name of logStore.
@@ -722,6 +743,7 @@ object LoghubUtils {
 
   /**
    * Create direct loghub [[DStream]].
+   *
    * @param ssc StreamingContext.
    * @param project The name of `LogService` project.
    * @param logStore The name of logStore.
@@ -753,10 +775,11 @@ object LoghubUtils {
   }
 
   /**
+   * Create direct loghub [[DStream]].
+   *
    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
    * at the first time with current `mConsumerGroup`
    *
-   * Create direct loghub [[DStream]].
    * @param ssc StreamingContext.
    * @param project The name of `LogService` project.
    * @param logStore The name of logStore.
@@ -791,6 +814,7 @@ object LoghubUtils {
 
   /**
    * Create direct loghub [[DStream]].
+   *
    * @param jssc JavaStreamingContext.
    * @param project The name of `LogService` project.
    * @param logStore The name of logStore.
@@ -822,10 +846,11 @@ object LoghubUtils {
   }
 
   /**
+   * Create direct loghub [[DStream]].
+   *
    * Set `cursorStartTime` a valid value when using LogHubCursorPosition.SPECIAL_TIMER_CURSOR mode
    * at the first time with current `mConsumerGroup`
    *
-   * Create direct loghub [[DStream]].
    * @param jssc StreamingContext.
    * @param project The name of `LogService` project.
    * @param logStore The name of logStore.
@@ -854,14 +879,15 @@ object LoghubUtils {
       zkParams: java.util.HashMap[String, String],
       mode: LogHubCursorPosition,
       cursorStartTime: Long): JavaInputDStream[String] = {
-    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore, mConsumerGroup, accessKeyId,
-      accessKeySecret, endpoint, zkParams.asScala.toMap, mode, cursorStartTime))
+    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore,
+      mConsumerGroup, accessKeyId, accessKeySecret, endpoint, zkParams.asScala.toMap,
+      mode, cursorStartTime))
   }
 
   @deprecated("""This method has been deprecated and will be removed in a future release. """ +
     """Please use 'spark.read.format("loghub")' instead.""", "1.8.0")
   def createRDD(
-      sc:SparkContext,
+      sc: SparkContext,
       project: String,
       logStore: String,
       accessId: String,
@@ -870,8 +896,8 @@ object LoghubUtils {
       startTime: Long,
       endTime: Long = -1,
       parallelismInShard: Int = 1) : RDD[String] = {
-    new LoghubBatchRDD(sc, project, logStore, accessId, accessKey, endpoint, startTime, endTime = endTime,
-      parallelismInShard = parallelismInShard)
+    new LoghubBatchRDD(sc, project, logStore, accessId, accessKey, endpoint, startTime,
+      endTime = endTime, parallelismInShard = parallelismInShard)
   }
 }
 
@@ -927,6 +953,7 @@ class LoghubUtilsHelper {
       loghubConsumerGroupName, numReceivers, storageLevel)
   }
 
+  // scalastyle:off
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -949,6 +976,7 @@ class LoghubUtilsHelper {
       loghubConsumerGroupName, loghubEndpoint, accessKeyId, accessKeySecret,
       storageLevel, cursor, mLoghubCursorStartTime, forceSpecial)
   }
+  // scalastyle:on
 
   def createStream(
       jssc: JavaStreamingContext,
@@ -970,6 +998,7 @@ class LoghubUtilsHelper {
       forceSpecial)
   }
 
+  // scalastyle:off
   def createStream(
       jssc: JavaStreamingContext,
       logServiceProject: String,
@@ -993,6 +1022,7 @@ class LoghubUtilsHelper {
       loghubEndpoint, numReceivers, accessKeyId, accessKeySecret, storageLevel,
       cursor, mLoghubCursorStartTime, forceSpecial)
   }
+  // scalastyle:on
 
   def createStream(
       jssc: JavaStreamingContext,
@@ -1047,12 +1077,12 @@ class LoghubUtilsHelper {
       case "SPECIAL_TIMER_CURSOR" => LogHubCursorPosition.SPECIAL_TIMER_CURSOR
       case e: String => throw new IllegalArgumentException(s"Unknown LogHubCursorPosition $e")
     }
-    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore, mConsumerGroup, accessKeyId,
-      accessKeySecret, endpoint, zkParams.asScala.toMap, cursorMode, cursorStartTime))
+    new JavaInputDStream(new DirectLoghubInputDStream(jssc.ssc, project, logStore, mConsumerGroup,
+      accessKeyId, accessKeySecret, endpoint, zkParams.asScala.toMap, cursorMode, cursorStartTime))
   }
 
   def createRDD(
-      jsc:JavaSparkContext,
+      jsc: JavaSparkContext,
       project: String,
       logStore: String,
       accessId: String,
@@ -1060,11 +1090,12 @@ class LoghubUtilsHelper {
       endpoint: String,
       startTime: Long,
       endTime: Long) : JavaRDD[String] = {
-    LoghubUtils.createRDD(jsc.sc, project, logStore, accessId, accessKey, endpoint, startTime, endTime)
+    LoghubUtils.createRDD(jsc.sc, project, logStore, accessId, accessKey, endpoint, startTime,
+      endTime)
   }
 
   def createRDD(
-      jsc:JavaSparkContext,
+      jsc: JavaSparkContext,
       project: String,
       logStore: String,
       accessId: String,

@@ -16,14 +16,15 @@
  */
 package com.aliyun.emr.examples.streaming
 
-import java.util.{UUID, Properties}
+import java.util.{Properties, UUID}
 
 import com.aliyun.openservices.ons.api.{Message, PropertyKeyConst}
 import com.aliyun.openservices.ons.api.impl.ONSFactoryImpl
+
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.streaming.{StreamingContext, Milliseconds}
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.streaming.aliyun.ons.OnsUtils
-import org.apache.spark.{SparkContext, SparkConf}
 
 object TestOnsStreaming {
   def main(args: Array[String]): Unit = {
@@ -36,7 +37,9 @@ object TestOnsStreaming {
     val ssc = new StreamingContext(conf, batchInterval)
     def func: Message => Array[Byte] = msg => msg.getBody
     val onsStreams = (0 until numStreams).map { i =>
+      // scalastyle:off
       println(s"starting stream $i")
+      // scalastyle:on
       OnsUtils.createStream(
         ssc,
         cId,
@@ -49,7 +52,9 @@ object TestOnsStreaming {
     }
 
     val unionStreams = ssc.union(onsStreams)
+    // scalastyle:off
     unionStreams.foreachRDD(rdd => println(s"count: ${rdd.count()}"))
+    // scalastyle:on
 
     ssc.start()
     ssc.awaitTermination()
@@ -89,7 +94,7 @@ object OnsRecordProducer {
     producer.start()
 
     var count = 0
-    while(true){
+    while(true) {
       val uuid = UUID.randomUUID()
       val msg = new Message(topic, tag, uuid.toString.getBytes)
       msg.setKey(s"ORDERID_${partitionId}_$count")
