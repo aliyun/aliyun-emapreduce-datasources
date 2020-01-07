@@ -32,6 +32,9 @@ import com.alicloud.openservices.tablestore.model.tunnel._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{DataFrame, SparkSession, SQLContext}
 import org.apache.spark.sql.execution.streaming.Source
+import org.apache.spark.sql.sources.BaseRelation
+
+import scala.collection.mutable
 
 class TableStoreTestUtil extends Logging {
   private val instanceName = Option(System.getenv("OTS_INSTANCE_NAME")).getOrElse("")
@@ -152,10 +155,9 @@ class TableStoreTestUtil extends Logging {
   }
 
   private[sql] def getTestOptions(origOptions: Map[String, String]): Map[String, String] = {
-    Map(
+    val baseMap = mutable.Map(
       "instance.name" -> instanceName,
       "table.name" -> tableName,
-      "tunnel.id" -> origOptions.getOrElse("tunnel.id", ""),
       "endpoint" -> endpoint,
       "access.key.id" -> accessKeyId,
       "access.key.secret" -> accessKeySecret,
@@ -164,7 +166,11 @@ class TableStoreTestUtil extends Logging {
         "10000"
       ),
       "catalog" -> origOptions.getOrElse("catalog", "")
-    )
+      )
+      if (origOptions.contains("tunnel.id")) {
+        baseMap("tunnel.id") = origOptions("tunnel.id")
+    }
+    baseMap.toMap
   }
 
   private[sql] def createTestSource(
@@ -181,6 +187,14 @@ class TableStoreTestUtil extends Logging {
       provider.shortName(),
       fullOptions
     )
+  }
+
+  private[sql] def createTestRelation(
+      sqlContext: SQLContext,
+      options: Map[String, String]): BaseRelation = {
+    val provider = new TableStoreSourceProvider()
+    val fullOptions = getTestOptions(options)
+    provider.createRelation(sqlContext, fullOptions)
   }
 
   private[sql] def genStreamRecord(

@@ -88,8 +88,8 @@ object Utils extends Logging {
 
             while (convertersIterator.hasNext) {
               val converter = convertersIterator.next()
-              val logContent =
-                new LogContent(fieldNamesIterator.next(), converter(rowIterator.next()).toString)
+              val logContent = new LogContent(fieldNamesIterator.next(),
+                converter(Option(rowIterator.next()).getOrElse("")).toString)
               record.PushBack(logContent)
             }
             record
@@ -169,8 +169,7 @@ object Utils extends Logging {
       offset: Int,
       accessKeyId: String,
       accessKeySecret: String,
-      endpoint: String,
-      ignoreError: Boolean = true): String = {
+      endpoint: String): String = {
     val caseInsensitiveParams = Map(
       "sls.project" -> logProject,
       "sls.store" -> logStore,
@@ -178,44 +177,18 @@ object Utils extends Logging {
       "access.key.secret" -> accessKeySecret,
       "endpoint" -> endpoint
     )
-    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
-    val earliestOffsets = loghubOffsetReader.fetchEarliestOffsets()
-    val endOffsets = loghubOffsetReader.fetchLatestOffsets()
-    require(earliestOffsets.size == endOffsets.size,
-      s"""The size of earliestOffsets dose not equals size of endOffsets
-        | earliestOffsets: $earliestOffsets
-        |
-        | endOffsets: $endOffsets
-      """.stripMargin)
-    val startOffsets = earliestOffsets.toSeq.sortBy(_._1.shard)
-      .zip(endOffsets.toSeq.sortBy(_._1.shard))
-      .map { case (startOffset, endOffset) =>
-        require(startOffset._1.shard == endOffset._1.shard)
-        if (offset < startOffset._2._1) {
-          val msg = s"Specific offset [$offset] is less than shard ${startOffset._1.shard} start " +
-            s"offset [${startOffset._2}], using [${startOffset._2}] instead of [$offset] as new " +
-            "specific offset."
-          if (ignoreError) {
-            logWarning(msg)
-            startOffset
-          } else {
-            throw new Exception(msg)
-          }
-        } else if (offset > endOffset._2._1) {
-          val msg = s"Specific offset [$offset] is larger than shard ${endOffset._1.shard} end " +
-            s"offset [${endOffset._2}], using [${endOffset._2}] instead of [$offset] as new " +
-            "specific offset."
-          if (ignoreError) {
-            logWarning(msg)
-            endOffset
-          } else {
-            throw new Exception(msg)
-          }
-        } else {
-          (startOffset._1, (offset, ""))
-        }
-      }.toMap
-    LoghubSourceOffset.partitionOffsets(startOffsets)
+    var loghubOffsetReader: LoghubOffsetReader = null
+    try {
+      loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
+      val startOffsets = loghubOffsetReader.fetchLoghubShard().map(shard => {
+        (shard, (offset, ""))
+      }).toMap
+      LoghubSourceOffset.partitionOffsets(startOffsets)
+    } finally {
+      if (loghubOffsetReader != null) {
+        loghubOffsetReader.close()
+      }
+    }
   }
 
   def decodeCursorToTimestamp(cursor: String): Long = {
