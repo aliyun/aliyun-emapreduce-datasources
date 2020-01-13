@@ -25,8 +25,8 @@ import scala.collection.mutable
 
 import com.aliyun.openservices.aliyun.log.producer.{LogProducer, Result}
 import com.aliyun.openservices.log.Client
-import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common._
+import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.exception.LogException
 import com.google.common.util.concurrent.ListenableFuture
 
@@ -37,7 +37,7 @@ class LoghubTestUtils() {
   var client: Client = null
   var producer: LogProducer = null
 
-  var logProject = "emr-sdk-ut-project"
+  var logProject = ""
   val logStorePool = new mutable.HashMap[String, Boolean]()
 
   var sourceProps: Map[String, String] = null
@@ -59,7 +59,8 @@ class LoghubTestUtils() {
 
     val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
     if (envType != "private" && envType != "public") {
-      throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
+      throw new Exception(
+        s"Unsupported test environment type: $envType, only support private or public")
     }
 
     endpoint = envType match {
@@ -76,7 +77,7 @@ class LoghubTestUtils() {
     )
     producer = LoghubOffsetReader.getOrCreateLogProducer(sourceProps)
 
-    logProject = Option(System.getenv("LOGSTORE_PROJECT_NAME")).getOrElse("")
+    logProject = Option(System.getenv("LOGSTORE_PROJECT_NAME")).getOrElse("emr-sdk-ut-project")
   }
 
   validateProps()
@@ -157,13 +158,15 @@ class LoghubTestUtils() {
       .map(shard => LoghubShard(logProject, logStore, shard.GetShardId())).toSet
     shards.map {case loghubShard =>
         val cursor = client.GetCursor(logProject, logStore, loghubShard.shard, CursorMode.END)
-        val cursorTime = client.GetCursorTime(logProject, logStore, loghubShard.shard, cursor.GetCursor())
+        val cursorTime =
+          client.GetCursorTime(logProject, logStore, loghubShard.shard, cursor.GetCursor())
         (loghubShard, (cursorTime.GetCursorTime(), cursor.GetCursor()))
       }.toMap
   }
 
   def getAllLogStoreAndShardSize(): Map[String, Int] = {
-    val allLogStores = client.ListLogStores(logProject, 0, 500, "emr-ut-store").GetLogStores().asScala
+    val allLogStores =
+      client.ListLogStores(logProject, 0, 500, "emr-ut-store").GetLogStores().asScala
     allLogStores.map(logStore => {
       val shards = client.ListShard(logProject, logStore).GetShards().asScala
       (logStore, shards.size)
@@ -179,7 +182,8 @@ class LoghubTestUtils() {
   }
 
   def cleanAllResources(): Unit = {
-    val allLogStores = client.ListLogStores(logProject, 0, 500, "emr-ut-store").GetLogStores().asScala
+    val allLogStores =
+      client.ListLogStores(logProject, 0, 500, "emr-ut-store").GetLogStores().asScala
     allLogStores.foreach(logStore => {
       try {
         client.DeleteLogStore(logProject, logStore)
