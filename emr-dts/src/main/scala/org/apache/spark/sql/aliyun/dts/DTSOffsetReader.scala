@@ -21,9 +21,6 @@ import java.text.SimpleDateFormat
 
 import scala.collection.JavaConverters._
 
-import com.aliyuncs.DefaultAcsClient
-import com.aliyuncs.dts.model.v20180801.DescribeSubscriptionInstanceStatusRequest
-import com.aliyuncs.profile.DefaultProfile
 import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 
@@ -37,15 +34,8 @@ class DTSOffsetReader(options: DataSourceOptions) {
   private val df = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss'Z'")
   df.setTimeZone(getTimeZone("UTC"))
 
-  private val instanceId = options.get(DTS_INSTANCE_ID).get()
-  private val accessKeyId = options.get(ACCESS_KEY_ID).get
-  private val accessKeySecret = options.get(ACCESS_KEY_SECRET).get
-  private val endpoint = options.get(ENDPOINT).get
   private val topic = options.get(KAFKA_TOPIC).get
   private val tp = new TopicPartition(topic, 0)
-
-  private val profile = DefaultProfile.getProfile(endpoint, accessKeyId, accessKeySecret)
-  private var client = new DefaultAcsClient(profile)
 
   @volatile protected var _consumer: Consumer[Array[Byte], Array[Byte]] = null
 
@@ -61,12 +51,6 @@ class DTSOffsetReader(options: DataSourceOptions) {
 
   def fetchLatestOffsets(): PartitionOffset = {
     try {
-//      val request = new DescribeSubscriptionInstanceStatusRequest()
-//      request.setSubscriptionInstanceId(instanceId)
-//      val response = client.getAcsResponse(request)
-//      val endTimestamp = df.parse(response.getEndTimestamp).getTime / 1000
-//      val remoteOffset = consumer.offsetsForTimes(ju.Collections.singletonMap(tp, endTimestamp))
-//      val off = remoteOffset.get(tp)
       consumer.seekToEnd(Seq(tp).asJava)
       val off = consumer.position(tp)
       (tp, off)
@@ -79,12 +63,6 @@ class DTSOffsetReader(options: DataSourceOptions) {
 
   def fetchEarliestOffsets(): PartitionOffset = {
     try {
-//      val request = new DescribeSubscriptionInstanceStatusRequest()
-//      request.setSubscriptionInstanceId(instanceId)
-//      val response = client.getAcsResponse(request)
-//      val startTimestamp = df.parse(response.getBeginTimestamp).getTime / 1000
-//      val remoteOffset = consumer.offsetsForTimes(ju.Collections.singletonMap(tp, startTimestamp))
-//      val off = remoteOffset.get(tp)
       consumer.seekToBeginning(Seq(tp).asJava)
       val off = consumer.position(tp)
       (tp, off)
@@ -120,7 +98,6 @@ class DTSOffsetReader(options: DataSourceOptions) {
   }
 
   def close(): Unit = {
-    client = null
     if (_consumer != null) {
       _consumer.close()
       _consumer = null
