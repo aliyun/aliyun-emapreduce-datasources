@@ -5,3 +5,4 @@ org.apache.spark.sql.aliyun.jdbc2.JdbcSourceProvider
 org.apache.spark.sql.aliyun.datahub.DatahubSourceProvider
 org.apache.spark.sql.aliyun.redis.RedisStreamSourceProvider
 org.apache.kudu.spark.kudu.KuduSourceProvider
+org.apache.spark.sql.aliyun.dts.DTSSourceProvider
