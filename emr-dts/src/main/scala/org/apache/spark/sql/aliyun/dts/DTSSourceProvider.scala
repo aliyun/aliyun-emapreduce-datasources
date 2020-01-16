@@ -101,11 +101,7 @@ class DTSSourceProvider extends DataSourceRegister
 }
 
 object DTSSourceProvider {
-  val DTS_INSTANCE_ID = "instanceid"
   val SID_NAME = "sid"
-  val ACCESS_KEY_ID = "accesskeyid"
-  val ACCESS_KEY_SECRET = "accesskeysecret"
-  val ENDPOINT = "endpoint"
   val USER_NAME = "user"
   val PASSWORD_NAME = "password"
   val KAFKA_BROKER_URL_NAME = "broker"
@@ -168,24 +164,8 @@ object DTSSourceProvider {
   }
 
   def checkOptions(options: DataSourceOptions): Unit = {
-    if (!options.asMap().containsKey(DTS_INSTANCE_ID)) {
-      throw new MissingArgumentException(s"Missing required argument '$DTS_INSTANCE_ID'.")
-    }
-
     if (!options.asMap().containsKey(SID_NAME)) {
       throw new MissingArgumentException(s"Missing required argument '$SID_NAME'.")
-    }
-
-    if (!options.asMap().containsKey(ACCESS_KEY_ID)) {
-      throw new MissingArgumentException(s"Missing required argument '$ACCESS_KEY_ID'.")
-    }
-
-    if (!options.asMap().containsKey(ACCESS_KEY_SECRET)) {
-      throw new MissingArgumentException(s"Missing required argument '$ACCESS_KEY_SECRET'.")
-    }
-
-    if (!options.asMap().containsKey(ENDPOINT)) {
-      throw new MissingArgumentException(s"Missing required argument '$ENDPOINT'.")
     }
 
     if (!options.asMap().containsKey(USER_NAME)) {

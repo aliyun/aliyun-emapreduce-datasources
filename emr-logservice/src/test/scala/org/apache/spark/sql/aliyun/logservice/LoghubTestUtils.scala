@@ -30,7 +30,7 @@ import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.exception.LogException
 import com.google.common.util.concurrent.ListenableFuture
 
-class LoghubTestUtils() {
+class LoghubTestUtils {
   var accessKeyId: String = null
   var accessKeySecret: String = null
   var endpoint: String = null
