@@ -20,9 +20,10 @@ package org.apache.spark.sql.aliyun.logservice
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
-import org.scalatest.FunSuite
 
-class LoghubOffsetReaderSuite extends FunSuite {
+import org.apache.spark.SparkFunSuite
+
+class LoghubOffsetReaderSuite extends SparkFunSuite {
   test("create loghub client used for one region") {
     val accessKeyId = "accessKeyId"
     val accessKeySecret = "accessKeySecret"
