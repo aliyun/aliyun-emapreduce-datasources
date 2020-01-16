@@ -19,6 +19,7 @@ package com.alibaba.dts.common;
 
 import com.alibaba.dts.formats.avro.Record;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Util {
@@ -62,20 +63,29 @@ public class Util {
         return builder.toString();
     }
 
-
-    public static void sleepMs(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (Exception e) {
-        }
-    }
-
-    public static FieldEntryHolder[] getFieldEntryHolder(Record record) {
+    public static FieldEntryHolder[] getFieldEntryHolder(Record record) throws Exception {
         // this is a simple impl, may exist unhandled situation
         FieldEntryHolder[] fieldArray = new FieldEntryHolder[2];
 
-        fieldArray[0] = new FieldEntryHolder((List<Object>) record.getBeforeImages());
-        fieldArray[1] = new FieldEntryHolder((List<Object>) record.getAfterImages());
+        try {
+            if (record.getBeforeImages() instanceof List) {
+                fieldArray[0] = new FieldEntryHolder((List<Object>) record.getBeforeImages());
+            } else if (record.getBeforeImages() instanceof String) {
+                List<Object> field = new ArrayList<>();
+                field.add(record.getBeforeImages());
+                fieldArray[0] = new FieldEntryHolder(field);
+            }
+
+            if (record.getAfterImages() instanceof List) {
+                fieldArray[1] = new FieldEntryHolder((List<Object>) record.getAfterImages());
+            } else if (record.getAfterImages() instanceof String) {
+                List<Object> field = new ArrayList<>();
+                field.add(record.getAfterImages());
+                fieldArray[1] = new FieldEntryHolder(field);
+            }
+        } catch (Exception e) {
+            throw new Exception("Failed to get field entry holder.", e);
+        }
 
         return fieldArray;
     }

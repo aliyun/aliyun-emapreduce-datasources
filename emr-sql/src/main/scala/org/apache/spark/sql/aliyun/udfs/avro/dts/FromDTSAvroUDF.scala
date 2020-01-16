@@ -115,7 +115,7 @@ class FromDTSAvroUDF extends GenericUDTF with Logging {
       }
     }
 
-    val fields = record.getFields.asInstanceOf[ju.List[Field]].asScala
+    val fields = Option(record.getFields).map(_.asInstanceOf[ju.List[Field]].asScala)
     val fieldArray = Util.getFieldEntryHolder(record)
     val beforeImages = fieldArray(0)
     val afterImages = fieldArray(1)
@@ -126,30 +126,42 @@ class FromDTSAvroUDF extends GenericUDTF with Logging {
     forwardColObj(3) = record.getOperation.toString
     forwardColObj(4) = new java.sql.Timestamp(record.getSourceTimestamp * 1000L)
     forwardColObj(5) = record.getTags.isEmpty match {
-      case true => "{}"
+      case true => null
       case false => compact(
         render(record.getTags.asScala.map(i => i._1 -> JString(i._2) : JObject).reduce(_ ~ _)))
     }
-    forwardColObj(6) = compact(render(JArray(fields.map(_.getName).map(JString(_)).toList)))
+    forwardColObj(6) = fields.map { f =>
+      compact(render(JArray(f.map(_.getName).map(JString(_)).toList)))
+    }.orNull
     forwardColObj(7) = makeImageString(beforeImages, fields)
     forwardColObj(8) = makeImageString(afterImages, fields)
 
     forward(forwardColObj)
   }
 
-  private def makeImageString(holder: FieldEntryHolder, fields: Seq[Field]): String = {
-    val imageMap = new mutable.HashMap[String, String]()
-    fields.foreach(field => {
-      val item = holder.take()
-      if (item != null) {
-        val image = FIELD_CONVERTER.convert(field, item).toString
-        imageMap.put(field.getName, image)
+  private def makeImageString(holder: FieldEntryHolder, fields: Option[Seq[Field]]): String = {
+    try {
+      if (holder == null) {
+        return null
       }
-    })
-    imageMap.isEmpty match {
-      case true => "{}"
-      case false => compact(
-        render(imageMap.map(i => i._1 -> JString(i._2) : JObject).reduce(_ ~ _)))
+      val imageMap = new mutable.HashMap[String, String]()
+      fields.map { f =>
+        f.foreach(field => {
+          val item = holder.take()
+          if (item != null) {
+            val image = FIELD_CONVERTER.convert(field, item).toString
+            imageMap.put(field.getName, image)
+          }
+        })
+        imageMap.isEmpty match {
+          case true => null
+          case false => compact(
+            render(imageMap.map(i => i._1 -> JString(i._2): JObject).reduce(_ ~ _)))
+        }
+      }.orNull
+    } catch {
+      case e: Exception =>
+        throw new Exception("Failed to make image string.", e)
     }
   }
 }
