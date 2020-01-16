@@ -24,3 +24,8 @@ private[dts] case object LatestOffsetRangeLimit extends DTSOffsetRangeLimit
 
 private[dts] case class SpecificOffsetRangeLimit(checkpoint: String)
   extends DTSOffsetRangeLimit
+
+private[dts] object DTSOffsetRangeLimit {
+  val LATEST = -1L // indicates resolution to the latest offset
+  val EARLIEST = -2L // indicates resolution to the earliest offset
+}

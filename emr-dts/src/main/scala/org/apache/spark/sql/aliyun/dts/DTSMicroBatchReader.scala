@@ -25,7 +25,6 @@ import scala.collection.JavaConverters._
 
 import org.apache.commons.io.IOUtils
 
-import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
@@ -34,7 +33,7 @@ import org.apache.spark.sql.sources.v2.DataSourceOptions
 import org.apache.spark.sql.sources.v2.reader.InputPartition
 import org.apache.spark.sql.sources.v2.reader.streaming.{MicroBatchReader, Offset}
 import org.apache.spark.sql.types._
-import org.apache.spark.util.{UninterruptibleThread, Utils}
+import org.apache.spark.util.UninterruptibleThread
 
 class DTSMicroBatchReader(
     dtsOffsetReader: DTSOffsetReader,

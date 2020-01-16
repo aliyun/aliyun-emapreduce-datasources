@@ -27,13 +27,15 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.config.SaslConfigs
 
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
 import org.apache.spark.sql.execution.streaming.Source
-import org.apache.spark.sql.sources.{DataSourceRegister, StreamSourceProvider}
+import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister, RelationProvider, StreamSourceProvider}
 import org.apache.spark.sql.sources.v2.{DataSourceOptions, MicroBatchReadSupport}
 import org.apache.spark.sql.sources.v2.reader.streaming.MicroBatchReader
 import org.apache.spark.sql.types._
 
 class DTSSourceProvider extends DataSourceRegister
+  with RelationProvider
   with StreamSourceProvider
   with MicroBatchReadSupport {
   override def shortName(): String = "dts"
@@ -67,6 +69,34 @@ class DTSSourceProvider extends DataSourceRegister
     val startingStreamOffsets = DTSSourceProvider.getDTSOffsetRangeLimit(caseInsensitiveParams,
       DTSSourceProvider.STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     new DTSMicroBatchReader(dtsOffsetReader, checkpointLocation, startingStreamOffsets, options)
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String]): BaseRelation = {
+    val caseInsensitiveParameters = CaseInsensitiveMap(parameters)
+    val specifiedKafkaParams = convertToSpecifiedParams(caseInsensitiveParameters)
+    val startingRelationOffsets = DTSSourceProvider.getDTSOffsetRangeLimit(
+      parameters, DTSSourceProvider.STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
+    assert(startingRelationOffsets != LatestOffsetRangeLimit)
+
+    val endingRelationOffsets = DTSSourceProvider.getDTSOffsetRangeLimit(
+      parameters, DTSSourceProvider.ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    assert(endingRelationOffsets != EarliestOffsetRangeLimit)
+    new DTSRelation(
+      sqlContext,
+      caseInsensitiveParameters,
+      specifiedKafkaParams,
+      startingRelationOffsets,
+      endingRelationOffsets)
+  }
+
+  private def convertToSpecifiedParams(parameters: Map[String, String]): Map[String, String] = {
+    parameters
+      .keySet
+      .filter(_.toLowerCase(Locale.ROOT).startsWith("kafka."))
+      .map { k => k.drop(6).toString -> parameters(k) }
+      .toMap
   }
 }
 

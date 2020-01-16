@@ -24,12 +24,13 @@ import scala.collection.JavaConverters._
 import org.apache.kafka.clients.consumer.{Consumer, KafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.dts.DTSSourceProvider._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.getTimeZone
 import org.apache.spark.sql.sources.v2.DataSourceOptions
 import org.apache.spark.util.UninterruptibleThread
 
-class DTSOffsetReader(options: DataSourceOptions) {
+class DTSOffsetReader(options: DataSourceOptions) extends Logging {
 
   private val df = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss'Z'")
   df.setTimeZone(getTimeZone("UTC"))
@@ -94,6 +95,16 @@ class DTSOffsetReader(options: DataSourceOptions) {
       (offsetAndTS(0).toLong, None)
     } else {
       (offsetAndTS(0).toLong, Some(offsetAndTS(1).toLong))
+    }
+  }
+
+  def fetchPartitionOffsets(
+      offsetRangeLimit: DTSOffsetRangeLimit,
+      isStartingOffsets: Boolean): PartitionOffset = {
+    offsetRangeLimit match {
+      case EarliestOffsetRangeLimit => (tp, DTSOffsetRangeLimit.EARLIEST)
+      case LatestOffsetRangeLimit => (tp, DTSOffsetRangeLimit.LATEST)
+      case SpecificOffsetRangeLimit(partitionOffsets) => fetchSpecificOffsets(partitionOffsets)
     }
   }
 

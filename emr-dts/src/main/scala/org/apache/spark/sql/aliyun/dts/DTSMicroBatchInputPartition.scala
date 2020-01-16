@@ -39,7 +39,7 @@ class DTSMicroBatchInputPartition(
     new DTSMicroBatchInputPartitionReader(tp, startOffset, endOffset, options)
 }
 
-private class DTSMicroBatchInputPartitionReader(
+private[dts] class DTSMicroBatchInputPartitionReader(
     tp: TopicPartition,
     startOffset: Long,
     endOffset: Long,
