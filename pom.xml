@@ -55,11 +55,13 @@
         <tablestore.sdk.version>5.3.0</tablestore.sdk.version>
         <odps.version>0.28.4-public</odps.version>
         <loghubb.client.version>0.6.15</loghubb.client.version>
+        <aliyun.sdk.core>4.3.2</aliyun.sdk.core>
         <aliyun.log.version>0.6.37</aliyun.log.version>
         <aliyun.log.producer.version>0.3.3</aliyun.log.producer.version>
         <ons.version>1.8.2.Final</ons.version>
         <mns.version>1.1.8.4</mns.version>
-        <dts.version>4.6.27.12.0</dts.version>
+        <dts.version>3.0.0</dts.version>
+        <dts.subsribe.version>4.6.27.12.0</dts.subsribe.version>
         <hadoop.version>2.9.0</hadoop.version>
         <fastjson.version>1.2.45</fastjson.version>
         <hive.version>2.0.1</hive.version>
@@ -69,18 +71,17 @@
         <eclipse.jetty>9.3.24.v20180605</eclipse.jetty>
         <easymock.version>3.2</easymock.version>
         <mockito.version>1.10.19</mockito.version>
-        <gson.version>2.8.2</gson.version>
+        <gson.version>2.8.5</gson.version>
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
         <okhttp3.version>3.12.0</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
         <zookeeper.version>3.4.10</zookeeper.version>
         <commons.lang3.version>3.3.2</commons.lang3.version>
-        <kafka.version>0.10.1.0</kafka.version>
+        <kafka.version>2.0.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
         <datahub.verion>2.13.0-public</datahub.verion>
         <confluent.version>5.0.0</confluent.version>
         <avro.version>1.8.2</avro.version>
-        <gson.version>2.2.4</gson.version>
         <protobuf.version>2.5.0</protobuf.version>
         <hbase.version>1.4.9</hbase.version>
         <hbase.mr.version>2.0.4</hbase.mr.version>
@@ -238,6 +239,10 @@
                         <groupId>com.google.protobuf</groupId>
                         <artifactId>protobuf-java</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>com.google.code.gson</groupId>
+                        <artifactId>gson</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
 
@@ -306,9 +311,21 @@
             </dependency>
 
             <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>aliyun-java-sdk-core</artifactId>
+                <version>${aliyun.sdk.core}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>aliyun-java-sdk-dts</artifactId>
+                <version>${dts.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.aliyun.dts</groupId>
                 <artifactId>dts-subscribe-sdk</artifactId>
-                <version>${dts.version}</version>
+                <version>${dts.subsribe.version}</version>
             </dependency>
 
             <dependency>
@@ -329,6 +346,12 @@
                 <artifactId>hadoop-common</artifactId>
                 <version>${hadoop.version}</version>
                 <scope>provided</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.code.gson</groupId>
+                        <artifactId>gson</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
@@ -436,6 +459,12 @@
                 <version>${hadoop.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.code.gson</groupId>
+                        <artifactId>gson</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.hadoop</groupId>

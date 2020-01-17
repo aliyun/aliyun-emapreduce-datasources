@@ -14,10 +14,15 @@
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce Kafka Client Metrics Reporter</name>
 
+    <properties>
+        <kafka.version>0.10.1.0</kafka.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.10</artifactId>
+            <version>${kafka.version}</version>
         </dependency>
         <dependency>
             <groupId>com.yammer.metrics</groupId>

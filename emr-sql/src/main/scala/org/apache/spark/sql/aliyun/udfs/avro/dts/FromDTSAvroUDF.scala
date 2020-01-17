@@ -25,7 +25,7 @@ import scala.collection.mutable
 import com.alibaba.dts.common.{FieldEntryHolder, Util}
 import com.alibaba.dts.formats.avro.Field
 import com.alibaba.dts.recordprocessor.{AvroDeserializer, FieldConverter}
-import org.apache.hadoop.hive.ql.exec.UDFArgumentException
+import org.apache.hadoop.hive.ql.exec.{Description, UDFArgumentException}
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF
 import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspector, ObjectInspectorFactory, StructObjectInspector}
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.{BinaryObjectInspector, PrimitiveObjectInspectorFactory}
@@ -35,6 +35,10 @@ import org.json4s.jackson.JsonMethods._
 
 import org.apache.spark.internal.Logging
 
+@Description(
+  name = FromDTSAvroUDF.name,
+  value = FromDTSAvroUDF.value,
+  extended = FromDTSAvroUDF.extendedValue)
 class FromDTSAvroUDF extends GenericUDTF with Logging {
   var _x1: BinaryObjectInspector = _
 
@@ -115,7 +119,7 @@ class FromDTSAvroUDF extends GenericUDTF with Logging {
       }
     }
 
-    val fields = record.getFields.asInstanceOf[ju.List[Field]].asScala
+    val fields = Option(record.getFields).map(_.asInstanceOf[ju.List[Field]].asScala)
     val fieldArray = Util.getFieldEntryHolder(record)
     val beforeImages = fieldArray(0)
     val afterImages = fieldArray(1)
@@ -126,30 +130,65 @@ class FromDTSAvroUDF extends GenericUDTF with Logging {
     forwardColObj(3) = record.getOperation.toString
     forwardColObj(4) = new java.sql.Timestamp(record.getSourceTimestamp * 1000L)
     forwardColObj(5) = record.getTags.isEmpty match {
-      case true => "{}"
+      case true => null
       case false => compact(
         render(record.getTags.asScala.map(i => i._1 -> JString(i._2) : JObject).reduce(_ ~ _)))
     }
-    forwardColObj(6) = compact(render(JArray(fields.map(_.getName).map(JString(_)).toList)))
+    forwardColObj(6) = fields.map { f =>
+      compact(render(JArray(f.map(_.getName).map(JString(_)).toList)))
+    }.orNull
     forwardColObj(7) = makeImageString(beforeImages, fields)
     forwardColObj(8) = makeImageString(afterImages, fields)
 
     forward(forwardColObj)
   }
 
-  private def makeImageString(holder: FieldEntryHolder, fields: Seq[Field]): String = {
-    val imageMap = new mutable.HashMap[String, String]()
-    fields.foreach(field => {
-      val item = holder.take()
-      if (item != null) {
-        val image = FIELD_CONVERTER.convert(field, item).toString
-        imageMap.put(field.getName, image)
+  private def makeImageString(holder: FieldEntryHolder, fields: Option[Seq[Field]]): String = {
+    try {
+      if (holder == null) {
+        return null
       }
-    })
-    imageMap.isEmpty match {
-      case true => "{}"
-      case false => compact(
-        render(imageMap.map(i => i._1 -> JString(i._2) : JObject).reduce(_ ~ _)))
+      val imageMap = new mutable.HashMap[String, String]()
+      fields.map { f =>
+        f.foreach(field => {
+          val item = holder.take()
+          if (item != null) {
+            val image = FIELD_CONVERTER.convert(field, item).toString
+            imageMap.put(field.getName, image)
+          }
+        })
+        imageMap.isEmpty match {
+          case true => null
+          case false => compact(
+            render(imageMap.map(i => i._1 -> JString(i._2): JObject).reduce(_ ~ _)))
+        }
+      }.orNull
+    } catch {
+      case e: Exception =>
+        throw new Exception("Failed to make image string.", e)
     }
   }
+}
+
+object FromDTSAvroUDF {
+  final val name = "dts_binlog_parser"
+  final val value = "_FUNC_(binary) - Returns a struct value with the given `binary` value."
+  final val extendedValue =
+    """
+      |Only binary data from Aliyun DTS is supported.
+      |Returned struct value schema:
+      | | recordID long
+      | | source string
+      | | dbTable string
+      | | recordType string
+      | | recordTimestamp timestamp
+      | | extraTags string
+      | | fields string
+      | | beforeImages string
+      | | afterImages string
+      |
+      |Example:
+      | > SELECT dts_binlog_parser(binary)
+      |   10	{"sourceType": "MySQL", "version": "5.7.26-log"}	students	UPDATE	2020-01-10 17:23:18	{"pk_uk_info":"{}","readerThroughoutTime":"1578648243764"}	["id","name","__#alibaba_rds_row_id#__"]	{"__#alibaba_rds_row_id#__":"44","name":"jack","id":"1"}	{"__#alibaba_rds_row_id#__":"44","name":"jack","id":"2"}
+    """
 }

@@ -59,6 +59,18 @@
             <artifactId>emr-kudu_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-dts_${scala.binary.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>aliyun-java-sdk-dts</artifactId>
+            <version>${dts.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -99,6 +111,8 @@
                             <include>com.aliyun.openservices:aliyun-log-producer</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
                             <include>com.aliyun.openservices:tablestore</include>
+                            <include>com.aliyun:aliyun-java-sdk-core</include>
+                            <include>com.aliyun:aliyun-java-sdk-dts</include>
                             <include>com.alibaba:fastjson</include>
                             <include>com.google.guava:guava</include>
                             <include>com.google.protobuf:protobuf-java</include>
@@ -112,6 +126,7 @@
                             <include>com.aliyun.emr:emr-hbase_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-datahub_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-kudu_${scala.binary.version}</include>
+                            <include>com.aliyun.emr:emr-dts_${scala.binary.version}</include>
                             <include>com.aliyun.emr:emr-common_${scala.binary.version}</include>
                             <include>com.101tec:zkclient</include>
                             <include>org.apache.zookeeper:zookeeper</include>
@@ -123,6 +138,8 @@
                             <include>redis.clients:jedis</include>
                             <include>org.apache.kudu:kudu-spark2_2.11</include>
                             <include>org.apache.curator:*</include>
+                            <include>org.apache.kafka:kafka-clients</include>
+                            <include>com.google.code.gson:gson</include>
                         </includes>
                     </artifactSet>
                     <relocations>
