@@ -364,7 +364,10 @@ class DirectLoghubInputDStream(
       val result = loghubClient.ListCheckpoints(project, logStore, consumerGroup)
       if (result != null) {
         result.getCheckPoints.foreach(item => {
-          checkpoints.put(item.getShard, item.getCheckPoint)
+          val checkpoint = item.getCheckPoint
+          if (StringUtils.isNotBlank(checkpoint)) {
+            checkpoints.put(item.getShard, checkpoint)
+          }
         })
       }
     } catch {
@@ -377,7 +380,7 @@ class DirectLoghubInputDStream(
   private def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]):
     String = {
     val checkpoint = checkpoints.getOrElse(shardId, null)
-    if (checkpoint != null) {
+    if (StringUtils.isNotBlank(checkpoint)) {
       logInfo(s"Shard $shardId will start from checkpoint $checkpoint")
       return checkpoint
     }
