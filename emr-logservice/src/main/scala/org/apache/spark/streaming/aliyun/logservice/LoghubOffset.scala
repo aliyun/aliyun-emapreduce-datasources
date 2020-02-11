@@ -22,3 +22,6 @@ package org.apache.spark.streaming.aliyun.logservice
  * @param timestamp The offfset of each loghub shard.
  */
 case class LoghubOffset(shardId: Int, timestamp: Long)
+
+
+case class ShardOffsetRange(shardId: Int, beginCursor: String, endCursor: String)

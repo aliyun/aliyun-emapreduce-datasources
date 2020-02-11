@@ -38,7 +38,7 @@ class LoghubRDD(
     endpoint: String,
     duration: Long,
     zkParams: Map[String, String],
-    shardOffsets: ArrayBuffer[(Int, String, String)],
+    shardOffsets: ArrayBuffer[ShardOffsetRange],
     checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
   @transient var mClient: LoghubClientAgent =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
@@ -59,12 +59,15 @@ class LoghubRDD(
       try {
         val numShards = shardOffsets.size
         shardOffsets.map(shard => {
-          val from = mClient.GetCursorTime(project, logStore, shard._1, shard._2).GetCursorTime()
-          val to = mClient.GetCursorTime(project, logStore, shard._1, shard._3).GetCursorTime()
+          val from = mClient.GetCursorTime(project, logStore, shard.shardId, shard.beginCursor)
+            .GetCursorTime()
+          val to = mClient.GetCursorTime(project, logStore, shard.shardId, shard.endCursor)
+            .GetCursorTime()
           val res = mClient.GetHistograms(project, logStore, from, to, "", "*")
           if (!res.IsCompleted()) {
-            logWarning(s"Failed to get complete count for [$project]-[$logStore]-[${shard._1}] " +
-              s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. " +
+            logWarning(s"Failed to get complete count for [$project]-[$logStore]-" +
+              s"[${shard.shardId}] from ${shard.beginCursor} to ${shard.endCursor}, " +
+              s"use ${res.GetTotalCount()} instead. " +
               s"This warning does not introduce any job failure, but may affect some information " +
               s"about this batch.")
           }
@@ -100,8 +103,9 @@ class LoghubRDD(
     val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     val count = rate * duration / 1000
     shardOffsets.zipWithIndex.map { case (p, idx) =>
-      new ShardPartition(id, idx, p._1, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
+      new ShardPartition(id, idx, p.shardId, count, project, logStore,
+        accessKeyId, accessKeySecret, endpoint, p.beginCursor, p.endCursor, logGroupStep)
+        .asInstanceOf[Partition]
     }.toArray
   }
 

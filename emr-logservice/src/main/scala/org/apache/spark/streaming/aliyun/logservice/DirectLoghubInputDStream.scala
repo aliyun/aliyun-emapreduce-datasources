@@ -16,8 +16,10 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
+import java.{util => ju}
 import java.io.{IOException, ObjectInputStream}
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentLinkedQueue
 
 // scalastyle:off
 import scala.collection.JavaConversions._
@@ -67,11 +69,9 @@ class DirectLoghubInputDStream(
   private val enablePreciseCount: Boolean =
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private var checkpointDir: String = null
-  private var doCommit: Boolean = false
-  @transient private var startTime: Long = -1L
-  @transient private var restart: Boolean = false
-  private var lastJobTime: Long = -1L
   private var readOnlyShardCache = new mutable.HashMap[Int, String]()
+  private val commitQueue = new ConcurrentLinkedQueue[ShardOffsetRange]
+  private val latestOffsets = new mutable.HashMap[Int, String]()
 
   override def start(): Unit = {
     if (enablePreciseCount) {
@@ -84,11 +84,6 @@ class DirectLoghubInputDStream(
         s"loghub rdd, via the `GetHistograms` api of log service. You can enable the behavior " +
         s"by setting 'spark.streaming.loghub.count.precise.enable'=true")
     }
-    // TODO: support concurrent jobs
-    val concurrentJobs = ssc.conf.getInt(s"spark.streaming.concurrentJobs", 1)
-    require(concurrentJobs == 1, "Loghub direct api only supports one job concurrently, " +
-      "but \"spark.streaming.concurrentJobs\"=" + concurrentJobs)
-
     var zkCheckpointDir = ssc.checkpointDir
     if (StringUtils.isBlank(zkCheckpointDir)) {
       zkCheckpointDir = s"/$consumerGroup"
@@ -114,30 +109,12 @@ class DirectLoghubInputDStream(
 
     tryToCreateConsumerGroup()
 
-    val initial = if (zkClient.exists(s"$checkpointDir/consume/$project/$logStore")) {
-      zkClient.getChildren(s"$checkpointDir/consume/$project/$logStore")
-        .filter(_.endsWith(".shard")).map(_.stripSuffix(".shard").toInt).toArray
-    } else {
-      Array.empty[String]
-    }
-    val diff =
-      loghubClient.ListShard(project, logStore).GetShards().map(_.GetShardId()).diff(initial)
-    if (diff.nonEmpty) {
-      val checkpoints = fetchAllCheckpoints()
-      diff.foreach(shardId => {
-        val cursor = findCheckpointOrCursorForShard(shardId, checkpoints)
-        DirectLoghubInputDStream.writeDataToZK(zkClient,
-          s"$checkpointDir/consume/$project/$logStore/$shardId.shard", cursor)
-      })
-    }
-
     // Clean commit data in zookeeper in case of restarting streaming job but lose checkpoint file
     // in `checkpointDir`
     try {
       zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
         zkClient.delete(s"$checkpointDir/commit/$project/$logStore/$child")
       })
-      doCommit = false
     } catch {
       case _: ZkNoNodeException =>
         logDebug("If this is the first time to run, it is fine to not find any commit data in " +
@@ -153,109 +130,72 @@ class DirectLoghubInputDStream(
   }
 
   override def compute(validTime: Time): Option[RDD[String]] = {
-    if (startTime == -1L) {
-      startTime = if (restart) {
-        val originalStartTime = graph.zeroTime.milliseconds
-        val period = graph.batchDuration.milliseconds
-        val gap = System.currentTimeMillis() - originalStartTime
-        (math.floor(gap.toDouble / period).toLong + 1) * period + originalStartTime
-      } else {
-        validTime.milliseconds
-      }
-    }
+    logInfo(s"compute validTime $validTime")
+    val shardOffsets = new ArrayBuffer[ShardOffsetRange]()
+    var checkpoints: mutable.Map[Int, String] = null
 
-    COMMIT_LOCK.synchronized {
-      val shardOffsets = new ArrayBuffer[(Int, String, String)]()
-      val lastFailed: Boolean = {
-        if (doCommit) {
-          false
+    loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
+      val shardId = shard.GetShardId()
+      val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
+      if (isReadonly && readOnlyShardCache.contains(shardId)) {
+        logInfo(s"There is no data to consume from shard $shardId.")
+      } else {
+        val start = try {
+          zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
+        } catch {
+          case _: ZkNoNodeException =>
+            logWarning("Loghub checkpoint was lost in zookeeper, re-fetch from loghub")
+            if (checkpoints == null) {
+              checkpoints = fetchAllCheckpoints()
+            }
+            findCheckpointOrCursorForShard(shardId, checkpoints)
+        }
+        val end =
+          loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+        if (start.equals(end)) {
+          logInfo(s"Skip shard $shardId which start and end cursor both are $start")
+          if (isReadonly) {
+            readOnlyShardCache.put(shardId, end)
+          }
         } else {
-          val pendingTimes = ssc.scheduler.getPendingTimes()
-          val pending = pendingTimes.exists(time => time.milliseconds == lastJobTime)
-          if (pending) {
-            false
+          val currentCursor = latestOffsets.getOrElse(shardId, null)
+          if (currentCursor != null && currentCursor.equals(start)) {
+            logInfo(s"Skip shard $shardId as it's start is same as previous $start")
           } else {
-            true
+            shardOffsets.add(ShardOffsetRange(shardId, start, end))
+            logInfo(s"ShardID $shardId, start=$start end=$end")
           }
         }
       }
-      val rdd = if (validTime.milliseconds > startTime && (doCommit || lastFailed)) {
-        if (restart || lastFailed) {
-          // 1. At the first time after restart, we should recompute from the last `consume`
-          // offset. (TODO: confirm this logic?)
-          // 2. If last batch job failed, we should also recompute from last `consume` offset.
-          // Then, set `restart=false` to continue committing.
-          restart = false
-        } else {
-          commitAll()
-        }
-        try {
-          loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
-            val shardId = shard.GetShardId()
-            val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
-            if (isReadonly && readOnlyShardCache.contains(shardId)) {
-              logDebug(s"There is no data to consume from shard $shardId.")
-            } else {
-              val start: String =
-                zkClient.readData(s"$checkpointDir/consume/$project/$logStore/$shardId.shard")
-              val end =
-                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-              logInfo(s"ShardID $shardId, start $start end $end")
-              if (!start.equals(end)) {
-                shardOffsets.+=((shardId, start, end))
-              }
-              if (start.equals(end) && isReadonly) {
-                readOnlyShardCache.put(shardId, end)
-              }
-            }
-          })
-        } catch {
-          case _: ZkNoNodeException =>
-            logWarning("Loghub consuming metadata was lost in zookeeper, re-fetch from loghub " +
-              "checkpoint")
-            val checkpoints = fetchAllCheckpoints()
-            loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
-              val shardId = shard.GetShardId()
-              val start: String = findCheckpointOrCursorForShard(shardId, checkpoints)
-              val end =
-                loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-              logInfo(s"ShardID $shardId, start $start end $end")
-              shardOffsets.+=((shardId, start, end))
-            })
-        }
-        lastJobTime = validTime.milliseconds
-        new LoghubRDD(
-          ssc.sc,
-          project,
-          logStore,
-          accessKeyId,
-          accessKeySecret,
-          endpoint,
-          ssc.graph.batchDuration.milliseconds,
-          zkParams,
-          shardOffsets,
-          checkpointDir).setName(s"LoghubRDD-${validTime.toString()}")
-      } else {
-        // Last batch has not been completed, here we generator a fake job containing no data to
-        // skip this batch.
-        new FakeLoghubRDD(ssc.sc).setName(s"Empty-LoghubRDD-${validTime.toString()}")
-      }
-
-      val description = shardOffsets.map { p =>
-        val offset = "offset: [ %1$-30s to %2$-30s ]".format(p._2, p._3)
-        s"shardId: ${p._1}\t $offset"
-      }.mkString("\n")
-      val metadata = Map(StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
-      if (storageLevel != StorageLevel.NONE && rdd.isInstanceOf[LoghubRDD]) {
-        // If storageLevel is not `StorageLevel.NONE`, we need to persist rdd before `count()` to
-        // to count the number of records to avoid refetching data from loghub.
-        rdd.persist(storageLevel)
-        logDebug(s"Persisting RDD ${rdd.id} for time $validTime to $storageLevel")
-      }
-      val inputInfo = StreamInputInfo(id, rdd.count, metadata)
-      ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
-      Some(rdd)
+    })
+    val rdd = new LoghubRDD(
+      ssc.sc,
+      project,
+      logStore,
+      accessKeyId,
+      accessKeySecret,
+      endpoint,
+      ssc.graph.batchDuration.milliseconds,
+      zkParams,
+      shardOffsets,
+      checkpointDir).setName(s"LoghubRDD-${validTime.toString()}")
+    val description = shardOffsets.map { p =>
+      val offset = "offset: [ %1$-30s to %2$-30s ]".format(p.beginCursor, p.endCursor)
+      s"shardId: ${p.shardId}\t $offset"
+    }.mkString("\n")
+    val metadata = Map(StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
+    if (storageLevel != StorageLevel.NONE) {
+      // If storageLevel is not `StorageLevel.NONE`, we need to persist rdd before `count()` to
+      // to count the number of records to avoid refetching data from loghub.
+      rdd.persist(storageLevel)
+      logDebug(s"Persisting RDD ${rdd.id} for time $validTime to $storageLevel")
     }
+    val inputInfo = StreamInputInfo(id, rdd.count(), metadata)
+    ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
+
+    shardOffsets.foreach(r => latestOffsets.put(r.shardId, r.beginCursor))
+    commitAll()
+    Some(rdd)
   }
 
   /**
@@ -264,32 +204,64 @@ class DirectLoghubInputDStream(
    * go forward, i.e. re-compute the same data over and over again.
    */
   override def commitAsync(): Unit = {
-    COMMIT_LOCK.synchronized {
-      doCommit = true
+    try {
+      zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
+        val shardId = child.substring(0, child.indexOf(".")).toInt
+        if (!readOnlyShardCache.contains(shardId)) {
+          val checkpoint: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
+          logInfo(s"Commit async shard $shardId, cursor $checkpoint")
+          if (StringUtils.isNotBlank(checkpoint)) {
+            commitQueue.add(ShardOffsetRange(shardId, checkpoint, null))
+          }
+        }
+      })
+    } catch {
+      case _: ZkNoNodeException =>
+        logWarning("If this is the first time to run, it is fine to not find any commit " +
+          "data in zookeeper.")
+    }
+  }
+
+  private def decodeCursor(cursor: String): Long = {
+    val timestampAsBytes = ju.Base64.getDecoder.decode(cursor.getBytes(StandardCharsets.UTF_8))
+    val timestamp = new String(timestampAsBytes, StandardCharsets.UTF_8)
+    timestamp.toLong
+  }
+
+  private def maxCursor(lhs: String, rhs: String): String = {
+    val lts = decodeCursor(lhs)
+    val rts = decodeCursor(rhs)
+    if (lts < rts) {
+      rhs
+    } else {
+      lhs
     }
   }
 
   private def commitAll(): Unit = {
-    if (doCommit) {
-      try {
-        zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
-          val shardId = child.substring(0, child.indexOf(".")).toInt
-          if (!readOnlyShardCache.contains(shardId)) {
-            val data: String = zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$child")
-            log.debug(s"Updating checkpoint $data of shard $shardId to consumer " +
-              s"group $consumerGroup")
-            loghubClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, data)
-            DirectLoghubInputDStream.writeDataToZK(zkClient,
-              s"$checkpointDir/consume/$project/$logStore/$child", data)
-          }
-        })
-        doCommit = false
-      } catch {
-        case _: ZkNoNodeException =>
-          logWarning("If this is the first time to run, it is fine to not find any commit " +
-            "data in zookeeper.")
-          doCommit = false
+    val m = new ju.HashMap[Int, String]()
+    var head = commitQueue.poll()
+    while (null != head) {
+      val shard = head.shardId
+      val x = m.get(shard)
+      val offset = if (null == x) {
+        head.beginCursor
+      } else {
+        maxCursor(x, head.beginCursor)
       }
+      m.put(shard, offset)
+      head = commitQueue.poll()
+    }
+    if (!m.isEmpty) {
+      m.foreach(offset => {
+        val shard = offset._1
+        val cursor = offset._2
+        logInfo(s"Updating checkpoint $cursor of shard $shard to consumer " +
+          s"group $consumerGroup")
+        loghubClient.UpdateCheckPoint(project, logStore, consumerGroup, shard, cursor)
+        DirectLoghubInputDStream.writeDataToZK(zkClient,
+          s"$checkpointDir/consume/$project/$logStore/$shard.shard", cursor)
+      })
     }
   }
 
@@ -307,8 +279,6 @@ class DirectLoghubInputDStream(
       createZkClient()
     }
     loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
-    startTime = -1L
-    restart = true
   }
 
   private def createZkClient(): Unit = {
@@ -408,6 +378,7 @@ class DirectLoghubInputDStream(
     stop()
   }
 }
+
 // scalastyle:on
 
 object DirectLoghubInputDStream {
