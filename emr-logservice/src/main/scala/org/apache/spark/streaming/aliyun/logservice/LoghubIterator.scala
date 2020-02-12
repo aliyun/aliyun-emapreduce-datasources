@@ -47,6 +47,7 @@ class LoghubIterator(
   // At most 1000 LogGroups can be returned
   private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
   private var endCursorNotReached: Boolean = true
+  private var committed: Boolean = true
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -95,12 +96,13 @@ class LoghubIterator(
   }
 
   private def commitIfNeeded(): Unit = {
-    if (commitBeforeNext) {
+    if (commitBeforeNext && !committed) {
       try {
         mClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, nextCursor)
+        committed = true
       } catch {
         case ex: Exception =>
-          logError("Commit checkpoint fail", ex)
+          logError(s"Commit checkpoint fail ${ex.getMessage}")
       }
     }
   }
