@@ -118,6 +118,14 @@ class DirectLoghubInputDStream(
     }
   }
 
+  def setClient(client: LoghubClientAgent): Unit = {
+    loghubClient = client
+  }
+
+  def getSavedCheckpoints: mutable.Map[Int, String] = {
+    savedCheckpoints
+  }
+
   override def stop(): Unit = {
     if (zkClient != null) {
       zkClient.close()
@@ -236,7 +244,7 @@ class DirectLoghubInputDStream(
     })
   }
 
-  private def tryToCreateConsumerGroup(): Unit = {
+  def tryToCreateConsumerGroup(): Unit = {
     try {
       loghubClient
         .CreateConsumerGroup(project, logStore, new ConsumerGroup(consumerGroup, 10, true))
@@ -285,7 +293,7 @@ class DirectLoghubInputDStream(
     checkpoints
   }
 
-  private def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]):
+  def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]):
     String = {
     val checkpoint = checkpoints.getOrElse(shardId, null)
     if (StringUtils.isNotBlank(checkpoint)) {
