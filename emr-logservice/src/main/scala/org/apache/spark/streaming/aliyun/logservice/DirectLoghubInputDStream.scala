@@ -136,10 +136,6 @@ class DirectLoghubInputDStream(
     if (isReadonly) {
       val end =
         loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-      if (start.equals(end)) {
-        logInfo(s"Skip shard $shardId which start and end cursor both are $start")
-        readOnlyShardCache.put(shardId, end)
-      }
       (start, end)
     } else {
       // Do not fetch end cursor for performance concern.
@@ -158,12 +154,19 @@ class DirectLoghubInputDStream(
         logInfo(s"There is no data to consume from shard $shardId.")
       } else {
         val r = getShardRange(shardId, isReadonly)
-        val lastCursor = latestOffsets.getOrElse(shardId, null)
-        if (lastCursor != null && lastCursor.equals(r._1)) {
-          logInfo(s"Skip shard $shardId as it's start is same as previous $lastCursor")
+        val start = r._1
+        val end = r._2
+        if (isReadonly && start.equals(end)) {
+          logInfo(s"Skip shard $shardId which start and end cursor both are $start")
+          readOnlyShardCache.put(shardId, end)
         } else {
-          shardOffsets.add(ShardOffsetRange(shardId, r._1, r._2))
-          logInfo(s"Shard $shardId start = ${r._1} end = ${r._2}")
+          val lastCursor = latestOffsets.getOrElse(shardId, null)
+          if (lastCursor != null && lastCursor.equals(start)) {
+            logInfo(s"Skip shard $shardId as it's start is same as previous $lastCursor")
+          } else {
+            shardOffsets.add(ShardOffsetRange(shardId, start, end))
+            logInfo(s"Shard $shardId start = $start end = $end")
+          }
         }
       }
     })
