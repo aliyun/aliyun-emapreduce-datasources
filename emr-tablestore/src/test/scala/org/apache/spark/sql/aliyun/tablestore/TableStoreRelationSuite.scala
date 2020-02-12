@@ -17,9 +17,7 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
-import com.alicloud.openservices.tablestore.model.tunnel.{TunnelStage, TunnelType}
-
-import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.test.SharedSQLContext
 
 class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
@@ -33,13 +31,11 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   private def createDF(
-    tunnelId: String,
-    withOptions: Map[String, String] = Map.empty[String, String]) = {
+    withOptions: Map[String, String] = Map.empty[String, String]): DataFrame = {
     val options =
       testUtils.getTestOptions(
         Map(
           "catalog" -> TableStoreTestUtil.catalog,
-          "tunnel.id" -> tunnelId,
           "maxOffsetsPerChannel" -> "10000"
         )
       )
@@ -53,14 +49,52 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   test("select * or column from tablestore relation") {
-    val tunnelId = testUtils.createTunnel(TunnelType.BaseData)
-    while (!testUtils.checkTunnelReady(tunnelId, TunnelStage.ProcessBaseData)) {
-      Thread.sleep(2000)
-    }
     testUtils.insertData(50000)
 
-    val df = createDF(tunnelId, Map.empty)
+    val df = createDF(Map.empty)
     assert(df.select("PkString").count() == 50000)
+    assert(df.select("col5").count() == 50000)
     assert(df.select("*").count() == 50000)
+    assert(df.select("col1", "col6", "PkInt", "PkString").count() == 50000)
+  }
+
+  test("select * from tablestore with single filter") {
+    testUtils.insertData(50000)
+
+    val df = createDF(Map.empty)
+    assert(df.select("*").filter("PkInt >= 10000").count() == 40000)
+    assert(df.select("*").filter("PkInt > 10000").count() == 39999)
+    assert(df.select("*").filter("PkInt < 10000").count() == 10000)
+    assert(df.select("*").filter("PkInt <= 10000").count() == 10001)
+    assert(df.select("*").filter("PkInt == 10000").count() == 1)
+    assert(df.select("*").filter("PkInt != 10000").count() == 49999)
+  }
+
+  test("select columns from tablestore with single filter") {
+    testUtils.insertData(50000)
+
+    val df = createDF(Map.empty)
+    assert(df.select("PkString", "col5").filter("PkInt >= 10000").count() == 40000)
+    assert(df.select("PkString", "col1").filter("PkInt > 10000").count() == 39999)
+    assert(df.select("col1", "col2").filter("PkInt < 10000").count() == 10000)
+    assert(df.select("timestamp").filter("PkInt <= 10000").count() == 10001)
+    assert(df.select("col3", "col5").filter("PkInt == 10000").count() == 1)
+    assert(df.select("col1", "PkString", "PkInt", "col6").filter("PkInt != 10000").count() == 49999)
+  }
+
+  test("select columns from tablestore with complex filter") {
+    testUtils.insertData(50000)
+
+    val df = createDF(Map.empty)
+    assert(df.select("PkString", "PkInt").filter(
+      "PkInt >= 10000 AND col6 == true").count() == 20000)
+    assert(df.select("PkString", "PkInt").filter(
+      "(PkInt >= 10000 AND col6 == true) OR (col1 < 10000 AND col5 > 3)").count() == 30000)
+    assert(df.select("col1", "col5", "PkString").filter(
+      "PkString != '6666' AND PkInt != 8888").count() == 49998)
+    assert(df.select("col1", "col5", "PkString").filter(
+      "PkString == '6666' AND PkInt != 8888").count() == 1)
+    assert(df.select("PkString", "PkInt").filter(
+      "(PkString == 6666 OR (PkInt >= 10000 AND PkInt < 20000 AND col6 == true))").count() == 5001)
   }
 }

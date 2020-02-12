@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,56 +18,58 @@
 
 package com.aliyun.openservices.tablestore.hadoop;
 
-import java.util.Iterator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.conf.Configuration;
 import com.alicloud.openservices.tablestore.SyncClient;
+import com.alicloud.openservices.tablestore.core.utils.Preconditions;
+import com.alicloud.openservices.tablestore.ecosystem.TablestoreSplit;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.Row;
-import com.alicloud.openservices.tablestore.model.RangeRowQueryCriteria;
-import com.alicloud.openservices.tablestore.model.RangeIteratorParameter;
-import com.alicloud.openservices.tablestore.core.utils.Preconditions;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
 
 public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, RowWritable> {
     private static final Logger logger = LoggerFactory.getLogger(TableStoreRecordReader.class);
 
     private SyncClient ots;
-    private RangeRowQueryCriteria scan;
     private PrimaryKey currentKey;
     private Row currentValue;
     private Iterator<Row> results;
     private long rowCounter;
 
-    @Override public void close() {
+    @Override
+    public void close() {
         if (ots != null) {
             ots.shutdown();
             ots = null;
         }
-        scan = null;
         currentKey = null;
         currentValue = null;
         results = null;
         rowCounter = 0;
     }
 
-    @Override public PrimaryKeyWritable getCurrentKey() {
+    @Override
+    public PrimaryKeyWritable getCurrentKey() {
         return new PrimaryKeyWritable(currentKey);
     }
 
-    @Override public RowWritable getCurrentValue() {
+    @Override
+    public RowWritable getCurrentValue() {
         return new RowWritable(currentValue);
     }
 
-    @Override public float getProgress() {
+    @Override
+    public float getProgress() {
         return 0;
     }
 
-    @Override public boolean nextKeyValue() {
+    @Override
+    public boolean nextKeyValue() {
         if (!results.hasNext()) {
             logger.info("total rows: {}", rowCounter);
             return false;
@@ -81,7 +83,8 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
         return true;
     }
 
-    @Override public void initialize(InputSplit split, TaskAttemptContext ctx) {
+    @Override
+    public void initialize(InputSplit split, TaskAttemptContext ctx) {
         initialize(split, ctx.getConfiguration());
     }
 
@@ -104,27 +107,14 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
             ep = Endpoint.deserialize(in);
         }
         if (cred.securityToken == null) {
-            ots = new SyncClient(
-                ep.endpoint,
-                cred.accessKeyId,
-                cred.accessKeySecret,
-                ep.instance);
+            ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
         } else {
-            ots = new SyncClient(
-                ep.endpoint,
-                cred.accessKeyId,
-                cred.accessKeySecret,
-                ep.instance,
-                cred.securityToken);
+            ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret,
+                    ep.instance, cred.securityToken);
         }
 
-        TableStoreInputSplit tsSplit = (TableStoreInputSplit) split;
-        scan = tsSplit.getRangeRowQueryCriteria();
-        logger.info("table: {} columns-to-get: {} start: {} end: {}",
-            scan.getTableName(),
-            scan.getColumnsToGet(),
-            scan.getInclusiveStartPrimaryKey().toString(),
-            scan.getExclusiveEndPrimaryKey().toString());
-        results = ots.createRangeIterator(new RangeIteratorParameter(scan));
+        TablestoreSplit tsSplit = ((TableStoreInputSplit) split).getSplit();
+        tsSplit.initial(ots);
+        results = tsSplit.getRowIterator(ots);
     }
 }
