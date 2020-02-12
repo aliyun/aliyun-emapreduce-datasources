@@ -19,9 +19,8 @@ package org.apache.spark.sql.aliyun.tablestore
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
-
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode
@@ -113,6 +112,16 @@ class TableStoreSourceProvider
       mode: SaveMode,
       parameters: Map[String, String],
       data: DataFrame): BaseRelation = {
+    mode match {
+      case SaveMode.Overwrite | SaveMode.Ignore =>
+        throw new AnalysisException(s"Save mode $mode not allowed for tablestore. " +
+          s"Allowed save modes are ${SaveMode.Append} and ${SaveMode.ErrorIfExists} (default).")
+      case _ => // ok
+    }
+
+    new TableStoreWriter()
+      .write(parameters, sqlContext.sparkSession, data.queryExecution, parameters)
+
     /* This method is suppose to return a relation that reads the data that was written.
      * We cannot support this for OTS. Therefore, in order to make things consistent,
      * we return an empty base relation.
