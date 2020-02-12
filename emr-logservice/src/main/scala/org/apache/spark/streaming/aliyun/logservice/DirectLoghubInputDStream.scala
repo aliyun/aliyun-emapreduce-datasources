@@ -125,6 +125,28 @@ class DirectLoghubInputDStream(
     }
   }
 
+  private def getShardRange(shardId: Int, isReadonly: Boolean): (String, String) = {
+    val start = try {
+      zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$shardId.shard")
+    } catch {
+      case _: ZkNoNodeException =>
+        logWarning("Loghub checkpoint was lost in zookeeper, re-fetch from loghub")
+        findCheckpointOrCursorForShard(shardId, savedCheckpoints)
+    }
+    if (isReadonly) {
+      val end =
+        loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+      if (start.equals(end)) {
+        logInfo(s"Skip shard $shardId which start and end cursor both are $start")
+        readOnlyShardCache.put(shardId, end)
+      }
+      (start, end)
+    } else {
+      // Do not fetch end cursor for performance concern.
+      (start, null)
+    }
+  }
+
   override def compute(validTime: Time): Option[RDD[String]] = {
     logInfo(s"compute validTime $validTime")
     val shardOffsets = new ArrayBuffer[ShardOffsetRange]()
@@ -135,31 +157,13 @@ class DirectLoghubInputDStream(
       if (isReadonly && readOnlyShardCache.contains(shardId)) {
         logInfo(s"There is no data to consume from shard $shardId.")
       } else {
-        val start = try {
-          zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$shardId.shard")
-        } catch {
-          case _: ZkNoNodeException =>
-            logWarning("Loghub checkpoint was lost in zookeeper, re-fetch from loghub")
-            findCheckpointOrCursorForShard(shardId, savedCheckpoints)
-        }
-        if (isReadonly) {
-          val end =
-            loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-          if (start.equals(end)) {
-            logInfo(s"Skip shard $shardId which start and end cursor both are $start")
-            readOnlyShardCache.put(shardId, end)
-          } else {
-            shardOffsets.add(ShardOffsetRange(shardId, start, end))
-            logInfo(s"Shard $shardId start = $start end = $end")
-          }
+        val r = getShardRange(shardId, isReadonly)
+        val lastCursor = latestOffsets.getOrElse(shardId, null)
+        if (lastCursor != null && lastCursor.equals(r._1)) {
+          logInfo(s"Skip shard $shardId as it's start is same as previous $lastCursor")
         } else {
-          val currentCursor = latestOffsets.getOrElse(shardId, null)
-          if (currentCursor != null && currentCursor.equals(start)) {
-            logInfo(s"Skip shard $shardId as it's start is same as previous $start")
-          } else {
-            shardOffsets.add(ShardOffsetRange(shardId, start, null))
-            logInfo(s"Shard $shardId start = $start")
-          }
+          shardOffsets.add(ShardOffsetRange(shardId, r._1, r._2))
+          logInfo(s"Shard $shardId start = ${r._1} end = ${r._2}")
         }
       }
     })
