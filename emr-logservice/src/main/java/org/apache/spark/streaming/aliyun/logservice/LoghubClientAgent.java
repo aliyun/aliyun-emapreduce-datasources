@@ -47,7 +47,7 @@ public class LoghubClientAgent {
 
   public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
                                                                 int shard, String checkpoint) throws Exception {
-    return RetryUtil.call(() -> client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint));
+      return client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
   }
 
   public CreateConsumerGroupResponse CreateConsumerGroup(String project, String logStore, ConsumerGroup consumerGroup)
@@ -59,14 +59,14 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.ListConsumerGroup(project, logStore));
   }
 
-  public ConsumerGroupCheckPointResponse GetCheckPoint(String project, String logStore, String consumerGroup, int shard)
-      throws Exception {
-    return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup, shard));
-  }
-
   public ConsumerGroupCheckPointResponse ListCheckpoints(String project, String logStore, String consumerGroup)
           throws Exception {
     return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup));
+  }
+
+  public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor)
+          throws Exception {
+    return RetryUtil.call(() -> client.BatchGetLog(project, logStore, shardId, count, cursor));
   }
 
   public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor,

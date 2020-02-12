@@ -21,6 +21,7 @@ import java.io.UnsupportedEncodingException
 import scala.collection.Map
 import scala.collection.mutable.ArrayBuffer
 
+import com.aliyun.openservices.log.common.Consts.CursorMode
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.serialize.ZkSerializer
 
@@ -33,13 +34,15 @@ class LoghubRDD(
     @transient sc: SparkContext,
     project: String,
     logStore: String,
+    consumerGroup: String,
     accessKeyId: String,
     accessKeySecret: String,
     endpoint: String,
     duration: Long,
     zkParams: Map[String, String],
     shardOffsets: ArrayBuffer[ShardOffsetRange],
-    checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
+    checkpointDir: String,
+    commitBeforeNext: Boolean = true) extends RDD[String](sc, Nil) with Logging {
   @transient var mClient: LoghubClientAgent =
     LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
   @transient var zkClient: ZkClient =
@@ -61,12 +64,14 @@ class LoghubRDD(
         shardOffsets.map(shard => {
           val from = mClient.GetCursorTime(project, logStore, shard.shardId, shard.beginCursor)
             .GetCursorTime()
-          val to = mClient.GetCursorTime(project, logStore, shard.shardId, shard.endCursor)
+          val endCursor =
+            mClient.GetCursor(project, logStore, shard.shardId, CursorMode.END).GetCursor()
+          val to = mClient.GetCursorTime(project, logStore, shard.shardId, endCursor)
             .GetCursorTime()
           val res = mClient.GetHistograms(project, logStore, from, to, "", "*")
           if (!res.IsCompleted()) {
             logWarning(s"Failed to get complete count for [$project]-[$logStore]-" +
-              s"[${shard.shardId}] from ${shard.beginCursor} to ${shard.endCursor}, " +
+              s"[${shard.shardId}] from ${shard.beginCursor} to ${endCursor}, " +
               s"use ${res.GetTotalCount()} instead. " +
               s"This warning does not introduce any job failure, but may affect some information " +
               s"about this batch.")
@@ -89,8 +94,9 @@ class LoghubRDD(
     val shardPartition = split.asInstanceOf[ShardPartition]
     try {
       val loghubIterator = new LoghubIterator(zkClient, mClient, project, logStore,
-        shardPartition.shardId, shardPartition.startCursor, shardPartition.endCursor,
-        shardPartition.count.toInt, checkpointDir, context, shardPartition.logGroupStep)
+        consumerGroup, shardPartition.shardId, shardPartition.startCursor,
+        shardPartition.count.toInt, checkpointDir, context, commitBeforeNext,
+        shardPartition.logGroupStep)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
       case _: Exception =>
@@ -103,8 +109,8 @@ class LoghubRDD(
     val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     val count = rate * duration / 1000
     shardOffsets.zipWithIndex.map { case (p, idx) =>
-      new ShardPartition(id, idx, p.shardId, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p.beginCursor, p.endCursor, logGroupStep)
+      new ShardPartition(id, idx, p.shardId, count, project, logStore, consumerGroup,
+        accessKeyId, accessKeySecret, endpoint, p.beginCursor, logGroupStep)
         .asInstanceOf[Partition]
     }.toArray
   }
@@ -116,11 +122,11 @@ class LoghubRDD(
       val count: Long,
       project: String,
       logStore: String,
+      consumerGroup: String,
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
       val startCursor: String,
-      val endCursor: String,
       val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def equals(other: Any): Boolean = super.equals(other)
