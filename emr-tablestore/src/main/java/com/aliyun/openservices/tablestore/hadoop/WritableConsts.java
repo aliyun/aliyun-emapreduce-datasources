@@ -53,6 +53,7 @@ public class WritableConsts {
     public static final byte MULTI_CRITERIA = 58;
 
     public static final byte FILTER = 60;
+    public static final byte FILTER_EMPTY = 61;
     public static final byte FILTER_COLUMN_PAGINATION = 63;
     public static final byte FILTER_SINGLE_COLUMN = 65;
     public static final byte FILTER_EQUAL = 66;
@@ -62,6 +63,7 @@ public class WritableConsts {
     public static final byte FILTER_LESS = 75;
     public static final byte FILTER_LESS_EQUAL = 77;
     public static final byte FILTER_COMPOSITED = 78;
+    public static final byte FILTER_START_WITH = 79;
     public static final byte FILTER_NOT = 80;
     public static final byte FILTER_AND = 83;
     public static final byte FILTER_OR = 85;
@@ -80,6 +82,12 @@ public class WritableConsts {
     public static final byte ROW_CONDITION_EXPECT_NOT_EXIST = 106;
     public static final byte COLUMN_CONDITION_NONE = 108;
     public static final byte COLUMN_CONDITION_PRESENT = 111;
+
+    public static final byte COMPUTE_PARAMETERS = 115;
+    public static final byte SPLIT = 120;
+    public static final byte COMPUTE_SPLIT = 121;
+    public static final byte REQUIRED_COLUMNS = 126;
+
     // public static final byte x = 114;
     // public static final byte x = 116;
     // public static final byte x = 119;
