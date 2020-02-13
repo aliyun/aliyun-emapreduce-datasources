@@ -47,7 +47,7 @@ class LoghubIterator(
   // At most 1000 LogGroups can be returned
   private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
   private var endCursorNotReached: Boolean = true
-  private var committed: Boolean = true
+  private var committed: Boolean = false
 
   val inputMetrics = context.taskMetrics.inputMetrics
 

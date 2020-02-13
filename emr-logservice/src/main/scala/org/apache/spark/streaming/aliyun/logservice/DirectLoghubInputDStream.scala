@@ -138,7 +138,8 @@ class DirectLoghubInputDStream(
       zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$shardId.shard")
     } catch {
       case _: ZkNoNodeException =>
-        logWarning("Loghub checkpoint was lost in zookeeper, re-fetch from loghub")
+        logWarning(s"No checkpoint restored from zk for shard $shardId," +
+          " fetching checkpoint or initial cursor")
         findCheckpointOrCursorForShard(shardId, savedCheckpoints)
     }
     if (isReadonly) {
@@ -157,10 +158,10 @@ class DirectLoghubInputDStream(
 
     loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
       val shardId = shard.GetShardId()
-      val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
-      if (isReadonly && readOnlyShardCache.contains(shardId)) {
+      if (readOnlyShardCache.contains(shardId)) {
         logInfo(s"There is no data to consume from shard $shardId.")
       } else {
+        val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
         val r = getShardRange(shardId, isReadonly)
         val start = r._1
         val end = r._2
@@ -178,6 +179,7 @@ class DirectLoghubInputDStream(
         }
       }
     })
+    val commitInThisBatch = commitInNextBatch.get()
     val rdd = new LoghubRDD(
       ssc.sc,
       project,
@@ -190,7 +192,7 @@ class DirectLoghubInputDStream(
       zkParams,
       shardOffsets,
       checkpointDir,
-      commitInNextBatch.get()).setName(s"LoghubRDD-${validTime.toString()}")
+      commitInThisBatch).setName(s"LoghubRDD-${validTime.toString()}")
     val description = shardOffsets.map { p =>
       val offset = "offset: [ %1$-30s to %2$-30s ]".format(p.beginCursor, p.endCursor)
       s"shardId: ${p.shardId}\t $offset"
@@ -200,7 +202,7 @@ class DirectLoghubInputDStream(
       // If storageLevel is not `StorageLevel.NONE`, we need to persist rdd before `count()` to
       // to count the number of records to avoid refetching data from loghub.
       rdd.persist(storageLevel)
-      logInfo(s"Persisting RDD ${rdd.id} for time $validTime to $storageLevel")
+      logDebug(s"Persisting RDD ${rdd.id} for time $validTime to $storageLevel")
     }
     val inputInfo = StreamInputInfo(id, rdd.count(), metadata)
     ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
@@ -210,7 +212,9 @@ class DirectLoghubInputDStream(
       // Cache checkpoints in memory
       shardOffsets.foreach(r => savedCheckpoints.put(r.shardId, r.beginCursor))
     }
-    commitInNextBatch.set(false)
+    if (commitInThisBatch) {
+      commitInNextBatch.set(false)
+    }
     Some(rdd)
   }
 
@@ -308,7 +312,9 @@ class DirectLoghubInputDStream(
       case LogHubCursorPosition.SPECIAL_TIMER_CURSOR =>
         loghubClient.GetCursor(project, logStore, shardId, cursorStartTime)
     }
-    cursor.GetCursor()
+    val initialCursor = cursor.GetCursor()
+    logInfo(s"Start reading shard $shardId from $initialCursor")
+    initialCursor
   }
 
   private class DirectLoghubInputDStreamCheckpointData extends DStreamCheckpointData(this) {
