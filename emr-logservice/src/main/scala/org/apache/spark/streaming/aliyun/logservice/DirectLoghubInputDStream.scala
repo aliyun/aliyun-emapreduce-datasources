@@ -139,7 +139,7 @@ class DirectLoghubInputDStream(
   override def compute(validTime: Time): Option[RDD[String]] = {
     logInfo(s"compute validTime $validTime")
     val shardOffsets = new ArrayBuffer[ShardOffsetRange]()
-
+    val commitOffsets = new ArrayBuffer[ShardOffsetRange]()
     loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
       val shardId = shard.GetShardId()
       if (readOnlyShardCache.contains(shardId)) {
@@ -151,8 +151,9 @@ class DirectLoghubInputDStream(
         val end = r._2
         if (isReadonly && start.equals(end)) {
           logInfo(s"Skip shard $shardId which start and end cursor both are $start")
-          readOnlyShardCache.put(shardId, end)
-          // TODO ready only shard not commit ckpt
+          // There is no more data in this shard. However we still need to
+          // commit it's offset for checkpointing.
+          commitOffsets.add(ShardOffsetRange(shardId, start, end))
         } else if (zkHelper.tryLock(shardId)) {
           shardOffsets.add(ShardOffsetRange(shardId, start, end))
           logInfo(s"Shard $shardId range [$start, $end)")
@@ -160,6 +161,12 @@ class DirectLoghubInputDStream(
       }
     })
     val commitFirst = commitInNextBatch.get()
+    if (commitFirst) {
+      commitOffsets.foreach(r => {
+        loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, r.shardId, r.beginCursor)
+        readOnlyShardCache.put(r.shardId, r.endCursor)
+      })
+    }
     val rdd = new LoghubRDD(
       ssc.sc,
       project,
