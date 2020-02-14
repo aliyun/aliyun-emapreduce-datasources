@@ -46,13 +46,15 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.GetCursor(project, logStream, shardId, mode));
   }
 
-  public void safeUpdateCheckpoint(String project, String logStore, String consumerGroup,
-                                  int shard, String checkpoint) {
+  public boolean safeUpdateCheckpoint(String project, String logStore, String consumerGroup,
+                                      int shard, String checkpoint) {
      try {
        client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
+       return true;
      } catch (LogException ex) {
        LOG.warn("Unable to commit checkpoint: " + ex.GetErrorMessage());
      }
+     return false;
   }
 
   public GetCursorResponse GetCursor(String project, String logStore, int shardId, long fromTime) throws Exception {

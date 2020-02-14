@@ -99,8 +99,10 @@ class LoghubIterator(
 
   private def commitIfNeeded(): Unit = {
     if (commitBeforeNext && !committed) {
-      client.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, nextCursor)
-      committed = true
+      if (client.safeUpdateCheckpoint(project, logStore,
+        consumerGroup, shardId, startCursor)) {
+        committed = true
+      }
     }
   }
 

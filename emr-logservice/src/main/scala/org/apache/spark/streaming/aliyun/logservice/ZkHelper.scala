@@ -16,7 +16,7 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-// scalastyle:off
+// scalastyle:on
 import scala.collection.JavaConversions._
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException

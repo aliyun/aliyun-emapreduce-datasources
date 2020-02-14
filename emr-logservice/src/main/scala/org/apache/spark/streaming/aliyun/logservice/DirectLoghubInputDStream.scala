@@ -163,8 +163,9 @@ class DirectLoghubInputDStream(
     val commitFirst = commitInNextBatch.get()
     if (commitFirst) {
       commitOffsets.foreach(r => {
-        loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, r.shardId, r.beginCursor)
-        readOnlyShardCache.put(r.shardId, r.endCursor)
+        if (loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, r.shardId, r.beginCursor)) {
+          readOnlyShardCache.put(r.shardId, r.endCursor)
+        }
       })
     }
     val rdd = new LoghubRDD(
