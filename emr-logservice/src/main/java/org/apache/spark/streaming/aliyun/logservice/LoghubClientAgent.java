@@ -20,10 +20,15 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
+import com.aliyun.openservices.log.exception.LogException;
 import com.aliyun.openservices.log.response.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
+  private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
+
   private Client client;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
@@ -39,6 +44,15 @@ public class LoghubClientAgent {
   public GetCursorResponse GetCursor(String project, String logStream, int shardId, Consts.CursorMode mode)
       throws Exception {
     return RetryUtil.call(() -> client.GetCursor(project, logStream, shardId, mode));
+  }
+
+  public void safeUpdateCheckpoint(String project, String logStore, String consumerGroup,
+                                  int shard, String checkpoint) {
+     try {
+       client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
+     } catch (LogException ex) {
+       LOG.warn("Unable to commit checkpoint: " + ex.GetErrorMessage());
+     }
   }
 
   public GetCursorResponse GetCursor(String project, String logStore, int shardId, long fromTime) throws Exception {

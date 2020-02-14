@@ -29,7 +29,7 @@ import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
     zkClient: ZkClient,
-    mClient: LoghubClientAgent,
+    client: LoghubClientAgent,
     project: String,
     logStore: String,
     consumerGroup: String,
@@ -46,8 +46,9 @@ class LoghubIterator(
   private var nextCursor: String = startCursor
   // At most 1000 LogGroups can be returned
   private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
-  private var endCursorNotReached: Boolean = true
+  private var shardEndNotReached: Boolean = true
   private var committed: Boolean = false
+  private val zkHelper = new ZkHelper(zkClient, checkpointDir, project, logStore)
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -59,10 +60,10 @@ class LoghubIterator(
     // scalastyle:off
     import scala.collection.JavaConversions._
     // scalastyle:on
-    val hasNext = (hasRead < count && endCursorNotReached) || logData.nonEmpty
+    val hasNext = (hasRead < count && shardEndNotReached) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zkClient,
-        s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
+      zkHelper.saveOffset(shardId, nextCursor)
+      zkHelper.unlock(shardId)
     }
     hasNext
   }
@@ -87,6 +88,7 @@ class LoghubIterator(
 
   override def close() {
     try {
+      zkHelper.unlock(shardId)
       inputMetrics.incBytesRead(hasRead)
       logData.clear()
       logData = null
@@ -97,13 +99,8 @@ class LoghubIterator(
 
   private def commitIfNeeded(): Unit = {
     if (commitBeforeNext && !committed) {
-      try {
-        mClient.UpdateCheckPoint(project, logStore, consumerGroup, shardId, nextCursor)
-        committed = true
-      } catch {
-        case ex: Exception =>
-          logError(s"Commit checkpoint fail ${ex.getMessage}")
-      }
+      client.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, nextCursor)
+      committed = true
     }
   }
 
@@ -113,7 +110,7 @@ class LoghubIterator(
     // scalastyle:on
     commitIfNeeded()
     val batchGetLogRes: BatchGetLogResponse =
-      mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor)
+      client.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
       val fastLogGroup = group.GetFastLogGroup()
@@ -141,9 +138,9 @@ class LoghubIterator(
     })
     val currentCursor = nextCursor
     nextCursor = batchGetLogRes.GetNextCursor()
-    if (currentCursor.equals(nextCursor) || nextCursor == null || nextCursor.isEmpty) {
-      logInfo(s"shard $shardId end cursor $nextCursor")
-      endCursorNotReached = false
+    if (currentCursor.equals(nextCursor)) {
+      logInfo(s"No data at cursor $currentCursor in shard $shardId")
+      shardEndNotReached = false
     }
     logDebug(s"shardId: $shardId, currentCursor: $currentCursor, nextCursor: $nextCursor," +
       s" hasRead: $hasRead, count: $count," +

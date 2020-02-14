@@ -66,9 +66,9 @@ class DirectLoghubInputDStream(
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private var checkpointDir: String = null
   private val readOnlyShardCache = new mutable.HashMap[Int, String]()
-  private val latestOffsets = new mutable.HashMap[Int, String]()
   private var savedCheckpoints: mutable.Map[Int, String] = _
   private val commitInNextBatch = new ju.concurrent.atomic.AtomicBoolean(false)
+  private var zkHelper: ZkHelper = _
 
   override def start(): Unit = {
     if (enablePreciseCount) {
@@ -89,33 +89,10 @@ class DirectLoghubInputDStream(
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
     createZkClient()
-
-    try {
-      // Check if zookeeper is usable. Direct loghub api depends on zookeeper.
-      val exists = zkClient.exists(s"$checkpointDir")
-      if (!exists) {
-        zkClient.createPersistent(s"$checkpointDir/commit/$project/$logStore", true)
-      }
-    } catch {
-      case e: Exception =>
-        throw new RuntimeException("Loghub direct api depends on zookeeper. Make sure that " +
-          "zookeeper is on active service.", e)
-    }
+    zkHelper = new ZkHelper(zkClient, checkpointDir, project, logStore)
+    zkHelper.mkdir()
     loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
-
     tryToCreateConsumerGroup()
-
-    // Clean commit data in zookeeper in case of restarting streaming job but lose checkpoint file
-    // in `checkpointDir`
-    try {
-      zkClient.getChildren(s"$checkpointDir/commit/$project/$logStore").foreach(child => {
-        zkClient.delete(s"$checkpointDir/commit/$project/$logStore/$child")
-      })
-    } catch {
-      case _: ZkNoNodeException =>
-        logDebug("If this is the first time to run, it is fine to not find any commit data in " +
-          "zookeeper.")
-    }
   }
 
   def setClient(client: LoghubClientAgent): Unit = {
@@ -133,15 +110,22 @@ class DirectLoghubInputDStream(
     }
   }
 
-  private def getShardRange(shardId: Int, isReadonly: Boolean): (String, String) = {
-    val start = try {
-      zkClient.readData(s"$checkpointDir/commit/$project/$logStore/$shardId.shard")
+  private def fetchInitialCursor(shardId: Int, isReadonly: Boolean): String = {
+    try {
+      val cursor = zkHelper.readOffset(shardId)
+      if (StringUtils.isNotBlank(cursor)) {
+        return cursor
+      }
+      logWarning(s"Invalid offset [$cursor] found for shard $shardId")
     } catch {
       case _: ZkNoNodeException =>
-        logWarning(s"No checkpoint restored from zk for shard $shardId," +
-          " fetching checkpoint or initial cursor")
-        findCheckpointOrCursorForShard(shardId, savedCheckpoints)
+        logWarning(s"No checkpoint restored from zk for shard $shardId")
     }
+    findCheckpointOrCursorForShard(shardId, savedCheckpoints)
+  }
+
+  private def getShardRange(shardId: Int, isReadonly: Boolean): (String, String) = {
+    val start = fetchInitialCursor(shardId, isReadonly)
     if (isReadonly) {
       val end =
         loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
@@ -168,18 +152,14 @@ class DirectLoghubInputDStream(
         if (isReadonly && start.equals(end)) {
           logInfo(s"Skip shard $shardId which start and end cursor both are $start")
           readOnlyShardCache.put(shardId, end)
-        } else {
-          val lastCursor = latestOffsets.getOrElse(shardId, null)
-          if (lastCursor != null && lastCursor.equals(start)) {
-            logInfo(s"Skip shard $shardId as it's start is same as previous $lastCursor")
-          } else {
-            shardOffsets.add(ShardOffsetRange(shardId, start, end))
-            logInfo(s"Shard $shardId start = $start end = $end")
-          }
+          // TODO ready only shard not commit ckpt
+        } else if (zkHelper.tryLock(shardId)) {
+          shardOffsets.add(ShardOffsetRange(shardId, start, end))
+          logInfo(s"Shard $shardId range [$start, $end)")
         }
       }
     })
-    val commitInThisBatch = commitInNextBatch.get()
+    val commitFirst = commitInNextBatch.get()
     val rdd = new LoghubRDD(
       ssc.sc,
       project,
@@ -192,7 +172,7 @@ class DirectLoghubInputDStream(
       zkParams,
       shardOffsets,
       checkpointDir,
-      commitInThisBatch).setName(s"LoghubRDD-${validTime.toString()}")
+      commitFirst).setName(s"LoghubRDD-${validTime.toString()}")
     val description = shardOffsets.map { p =>
       val offset = "offset: [ %1$-30s to %2$-30s ]".format(p.beginCursor, p.endCursor)
       s"shardId: ${p.shardId}\t $offset"
@@ -206,13 +186,8 @@ class DirectLoghubInputDStream(
     }
     val inputInfo = StreamInputInfo(id, rdd.count(), metadata)
     ssc.scheduler.inputInfoTracker.reportInfo(validTime, inputInfo)
-
-    shardOffsets.foreach(r => latestOffsets.put(r.shardId, r.beginCursor))
-    if (commitInNextBatch.get()) {
-      // Cache checkpoints in memory
+    if (commitFirst) {
       shardOffsets.foreach(r => savedCheckpoints.put(r.shardId, r.beginCursor))
-    }
-    if (commitInThisBatch) {
       commitInNextBatch.set(false)
     }
     Some(rdd)
@@ -220,8 +195,7 @@ class DirectLoghubInputDStream(
 
   /**
    * Commit the offsets to LogService at a future time. Threadsafe.
-   * Users should call this method at end of each outputOp, otherwise streaming offsets will never
-   * go forward, i.e. re-compute the same data over and over again.
+   * Users should call this method at end of each outputOp.
    */
   override def commitAsync(): Unit = {
     commitInNextBatch.set(true)
@@ -328,19 +302,5 @@ class DirectLoghubInputDStream(
   override def finalize(): Unit = {
     super.finalize()
     stop()
-  }
-}
-
-// scalastyle:on
-
-object DirectLoghubInputDStream {
-  def writeDataToZK(zkClient: ZkClient, path: String, data: String): Unit = {
-    val nodePath = new Path(path).toUri.getPath
-    if (zkClient.exists(nodePath)) {
-      zkClient.writeData(nodePath, data)
-    } else {
-      zkClient.createPersistent(nodePath, true)
-      zkClient.writeData(nodePath, data)
-    }
   }
 }
