@@ -61,11 +61,6 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.GetCursor(project, logStore, shardId, fromTime));
   }
 
-  public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
-                                                                int shard, String checkpoint) throws Exception {
-      return client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
-  }
-
   public CreateConsumerGroupResponse CreateConsumerGroup(String project, String logStore, ConsumerGroup consumerGroup)
       throws Exception {
     return RetryUtil.call(() -> client.CreateConsumerGroup(project, logStore, consumerGroup));

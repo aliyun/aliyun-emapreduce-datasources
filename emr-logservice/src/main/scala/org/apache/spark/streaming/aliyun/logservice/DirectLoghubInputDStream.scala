@@ -17,7 +17,6 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 import java.{util => ju}
-import java.nio.charset.StandardCharsets
 
 // scalastyle:off
 import scala.collection.JavaConversions._
@@ -30,9 +29,7 @@ import com.aliyun.openservices.log.common.ConsumerGroup
 import com.aliyun.openservices.log.exception.LogException
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import com.aliyun.openservices.loghub.client.exceptions.LogHubClientWorkerException
-import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
-import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.Path
 
@@ -56,12 +53,9 @@ class DirectLoghubInputDStream(
     mode: LogHubCursorPosition,
     cursorStartTime: Long = -1L)
   extends InputDStream[String](_ssc) with Logging with CanCommitOffsets {
-  @transient private var zkClient: ZkClient = null
+  @transient private var zkHelper: ZkHelper = _
   @transient private var loghubClient: LoghubClientAgent = null
-  private val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
-  private val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-  private val zkConnectionTimeoutMs =
-    zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
+
   private val enablePreciseCount: Boolean =
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private var checkpointDir: String = null
@@ -69,7 +63,6 @@ class DirectLoghubInputDStream(
   private val readOnlyShardEndCursorCache = new mutable.HashMap[Int, String]()
   private var savedCheckpoints: mutable.Map[Int, String] = _
   private val commitInNextBatch = new ju.concurrent.atomic.AtomicBoolean(false)
-  private var zkHelper: ZkHelper = _
 
   override def start(): Unit = {
     if (enablePreciseCount) {
@@ -89,8 +82,8 @@ class DirectLoghubInputDStream(
         s"checkpoint dir")
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
-    createZkClient()
-    zkHelper = new ZkHelper(zkClient, checkpointDir, project, logStore)
+    zkHelper = new ZkHelper(zkParams, checkpointDir, project, logStore)
+    zkHelper.initialize()
     zkHelper.mkdir()
     loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
     tryToCreateConsumerGroup()
@@ -105,9 +98,9 @@ class DirectLoghubInputDStream(
   }
 
   override def stop(): Unit = {
-    if (zkClient != null) {
-      zkClient.close()
-      zkClient = null
+    if (zkHelper != null) {
+      zkHelper.close()
+      zkHelper = null
     }
   }
 
@@ -215,25 +208,6 @@ class DirectLoghubInputDStream(
   }
 
   private[streaming] override def name: String = s"Loghub direct stream [$id]"
-
-  private def createZkClient(): Unit = {
-    zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
-    zkClient.setZkSerializer(new ZkSerializer() {
-      override def serialize(data: scala.Any): Array[Byte] = {
-        if (data == null) {
-          return null
-        }
-        data.asInstanceOf[String].getBytes(StandardCharsets.UTF_8)
-      }
-
-      override def deserialize(bytes: Array[Byte]): AnyRef = {
-        if (bytes == null) {
-          return null
-        }
-        new String(bytes, StandardCharsets.UTF_8)
-      }
-    })
-  }
 
   def tryToCreateConsumerGroup(): Unit = {
     try {

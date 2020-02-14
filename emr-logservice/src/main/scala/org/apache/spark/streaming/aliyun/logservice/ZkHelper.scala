@@ -17,22 +17,57 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 // scalastyle:off
+import java.io.UnsupportedEncodingException
+
 import scala.collection.JavaConversions._
 
 // scalastyle:on
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
+import org.I0Itec.zkclient.serialize.ZkSerializer
 
 import org.apache.spark.internal.Logging
 
 
 class ZkHelper(
-   zkClient: ZkClient,
+   zkParams: Map[String, String],
    checkpointDir: String,
    project: String,
    logstore: String) extends Logging {
 
   private val zkDir = s"$checkpointDir/commit/$project/$logstore"
+  @transient private var zkClient: ZkClient = _
+
+  def initialize(): Unit = {
+    val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
+    val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
+    val zkConnectionTimeoutMs =
+      zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
+
+    zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
+    zkClient.setZkSerializer(new ZkSerializer() {
+      override def serialize(data: scala.Any): Array[Byte] = {
+        try {
+          data.asInstanceOf[String].getBytes("UTF-8")
+        } catch {
+          case e: UnsupportedEncodingException =>
+            null
+        }
+      }
+
+      override def deserialize(bytes: Array[Byte]): AnyRef = {
+        if (bytes == null) {
+          return null
+        }
+        try {
+          new String(bytes, "UTF-8")
+        } catch {
+          case e: UnsupportedEncodingException =>
+            null
+        }
+      }
+    })
+  }
 
   def mkdir(): Unit = {
     try {
@@ -87,6 +122,13 @@ class ZkHelper(
     } catch {
       case _: ZkNoNodeException =>
         // ignore
+    }
+  }
+
+  def close(): Unit = {
+    if (zkClient != null) {
+      zkClient.close()
+      zkClient = null
     }
   }
 }

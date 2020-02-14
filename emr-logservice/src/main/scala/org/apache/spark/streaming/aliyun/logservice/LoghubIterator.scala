@@ -20,7 +20,6 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.I0Itec.zkclient.ZkClient
 
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
@@ -28,7 +27,7 @@ import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
-    zkClient: ZkClient,
+    zkHelper: ZkHelper,
     client: LoghubClientAgent,
     project: String,
     logStore: String,
@@ -36,7 +35,6 @@ class LoghubIterator(
     shardId: Int,
     startCursor: String,
     count: Int,
-    checkpointDir: String,
     context: TaskContext,
     commitBeforeNext: Boolean = true,
     logGroupStep: Int = 100)
@@ -48,7 +46,6 @@ class LoghubIterator(
   private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
   private var shardEndNotReached: Boolean = true
   private var committed: Boolean = false
-  private val zkHelper = new ZkHelper(zkClient, checkpointDir, project, logStore)
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
