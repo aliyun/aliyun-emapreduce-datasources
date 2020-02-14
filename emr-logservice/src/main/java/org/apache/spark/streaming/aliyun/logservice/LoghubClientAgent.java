@@ -20,10 +20,15 @@ package org.apache.spark.streaming.aliyun.logservice;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.Consts;
 import com.aliyun.openservices.log.common.ConsumerGroup;
+import com.aliyun.openservices.log.exception.LogException;
 import com.aliyun.openservices.log.response.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.spark.streaming.aliyun.logservice.utils.VersionInfoUtils;
 
 public class LoghubClientAgent {
+  private static final Log LOG = LogFactory.getLog(LoghubClientAgent.class);
+
   private Client client;
 
   public LoghubClientAgent(String endpoint, String accessId, String accessKey) {
@@ -41,13 +46,19 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.GetCursor(project, logStream, shardId, mode));
   }
 
-  public GetCursorResponse GetCursor(String project, String logStore, int shardId, long fromTime) throws Exception {
-    return RetryUtil.call(() -> client.GetCursor(project, logStore, shardId, fromTime));
+  public boolean safeUpdateCheckpoint(String project, String logStore, String consumerGroup,
+                                      int shard, String checkpoint) {
+     try {
+       client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint);
+       return true;
+     } catch (LogException ex) {
+       LOG.warn("Unable to commit checkpoint: " + ex.GetErrorMessage());
+     }
+     return false;
   }
 
-  public ConsumerGroupUpdateCheckPointResponse UpdateCheckPoint(String project, String logStore, String consumerGroup,
-                                                                int shard, String checkpoint) throws Exception {
-    return RetryUtil.call(() -> client.UpdateCheckPoint(project, logStore, consumerGroup, shard, checkpoint));
+  public GetCursorResponse GetCursor(String project, String logStore, int shardId, long fromTime) throws Exception {
+    return RetryUtil.call(() -> client.GetCursor(project, logStore, shardId, fromTime));
   }
 
   public CreateConsumerGroupResponse CreateConsumerGroup(String project, String logStore, ConsumerGroup consumerGroup)
@@ -59,14 +70,14 @@ public class LoghubClientAgent {
     return RetryUtil.call(() -> client.ListConsumerGroup(project, logStore));
   }
 
-  public ConsumerGroupCheckPointResponse GetCheckPoint(String project, String logStore, String consumerGroup, int shard)
-      throws Exception {
-    return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup, shard));
-  }
-
   public ConsumerGroupCheckPointResponse ListCheckpoints(String project, String logStore, String consumerGroup)
           throws Exception {
     return RetryUtil.call(() -> client.GetCheckPoint(project, logStore, consumerGroup));
+  }
+
+  public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor)
+          throws Exception {
+    return RetryUtil.call(() -> client.BatchGetLog(project, logStore, shardId, count, cursor));
   }
 
   public BatchGetLogResponse BatchGetLog(String project, String logStore, int shardId, int count, String cursor,
