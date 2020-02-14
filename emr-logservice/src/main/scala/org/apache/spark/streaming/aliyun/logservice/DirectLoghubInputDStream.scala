@@ -66,6 +66,7 @@ class DirectLoghubInputDStream(
     _ssc.sparkContext.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
   private var checkpointDir: String = null
   private val readOnlyShardCache = new mutable.HashMap[Int, String]()
+  private val readOnlyShardEndCursorCache = new mutable.HashMap[Int, String]()
   private var savedCheckpoints: mutable.Map[Int, String] = _
   private val commitInNextBatch = new ju.concurrent.atomic.AtomicBoolean(false)
   private var zkHelper: ZkHelper = _
@@ -124,12 +125,16 @@ class DirectLoghubInputDStream(
     findCheckpointOrCursorForShard(shardId, savedCheckpoints)
   }
 
-  private def getShardRange(shardId: Int, isReadonly: Boolean): (String, String) = {
+  private def getShardCursorRange(shardId: Int, isReadonly: Boolean): (String, String) = {
     val start = restoreOrFetchInitialCursor(shardId)
     if (isReadonly) {
-      val end =
-        loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
-      (start, end)
+      var endCursor = readOnlyShardEndCursorCache.getOrElse(shardId, null)
+      if (endCursor == null) {
+        endCursor =
+          loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
+        readOnlyShardEndCursorCache.put(shardId, endCursor)
+      }
+      (start, endCursor)
     } else {
       // Do not fetch end cursor for performance concern.
       (start, null)
@@ -146,7 +151,7 @@ class DirectLoghubInputDStream(
         logInfo(s"There is no data to consume from shard $shardId.")
       } else {
         val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
-        val r = getShardRange(shardId, isReadonly)
+        val r = getShardCursorRange(shardId, isReadonly)
         val start = r._1
         val end = r._2
         if (isReadonly && start.equals(end)) {
