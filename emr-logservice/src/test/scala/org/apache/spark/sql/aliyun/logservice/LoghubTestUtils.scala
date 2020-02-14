@@ -68,6 +68,7 @@ class LoghubTestUtils() {
     }
 
     client = new Client(endpoint, accessKeyId, accessKeySecret)
+    logProject = Option(System.getenv("LOGSTORE_PROJECT_NAME")).getOrElse("")
     sourceProps = Map(
       "sls.project" -> logProject,
       "access.key.id" -> accessKeyId,
@@ -75,8 +76,6 @@ class LoghubTestUtils() {
       "endpoint" -> endpoint
     )
     producer = LoghubOffsetReader.getOrCreateLogProducer(sourceProps)
-
-    logProject = Option(System.getenv("LOGSTORE_PROJECT_NAME")).getOrElse("")
   }
 
   validateProps()
