@@ -20,7 +20,6 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import com.alibaba.fastjson.JSONObject
 import com.aliyun.openservices.log.response.BatchGetLogResponse
-import org.I0Itec.zkclient.ZkClient
 
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
@@ -28,23 +27,25 @@ import org.apache.spark.sql.aliyun.logservice.LoghubSourceProvider._
 import org.apache.spark.util.NextIterator
 
 class LoghubIterator(
-    zkClient: ZkClient,
-    mClient: LoghubClientAgent,
+    zkHelper: ZkHelper,
+    client: LoghubClientAgent,
     project: String,
     logStore: String,
+    consumerGroup: String,
     shardId: Int,
     startCursor: String,
-    endCursor: String,
     count: Int,
-    checkpointDir: String,
     context: TaskContext,
+    commitBeforeNext: Boolean = true,
     logGroupStep: Int = 100)
   extends NextIterator[String] with Logging {
 
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
-  // TODO: This may cost too much memory.
-  private var logData = new LinkedBlockingQueue[String](4096 * logGroupStep)
+  // At most 1000 LogGroups can be returned
+  private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
+  private var shardEndNotReached: Boolean = true
+  private var committed: Boolean = false
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -56,12 +57,11 @@ class LoghubIterator(
     // scalastyle:off
     import scala.collection.JavaConversions._
     // scalastyle:on
-    val hasNext = (hasRead < count) && !nextCursor.equals(endCursor) || logData.nonEmpty
+    val hasNext = (hasRead < count && shardEndNotReached) || logData.nonEmpty
     if (!hasNext) {
-      DirectLoghubInputDStream.writeDataToZK(zkClient,
-        s"$checkpointDir/commit/$project/$logStore/$shardId.shard", nextCursor)
+      zkHelper.saveOffset(shardId, nextCursor)
+      zkHelper.unlock(shardId)
     }
-
     hasNext
   }
 
@@ -85,6 +85,7 @@ class LoghubIterator(
 
   override def close() {
     try {
+      zkHelper.unlock(shardId)
       inputMetrics.incBytesRead(hasRead)
       logData.clear()
       logData = null
@@ -93,38 +94,55 @@ class LoghubIterator(
     }
   }
 
+  private def commitIfNeeded(): Unit = {
+    if (commitBeforeNext && !committed) {
+      if (client.safeUpdateCheckpoint(project, logStore,
+        consumerGroup, shardId, startCursor)) {
+        committed = true
+      }
+    }
+  }
+
   def fetchNextBatch(): Unit = {
     // scalastyle:off
     import scala.collection.JavaConversions._
     // scalastyle:on
+    commitIfNeeded()
     val batchGetLogRes: BatchGetLogResponse =
-      mClient.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor, endCursor)
+      client.BatchGetLog(project, logStore, shardId, logGroupStep, nextCursor)
     var count = 0
     batchGetLogRes.GetLogGroups().foreach(group => {
-      group.GetLogGroup().getLogsList.foreach(log => {
-        val topic = group.GetTopic()
-        val source = group.GetSource()
+      val fastLogGroup = group.GetFastLogGroup()
+      val logCount = fastLogGroup.getLogsCount
+      for (i <- 0 until logCount) {
+        val log = fastLogGroup.getLogs(i)
+        val topic = fastLogGroup.getTopic
+        val source = fastLogGroup.getSource
         val obj = new JSONObject()
-        obj.put(__TIME__, Integer.valueOf(log.getTime))
+        obj.put(__TIME__, log.getTime)
         obj.put(__TOPIC__, topic)
         obj.put(__SOURCE__, source)
-        log.getContentsList.foreach(content => {
-          obj.put(content.getKey, content.getValue)
-        })
-
-        val flg = group.GetFastLogGroup()
-        for (i <- 0 until flg.getLogTagsCount) {
-          obj.put("__tag__:".concat(flg.getLogTags(i).getKey), flg.getLogTags(i).getValue)
+        val fieldCount = log.getContentsCount
+        for (j <- 0 until fieldCount) {
+          val f = log.getContents(j)
+          obj.put(f.getKey, f.getValue)
         }
-
+        for (i <- 0 until fastLogGroup.getLogTagsCount) {
+          val tag = fastLogGroup.getLogTags(i)
+          obj.put("__tag__:".concat(tag.getKey), tag.getValue)
+        }
         count += 1
         logData.offer(obj.toJSONString)
-      })
+      }
     })
-    val crt = nextCursor
+    val currentCursor = nextCursor
     nextCursor = batchGetLogRes.GetNextCursor()
-    logDebug(s"shardId: $shardId, currentCursor: $crt, nextCursor: $nextCursor," +
-      s" endCursor: $endCursor, hasRead: $hasRead, count: $count," +
+    if (currentCursor.equals(nextCursor)) {
+      logInfo(s"No data at cursor $currentCursor in shard $shardId")
+      shardEndNotReached = false
+    }
+    logDebug(s"shardId: $shardId, currentCursor: $currentCursor, nextCursor: $nextCursor," +
+      s" hasRead: $hasRead, count: $count," +
       s" get: $count, queue: ${logData.size()}")
   }
 }

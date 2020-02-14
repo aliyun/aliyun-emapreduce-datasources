@@ -16,13 +16,9 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-import java.io.UnsupportedEncodingException
-
-import scala.collection.Map
 import scala.collection.mutable.ArrayBuffer
 
-import org.I0Itec.zkclient.ZkClient
-import org.I0Itec.zkclient.serialize.ZkSerializer
+import com.aliyun.openservices.log.common.Consts.CursorMode
 
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.annotation.DeveloperApi
@@ -33,23 +29,23 @@ class LoghubRDD(
     @transient sc: SparkContext,
     project: String,
     logStore: String,
+    consumerGroup: String,
     accessKeyId: String,
     accessKeySecret: String,
     endpoint: String,
     duration: Long,
     zkParams: Map[String, String],
-    shardOffsets: ArrayBuffer[(Int, String, String)],
-    checkpointDir: String) extends RDD[String](sc, Nil) with Logging {
-  @transient var mClient: LoghubClientAgent =
-    LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
-  @transient var zkClient: ZkClient =
-    LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
+    shardOffsets: ArrayBuffer[ShardOffsetRange],
+    checkpointDir: String,
+    commitBeforeNext: Boolean = true) extends RDD[String](sc, Nil) with Logging {
+  @transient var client: LoghubClientAgent = _
+  @transient var zkHelper: ZkHelper = _
   private val enablePreciseCount: Boolean =
     sc.getConf.getBoolean("spark.streaming.loghub.count.precise.enable", true)
 
   private def initialize(): Unit = {
-    mClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._2
-    zkClient = LoghubRDD.getClient(zkParams, accessKeyId, accessKeySecret, endpoint)._1
+    client = LoghubRDD.getOrCreateLoghubClient(accessKeyId, accessKeySecret, endpoint)
+    zkHelper = LoghubRDD.getZkHelper(zkParams, checkpointDir, project, logStore)
   }
 
   override def count(): Long = {
@@ -59,12 +55,17 @@ class LoghubRDD(
       try {
         val numShards = shardOffsets.size
         shardOffsets.map(shard => {
-          val from = mClient.GetCursorTime(project, logStore, shard._1, shard._2).GetCursorTime()
-          val to = mClient.GetCursorTime(project, logStore, shard._1, shard._3).GetCursorTime()
-          val res = mClient.GetHistograms(project, logStore, from, to, "", "*")
+          val from = client.GetCursorTime(project, logStore, shard.shardId, shard.beginCursor)
+            .GetCursorTime()
+          val endCursor =
+            client.GetCursor(project, logStore, shard.shardId, CursorMode.END).GetCursor()
+          val to = client.GetCursorTime(project, logStore, shard.shardId, endCursor)
+            .GetCursorTime()
+          val res = client.GetHistograms(project, logStore, from, to, "", "*")
           if (!res.IsCompleted()) {
-            logWarning(s"Failed to get complete count for [$project]-[$logStore]-[${shard._1}] " +
-              s"from ${shard._2} to ${shard._3}, use ${res.GetTotalCount()} instead. " +
+            logWarning(s"Failed to get complete count for [$project]-[$logStore]-" +
+              s"[${shard.shardId}] from ${shard.beginCursor} to ${endCursor}, " +
+              s"use ${res.GetTotalCount()} instead. " +
               s"This warning does not introduce any job failure, but may affect some information " +
               s"about this batch.")
           }
@@ -85,9 +86,9 @@ class LoghubRDD(
     initialize()
     val shardPartition = split.asInstanceOf[ShardPartition]
     try {
-      val loghubIterator = new LoghubIterator(zkClient, mClient, project, logStore,
-        shardPartition.shardId, shardPartition.startCursor, shardPartition.endCursor,
-        shardPartition.count.toInt, checkpointDir, context, shardPartition.logGroupStep)
+      val loghubIterator = new LoghubIterator(zkHelper, client, project, logStore,
+        consumerGroup, shardPartition.shardId, shardPartition.startCursor,
+        shardPartition.count.toInt, context, commitBeforeNext, shardPartition.logGroupStep)
       new InterruptibleIterator[String](context, loghubIterator)
     } catch {
       case _: Exception =>
@@ -100,8 +101,9 @@ class LoghubRDD(
     val logGroupStep = sc.getConf.get("spark.loghub.batchGet.step", "100").toInt
     val count = rate * duration / 1000
     shardOffsets.zipWithIndex.map { case (p, idx) =>
-      new ShardPartition(id, idx, p._1, count, project, logStore,
-        accessKeyId, accessKeySecret, endpoint, p._2, p._3, logGroupStep).asInstanceOf[Partition]
+      new ShardPartition(id, idx, p.shardId, count, project, logStore, consumerGroup,
+        accessKeyId, accessKeySecret, endpoint, p.beginCursor, logGroupStep)
+        .asInstanceOf[Partition]
     }.toArray
   }
 
@@ -112,11 +114,11 @@ class LoghubRDD(
       val count: Long,
       project: String,
       logStore: String,
+      consumerGroup: String,
       accessKeyId: String,
       accessKeySecret: String,
       endpoint: String,
       val startCursor: String,
-      val endCursor: String,
       val logGroupStep: Int = 100) extends Partition with Logging {
     override def hashCode(): Int = 41 * (41 + rddId) + shardId
     override def equals(other: Any): Boolean = super.equals(other)
@@ -126,57 +128,37 @@ class LoghubRDD(
 
 // scalastyle:off
 object LoghubRDD extends Logging {
-  private var zkClient: ZkClient = null
-  private var mClient: LoghubClientAgent = null
+  private var zkHelper: ZkHelper = _
+  private var loghubClient: LoghubClientAgent = _
 
-  def getClient(zkParams: Map[String, String], accessKeyId: String, accessKeySecret: String,
-      endpoint: String): (ZkClient, LoghubClientAgent) = {
-    if (zkClient == null || mClient == null) {
-      val zkConnect = zkParams.getOrElse("zookeeper.connect", "localhost:2181")
-      val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
-      val zkConnectionTimeoutMs =
-        zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
-
-      zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
-      zkClient.setZkSerializer(new ZkSerializer() {
-        override def serialize(data: scala.Any): Array[Byte] = {
-          try {
-            data.asInstanceOf[String].getBytes("UTF-8")
-          } catch {
-            case e: UnsupportedEncodingException =>
-              null
-          }
-        }
-
-        override def deserialize(bytes: Array[Byte]): AnyRef = {
-          if (bytes == null) {
-            return null
-          }
-          try {
-            new String(bytes, "UTF-8")
-          } catch {
-            case e: UnsupportedEncodingException =>
-              null
-          }
-        }
-      })
-
-      mClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+  def getOrCreateLoghubClient(accessKeyId: String, accessKeySecret: String,
+                              endpoint: String): LoghubClientAgent = {
+    if (loghubClient == null) {
+      loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
     }
+    loghubClient
+  }
 
-    (zkClient, mClient)
+  def getZkHelper(zkParams: Map[String, String],
+                  checkpointDir: String,
+                  project: String,
+                  logstore: String): ZkHelper = {
+    if (zkHelper == null) {
+      zkHelper = new ZkHelper(zkParams, checkpointDir, project, logstore)
+      zkHelper.initialize()
+    }
+    zkHelper
   }
 
   override def finalize(): Unit = {
     super.finalize()
     try {
-      if (zkClient != null) {
-        zkClient.close()
-        zkClient = null
+      if (zkHelper != null) {
+        zkHelper.close()
+        zkHelper = null
       }
     } catch {
       case e: Exception => logWarning("Exception when close zkClient.", e)
     }
   }
 }
-// scalastyle:on
