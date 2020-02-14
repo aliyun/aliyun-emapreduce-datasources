@@ -110,7 +110,7 @@ class DirectLoghubInputDStream(
     }
   }
 
-  private def fetchInitialCursor(shardId: Int, isReadonly: Boolean): String = {
+  private def restoreOrFetchInitialCursor(shardId: Int): String = {
     try {
       val cursor = zkHelper.readOffset(shardId)
       if (StringUtils.isNotBlank(cursor)) {
@@ -125,7 +125,7 @@ class DirectLoghubInputDStream(
   }
 
   private def getShardRange(shardId: Int, isReadonly: Boolean): (String, String) = {
-    val start = fetchInitialCursor(shardId, isReadonly)
+    val start = restoreOrFetchInitialCursor(shardId)
     if (isReadonly) {
       val end =
         loghubClient.GetCursor(project, logStore, shardId, CursorMode.END).GetCursor()
