@@ -16,10 +16,13 @@
  */
 package org.apache.spark.streaming.aliyun.logservice
 
-// scalastyle:on
+// scalastyle:off
 import scala.collection.JavaConversions._
+
+// scalastyle:on
 import org.I0Itec.zkclient.ZkClient
 import org.I0Itec.zkclient.exception.ZkNoNodeException
+
 import org.apache.spark.internal.Logging
 
 
@@ -34,8 +37,7 @@ class ZkHelper(
   def mkdir(): Unit = {
     try {
       // Check if zookeeper is usable. Direct loghub api depends on zookeeper.
-      val exists = zkClient.exists(s"$checkpointDir")
-      if (!exists) {
+      if (!zkClient.exists(zkDir)) {
         zkClient.createPersistent(zkDir, true)
         return
       }
@@ -61,6 +63,16 @@ class ZkHelper(
     zkClient.readData(s"$zkDir/$shardId.shard")
   }
 
+  def saveOffset(shard: Int, cursor: String): Unit = {
+    val nodePath = s"$zkDir/$shard.shard"
+    if (zkClient.exists(nodePath)) {
+      zkClient.writeData(nodePath, cursor)
+    } else {
+      zkClient.createPersistent(nodePath, true)
+      zkClient.writeData(nodePath, cursor)
+    }
+  }
+
   def tryLock(shard: Int): Boolean = {
     if (zkClient.exists(s"$zkDir/$shard.lock")) {
       return false
@@ -77,15 +89,4 @@ class ZkHelper(
         // ignore
     }
   }
-
-  def saveOffset(shard: Int, cursor: String): Unit = {
-    val nodePath = s"$zkDir/$shard.shard"
-    if (zkClient.exists(nodePath)) {
-      zkClient.writeData(nodePath, cursor)
-    } else {
-      zkClient.createPersistent(nodePath, true)
-      zkClient.writeData(nodePath, cursor)
-    }
-  }
-
 }
