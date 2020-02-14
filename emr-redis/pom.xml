@@ -5,7 +5,7 @@
     <parent>
         <artifactId>emr_2.11</artifactId>
         <groupId>com.aliyun.emr</groupId>
-        <version>1.9.1-SNAPSHOT</version>
+        <version>1.9.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
