@@ -34,73 +34,73 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-maxcompute_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-logservice_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-tablestore</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-ons_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-datahub_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-jdbc_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-druid_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-hbase_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-kudu_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-redis_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-oss</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-common_2.11</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.1-SNAPSHOT</version>
         </dependency>
 
 ```

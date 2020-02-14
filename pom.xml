@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.11</artifactId>
-    <version>1.9.0</version>
+    <version>1.9.1-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Aliyun E-MapReduce Root</name>
