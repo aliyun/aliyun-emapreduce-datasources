@@ -165,6 +165,7 @@ class DirectLoghubInputDStream(
             loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, start)) {
             readOnlyShardCache.put(shardId, end)
           }
+          zkHelper.unlock(shardId)
         } else {
           shardOffsets.add(ShardOffsetRange(shardId, start, end))
           logInfo(s"Shard $shardId range [$start, $end)")
