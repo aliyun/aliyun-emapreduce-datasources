@@ -161,7 +161,8 @@ class DirectLoghubInputDStream(
         if (isReadonly && start.equals(end)) {
           logInfo(s"Skip shard $shardId which start and end cursor both are $start")
           // No more data in this shard. Commit it's offset for checkpointing.
-          if (loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, start)) {
+          if (commitFirst &&
+            loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, start)) {
             readOnlyShardCache.put(shardId, end)
           }
         } else {
