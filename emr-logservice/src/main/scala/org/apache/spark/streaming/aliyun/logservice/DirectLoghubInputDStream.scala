@@ -145,7 +145,7 @@ class DirectLoghubInputDStream(
   }
 
   override def compute(validTime: Time): Option[RDD[String]] = {
-    initialize(true)
+    initialize()
     val shardOffsets = new ArrayBuffer[ShardOffsetRange]()
     val commitFirst = commitInNextBatch.get()
     val resp: ListShardResponse = loghubClient.ListShard(project, logStore)
