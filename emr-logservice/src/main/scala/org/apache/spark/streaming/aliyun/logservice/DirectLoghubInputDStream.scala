@@ -84,8 +84,7 @@ class DirectLoghubInputDStream(
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
     initialize()
-    zkHelper.mkdir()
-    logInfo("Initializing zk dir")
+    logInfo("Initializing zk dir on start")
     tryToCreateConsumerGroup()
   }
 
@@ -96,6 +95,8 @@ class DirectLoghubInputDStream(
     if (zkHelper == null) {
       zkHelper = new ZkHelper(zkParams, checkpointDir, project, logStore)
       zkHelper.initialize()
+      zkHelper.mkdir()
+      logInfo("Initializing zk dir")
     }
   }
 
