@@ -17,12 +17,14 @@
 package org.apache.spark.streaming.aliyun.logservice
 
 // scalastyle:off
-import java.io.UnsupportedEncodingException
+
+import java.nio.charset.StandardCharsets
 
 import scala.collection.JavaConversions._
 
 // scalastyle:on
 import org.I0Itec.zkclient.ZkClient
+import org.I0Itec.zkclient.exception.ZkNodeExistsException
 import org.I0Itec.zkclient.exception.ZkNoNodeException
 import org.I0Itec.zkclient.serialize.ZkSerializer
 
@@ -36,6 +38,7 @@ class ZkHelper(
    logstore: String) extends Logging {
 
   private val zkDir = s"$checkpointDir/commit/$project/$logstore"
+  private val legacyCommitDir = s"$checkpointDir/consume/$project/$logstore"
   @transient private var zkClient: ZkClient = _
 
   def initialize(): Unit = {
@@ -43,28 +46,19 @@ class ZkHelper(
     val zkSessionTimeoutMs = zkParams.getOrElse("zookeeper.session.timeout.ms", "6000").toInt
     val zkConnectionTimeoutMs =
       zkParams.getOrElse("zookeeper.connection.timeout.ms", zkSessionTimeoutMs.toString).toInt
+    logInfo(s"zkDir = $zkDir")
 
     zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs)
     zkClient.setZkSerializer(new ZkSerializer() {
       override def serialize(data: scala.Any): Array[Byte] = {
-        try {
-          data.asInstanceOf[String].getBytes("UTF-8")
-        } catch {
-          case e: UnsupportedEncodingException =>
-            null
-        }
+        data.asInstanceOf[String].getBytes(StandardCharsets.UTF_8)
       }
 
       override def deserialize(bytes: Array[Byte]): AnyRef = {
         if (bytes == null) {
           return null
         }
-        try {
-          new String(bytes, "UTF-8")
-        } catch {
-          case e: UnsupportedEncodingException =>
-            null
-        }
+        new String(bytes, StandardCharsets.UTF_8)
       }
     })
   }
@@ -81,8 +75,6 @@ class ZkHelper(
         throw new RuntimeException("Loghub direct api depends on zookeeper. Make sure that " +
           "zookeeper is on active service.", e)
     }
-    // Clean commit data in zookeeper in case of restarting streaming job but lose checkpoint file
-    // in `checkpointDir`
     try {
       zkClient.getChildren(zkDir).foreach(child => {
         zkClient.delete(s"$zkDir/$child")
@@ -99,21 +91,33 @@ class ZkHelper(
   }
 
   def saveOffset(shard: Int, cursor: String): Unit = {
-    val nodePath = s"$zkDir/$shard.shard"
-    if (zkClient.exists(nodePath)) {
-      zkClient.writeData(nodePath, cursor)
-    } else {
-      zkClient.createPersistent(nodePath, true)
-      zkClient.writeData(nodePath, cursor)
+    val cursorFile = s"$zkDir/$shard.shard"
+    writeZkFile(cursorFile, cursor)
+  }
+
+  private def writeZkFile(filePath: String, text: String): Unit = {
+    logInfo(s"Save $text to $filePath")
+    if (!zkClient.exists(filePath)) {
+      zkClient.createPersistent(filePath, true)
     }
+    zkClient.writeData(filePath, text)
+  }
+
+  def saveLegacyOffset(shard: Int, cursor: String): Unit = {
+    val cursorFile = s"$legacyCommitDir/$shard.shard"
+    writeZkFile(cursorFile, cursor)
   }
 
   def tryLock(shard: Int): Boolean = {
-    if (zkClient.exists(s"$zkDir/$shard.lock")) {
-      return false
+    val lockFile = s"$zkDir/$shard.lock"
+    try {
+      zkClient.createPersistent(lockFile, false)
+      true
+    } catch {
+      case _: ZkNodeExistsException =>
+        logWarning(s"$shard already locked")
+        false
     }
-    zkClient.createPersistent(s"$zkDir/$shard.lock", true)
-    true
   }
 
   def unlock(shard: Int): Unit = {
@@ -121,7 +125,7 @@ class ZkHelper(
       zkClient.delete(s"$zkDir/$shard.lock")
     } catch {
       case _: ZkNoNodeException =>
-        // ignore
+      // ignore
     }
   }
 

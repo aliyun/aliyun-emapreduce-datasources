@@ -18,15 +18,11 @@ package org.apache.spark.streaming.aliyun.logservice
 
 import java.{util => ju}
 
-// scalastyle:off
-import scala.collection.JavaConversions._
 // scalastyle:on
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-
 import com.aliyun.openservices.log.common.Consts.CursorMode
 import com.aliyun.openservices.log.common.ConsumerGroup
 import com.aliyun.openservices.log.exception.LogException
+import com.aliyun.openservices.log.response.ListShardResponse
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
 import com.aliyun.openservices.loghub.client.exceptions.LogHubClientWorkerException
 import org.I0Itec.zkclient.exception.ZkNoNodeException
@@ -39,6 +35,11 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{StreamingContext, Time}
 import org.apache.spark.streaming.dstream.{DStreamCheckpointData, InputDStream}
 import org.apache.spark.streaming.scheduler.StreamInputInfo
+
+// scalastyle:off
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 // scalastyle:off
 class DirectLoghubInputDStream(
@@ -82,11 +83,20 @@ class DirectLoghubInputDStream(
         s"checkpoint dir")
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
-    zkHelper = new ZkHelper(zkParams, checkpointDir, project, logStore)
-    zkHelper.initialize()
+    initialize()
     zkHelper.mkdir()
-    loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+    logInfo("Initializing zk dir")
     tryToCreateConsumerGroup()
+  }
+
+  private def initialize(): Unit = this.synchronized {
+    if (loghubClient == null) {
+      loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+    }
+    if (zkHelper == null) {
+      zkHelper = new ZkHelper(zkParams, checkpointDir, project, logStore)
+      zkHelper.initialize()
+    }
   }
 
   def setClient(client: LoghubClientAgent): Unit = {
@@ -97,7 +107,7 @@ class DirectLoghubInputDStream(
     savedCheckpoints
   }
 
-  override def stop(): Unit = {
+  override def stop(): Unit = this.synchronized {
     if (zkHelper != null) {
       zkHelper.close()
       zkHelper = null
@@ -135,37 +145,31 @@ class DirectLoghubInputDStream(
   }
 
   override def compute(validTime: Time): Option[RDD[String]] = {
-    logInfo(s"compute validTime $validTime")
+    initialize(true)
     val shardOffsets = new ArrayBuffer[ShardOffsetRange]()
-    val commitOffsets = new ArrayBuffer[ShardOffsetRange]()
-    loghubClient.ListShard(project, logStore).GetShards().foreach(shard => {
+    val commitFirst = commitInNextBatch.get()
+    val resp: ListShardResponse = loghubClient.ListShard(project, logStore)
+    resp.GetShards().foreach(shard => {
       val shardId = shard.GetShardId()
       if (readOnlyShardCache.contains(shardId)) {
         logInfo(s"There is no data to consume from shard $shardId.")
-      } else {
+      } else if (zkHelper.tryLock(shardId)) {
         val isReadonly = shard.getStatus.equalsIgnoreCase("readonly")
         val r = getShardCursorRange(shardId, isReadonly)
         val start = r._1
         val end = r._2
         if (isReadonly && start.equals(end)) {
           logInfo(s"Skip shard $shardId which start and end cursor both are $start")
-          // There is no more data in this shard. However we still need to
-          // commit it's offset for checkpointing.
-          commitOffsets.add(ShardOffsetRange(shardId, start, end))
-        } else if (zkHelper.tryLock(shardId)) {
+          // No more data in this shard. Commit it's offset for checkpointing.
+          if (loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, shardId, start)) {
+            readOnlyShardCache.put(shardId, end)
+          }
+        } else {
           shardOffsets.add(ShardOffsetRange(shardId, start, end))
           logInfo(s"Shard $shardId range [$start, $end)")
         }
       }
     })
-    val commitFirst = commitInNextBatch.get()
-    if (commitFirst) {
-      commitOffsets.foreach(r => {
-        if (loghubClient.safeUpdateCheckpoint(project, logStore, consumerGroup, r.shardId, r.beginCursor)) {
-          readOnlyShardCache.put(r.shardId, r.endCursor)
-        }
-      })
-    }
     val rdd = new LoghubRDD(
       ssc.sc,
       project,
@@ -258,8 +262,8 @@ class DirectLoghubInputDStream(
     checkpoints
   }
 
-  def findCheckpointOrCursorForShard(shardId: Int, checkpoints: mutable.Map[Int, String]):
-    String = {
+  def findCheckpointOrCursorForShard(shardId: Int,
+                                     checkpoints: mutable.Map[Int, String]): String = {
     val checkpoint = checkpoints.getOrElse(shardId, null)
     if (StringUtils.isNotBlank(checkpoint)) {
       logInfo(s"Shard $shardId will start from checkpoint $checkpoint")

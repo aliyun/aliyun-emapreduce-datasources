@@ -42,10 +42,10 @@ class LoghubIterator(
 
   private var hasRead: Int = 0
   private var nextCursor: String = startCursor
-  // At most 1000 LogGroups can be returned
   private var logData = new LinkedBlockingQueue[String](1000 * logGroupStep)
   private var shardEndNotReached: Boolean = true
   private var committed: Boolean = false
+  private var unlocked: Boolean = false
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -53,39 +53,33 @@ class LoghubIterator(
     context => closeIfNeeded()
   }
 
-  def checkHasNext(): Boolean = {
-    // scalastyle:off
-    import scala.collection.JavaConversions._
-    // scalastyle:on
-    val hasNext = (hasRead < count && shardEndNotReached) || logData.nonEmpty
-    if (!hasNext) {
-      zkHelper.saveOffset(shardId, nextCursor)
+  private def unlock(): Unit = {
+    if (!unlocked) {
       zkHelper.unlock(shardId)
+      unlocked = true
     }
-    hasNext
   }
 
   override protected def getNext(): String = {
-    finished = !checkHasNext()
-    if (!finished) {
+    if (hasRead < count && shardEndNotReached) {
       if (logData.isEmpty) {
         fetchNextBatch()
       }
-      if (logData.isEmpty) {
-        finished = true
-        null
-      } else {
-        hasRead += 1
-        logData.poll()
-      }
-    } else {
+    }
+    if (logData.isEmpty) {
+      finished = true
+      zkHelper.saveOffset(shardId, nextCursor)
+      unlock()
       null
+    } else {
+      hasRead += 1
+      logData.poll()
     }
   }
 
   override def close() {
     try {
-      zkHelper.unlock(shardId)
+      unlock()
       inputMetrics.incBytesRead(hasRead)
       logData.clear()
       logData = null
@@ -98,6 +92,8 @@ class LoghubIterator(
     if (commitBeforeNext && !committed) {
       if (client.safeUpdateCheckpoint(project, logStore,
         consumerGroup, shardId, startCursor)) {
+        // Save legacy checkpoint, so user can change back
+        zkHelper.saveLegacyOffset(shardId, startCursor)
         committed = true
       }
     }
