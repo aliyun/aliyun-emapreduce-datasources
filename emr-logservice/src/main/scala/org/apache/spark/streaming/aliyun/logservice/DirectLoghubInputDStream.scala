@@ -84,19 +84,18 @@ class DirectLoghubInputDStream(
     }
     checkpointDir = new Path(zkCheckpointDir).toUri.getPath
     initialize()
-    logInfo("Initializing zk dir on start")
-    tryToCreateConsumerGroup()
   }
 
   private def initialize(): Unit = this.synchronized {
     if (loghubClient == null) {
       loghubClient = new LoghubClientAgent(endpoint, accessKeyId, accessKeySecret)
+      tryToCreateConsumerGroup()
     }
     if (zkHelper == null) {
       zkHelper = new ZkHelper(zkParams, checkpointDir, project, logStore)
       zkHelper.initialize()
       zkHelper.mkdir()
-      logInfo("Initializing zk dir")
+      logInfo("Initializing zk client")
     }
   }
 
