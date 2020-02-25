@@ -41,6 +41,9 @@ class DatahubDataWriter(
   lazy val getRecordResult = client.getTopic(project.get, topic.get)
   lazy val recordSchema: RecordSchema = getRecordResult.getRecordSchema
 
+  private lazy val precision = sourceOptions("decimal.precision").toInt
+  private lazy val scale = sourceOptions("decimal.scale").toInt
+
   lazy val asyncWriter: DatahubAsyncDataWriter =
     getAsyncWriter(client, project.get, topic.get, sourceOptions)
 
@@ -106,8 +109,7 @@ class DatahubDataWriter(
             case FieldType.TIMESTAMP => tuple.setField(idx, row.getLong(idx))
             case FieldType.BOOLEAN => tuple.setField(idx, row.getBoolean(idx))
             case FieldType.DECIMAL =>
-              // TODO: open issue, get precision & scale
-              tuple.setField(idx, row.getDecimal(idx, 38, 18).toJavaBigDecimal)
+              tuple.setField(idx, row.getDecimal(idx, precision, scale).toJavaBigDecimal)
             case FieldType.DOUBLE => tuple.setField(idx, row.getDouble(idx))
             case _ => tuple.setField(idx, row.getString(idx))
           }
