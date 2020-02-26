@@ -20,9 +20,10 @@ package org.apache.spark.sql.aliyun.datahub
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
-import org.scalatest.FunSuite
 
-class DatahubOffsetReaderSuite extends FunSuite {
+import org.apache.spark.SparkFunSuite
+
+class DatahubOffsetReaderSuite extends SparkFunSuite {
 
   test("create datahub client used for one region") {
     val accessKeyId = "accessKeyId"

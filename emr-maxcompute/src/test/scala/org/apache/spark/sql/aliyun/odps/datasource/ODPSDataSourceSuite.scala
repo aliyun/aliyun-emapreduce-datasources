@@ -1,13 +1,12 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,8 +17,9 @@
 package org.apache.spark.sql.aliyun.odps.datasource
 
 import com.aliyun.odps.{Column, OdpsType, TableSchema}
-import org.apache.spark.aliyun.utils.OdpsUtils
+
 import org.apache.spark.{SparkConf, SparkFunSuite}
+import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{SaveMode, SparkSession}
 
 class ODPSDataSourceSuite extends SparkFunSuite {
@@ -30,7 +30,8 @@ class ODPSDataSourceSuite extends SparkFunSuite {
   val envType: Int = {
     val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
     if (envType != "private" && envType != "public") {
-      throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
+      throw new Exception(
+        s"Unsupported test environment type: $envType, only support private or public")
     }
     if (envType.equals("public")) 0 else 1
   }
@@ -39,8 +40,10 @@ class ODPSDataSourceSuite extends SparkFunSuite {
   val numPartitions = 2
 
   val urls = Seq(
-    Seq("http://service.odps.aliyun.com/api", "http://dt.odps.aliyun.com"), // public environment
-    Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com") // Aliyun internal environment
+    // public environment
+    Seq("http://service.odps.aliyun.com/api", "http://dt.odps.aliyun.com"),
+    // Aliyun internal environment
+    Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com")
   )
 
   val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local[*]")
@@ -69,11 +72,10 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    System.out.println("*****" + table + ",before overwrite table")
     df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
@@ -81,8 +83,6 @@ class ODPSDataSourceSuite extends SparkFunSuite {
       .option("project", project)
       .option("accessKeySecret", accessKeySecret)
       .option("accessKeyId", accessKeyId).mode(SaveMode.Overwrite).save()
-
-    System.out.println("*****" + table + ",after overwrite table, before read table")
 
     val readDF = ss.read
       .format("org.apache.spark.aliyun.odps.datasource")
@@ -95,7 +95,6 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
 
     val collectList = readDF.collect()
-    System.out.println("*****" + table + ",after read table," + collectList.size)
     assert(collectList.length == 26)
     assert((1 to 26).forall(n => collectList.exists(_.getInt(0) == n)))
   }
@@ -105,7 +104,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
@@ -139,11 +138,11 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    //First,Overwrite
+    // First,Overwrite
     df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
@@ -152,10 +151,10 @@ class ODPSDataSourceSuite extends SparkFunSuite {
       .option("accessKeySecret", accessKeySecret)
       .option("accessKeyId", accessKeyId).mode(SaveMode.Overwrite).save()
 
-    //Second,Append
+    // Second,Append
     val dataSeq1 = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1 + 26, c.toString)
-    }.toSeq
+    }
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     df1.write.format("org.apache.spark.aliyun.odps.datasource")
@@ -186,7 +185,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
@@ -201,7 +200,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq1 = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1 + 26, c.toString)
-    }.toSeq
+    }
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     df1.write.format("org.apache.spark.aliyun.odps.datasource")
@@ -229,16 +228,16 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
   }
 
-  test("write DataFrame to no-partition odps table with SaveMode.ErrorIfExists should throw an Exception") {
+  test("write to no-partition odps table with SaveMode.ErrorIfExists should throw an Exception") {
     val table = "odps_no_partition_table"
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    //First,Overwrite
+    // First,Overwrite
     df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
@@ -249,7 +248,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq1 = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1 + 26, c.toString)
-    }.toSeq
+    }
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     try {
@@ -263,15 +262,12 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
       assert(false)
     } catch {
-      case e: Exception =>
-        System.out.println("write DataFrame to no-partition odps table with " +
-          "SaveMode.ErrorIfExists should throw an Exception:" + e)
-        assert(true)
+      case _: Exception => assert(true)
     }
 
   }
 
-  test("write DataFrame to partition odps table with SaveMode.ErrorIfExists should throw an Exception") {
+  test("write to partition odps table with SaveMode.ErrorIfExists should throw an Exception") {
     val table = "odps_partition_table"
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
@@ -306,10 +302,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
       assert(false)
     } catch {
-      case e: Exception =>
-        System.out.println("write DataFrame to partition odps table with " +
-          "SaveMode.ErrorIfExists should throw an Exception:" + e)
-        assert(true)
+      case _: Exception => assert(true)
     }
 
   }
@@ -319,11 +312,11 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
-    //First,Overwrite
+    // First,Overwrite
     df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
@@ -332,10 +325,10 @@ class ODPSDataSourceSuite extends SparkFunSuite {
       .option("accessKeySecret", accessKeySecret)
       .option("accessKeyId", accessKeyId).mode(SaveMode.Overwrite).save()
 
-    //Second,Append
+    // Second,Append
     val dataSeq1 = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1 + 26, c.toString)
-    }.toSeq
+    }
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     df1.write.format("org.apache.spark.aliyun.odps.datasource")
@@ -366,7 +359,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1, c.toString)
-    }.toSeq
+    }
 
     val df = ss.sparkContext.makeRDD(dataSeq).toDF("a", "b")
 
@@ -381,7 +374,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
 
     val dataSeq1 = ('a' to 'z').zipWithIndex.map {
       case (c, index) => (index + 1 + 26, c.toString)
-    }.toSeq
+    }
     val df1 = ss.sparkContext.makeRDD(dataSeq1).toDF("a", "b")
 
     df1.write.format("org.apache.spark.aliyun.odps.datasource")

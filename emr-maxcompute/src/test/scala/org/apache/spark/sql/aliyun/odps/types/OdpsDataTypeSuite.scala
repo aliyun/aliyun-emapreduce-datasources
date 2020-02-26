@@ -1,19 +1,19 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.apache.spark.sql.aliyun.odps.types
 
@@ -21,9 +21,9 @@ import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
-import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.sql.types._
 
 class OdpsDataTypeSuite extends SparkFunSuite {
@@ -33,7 +33,8 @@ class OdpsDataTypeSuite extends SparkFunSuite {
   val envType: Int = {
     val envType = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
     if (envType != "private" && envType != "public") {
-      throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
+      throw new Exception(
+        s"Unsupported test environment type: $envType, only support private or public")
     }
     if (envType.equals("public")) 0 else 1
   }
@@ -42,8 +43,10 @@ class OdpsDataTypeSuite extends SparkFunSuite {
   val numPartitions = 2
 
   val urls = Seq(
-    Seq("http://service.odps.aliyun.com/api", "http://dt.odps.aliyun.com"), // public environment
-    Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com") // Aliyun internal environment
+    // public environment
+    Seq("http://service.odps.aliyun.com/api", "http://dt.odps.aliyun.com"),
+    // Aliyun internal environment
+    Seq("http://odps-ext.aliyun-inc.com/api", "http://dt-ext.odps.aliyun-inc.com")
   )
 
   val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local[*]")
@@ -54,6 +57,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
   override def beforeAll(): Unit = {
     val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
     odpsUtils.runSQL(project,
+      // scalastyle:off
       """
         |CREATE TABLE `odps_basic_types` (
         |	`a` boolean,
@@ -70,6 +74,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
         |	`l` binary
         |) ;
       """.stripMargin,
+      // scalastyle:on
       Map(
         "odps.sql.type.system.odps2" -> "true",
         "odps.sql.submit.mode" -> "script"
@@ -118,7 +123,6 @@ class OdpsDataTypeSuite extends SparkFunSuite {
       attributes._12))
 
     val df = ss.createDataFrame(rowRDD, struct)
-    System.out.println("*****" + table + ",before overwrite table")
     df.write.format("org.apache.spark.aliyun.odps.datasource")
       .option("odpsUrl", "http://service.odps.aliyun.com/api")
       .option("tunnelUrl", "http://dt.odps.aliyun.com")
@@ -126,8 +130,6 @@ class OdpsDataTypeSuite extends SparkFunSuite {
       .option("project", project)
       .option("accessKeySecret", accessKeySecret)
       .option("accessKeyId", accessKeyId).mode(SaveMode.Overwrite).save()
-
-    System.out.println("*****" + table + ", after overwrite table, before read table")
 
     val readDF = ss.read
       .format("org.apache.spark.aliyun.odps.datasource")

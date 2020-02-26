@@ -17,15 +17,16 @@
 
 package org.apache.spark.sql.aliyun.datahub
 
+import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.execution.datasources.v2.StreamingDataSourceV2Relation
 import org.apache.spark.sql.execution.streaming._
 import org.apache.spark.sql.execution.streaming.continuous.ContinuousExecution
 import org.apache.spark.sql.streaming.{ProcessingTime, StreamTest}
-import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.test.SharedSQLContext
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
-abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQLContext with StreamTest {
+abstract class DatahubMicroBatchReaderSuiteBase
+  extends QueryTest with SharedSQLContext with StreamTest {
   import testImplicits._
 
   protected var testUtils: DatahubTestUtils = _
@@ -47,7 +48,7 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
     super.afterAll()
   }
 
-  def makeSureGetOffsetCalled = AssertOnQuery { q =>
+  def makeSureGetOffsetCalled: AssertOnQuery = AssertOnQuery { q =>
     q match {
       case c: ContinuousExecution => c.awaitEpoch(0)
       case m: MicroBatchExecution => m.processAllAvailable()
@@ -107,7 +108,7 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
             "are multiple Datahub sources:\n\t" + sources.mkString("\n\t"))
       }
       val datahubSource = sources.head
-      testUtils.sendMessage(topic, shardId, data.map { _.toString }:_*)
+      testUtils.sendMessage(topic, shardId, data.map { _.toString }: _*)
       Thread.sleep(5000)
       val offset = DatahubSourceOffset(testUtils.getLatestOffsets(topic))
       logInfo(s"Added data, expected offset $offset")
@@ -120,7 +121,7 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
 
   test("cannot stop datahub stream") {
     val topic = testUtils.createTopic(defaultSchema)
-    testUtils.sendMessage(topic, None, (101 to 105).map(_.toString):_*)
+    testUtils.sendMessage(topic, None, (101 to 105).map(_.toString): _*)
 
     val reader = spark
       .readStream
@@ -164,7 +165,7 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
   test("input row metrics") {
     val topic = testUtils.createTopic(defaultSchema)
     Thread.sleep(5000)
-    testUtils.sendMessage(topic, Some(0), Array("-1"):_*)
+    testUtils.sendMessage(topic, Some(0), Array("-1"): _*)
     Thread.sleep(5000)
     require(testUtils.getLatestOffsets(topic).size == 2)
 
@@ -209,10 +210,10 @@ abstract class DatahubMicroBatchReaderSuiteBase extends QueryTest with SharedSQL
     "during end offset calculation") {
     val topic = testUtils.createTopic(defaultSchema)
     Thread.sleep(5000)
-    testUtils.sendMessage(topic, Some(0), (0 to 5).map { _.toString }:_*)
+    testUtils.sendMessage(topic, Some(0), (0 to 5).map { _.toString }: _*)
     Thread.sleep(5000)
     val startPartitionOffsets = Map(
-      DatahubShard(testUtils.project, topic , "0") -> 5L,
+      DatahubShard(testUtils.project, topic, "0") -> 5L,
       DatahubShard(testUtils.project, topic, "1") -> 0L
     )
     val startingOffsets = DatahubSourceOffset.partitionOffsets(startPartitionOffsets)

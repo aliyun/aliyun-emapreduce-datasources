@@ -4,7 +4,7 @@
 
     <groupId>com.aliyun.emr</groupId>
     <artifactId>emr_2.11</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.0.0</version>
 
     <packaging>pom</packaging>
     <name>Aliyun E-MapReduce Root</name>
@@ -723,8 +723,8 @@
                     <configuration>
                         <verbose>false</verbose>
                         <failOnViolation>true</failOnViolation>
-                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
-                        <failOnWarning>false</failOnWarning>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                        <failOnWarning>true</failOnWarning>
                         <sourceDirectory>${basedir}/src/main/scala</sourceDirectory>
                         <testSourceDirectory>${basedir}/src/test/scala</testSourceDirectory>
                         <configLocation>scalastyle-config.xml</configLocation>

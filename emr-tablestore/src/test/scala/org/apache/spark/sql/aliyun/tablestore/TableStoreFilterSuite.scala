@@ -17,13 +17,14 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
+import scala.util.Random
+
 import com.alicloud.openservices.tablestore.ecosystem.Filter.{CompareOperator, LogicOperator}
 import com.alicloud.openservices.tablestore.model.ColumnType
+
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.sources.{And, EqualTo, Filter, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual, Not, Or, StringStartsWith}
 import org.apache.spark.sql.types._
-
-import scala.util.Random
 
 class TableStoreFilterSuite extends SparkFunSuite {
   private val testUtils = new TableStoreTestUtil()
@@ -165,7 +166,8 @@ class TableStoreFilterSuite extends SparkFunSuite {
 
   test("random build And filter") {
     val schema = testUtils.createTestStructType()
-    val filters = Array(EqualTo, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual, StringStartsWith)
+    val filters = Array(EqualTo, GreaterThan, GreaterThanOrEqual, LessThan,
+      LessThanOrEqual, StringStartsWith)
     val rand = new Random(System.currentTimeMillis())
     val (key, value) = ("PkString", rand.nextInt(10000).toString)
     val lft = filters(rand.nextInt(filters.length))(key, value)
@@ -189,7 +191,8 @@ class TableStoreFilterSuite extends SparkFunSuite {
 
   test("random build Or filter") {
     val schema = testUtils.createTestStructType()
-    val filters = Array(EqualTo, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual, StringStartsWith)
+    val filters = Array(EqualTo, GreaterThan, GreaterThanOrEqual, LessThan,
+      LessThanOrEqual, StringStartsWith)
     val rand = new Random(System.currentTimeMillis())
     val (key, value) = ("PkString", rand.nextInt(10000).toString)
     val lft = filters(rand.nextInt(filters.length))(key, value)

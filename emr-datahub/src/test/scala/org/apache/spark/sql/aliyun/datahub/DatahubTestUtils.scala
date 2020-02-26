@@ -42,7 +42,8 @@ class DatahubTestUtils {
   val envType: String = Option(System.getenv("TEST_ENV_TYPE")).getOrElse("public").toLowerCase
 
   if (envType != "private" && envType != "public") {
-    throw new Exception(s"Unsupported test environment type: $envType, only support private or public")
+    throw new Exception(
+      s"Unsupported test environment type: $envType, only support private or public")
   }
 
   val endpoint: String = Option(System.getenv("DATAHUB_ENDPOINT")).getOrElse {
