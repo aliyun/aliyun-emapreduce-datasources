@@ -17,13 +17,9 @@
 
 package org.apache.spark.sql.aliyun.datahub
 
-import java.nio.charset.StandardCharsets.UTF_8
-import java.util.concurrent.atomic.AtomicInteger
-
-import org.apache.spark.sql.execution.streaming.sources.ContinuousMemoryStream
-import org.apache.spark.sql.execution.streaming.{MemoryStream, StreamingExecutionRelation}
-import org.apache.spark.sql.streaming.{OutputMode, Trigger}
 import org.apache.spark.sql.{DataFrame, QueryTest, Row}
+import org.apache.spark.sql.execution.streaming.MemoryStream
+import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 

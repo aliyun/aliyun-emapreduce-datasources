@@ -19,8 +19,9 @@ package org.apache.spark.sql.aliyun.tablestore
 import java.util.Locale
 
 import org.apache.commons.cli.MissingArgumentException
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.streaming.OutputMode

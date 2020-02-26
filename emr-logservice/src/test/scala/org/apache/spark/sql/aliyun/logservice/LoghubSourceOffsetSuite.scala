@@ -58,9 +58,10 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
       LoghubOffsetReader.setLogServiceClient(testUtils.accessKeyId, testUtils.endpoint, clientMock)
 
       assert(LoghubSourceOffset.getShardOffsets(
-        LoghubSourceOffset(result, testUtils.sourceProps), testUtils.sourceProps).keySet === Set(loghubShard))
-      assert(LoghubSourceOffset.getShardOffsets(SerializedOffset(json), testUtils.sourceProps).keySet ===
-        Set(loghubShard))
+        LoghubSourceOffset(result, testUtils.sourceProps),
+        testUtils.sourceProps).keySet === Set(loghubShard))
+      assert(LoghubSourceOffset.getShardOffsets(
+        SerializedOffset(json), testUtils.sourceProps).keySet === Set(loghubShard))
       try {
         LoghubSourceOffset.getShardOffsets(new FakeOffset, testUtils.sourceProps)
         assert(false, "Should throw a IllegalArgumentException.")
@@ -80,15 +81,20 @@ class LoghubSourceOffsetSuite extends SparkFunSuite {
       val clientMock = mock(classOf[LoghubClientAgent])
       val cursorResponseMock1 = mock(classOf[GetCursorResponse])
       when(cursorResponseMock1.GetCursor()).thenReturn("empty")
-      when(clientMock.GetCursor("logProject-A", "logStore-B", 0, 1409569200L)).thenReturn(cursorResponseMock1)
-      when(clientMock.GetCursor("logProject-A", "logStore-B", 1, 1409569201L)).thenReturn(cursorResponseMock1)
+      when(clientMock.GetCursor("logProject-A", "logStore-B", 0, 1409569200L))
+        .thenReturn(cursorResponseMock1)
+      when(clientMock.GetCursor("logProject-A", "logStore-B", 1, 1409569201L))
+        .thenReturn(cursorResponseMock1)
       val cursorResponseMock2 = mock(classOf[GetCursorResponse])
       when(cursorResponseMock2.GetCursor()).thenReturn("empty")
-      when(clientMock.GetCursor("logProject-C", "logStore-D", 5, 1409569202L)).thenReturn(cursorResponseMock2)
+      when(clientMock.GetCursor("logProject-C", "logStore-D", 5, 1409569202L))
+        .thenReturn(cursorResponseMock2)
       LoghubOffsetReader.setLogServiceClient(testUtils.accessKeyId, testUtils.endpoint, clientMock)
 
       val parsed = LoghubSourceOffset.partitionOffsets(
+        // scalastyle:off
         """{"logProject-A#logStore-B":{"0":1409569200,"1":1409569201},"logProject-C#logStore-D":{"5":1409569202}}""",
+        // scalastyle:on
         testUtils.sourceProps)
       assert(parsed(LoghubShard("logProject-A", "logStore-B", 0))._1 === 1409569200)
       assert(parsed(LoghubShard("logProject-A", "logStore-B", 1))._1 === 1409569201)

@@ -174,6 +174,7 @@ object FromDTSAvroUDF {
   final val name = "dts_binlog_parser"
   final val value = "_FUNC_(binary) - Returns a struct value with the given `binary` value."
   final val extendedValue =
+    // scalastyle:off
     """
       |Only binary data from Aliyun DTS is supported.
       |Returned struct value schema:
@@ -191,4 +192,5 @@ object FromDTSAvroUDF {
       | > SELECT dts_binlog_parser(binary)
       |   10	{"sourceType": "MySQL", "version": "5.7.26-log"}	students	UPDATE	2020-01-10 17:23:18	{"pk_uk_info":"{}","readerThroughoutTime":"1578648243764"}	["id","name","__#alibaba_rds_row_id#__"]	{"__#alibaba_rds_row_id#__":"44","name":"jack","id":"1"}	{"__#alibaba_rds_row_id#__":"44","name":"jack","id":"2"}
     """
+    // scalastyle:on
 }

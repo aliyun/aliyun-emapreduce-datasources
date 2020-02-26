@@ -17,10 +17,10 @@
 
 package org.apache.spark.streaming.aliyun.logservice
 
+import scala.collection.mutable
+
 import com.aliyun.openservices.log.common.Consts
 import com.aliyun.openservices.loghub.client.config.LogHubCursorPosition
-
-import scala.collection.mutable
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.sql.aliyun.logservice.LoghubTestUtils

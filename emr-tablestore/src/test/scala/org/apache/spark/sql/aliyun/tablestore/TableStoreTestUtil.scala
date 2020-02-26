@@ -22,18 +22,20 @@ import java.util
 import java.util.UUID
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.util.control.NonFatal
+
 import com.alicloud.openservices.tablestore.SyncClient
 import com.alicloud.openservices.tablestore.model._
 import com.alicloud.openservices.tablestore.model.StreamRecord.RecordType
 import com.alicloud.openservices.tablestore.model.tunnel._
+
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{DataFrame, SQLContext, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession, SQLContext}
 import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.types.StructType
 
-import scala.collection.mutable
 
 class TableStoreTestUtil extends Logging {
   private val instanceName = Option(System.getenv("OTS_INSTANCE_NAME")).getOrElse("")

@@ -19,9 +19,10 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.{util => ju}
 
-import com.alicloud.openservices.tablestore.ecosystem.Filter.{CompareOperator, LogicOperator}
 import com.alicloud.openservices.tablestore.ecosystem.{Filter => OTSFilter}
+import com.alicloud.openservices.tablestore.ecosystem.Filter.{CompareOperator, LogicOperator}
 import com.alicloud.openservices.tablestore.model.ColumnValue
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
