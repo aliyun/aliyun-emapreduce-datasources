@@ -17,6 +17,8 @@
 
 package org.apache.spark.streaming.aliyun.datahub
 
+import java.{util => ju}
+
 import com.aliyun.datahub.{DatahubClient, DatahubConfiguration}
 import com.aliyun.datahub.common.data.RecordSchema
 import com.aliyun.datahub.exception.{InvalidParameterException, MalformedRecordException, ResourceNotFoundException}
@@ -173,6 +175,24 @@ class DatahubClientAgent(conf: DatahubConfiguration) extends Logging {
     }
     logError(s"retry to listShards exceed max retry times[$datahubServiceMaxRetry].")
     throw currentException
+  }
+
+  def putRecords(projectName: String,
+                 topicName: String,
+                 entries: ju.List[RecordEntry]): Unit = {
+    try {
+      val result = client.putRecords(projectName, topicName, entries)
+      result.getFailedRecords
+      // TODO: log or metrics?
+      // refine exception handling
+    } catch {
+      case e: InvalidParameterException =>
+        logError(e.getErrorMessage)
+        throw e
+      case e: Exception =>
+        logError(s"catch exception when listShards, start to retry -times")
+        throw e
+    }
   }
 
   def initOffsetContext(
