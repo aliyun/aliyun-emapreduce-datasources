@@ -104,14 +104,16 @@ class DatahubDataWriter(
         val tuple = new TupleRecordData(recordSchema)
         var idx = 0
         recordSchema.getFields.asScala.foreach(field => {
-          field.getType match {
-            case FieldType.BIGINT => tuple.setField(idx, row.getLong(idx))
-            case FieldType.TIMESTAMP => tuple.setField(idx, row.getLong(idx))
-            case FieldType.BOOLEAN => tuple.setField(idx, row.getBoolean(idx))
-            case FieldType.DECIMAL =>
-              tuple.setField(idx, row.getDecimal(idx, precision, scale).toJavaBigDecimal)
-            case FieldType.DOUBLE => tuple.setField(idx, row.getDouble(idx))
-            case _ => tuple.setField(idx, row.getString(idx))
+          if (!row.isNullAt(idx)) {
+            field.getType match {
+              case FieldType.BIGINT => tuple.setField(idx, row.getLong(idx))
+              case FieldType.TIMESTAMP => tuple.setField(idx, row.getLong(idx))
+              case FieldType.BOOLEAN => tuple.setField(idx, row.getBoolean(idx))
+              case FieldType.DECIMAL =>
+                tuple.setField(idx, row.getDecimal(idx, precision, scale).toJavaBigDecimal)
+              case FieldType.DOUBLE => tuple.setField(idx, row.getDouble(idx))
+              case _ => tuple.setField(idx, row.getString(idx))
+            }
           }
           idx = idx + 1
         })

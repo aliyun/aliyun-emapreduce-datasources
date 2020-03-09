@@ -60,7 +60,7 @@ class DatahubSinkBatchSuiteBase extends DatahubSinkSuite {
     val data = Seq(
       Row(1L, "hello spark batch"),  // .getBytes(UTF_8)
       Row(2L, "hello datahub"),
-      Row(3L, "emr")
+      Row(3L, null)
     )
 
     val df = spark.createDataFrame(
