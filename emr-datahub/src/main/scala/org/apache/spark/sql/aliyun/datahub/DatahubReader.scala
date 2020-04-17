@@ -36,9 +36,7 @@ import org.apache.spark.sql.types.StructType
 
 class DatahubReader(
     schema: StructType,
-    sourceOptions: DataSourceOptions,
-    failOnDataLoss: Boolean,
-    datahubOffsetReader: DatahubOffsetReader) extends DataSourceReader with Logging {
+    sourceOptions: DataSourceOptions) extends DataSourceReader with Logging {
 
   override def readSchema(): StructType = schema
 
@@ -58,12 +56,12 @@ class DatahubReader(
         shards: Set[DatahubShard],
         shardOffsets: Map[DatahubShard, Long]): Unit = {
       assert(shards == shardOffsets.keySet, "If startingOffsets contains specific offsets, " +
-        "you must specify all shard.\n" +
-        "Use -1 for latest, -2 for oldest, if you don't care.\n" +
+        "you must specify all shard.\nUse -1 for latest, -2 for oldest, if you don't care.\n" +
         s"Specified: ${shardOffsets.keySet} Assigned: $shards")
       logDebug(s"Shards assigned to consumer: $shards. Seeking to $shardOffsets")
     }
 
+    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
     val shards = datahubOffsetReader.fetchDatahubShard()
     val startPartitionOffsets = startingRelationOffsets match {
       case OldestOffsetRangeLimit =>
@@ -90,14 +88,13 @@ class DatahubReader(
 
     // Generate factories based on the offset ranges
     offsetRanges.map { range =>
-      DatahubInputPartition(range, failOnDataLoss,
+      DatahubInputPartition(range,
         sourceOptions.asMap().asScala.toMap, readSchema().toDDL): InputPartition[InternalRow]
     }.asJava
   }
 
   private case class DatahubInputPartition(
       offsetRange: DatahubOffsetRange,
-      failOnDataLoss: Boolean,
       sourceOptions: Map[String, String],
       schemaDdl: String)
       extends InputPartition[InternalRow] {
@@ -105,13 +102,11 @@ class DatahubReader(
     override def preferredLocations(): Array[String] = Array.empty[String]
 
     override def createPartitionReader(): InputPartitionReader[InternalRow] =
-      DatahubInputPartitionReader(offsetRange, failOnDataLoss,
-        sourceOptions, schemaDdl)
+      DatahubInputPartitionReader(offsetRange, sourceOptions, schemaDdl)
   }
 
   private case class DatahubInputPartitionReader(
       offsetRange: DatahubOffsetRange,
-      failOnDataLoss: Boolean,
       sourceOptions: Map[String, String],
       schemaDdl: String)
       extends InputPartitionReader[InternalRow] with Logging {

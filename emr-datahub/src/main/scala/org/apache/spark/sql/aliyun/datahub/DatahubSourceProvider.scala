@@ -150,14 +150,7 @@ class DatahubSourceProvider extends DataSourceRegister
   }
 
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
-    val parameters = options.asMap().asScala.toMap
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
-    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
-    new DatahubReader(
-      schema,
-      options,
-      caseInsensitiveParams.getOrElse("failondataloss", "true").toBoolean,
-      datahubOffsetReader)
+    new DatahubReader(schema, options)
   }
 }
 
