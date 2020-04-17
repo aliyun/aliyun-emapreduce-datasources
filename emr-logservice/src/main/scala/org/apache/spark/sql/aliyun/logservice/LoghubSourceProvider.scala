@@ -62,9 +62,7 @@ class LoghubSourceProvider extends DataSourceRegister
     Utils.validateOptions(parameters)
     val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
-      caseInsensitiveParams,
-      STARTING_OFFSETS_OPTION_KEY,
-      LatestOffsetRangeLimit)
+      caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
     val _schema = schema.getOrElse({
       logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
@@ -103,9 +101,7 @@ class LoghubSourceProvider extends DataSourceRegister
     assert(startingRelationOffsets != LatestOffsetRangeLimit)
 
     val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
-      caseInsensitiveParams,
-      ENDING_OFFSETS_OPTION_KEY,
-      LatestOffsetRangeLimit)
+      caseInsensitiveParams, ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
 
     new LoghubRelation(
@@ -129,9 +125,7 @@ class LoghubSourceProvider extends DataSourceRegister
     assert(startingRelationOffsets != LatestOffsetRangeLimit)
 
     val endingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
-      caseInsensitiveParams,
-      ENDING_OFFSETS_OPTION_KEY,
-      LatestOffsetRangeLimit)
+      caseInsensitiveParams, ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     assert(endingRelationOffsets != EarliestOffsetRangeLimit)
 
     val schema = LoghubSourceProvider.getDefaultSchema

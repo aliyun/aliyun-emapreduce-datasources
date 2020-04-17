@@ -116,8 +116,9 @@ class LoghubSource(
     // Make sure initialPartitionOffsets is initialized
     initialPartitionOffsets
 
-    if (lastCursorTime < 0) {
+    if (lastCursorTime == -1) {
       lastCursorTime = initialPartitionOffsets.values.map(_._1).max
+      resetLastCursorTimeIfNecessary()
     }
     val latest = loghubOffsetReader.fetchLatestOffsets()
     val limitCursorTime = loghubOffsetReader.rateLimit(lastCursorTime, Some(maxOffsetsPerTrigger))
@@ -135,8 +136,9 @@ class LoghubSource(
     }
     val shardOffsets = new ArrayBuffer[(Int, Int, Int)]()
     val untilShardOffsets = LoghubSourceOffset.getShardOffsets(end, sourceOptions)
-    if (lastCursorTime < 0) {
+    if (lastCursorTime == -1) {
       lastCursorTime = untilShardOffsets.values.map(_._1).head
+      resetLastCursorTimeIfNecessary()
     }
     val (shards, newShards) = untilShardOffsets.keySet.partition { shard =>
       fromShardOffsets.contains(shard)
@@ -156,6 +158,13 @@ class LoghubSource(
       schema.toDDL, defaultSchema, sourceOptions)
 
     sqlContext.internalCreateDataFrame(rdd, schema, isStreaming = true)
+  }
+
+  private def resetLastCursorTimeIfNecessary(): Unit = {
+    val minCursorTime = loghubOffsetReader.fetchEarliestOffsets().values.map(_._1).max
+    if (lastCursorTime < minCursorTime) {
+      lastCursorTime = minCursorTime
+    }
   }
 
   def enableDynamicConfig(): Unit = {
