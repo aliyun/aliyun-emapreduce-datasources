@@ -28,8 +28,8 @@ case class SpecificOffsetRangeLimit(shardOffsets: Map[DatahubShard, Long])
   extends DatahubOffsetRangeLimit
 
 object DatahubOffsetRangeLimit {
-  val LATEST = "-1" // indicates resolution to the latest offset
-  val OLDEST = "-2" // indicates resolution to the oldest offset
+  val LATEST: Long = -1L // indicates resolution to the latest offset
+  val OLDEST: Long = -2L // indicates resolution to the oldest offset
   val STARTING_OFFSETS_OPTION_KEY = "startingoffsets"
   val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
 
