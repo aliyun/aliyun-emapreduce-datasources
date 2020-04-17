@@ -34,18 +34,19 @@ import org.apache.spark.sql.{SaveMode, SQLContext}
 import org.apache.spark.sql.execution.streaming.Source
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2._
+import org.apache.spark.sql.sources.v2.reader.DataSourceReader
 import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
 import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
 import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.streaming.aliyun.datahub.DatahubClientAgent
 
 class DatahubSourceProvider extends DataSourceRegister
   with StreamSourceProvider
   with MicroBatchReadSupport
   with ContinuousReadSupport
   with WriteSupport
+  with ReadSupport
   with StreamWriteSupport{
   override def shortName(): String = "datahub"
 
@@ -141,6 +142,22 @@ class DatahubSourceProvider extends DataSourceRegister
     val project = opts.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
     val topic = opts.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
     Optional.of(new DatahubWriter(project, topic, opts, None))
+  }
+
+  override def createReader(options: DataSourceOptions): DataSourceReader = {
+    val schema = DatahubSchema.getSchema(options.asMap().asScala.toMap)
+    createReader(schema, options)
+  }
+
+  override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
+    val parameters = options.asMap().asScala.toMap
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
+    new DatahubReader(
+      schema,
+      options,
+      caseInsensitiveParams.getOrElse("failondataloss", "true").toBoolean,
+      datahubOffsetReader)
   }
 }
 
