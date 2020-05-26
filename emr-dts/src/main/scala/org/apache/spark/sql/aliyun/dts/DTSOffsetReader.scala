@@ -98,9 +98,7 @@ class DTSOffsetReader(options: DataSourceOptions) extends Logging {
     }
   }
 
-  def fetchPartitionOffsets(
-      offsetRangeLimit: DTSOffsetRangeLimit,
-      isStartingOffsets: Boolean): PartitionOffset = {
+  def fetchPartitionOffsets(offsetRangeLimit: DTSOffsetRangeLimit): PartitionOffset = {
     offsetRangeLimit match {
       case EarliestOffsetRangeLimit => (tp, DTSOffsetRangeLimit.EARLIEST)
       case LatestOffsetRangeLimit => (tp, DTSOffsetRangeLimit.LATEST)

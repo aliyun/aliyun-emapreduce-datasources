@@ -17,183 +17,143 @@
 
 package org.apache.spark.sql.aliyun.datahub
 
-import java.nio.charset.StandardCharsets
-import java.sql.Timestamp
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.Locale
 
-import scala.collection.JavaConverters._
-
-import com.aliyun.datahub.model.OffsetContext
-import org.I0Itec.zkclient.ZkClient
-import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.apache.hadoop.fs.Path
-
-import org.apache.spark._
-import org.apache.spark.internal.Logging
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.aliyun.datahub.DatahubOffsetRangeLimit._
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.NextIterator
 
 class DatahubSourceRDD(
-    @transient _sc: SparkContext,
-    endpoint: String,
-    project: String,
-    topic: String,
-    accessId: String,
-    accessKey: String,
-    schemaFieldNames: Array[String],
-    shardOffsets: Array[(String, Long, Long)],
-    zkParam: Map[String, String],
-    checkpointDir: String,
-    maxOffsetPerTrigger: Long = -1) extends RDD[DatahubData](_sc, Nil) with Logging {
+    @transient sc: SparkContext,
+    schema: StructType,
+    parameters: Map[String, String]) extends RDD[InternalRow](sc, Nil) {
+  override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
+    val sourcePartition = split.asInstanceOf[DatahubInputPartition]
+    val newRange = resolveOffset(sourcePartition.offsetRange)
+    val partitionReader = DatahubMicroBatchInputPartitionReader(
+      newRange, false, parameters, sourcePartition.schemaDdl)
 
-  @transient private var zkClient = DatahubOffsetReader.getOrCreateZKClient(zkParam)
-  @transient private var datahubClientAgent =
-    DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
+    if (newRange.fromOffset >= newRange.untilOffset) {
+      logInfo(s"Beginning offset ${newRange.fromOffset} is larger than " +
+        s"ending offset ${newRange.untilOffset}, skip ${newRange.datahubShard}")
+      Iterator.empty
+    } else {
+      val underlying = new NextIterator[InternalRow]() {
+        override def getNext(): InternalRow = {
+          if (partitionReader.next()) {
+            partitionReader.get()
+          } else {
+            finished = true
+            null
+          }
+        }
 
-  override def compute(split: Partition, context: TaskContext): Iterator[DatahubData] = {
-    val shardPartition = split.asInstanceOf[ShardPartition]
-
-    zkClient = DatahubOffsetReader.getOrCreateZKClient(zkParam)
-    zkClient.setZkSerializer(new ZkSerializer{
-      override def serialize(data: scala.Any): Array[Byte] = {
-        data.asInstanceOf[String].getBytes(StandardCharsets.UTF_8)
+        override protected def close(): Unit = {
+          partitionReader.close()
+        }
       }
-
-      override def deserialize(bytes: Array[Byte]): AnyRef = {
-        new String(bytes, StandardCharsets.UTF_8)
+      // Release consumer, either by removing it or indicating we're no longer using it
+      context.addTaskCompletionListener[Unit] { _ =>
+        underlying.closeIfNeeded()
       }
-    })
-    datahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
-
-    val schemaFieldPos: Map[String, Int] = schemaFieldNames.zipWithIndex.toMap
-    try {
-      new InterruptibleIterator[DatahubData](context, new NextIterator[DatahubData] {
-        private val step = 100
-        private var dataBuffer = new LinkedBlockingQueue[DatahubData](step)
-        private var hasRead = 0
-        private var lastOffset: OffsetContext.Offset = null
-        private val inputMetrics = context.taskMetrics().inputMetrics
-        private var nextCursor = shardPartition.cursor
-
-        override protected def getNext(): DatahubData = {
-          finished = !checkHasNext
-          if (!finished) {
-            if (dataBuffer.isEmpty) {
-              fetchData()
-            }
-            if (dataBuffer.isEmpty) {
-              finished = true
-              null.asInstanceOf[DatahubData]
-            } else {
-              dataBuffer.poll()
-            }
-          } else {
-            null.asInstanceOf[DatahubData]
-          }
-        }
-
-        override protected def close() = {
-          try {
-            inputMetrics.incRecordsRead(hasRead)
-            dataBuffer.clear()
-            dataBuffer = null
-          } catch {
-            case e: Exception =>
-              logError("Catch exception when close datahub iterator.", e)
-          }
-        }
-
-        private def checkHasNext: Boolean = {
-          if (shardPartition.count <= 0 ) {
-            dataBuffer.asScala.nonEmpty
-          } else {
-            val hasNext = hasRead < shardPartition.count || !dataBuffer.isEmpty
-            if (!hasNext) {
-              // commit next offset
-              val nextSeq = lastOffset.getSequence + 1
-              val path =
-                s"$checkpointDir/datahub/available/$project/$topic/${shardPartition.shardId}"
-              writeDataToZk(zkClient, path, nextSeq.toString)
-            }
-            hasNext
-          }
-        }
-
-        private def fetchData() = {
-          val topicResult = datahubClientAgent.getTopic(project, topic)
-          val schema = topicResult.getRecordSchema
-          val limit = if (shardPartition.count - hasRead >= step) {
-            step
-          } else {
-            shardPartition.count - hasRead
-          }
-          val recordResult = datahubClientAgent.getRecords(project, topic, shardPartition.shardId,
-            nextCursor, limit, schema)
-          recordResult.getRecords.asScala.foreach(record => {
-            try {
-              val columnArray = Array.tabulate(schemaFieldNames.length)(_ =>
-                (null, null).asInstanceOf[(String, Any)]
-              )
-
-              record.getFields.foreach(field => {
-                val fieldName = field.getName
-                columnArray(schemaFieldPos(fieldName)) = (fieldName, record.get(fieldName))
-              })
-              dataBuffer.offer(new SchemaDatahubData(project, topic, shardPartition.shardId,
-                new Timestamp(record.getSystemTime), columnArray))
-            } catch {
-              case e: NoSuchElementException =>
-                logWarning(s"Meet an unknown column name, ${e.getMessage}. Treat this as " +
-                  "an invalid data and continue.")
-            }
-            lastOffset = record.getOffset
-          })
-          nextCursor = recordResult.getNextCursor
-          hasRead = hasRead + recordResult.getRecordCount
-          logDebug(s"shardId: ${shardPartition.shardId}, nextCursor: $nextCursor, " +
-            s"hasRead: $hasRead, count: ${shardPartition.count}")
-
-        }
-
-        private def writeDataToZk(zkClient: ZkClient, path: String, data: String) = {
-          val dir = new Path(path).toUri.getPath
-          if (!zkClient.exists(dir)) {
-            zkClient.createPersistent(dir, true)
-          }
-          zkClient.writeData(dir, data)
-        }
-      })
-    } catch {
-      case e: Exception =>
-        logError("Fail to build DatahubIterator.", e)
-        Iterator.empty.asInstanceOf[Iterator[DatahubData]]
+      underlying
     }
   }
 
   override protected def getPartitions: Array[Partition] = {
-    datahubClientAgent = DatahubOffsetReader.getOrCreateDatahubClient(accessId, accessKey, endpoint)
-    shardOffsets.zipWithIndex.map {
-      case (so, index) =>
-        val shardId = so._1
-        val startOffset = so._2
-        val endOffset = so._3
-        var count = endOffset - startOffset + 1
-        if (maxOffsetPerTrigger > 0 && maxOffsetPerTrigger < count) {
-          count = maxOffsetPerTrigger
+    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+
+    val startingRelationOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(
+      caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, OldestOffsetRangeLimit)
+    assert(startingRelationOffsets != LatestOffsetRangeLimit)
+
+    val endingRelationOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(
+      caseInsensitiveParams, ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+    assert(endingRelationOffsets != OldestOffsetRangeLimit)
+
+    def validateTopicPartitions(
+        shards: Set[DatahubShard],
+        shardOffsets: Map[DatahubShard, Long]): Unit = {
+      assert(shards == shardOffsets.keySet, "If startingOffsets contains specific offsets, " +
+        "you must specify all shard.\nUse -1 for latest, -2 for oldest, if you don't care.\n" +
+        s"Specified: ${shardOffsets.keySet} Assigned: $shards")
+      logDebug(s"Shards assigned to consumer: $shards. Seeking to $shardOffsets")
+    }
+
+    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
+    val shards = datahubOffsetReader.fetchDatahubShard()
+    val startPartitionOffsets = startingRelationOffsets match {
+      case OldestOffsetRangeLimit =>
+        shards.map { tp => tp -> OLDEST }.toMap
+      case SpecificOffsetRangeLimit(shardOffsets) =>
+        validateTopicPartitions(shards, shardOffsets)
+        shardOffsets.map(so => (so._1, so._2))
+    }
+
+    val endPartitionOffsets = endingRelationOffsets match {
+      case LatestOffsetRangeLimit =>
+        shards.map { tp => tp -> LATEST }.toMap
+      case SpecificOffsetRangeLimit(shardOffsets) =>
+        validateTopicPartitions(shards, shardOffsets)
+        shardOffsets.map(so => (so._1, so._2))
+    }
+
+    require(startPartitionOffsets.size == endPartitionOffsets.size)
+    val offsetRanges = startPartitionOffsets.toSeq.sortBy(_._1.shardId)
+      .zip(endPartitionOffsets.toSeq.sortBy(_._1.shardId)).map { case (start, end) =>
+        require(start._1.shardId == end._1.shardId)
+        DatahubOffsetRange(start._1, start._2, end._2)
+      }.filter(_.size > 0)
+
+    // Generate factories based on the offset ranges
+    offsetRanges.zipWithIndex.map { case (range, idx) =>
+      DatahubInputPartition(idx, range, parameters, schema.toDDL): Partition
+    }.toArray
+  }
+
+  private def resolveOffset(range: DatahubOffsetRange): DatahubOffsetRange = {
+    var datahubOffsetReader: DatahubOffsetReader = null
+    try {
+      datahubOffsetReader = new DatahubOffsetReader(parameters)
+      val latestOffsets = datahubOffsetReader.fetchLatestOffsets()
+      val earliestOffets = datahubOffsetReader.fetchEarliestOffsets()
+      if (range.fromOffset < 0 || range.untilOffset < 0) {
+        val fromOffset = if (range.fromOffset < 0) {
+          assert(range.fromOffset == DatahubOffsetRangeLimit.OLDEST,
+            s"earliest offset ${range.fromOffset} does not equal ${DatahubOffsetRangeLimit.OLDEST}")
+          earliestOffets(range.datahubShard)
+        } else {
+          range.fromOffset
         }
-        val cursor = datahubClientAgent.getCursor(project, topic, shardId, startOffset).getCursor
-        new ShardPartition(id, shardId, index, cursor, count.toInt).asInstanceOf[Partition]
+        val untilOffset = if (range.untilOffset < 0) {
+          assert(range.untilOffset == DatahubOffsetRangeLimit.LATEST,
+            s"latest offset ${range.untilOffset} does not equal ${DatahubOffsetRangeLimit.LATEST}")
+          latestOffsets(range.datahubShard)
+        } else {
+          range.untilOffset
+        }
+        // DatahubMicroBatchInputPartitionReader read datahub with [start, end), so increase
+        // the end offset + 1 to read the last data.
+        DatahubOffsetRange(range.datahubShard, fromOffset, untilOffset + 1)
+      } else {
+        // DatahubMicroBatchInputPartitionReader read datahub with [start, end), so increase
+        // the end offset + 1 to read the last data.
+        DatahubOffsetRange(range.datahubShard, range.fromOffset, range.untilOffset + 1)
+      }
+    } finally {
+      if (datahubOffsetReader != null) {
+        datahubOffsetReader.close()
+        datahubOffsetReader = null
+      }
     }
   }
 }
 
-private class ShardPartition(
-    rddId: Int,
-    val shardId: String,
-    partitionId: Int,
-    val cursor: String,
-    val count: Int) extends Partition {
-  override def index: Int = partitionId
-  override def hashCode(): Int = 41 * (41 + rddId) + index
-  override def equals(other: Any): Boolean = super.equals(other)
-}
+private case class DatahubInputPartition(
+    index: Int,
+    offsetRange: DatahubOffsetRange,
+    sourceOptions: Map[String, String],
+    schemaDdl: String) extends Partition

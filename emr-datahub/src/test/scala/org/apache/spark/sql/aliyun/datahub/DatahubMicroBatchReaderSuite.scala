@@ -88,15 +88,13 @@ abstract class DatahubMicroBatchReaderSuiteBase
         "Cannot add data when there is no query for finding the active datahub source")
 
       val sources = {
-        query.get.logicalPlan.collect {
-          case StreamingExecutionRelation(source: DatahubSource, _) => source
-        } ++ (query.get.lastExecution match {
+        query.get.lastExecution match {
           case null => Seq()
           case e => e.logical.collect {
             case StreamingDataSourceV2Relation(_, _, _, reader: DatahubMicroBatchReader) => reader
             case StreamingDataSourceV2Relation(_, _, _, reader: DatahubContinuousReader) => reader
           }
-        })
+        }
       }.distinct
 
       if (sources.isEmpty) {

@@ -52,8 +52,8 @@ class DTSRelation(
 
     val (fromPartitionOffsets, untilPartitionOffsets) = {
       try {
-        (offsetReader.fetchPartitionOffsets(startingOffsets, isStartingOffsets = true),
-          offsetReader.fetchPartitionOffsets(endingOffsets, isStartingOffsets = false))
+        (offsetReader.fetchPartitionOffsets(startingOffsets),
+          offsetReader.fetchPartitionOffsets(endingOffsets))
       } finally {
         offsetReader.close()
       }

@@ -30,53 +30,23 @@ import com.aliyun.datahub.client.http.HttpConfig
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{SaveMode, SQLContext}
-import org.apache.spark.sql.execution.streaming.Source
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2._
-import org.apache.spark.sql.sources.v2.reader.DataSourceReader
 import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
-import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
 import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
 
 class DatahubSourceProvider extends DataSourceRegister
-  with StreamSourceProvider
   with MicroBatchReadSupport
   with ContinuousReadSupport
-  with WriteSupport
-  with ReadSupport
-  with StreamWriteSupport{
+  with StreamWriteSupport
+  with CreatableRelationProvider
+  with RelationProvider
+  with SchemaRelationProvider {
   override def shortName(): String = "datahub"
-
-  override def sourceSchema(
-      sqlContext: SQLContext,
-      schema: Option[StructType],
-      providerName: String,
-      parameters: Map[String, String]): (String, StructType) = {
-    (shortName(), DatahubSchema.getSchema(schema, parameters))
-  }
-
-  @deprecated("use DataSourceV2 impl", "1.8.0")
-  override def createSource(
-      sqlContext: SQLContext,
-      metadataPath: String,
-      schema: Option[StructType],
-      providerName: String,
-      parameters: Map[String, String]): Source = {
-    new DatahubSource(sqlContext, schema, parameters, metadataPath,
-      new DatahubOffsetReader(parameters), getStartOffset(parameters))
-  }
-
-  private def getStartOffset(parameters: Map[String, String]): DatahubOffsetRangeLimit = {
-    parameters.get("start.offset") match {
-      case Some(offset) if offset == "latest" => LatestOffsetRangeLimit
-      case Some(offset) if offset == "oldest" => OldestOffsetRangeLimit
-      case Some(json) => SpecificOffsetRangeLimit(DatahubSourceOffset.partitionOffsets(json))
-      case None => LatestOffsetRangeLimit
-    }
-  }
 
   override def createContinuousReader(
       schema: Optional[StructType],
@@ -133,24 +103,53 @@ class DatahubSourceProvider extends DataSourceRegister
     new DatahubStreamWriter(project, topic, opts, None)
   }
 
-  override def createWriter(
-      writeUUID: String,
-      schema: StructType,
+  override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String],
+      schema: StructType): BaseRelation = {
+    new DatahubRelation(sqlContext, parameters, Some(schema))
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String]): BaseRelation = {
+    new DatahubRelation(sqlContext, parameters, None)
+  }
+
+  override def createRelation(
+      sqlContext: SQLContext,
       mode: SaveMode,
-      options: DataSourceOptions): Optional[DataSourceWriter] = {
-    val opts = options.asMap().asScala.toMap
-    val project = opts.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
-    val topic = opts.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
-    Optional.of(new DatahubWriter(project, topic, opts, None))
-  }
+      parameters: Map[String, String],
+      data: DataFrame): BaseRelation = {
+    mode match {
+      case SaveMode.Overwrite | SaveMode.Ignore =>
+        throw new AnalysisException(s"Save mode $mode not allowed for tablestore. " +
+          s"Allowed save modes are ${SaveMode.Append} and ${SaveMode.ErrorIfExists} (default).")
+      case _ => // ok
+    }
 
-  override def createReader(options: DataSourceOptions): DataSourceReader = {
-    val schema = DatahubSchema.getSchema(options.asMap().asScala.toMap)
-    createReader(schema, options)
-  }
+    val project = parameters.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
+    val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
+    data.foreachPartition { it =>
+      val writer = new DatahubWriter(project, topic, parameters, None)
+        .createWriterFactory().createDataWriter(-1, -1, -1)
+      it.foreach(t => writer.write(t.asInstanceOf[InternalRow]))
+    }
 
-  override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
-    new DatahubReader(schema, options)
+    /* This method is suppose to return a relation that reads the data that was written.
+     * We cannot support this for Datahub. Therefore, in order to make things consistent,
+     * we return an empty base relation.
+     */
+    new BaseRelation {
+      override def sqlContext: SQLContext = unsupportedException
+      override def schema: StructType = unsupportedException
+      override def needConversion: Boolean = unsupportedException
+      override def sizeInBytes: Long = unsupportedException
+      override def unhandledFilters(filters: Array[Filter]): Array[Filter] = unsupportedException
+      private def unsupportedException =
+        throw new UnsupportedOperationException("BaseRelation from Datahub write " +
+            "operation is not usable.")
+    }
   }
 }
 

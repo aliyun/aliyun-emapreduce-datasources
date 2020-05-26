@@ -110,7 +110,7 @@ class DatahubOffsetReader(readerOptions: Map[String, String]) extends Logging {
     }
   }
 
-  def fetchDatahubShard(): Set[DatahubShard] = {
+  def fetchDatahubShard(): Set[DatahubShard] = runUninterruptibly {
     assert(Thread.currentThread().isInstanceOf[UninterruptibleThread])
     datahubClient.listShards(project, topic).getShards().asScala
       .map(shard => DatahubShard(project, topic, shard.getShardId())).toSet
