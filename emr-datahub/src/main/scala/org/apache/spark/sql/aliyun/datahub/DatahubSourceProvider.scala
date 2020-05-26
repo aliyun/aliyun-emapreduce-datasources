@@ -123,7 +123,7 @@ class DatahubSourceProvider extends DataSourceRegister
       data: DataFrame): BaseRelation = {
     mode match {
       case SaveMode.Overwrite | SaveMode.Ignore =>
-        throw new AnalysisException(s"Save mode $mode not allowed for tablestore. " +
+        throw new AnalysisException(s"Save mode $mode not allowed for datahub. " +
           s"Allowed save modes are ${SaveMode.Append} and ${SaveMode.ErrorIfExists} (default).")
       case _ => // ok
     }
