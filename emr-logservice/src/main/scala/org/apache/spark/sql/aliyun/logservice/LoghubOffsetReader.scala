@@ -173,16 +173,18 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
       throw new Exception("Should not be called here.")
     }
 
-    val latestHistograms = ranges.map { case (startOffset, endOffset) =>
-      getRangeHistograms(startOffset, endOffset).asScala.toArray
+    val latestHistograms = ranges.map { case (so, eo) =>
+      getRangeHistograms(so, eo).asScala.toArray
     }.reduce(_ ++ _)
 
-    latestHistograms.map(_.mFromTime).reduceLeft((l, r) => {
-      if (l >= r) {
-        throw new Exception("Histograms should be ordered by time in second.")
-      }
-      r
-    })
+    if (latestHistograms.nonEmpty) {
+      latestHistograms.map(_.mFromTime).reduceLeft((l, r) => {
+        if (l >= r) {
+          throw new Exception("Histograms should be ordered by time in second.")
+        }
+        r
+      })
+    }
 
     latestHistograms
   }
@@ -210,18 +212,27 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
         val lag = System.currentTimeMillis() / 1000 - startOffset
         if (lag <= 60) {
           val minCursorTime = fetchLatestOffsets().values.map(_._1).min
-          require(minCursorTime >= startOffset, s"endCursorTime[$minCursorTime] should " +
-            s"not be less than startCursorTime[$startOffset].")
-          return minCursorTime
+          if (minCursorTime < startOffset) {
+            // There may be some shard whose END is late than other shard.
+            // In this case, we return rate limited with Math.min(startOffset + 10, maxCursorTime)
+            // instead. (Hardcode !!!) Here we advance cursor time step with 10 seconds.
+            val maxCursorTime = fetchLatestOffsets().values.map(_._1).max
+            return Math.min(startOffset + 10, maxCursorTime)
+          } else {
+            return minCursorTime
+          }
         }
 
-        if (latestHistograms == null) {
+        if (latestHistograms == null || latestHistograms.isEmpty) {
           latestHistograms = getLatestHistograms(startOffset)
         }
 
-        val maxOffset = latestHistograms.map(_.mToTime).max
-        if (startOffset >= maxOffset) {
-          latestHistograms = getLatestHistograms(startOffset)
+        if (latestHistograms.nonEmpty) {
+          val maxOffset = latestHistograms.map(_.mToTime).max
+          // Cached latest histograms has been out of date, refresh it.
+          if (startOffset >= maxOffset) {
+            latestHistograms = getLatestHistograms(startOffset)
+          }
         }
 
         var endCursorTime = startOffset
