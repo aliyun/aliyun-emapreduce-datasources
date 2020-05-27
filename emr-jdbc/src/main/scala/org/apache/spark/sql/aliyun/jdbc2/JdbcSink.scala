@@ -136,9 +136,9 @@ class JdbcSink(
     }
     if (batchIdCol.isEmpty) {
 
-      val insertStmt =
-        getStatement(sqlContext.sparkSession.conf, table, df.schema, None, isCaseSensitive, dialect)
       val rddSchema = df.schema
+      val insertStmt = getStatement(
+        sqlContext.sparkSession.conf, table, getJdbcSchame(), None, isCaseSensitive, dialect)
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
         JdbcUtils.saveInternalPartition(
           getConnection,
@@ -156,8 +156,8 @@ class JdbcSink(
       // also put the value of the batch id to the end of every row in the DF
       val dfSchema = df.schema
       val rddSchema: StructType = df.schema.add(batchIdCol.get, LongType, false)
-      val insertStmt =
-        getStatement(sqlContext.sparkSession.conf, table, rddSchema, None, isCaseSensitive, dialect)
+      val insertStmt = getStatement(
+        sqlContext.sparkSession.conf, table, getJdbcSchame(), None, isCaseSensitive, dialect)
       repartitionedDF.queryExecution.toRdd.foreachPartition(iterator => {
         JdbcUtils.saveInternalPartition(
           getConnection,
@@ -210,8 +210,8 @@ class JdbcSink(
            }
         }
         // Write to executor table
-        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None,
-          isCaseSensitive, dialect)
+        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, getJdbcSchame(),
+          None, isCaseSensitive, dialect)
         JdbcUtils.saveInternalPartition(getConnection,
           executorTable,
           iterator,
@@ -251,8 +251,8 @@ class JdbcSink(
           }
         }
         // Write to executor table
-        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, rddSchema, None,
-          isCaseSensitive, dialect)
+        val insertStmt = getStatement(sqlContext.sparkSession.conf, executorTable, getJdbcSchame(),
+          None, isCaseSensitive, dialect)
         JdbcUtils.saveInternalPartition(getConnection,
           executorTable,
           iterator.map(ir => InternalRow.fromSeq(ir.toSeq(dfSchema) :+ batchId)),
@@ -272,6 +272,11 @@ class JdbcSink(
         truncateTable(conn, executorOptions)
       })
     }
+  }
+
+  private def getJdbcSchame(): StructType = {
+    val resolver = sqlContext.conf.resolver
+    JDBCRelation.getSchema(resolver, options)
   }
 
   def isFastLoad() : Boolean = {

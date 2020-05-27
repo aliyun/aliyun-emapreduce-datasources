@@ -144,19 +144,17 @@ object JdbcUtils extends Logging {
   def getStatement(
       conf: RuntimeConfig,
       table: String,
-      rddSchema: StructType,
+      jdbcSchema: StructType,
       tableSchema: Option[StructType],
       isCaseSensitive: Boolean,
-      dialect: JdbcDialect): String = {
-    val queryName = conf.getOption("streaming.query.name")
-      .getOrElse(throw new AnalysisException(s"Missing 'streaming.query.name' " +
-        s", please 'SET' this property."))
-    val sql = conf.getOption(s"streaming.query.$queryName.sql")
-    if (sql.isDefined) {
-      sql.get
-    } else {
-      getInsertStatement(table, rddSchema, tableSchema, isCaseSensitive, dialect)
-    }
+      dialect: JdbcDialect,
+      options: Map[String, String] = Map.empty): String = {
+    val defaultInsertStatement =
+      getInsertStatement(table, jdbcSchema, tableSchema, isCaseSensitive, dialect)
+    conf.getOption("streaming.query.name").map { queryName =>
+      conf.getOption(s"streaming.query.$queryName.sql")
+        .getOrElse(defaultInsertStatement)
+    }.getOrElse(defaultInsertStatement)
   }
 
   /**
@@ -164,24 +162,24 @@ object JdbcUtils extends Logging {
    */
   def getInsertStatement(
       table: String,
-      rddSchema: StructType,
+      jdbcSchema: StructType,
       tableSchema: Option[StructType],
       isCaseSensitive: Boolean,
       dialect: JdbcDialect): String = {
     val columns = if (tableSchema.isEmpty) {
-      rddSchema.fields.map(x => dialect.quoteIdentifier(x.name)).mkString(",")
+      jdbcSchema.fields.map(x => dialect.quoteIdentifier(x.name)).mkString(",")
     } else {
       val columnNameEquality = if (isCaseSensitive) {
         org.apache.spark.sql.catalyst.analysis.caseSensitiveResolution
       } else {
         org.apache.spark.sql.catalyst.analysis.caseInsensitiveResolution
       }
-      // The generated insert statement needs to follow rddSchema's column sequence and
+      // The generated insert statement needs to follow jdbcSchema's column sequence and
       // tableSchema's column names. When appending data into some case-sensitive DBMSs like
       // PostgreSQL/Oracle, we need to respect the existing case-sensitive column names instead of
       // RDD column names for user convenience.
       val tableColumnNames = tableSchema.get.fieldNames
-      rddSchema.fields
+      jdbcSchema.fields
         .map { col =>
           val normalizedName = tableColumnNames
             .find(f => columnNameEquality(f, col.name))
@@ -193,7 +191,7 @@ object JdbcUtils extends Logging {
         }
         .mkString(",")
     }
-    val placeholders = rddSchema.fields.map(_ => "?").mkString(",")
+    val placeholders = jdbcSchema.fields.map(_ => "?").mkString(",")
     s"INSERT INTO $table ($columns) VALUES ($placeholders)"
   }
 
@@ -1200,49 +1198,6 @@ object JdbcUtils extends Logging {
     } else {
       tableSchema
     }
-  }
-
-  /**
-   * Saves the RDD to the database in a single transaction.
-   */
-  def saveTable(
-      df: DataFrame,
-      tableSchema: Option[StructType],
-      isCaseSensitive: Boolean,
-      options: JDBCOptions): Unit = {
-    val url = options.url
-    val table = getTableName(options)
-    val dialect = JdbcDialects.get(url)
-    val rddSchema = df.schema
-    val getConnection: () => Connection = createConnectionFactory(options)
-    val batchSize = options.batchSize
-    val isolationLevel = options.isolationLevel
-
-    val insertStmt = getStatement(
-      df.sparkSession.conf,
-      table,
-      rddSchema,
-      tableSchema,
-      isCaseSensitive,
-      dialect)
-    val repartitionedDF = options.numPartitions match {
-      case Some(n) if n <= 0 =>
-        throw new IllegalArgumentException(
-          s"Invalid value `$n` for parameter `${JDBCOptions.JDBC_NUM_PARTITIONS}` in table " +
-            "writing via JDBC. The minimum value is 1.")
-      case Some(n) if n < df.rdd.getNumPartitions => df.coalesce(n)
-      case _ => df
-    }
-    repartitionedDF.rdd.foreachPartition(
-      iterator =>
-        savePartition(getConnection,
-                      table,
-                      iterator,
-                      rddSchema,
-                      insertStmt,
-                      batchSize,
-                      dialect,
-                      isolationLevel))
   }
 
   /**
