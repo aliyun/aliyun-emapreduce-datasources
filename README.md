@@ -112,7 +112,7 @@
 
 ## OSS support
 
-* [Hadoop/Spark on OSS](docs/aliyun_oss_support.md)
+* [Hadoop/Spark on OSS](docs/jindofs_sdk_how_to.md)
 
 ## MaxCompute support
 
