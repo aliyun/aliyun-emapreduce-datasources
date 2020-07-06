@@ -55,6 +55,11 @@ hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
 ```xml
 <configuration>
     <property>
+        <name>fs.AbstractFileSystem.oss.impl</name>
+        <value>com.aliyun.emr.fs.oss.OSS</value>
+    </property>
+
+    <property>
         <name>fs.oss.impl</name>
         <value>com.aliyun.emr.fs.oss.JindoOssFileSystem</value>
     </property>
