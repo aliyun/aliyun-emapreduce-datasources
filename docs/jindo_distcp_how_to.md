@@ -400,5 +400,5 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 <a name="TqRR6"></a>
 ### v2.7.3
-日期：20190709<br />
+日期：20200709<br />
 
