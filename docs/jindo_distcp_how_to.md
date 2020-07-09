@@ -257,10 +257,10 @@ Found 1 items
 20/04/17 21:24:25 INFO mapreduce.JobSubmitter: Cleaning up the staging area /tmp/hadoop-yarn/staging/root/.staging/job_1587045773511_0035
 20/04/17 21:24:25 INFO distcp.JindoDistCp: Try to recursively delete hdfs:/tmp/e5604566-8f3b-4a04-9787-ff26c75df440/tempspace
 Exception in thread "main" java.lang.RuntimeException: Error running job
-	at com.aliyun.emr.jindo.distcp.JindoDistCp.run(JindoDistCp.java:718)
-	at com.aliyun.emr.jindo.distcp.JindoDistCp.run(JindoDistCp.java:518)
-	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:76)
-	at com.aliyun.emr.jindo.distcp.Main.main(Main.java:37)
+     at com.aliyun.emr.jindo.distcp.JindoDistCp.run(JindoDistCp.java:718)
+     at com.aliyun.emr.jindo.distcp.JindoDistCp.run(JindoDistCp.java:518)
+     at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:76)
+     at com.aliyun.emr.jindo.distcp.Main.main(Main.java:37)
 ```
 在本例中，重要信息包含在distcp.JindoDistCp: Created 0 files to copy 0 files 中。jindo distcp 找不到要复制的文件，因为 --groupBy 选项中的正则表达式与源位置的任何文件都不匹配。
 
@@ -321,26 +321,26 @@ INFO distcp.JindoDistCp: distcp has been done completely
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=file:///opt/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
 ```
 <br />
-<a name="ChJtY"></a>
+
 #### 16、查看Distcp Counters
 您可以在MapReduce的Counter信息中找到Distcp Counters的信息如：
 ```bash
 Distcp Counters
-		Bytes Destination Copied=11010048000
-		Bytes Source Read=11010048000
-		Files Copied=1001
+          Bytes Destination Copied=11010048000
+          Bytes Source Read=11010048000
+          Files Copied=1001
     
 Shuffle Errors
-		BAD_ID=0
-		CONNECTION=0
-		IO_ERROR=0
-		WRONG_LENGTH=0
-		WRONG_MAP=0
-		WRONG_REDUCE=0
+          BAD_ID=0
+          CONNECTION=0
+          IO_ERROR=0
+          WRONG_LENGTH=0
+          WRONG_MAP=0
+          WRONG_REDUCE=0
 ```
  如您的distcp操作中包含压缩或者解压缩文件，那么Bytes Destination Copied和Bytes Source Read的大小可能是不相等的<br />
 
-<a name="uUxsJ"></a>
+
 #### 17、使用OSS AK
 在EMR外或者免密服务出现问题的情况下，您可以通过指定AK来获得访问OSS的权限。您可以在命令中使用<br />--key、--secret、--endPoint选项来指定AK。<br />
 <br />示例命令如下：
