@@ -162,12 +162,12 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
     val ranges: Array[(Int, Int)] = if (lag > maxStep) {
       val numRanges = math.min(lag, maxRange) / maxStep
       Array.tabulate(numRanges.toInt)(idx => {
-        (startOffset + (idx - 1) * maxStep, startOffset + idx * maxStep)
+        (startOffset + idx * maxStep, startOffset + (idx + 1) * maxStep)
       })
     } else if (lag > minStep) {
       val numRanges = math.min(lag, maxStep) / minStep
       Array.tabulate(numRanges.toInt)(idx => {
-        (startOffset + (idx - 1) * minStep, startOffset + idx * minStep)
+        (startOffset + idx * minStep, startOffset + (idx + 1) * minStep)
       })
     } else {
       throw new Exception("Should not be called here.")
@@ -214,10 +214,8 @@ class LoghubOffsetReader(readerOptions: Map[String, String]) extends Logging {
           val minCursorTime = fetchLatestOffsets().values.map(_._1).min
           if (minCursorTime < startOffset) {
             // There may be some shard whose END is late than other shard.
-            // In this case, we return rate limited with Math.min(startOffset + 10, maxCursorTime)
-            // instead. (Hardcode !!!) Here we advance cursor time step with 10 seconds.
-            val maxCursorTime = fetchLatestOffsets().values.map(_._1).max
-            return Math.min(startOffset + 10, maxCursorTime)
+            // In this case, we return startOffset directly
+            return startOffset
           } else {
             return minCursorTime
           }
