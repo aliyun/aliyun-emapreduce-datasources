@@ -58,7 +58,7 @@ object ResolveTableStoreBinlogUDF {
       |The change data from tablestore has two parts: Predefined columns and user defined columns.
       | Predefined Columns:
       |   __ots_record_type__ (STRING): The record type of the change data, valid in (PUT, UPDATE, DELETE).
-      |   __ots_record_timestamp__ (LONG): The record timestamp of the change data, in mill second.
+      |   __ots_record_timestamp__ (LONG): The record timestamp of the change data, in nanosecond.
       |   __ots_column_type_<ColumnName> (STRING):
       |      The operation of the column in change data, valid in (PUT, DELETE_ONE_VERSION, DELETE_ALL_VERSION).
       |

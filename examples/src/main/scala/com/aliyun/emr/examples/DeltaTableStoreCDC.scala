@@ -104,7 +104,7 @@ object DeltaTableStoreCDC extends Logging {
 
     // Register hive udf
     spark.sql("create temporary function ots_col_parser as " +
-      "'org.apache.spark.sql.aliyun.udfs.tablestore.ResolveTableStoreBinlogUDFSuite'")
+      "'org.apache.spark.sql.aliyun.udfs.tablestore.ResolveTableStoreBinlogUDF'")
 
     def genQuerySqlString(): String = {
       // Add Predefined columns
