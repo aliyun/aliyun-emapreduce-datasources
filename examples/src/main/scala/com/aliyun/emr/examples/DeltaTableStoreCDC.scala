@@ -100,7 +100,8 @@ object DeltaTableStoreCDC extends Logging {
       )
     )
     // TotalColumns StructType
-    val totalStructType = DataTypes.createStructType(Array.concat(primaryStructType.fields, attributeStructType.fields))
+    val totalStructType =
+      DataTypes.createStructType(Array.concat(primaryStructType.fields, attributeStructType.fields))
 
     // Register hive udf
     spark.sql("create temporary function ots_col_parser as " +
