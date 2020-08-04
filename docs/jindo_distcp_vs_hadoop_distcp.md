@@ -1,5 +1,5 @@
-# Jindo DistCp 性能测试
-
+# Jindo DistCp vs Hadoop DistCp 性能测试
+[English Version](./jindo_distcp_vs_hadoop_distcp_en.md)
 <a name="3baNh"></a>
 # Jindo DistCp介绍
 
@@ -30,10 +30,11 @@ master * 1 <br />CPU: 32 核 | 内存: 128G<br />ECS 规格: ecs.g6.8xlarge<b
 Hadoop版本：2.8.5<br />
 <br />jindo-distcp-2.7.3<br />hadoop-distcp-2.8.5
 
-YARN 参数
+YARN参数
 
-| mapreduce.map.memory.mb | 3095 |
+| 参数 | 大小 |
 | --- | --- |
+| mapreduce.map.memory.mb | 3095 |
 | mapreduce.reduce.memory.mb | 3095 |
 
 <a name="zlYH3"></a>
@@ -54,11 +55,11 @@ YARN 参数
 <br />从HDFS上拷贝到OSS上，不同场景distcp的性能对比如下<br />
 
 
-| 单位/s |  | 1000 * 10M | 1000 * 500M | 1000 * 1G |
-| --- | --- | --- | --- | --- |
-| Jindo Distcp |  | 132 | 420 | 813 |
-| Hadoop Distcp |  | 229 | 1089 | 1900 |
-| Jindo DistCp 提升倍数 |  | 0.75x | 1.59x | 1.33x |
+| 单位/s   | 1000 * 10M | 1000 * 500M | 1000 * 1G |
+| ---  | --- | --- | --- |
+| Jindo DistCp  | 132 | 420 | 813 |
+| Hadoop DistCp  | 229 | 1089 | 1900 |
+| Jindo DistCp 提升倍数  | 0.75x | 1.59x | 1.33x |
 
 
-<br />分析测试结果，可以看出Jindo distcp相比Hadoop distcp具有较大的性能提升
+<br />分析测试结果，可以看出Jindo DistCp相比Hadoop DistCp具有较大的性能提升
