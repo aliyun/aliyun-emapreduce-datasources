@@ -1,4 +1,5 @@
 # JindoFS SDK 使用
+[English Version](./jindofs_sdk_how_to_en.md)
 
 <a name="3baNh"></a>
 # 介绍
