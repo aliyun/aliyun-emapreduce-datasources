@@ -1,4 +1,5 @@
 # JindoFS SDK 和Hadoop-OSS-SDK 性能对比测试
+[English Version](./jindofs_sdk_vs_hadoop_sdk_en.md)
 
 <a name="6ZORZ"></a>
 ## JindoFS SDK介绍
