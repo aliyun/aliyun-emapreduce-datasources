@@ -1,5 +1,5 @@
 # 使用Jindo DistCp
-
+[English Version](./jindo_distcp_how_to_en.md)
 <a name="3baNh"></a>
 # 介绍
 
@@ -23,8 +23,8 @@ Jindo DistCp（分布式文件拷贝工具）是用于大规模集群内部和�
 
 ---
 
-如您使用的是Hadoop 2.7+，请[下载](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop2.7%2B/jindo-distcp-2.7.3.jar)<br />
-<br />如您使用的是Hadoop 3.x，请[下载](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop3.x/jindo-distcp-2.7.3.jar)<br />
+如您使用的是Hadoop 2.7+，请[下载](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop2.7%2BS3/jindo-distcp-2.7.3.jar)<br />
+<br />如您使用的是Hadoop 3.x，请[下载](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop3.x%2BS3/jindo-distcp-2.7.3.jar)<br />
 
 <a name="A1S3E"></a>
 # 使用指南
@@ -55,11 +55,16 @@ Jindo DistCp提供jar包形式使用，您可以使用hadoop jar命令配合一�
      --enableDynamicPlan   -   Enable plan copy task dynamically
      --enableTransaction   -   Enable transation on Job explicitly
      --diff   -   show the difference between src and dest filelist
-     --key  -   Specify your oss key if needed
-     --secret  -   Specify your oss secret if needed
-     --endPoint  -  Specify your oss endPoint if needed
-     --policy  -  Specify your oss storage policy
-     --cleanUpPending  -  clean up the incomplete upload when distcp job finish
+     --ossKey=VALUE   -   Specify your oss key if needed
+     --ossSecret=VALUE   -   Specify your oss secret if needed
+     --ossEndPoint=VALUE   -   Specify your oss endPoint if needed
+     --policy=VALUE   -   Specify your oss storage policy
+     --cleanUpPending   -   clean up the incomplete upload when distcp job finish
+     --queue=VALUE   -   Specify yarn queuename if needed
+     --bandwidth=VALUE   -   Specify bandwidth per map/reduce in MB if needed
+     --s3Key=VALUE   -   Specify your s3 key
+     --s3Secret=VALUE   -   Specify your s3 Sercet
+     --s3EndPoint=VALUE   -   Specify your s3 EndPoint
 ```
 
 
@@ -148,7 +153,7 @@ Found 6 items
 如您在开源Hadoop集群环境中使用lzo压缩功能，则您需要去安装gplcompression的native库和hadoop-lzo包，如您缺少相关环境，建议使用其他压缩方式进行压缩。
 
 <a name="azhZZ"></a>
-#### 7、使用--outputManifest和**--requirePreviousManifest**
+#### 7、使用--outputManifest和--requirePreviousManifest
 在使用过程中我们可以指定生成dictcp的清单文件，用来记录copy过程中的目标文件、源文件、数据量大小等信息，如需只生成这样一个清单文件还需要指定requirePreviousManifest参数为flase。当前outputManifest文件默认且必须为gz类型压缩文件，您可以按照自己的业务需求来命名其前缀。
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-17.gz --requirePreviousManifest=false --parallelism 20
@@ -212,7 +217,7 @@ drwxrwxrwx   -          0 1970-01-01 08:00 oss://yang-hhht/hourly_table/2017-02-
 drwxrwxrwx   -          0 1970-01-01 08:00 oss://yang-hhht/hourly_table/2017-02-02
 ```
 <br />
-<a name="lt19T"></a>
+
 #### 11、使用--groupBy和-targetSize
 经过优化后，Hadoop 可以从HDFS 中读取较少数量的大文件，而不再读取大量小文件。您可以使用 jindo distcp将小文件聚合为较少的指定大小的大文件，这样可以优化分析性能和成本。<br />在下面的示例中，我们将小文件合并为较大的文件。为此，我们使用带有 --groupBy 选项的正则表达式。
 
@@ -338,14 +343,14 @@ Shuffle Errors
           WRONG_MAP=0
           WRONG_REDUCE=0
 ```
- 如您的distcp操作中包含压缩或者解压缩文件，那么Bytes Destination Copied和Bytes Source Read的大小可能是不相等的<br />
+如您的distcp操作中包含压缩或者解压缩文件，那么Bytes Destination Copied和Bytes Source Read的大小可能是不相等的<br />
 
 
 #### 17、使用OSS AK
-在EMR外或者免密服务出现问题的情况下，您可以通过指定AK来获得访问OSS的权限。您可以在命令中使用<br />--key、--secret、--endPoint选项来指定AK。<br />
+在EMR外或者免密服务出现问题的情况下，您可以通过指定AK来获得访问OSS的权限。您可以在命令中使用<br />--ossKey、--ossSecret、--ossEndPoint选项来指定AK。<br />
 <br />示例命令如下：
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --key yourkey --secret yoursecret --endPoint oss-cn-hangzhou.aliyuncs.com --parallelism 20
+hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ossKey yourkey --ossSecret yoursecret --ossEndPoint oss-cn-hangzhou.aliyuncs.com --parallelism 20
 ```
 
 
@@ -393,6 +398,99 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 ```
 
 
+<a name="7WRjP"></a>
+#### 20、使用--queue
+在您的distcp过程中，您可以指定本次distcp任务所在的yarn队列的名称，您可以使用--queue来指定
+
+示例命令如下：
+```bash
+hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --queue yarnqueue
+```
+
+
+<a name="0TVlg"></a>
+#### 21、使用--bandwidth
+在您的distcp过程中，您可以指定本次distcp任务所用的带宽(以MB为单位)，避免占用过大带宽<br />
+<br />示例命令如下：
+```bash
+hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --bandwidth 6
+```
+
+
+<a name="UjU6Y"></a>
+#### 22、使用s3作为数据源
+您可以指定数据源为s3，目前支持前缀s3a/s3n/s3，您可以在命令中使用--s3Key、--s3Secret、--s3EndPoint选项来指定连接s3的相关信息。您也可以只指定s3EndPoint来使用s3的免密功能。<br />
+<br />示例命令如下：
+```bash
+hadoop jar jindo-distcp-2.7.3.jar --src s3a://yourbucket/ --dest oss://yang-hhht/hourly_table --s3Key yourkey --s3Secret yoursecret --s3EndPoint s3-us-west-1.amazonaws.com 
+```
+
+<br />您也可以将s3的key、secret、endpoint预先配置在 hadoop的 core-site.xml 文件里 ，避免每次使用时临时填写ak。
+```xml
+<configuration>
+    <property>
+        <name>fs.s3a.access.key</name>
+        <value>xxx</value>
+    </property>
+
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>xxx</value>
+    </property>
+
+    <property>
+        <name>fs.s3.endpoint</name>
+        <value>s3-us-west-1.amazonaws.com</value>
+    </property>
+</configuration>
+```
+
+<br />如使用S3免密则示例命令如下，您无需指定AK，但需要指定endPoint<br />
+
+```bash
+hadoop jar /tmp/jindo-distcp-2.7.3.jar --src s3://smartdata1/ --dest s3://smartdata1/tmp --s3EndPoint  s3-us-west-1.amazonaws.com
+```
+<a name="tqzlD"></a>
+#### <br />
+<a name="h9wI9"></a>
+#### 23、使用低版本的JDK
+当前 Jindo DistCp 默认使用的JDK版本是1.8，如您使用1.8以下的JDK，您可以尝试使用指定YARN JDK包的方式来使用Jindo DistCp
+
+1、下载JDK 8<br />for Linux 64x<br />[链接](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/JDK8/jdk-8u251-linux-x64.tar.gz)
+
+2、解压jdk-8u251-linux-x64.tar.gz，指定JAVA_HOME
+
+```bash
+[ec2-user@ip jdk1.8.0_251]$ pwd
+/home/ec2-user/jdk1.8.0_251
+[ec2-user@ip jdk1.8.0_251]$ export JAVA_HOME=`pwd`
+```
+将jdk-8u251-linux-x64.tar.gz放到tmp/下
+```bash
+[ec2-user@ip]$ cp jdk-8u251-linux-x64.tar.gz /tmp
+```
+
+
+3、修改mapred-site.xml
+
+```bash
+</configuration>
+  <property>
+    <name>mapred.child.env</name>
+    <value>JAVA_HOME=./jdk-8u251-linux-x64.tar.gz/jdk1.8.0_251</value>
+  </property>
+    <property>
+    <name>yarn.app.mapreduce.am.env</name>
+    <value>JAVA_HOME=./jdk-8u251-linux-x64.tar.gz/jdk1.8.0_251</value>
+  </property>
+    <property>
+    <name>tmparchives</name>
+    <value>file:///tmp/jdk-8u251-linux-x64.tar.gz</value>
+  </property>
+</configuration>
+```
+
+
 <a name="WwYXi"></a>
 # 发布版本
 
@@ -400,5 +498,4 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 <a name="TqRR6"></a>
 ### v2.7.3
-日期：20200709<br />
-
+日期：20200803
