@@ -83,7 +83,7 @@ You can specify the dest path to determine the level of the copied file. For exa
 
 <a name="L7ugZ"></a>
 #### 3、use --parallelism
-<br />The  parameter is used to specify the map or reduce parallelism num, which defaults to 7 in the EMR environment. You can set the parallelism based on the cluster resources to control the concurrency of distcp tasks.<br />
+<br />The parameter is used to specify the map or reduce parallelism num, which defaults to 7 in the EMR environment. You can set the parallelism based on the cluster resources to control the concurrency of distcp tasks.<br />
 
 <br />If you copy the/opt/tmp directory from HDFS to an OSS bucket, you can run<br />
 
