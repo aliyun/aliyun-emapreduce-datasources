@@ -5,9 +5,9 @@
 
 ---
 
-Jindo DistCp (distributed file copy tool) is a tool for copying files within and between large-scale clusters. It uses MapReduce to implement file distribution, error handling and recovery, and takes the list of files and directories as the input of map/reduce tasks. Each task will complete the copy of some files in the source list. Fully supports hdfs->oss, hdfs->hdfs, oss->hdfs, oss->oss data copy scenarios, and provides a variety of personalized copy parameters and multiple copy strategies. Focus on optimizing the data copy from hdfs to oss, through customized CopyCommitter, to realize No-Rename copy, and to ensure the consistency of data copy landing. The functions are fully aligned with S3 DistCp and HDFS DistCp, and the performance is greatly improved compared with HDFS DistCp. The goal is to provide efficient, stable and safe data copy tools.<br />
-<br />You can use Jindo DistCp to migrate data between hdfs and OSS. Compared with the implementation of DistCp in the Hadoop community, you can get better performance and more professional support from the Alibaba Cloud E-MapReduce product technical team.<br />
-<br />Currently supported Hadoop versions include Hadoop 2.7+ and Hadoop 3.x. If you have any questions, please feedback, open a PR, we will deal with it in time.<br />
+Jindo DistCp (distributed file copy tool) is a tool for copying files within and between large-scale clusters. It uses MapReduce to implement file distribution, error handling and recovery, and takes the list of files and directories as the input of map/reduce tasks. Each task will copy some files in the source list. Fully support hdfs->oss, hdfs->hdfs, oss->hdfs, oss->oss data copy scenarios, and provide a variety of personalized copy parameters and multiple copy strategies. Focus on optimizing the data copy from hdfs to oss with customized CopyCommitter、realize No-Rename copy and ensure the consistency of data copy. The functions are fully aligned with S3 DistCp and HDFS DistCp, However Jindo DistCp's performance is greatly improved compared with HDFS DistCp. it aims to provide efficient, stable and safe tool for data copy.<br />
+<br />You can use Jindo DistCp to migrate data between hdfs and OSS. Compared with the implementation of DistCp in the Hadoop community, you can get better performance and more professional support from the Alibaba Cloud E-MapReduce team.<br />
+<br />Currently supported Hadoop versions include Hadoop 2.7+ and Hadoop 3.x. If you have any questions, please give us feedback and open a PR, we will deal with it in time.<br />
 <br />For the performance comparison between Jindo Distcp and Hadoop DistCp, please refer to the document [Jindo DistCp and Hadoop DistCp Performance Comparison Test](./jindo_distcp_vs_hadoop_distcp.md).<br />
 
 <a name="CLFRq"></a>
@@ -15,7 +15,8 @@ Jindo DistCp (distributed file copy tool) is a tool for copying files within and
 
 ---
 
-1. If you are using a self-built ECS cluster, you need to have a Hadoop 2.7+/3.X environment and the ability to perform MapReduce operations.<br />2. If you are using Alibaba Cloud E-MapReduce products, you can use Jindo DistCp in EMR3.28.0/bigboot2.7.0 version and above by using shell commands. You can refer to the document using the [link](https://help.aliyun.com/document_detail/170712.html?spm=a2c4g.11174283.6.883.759b3d79hrweeG), if you are using Versions below EMR3.28.0 may have certain compatibility issues. You can contact us through an internal ticket for processing.<br />
+1. If you are using a self-built ECS cluster, you need to have a Hadoop 2.7+/3.X environment and the ability to perform MapReduce operations.<br />
+2. If you are using Alibaba Cloud E-MapReduce products, you can use Jindo DistCp in EMR3.28.0/bigboot2.7.0 version and above by using shell commands. You can refer to the document using the [link](https://help.aliyun.com/document_detail/170712.html?spm=a2c4g.11174283.6.883.759b3d79hrweeG), if you are using Versions below EMR3.28.0 may have certain compatibility issues. You can contact us through an internal ticket for processing.<br />
 
 <a name="dikmJ"></a>
 # Download link
@@ -78,11 +79,12 @@ If you copy the/opt/tmp directory from HDFS to an OSS bucket, run the following 
 hadoop jar jindo-distcp-2.7.3.jar --src /opt/tmp --dest oss://yang-hhht/tmp
 ```
 
-You can specify the dest path to determine the level of the copied file. For example, you need to copy the files under/opt/tmp to the tmp directory under the yang-hhht bucket, you can use the preceding statement. This is different from the distcp behavior of Hadoop. jindo distcp copies all files in the src directory to the dest path you specify by default, excluding the current root directory name, you can specify the root directory of the copy path in dest. If it does not exist, it is automatically created.<br />
+You can specify the dest path to determine the level of the copied file. For example, if you need to copy the files under /opt/tmp to the oss://yang-hhht/tmp bucket, you can use the example statement. This is different from the distcp behavior of Hadoop. jindo distcp copies all files in the src directory to the dest path you specify by default, excluding the current root directory name, you can specify the root directory of the copy path in dest. If it does not exist, it is automatically created.<br />
 
 <a name="L7ugZ"></a>
 #### 3、use --parallelism
-<br />The parallelism parameter is used to specify mapreduce in the MR task. job. The reduces parameter, which defaults to 7 in the EMR environment. You can customize the parallelism size based on the cluster resources to control the concurrency of distcp tasks.<br />
+<br />The parameter is used to specify the map or reduce parallelism num, which defaults to 7 in the EMR environment. You can set the parallelism based on the cluster resources to control the concurrency of distcp tasks.<br />
+
 <br />If you copy the/opt/tmp directory from HDFS to an OSS bucket, you can run<br />
 
 ```bash
@@ -92,9 +94,10 @@ hadoop jar jindo-distcp-2.7.3.jar --src /opt/tmp --dest oss://yang-hhht/tmp --pa
 
 <a name="IWvV9"></a>
 #### 4、use --srcPattern
-<br />The srcPattern parameter is used to use a regular expression to select or filter files to be copied. You can write a custom regular expression to complete the filtering operation. The regular expression here must be a full-path regular match.
 
-if you want to copy all log files in/data/incoming/hourly_table/2017-02-01/03 on HDFS，you can run
+<br />The srcPattern parameter is used to use a regular expression to select or filter files to be copied. You can write a custom regular expression to complete the filtering operation. The regular expression must be a full-path regular match.
+
+if you want to copy all log files under /data/incoming/hourly_table/2017-02-01/03 on HDFS，you can run
 ```bash
 [root@emr-header-1 opt]# hdfs dfs -ls /data/incoming/hourly_table/2017-02-01/03
 Found 6 items
@@ -120,9 +123,9 @@ Found 2 items
 
 <a name="oXyAI"></a>
 #### 5、use --deleteOnSuccess
-Sometimes we want to move data instead of copying data. We can use the -- deleteOnSuccess option. This option is similar to an mv operation. First, copy the file and then delete the file from the source location.
+Sometimes we want to move data instead of copying data. We can use the -- deleteOnSuccess option. This option is similar to mv operation. First, copy the file and then delete the file from the source location.
 
-The sample command is as follows:
+The sample command as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --deleteOnSuccess --parallelism 20
 ```
@@ -130,13 +133,13 @@ After the statement is executed, the file can be deleted from the source locatio
 
 <a name="d5KKs"></a>
 #### 6、use --outputCodec
-<br />RAW files are usually entered into OSS or HDFS in uncompressed text format. This format is not ideal for both storage costs and analysis of the data. jindo distcp can use the -- outputCodec option to help you efficiently store data and compress files online.
+<br />RAW files are usually writen into OSS or HDFS in uncompressed text format. This format is not ideal for both storage costs and data analysis. jindo distcp can use the outputCodec option to help you store data and compress files efficiently.
 
-The command example is as follows:
+The command example as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputCodec=gz --parallelism 20
 ```
-The current version of jindo distcp supports codecs gzip, gz, lzo, lzop, snappy, and keywords none and keep (default). These keywords have the following meanings:
+The current version of jindo distcp supports codecs gzip, gz, lzo, lzop, snappy, none and keep (default). These keywords have the following meanings:
 
 - "none"-save as an uncompressed file. If the file has been compressed, jindo distcp decompresses it.
 - "keep"-copy as is without changing the file compression form.
@@ -153,12 +156,12 @@ Found 6 items
 -rw-rw-rw-   1        506 2020-04-17 20:58 oss://yang-hhht/hourly_table/2017-02-01/03/emp01.txt.gz
 -rw-rw-rw-   1        506 2020-04-17 20:58 oss://yang-hhht/hourly_table/2017-02-01/03/emp06.txt.gz
 ```
-<br />If you use the lzo compression feature in an open-source Hadoop cluster environment, you need to install the native library of gplcompression and the hadoop-lzo package. If you lack the relevant environment, we recommend that you use other compression methods.
+<br />If you use the lzo compression feature in an open-source Hadoop cluster environment, you need to install the native library of gplcompression and the hadoop-lzo package. If you don't have the relevant environment, we recommend that you use other compression methods.
 
 <a name="azhZZ"></a>
 #### 7、use --outputManifest and --requirePreviousManifest
 
-During use, you can specify to generate a list file of dictcp to record information such as the target file, source file, and data volume during the copy process, to generate only one manifest file, you must specify the requirePreviousManifest parameter as flase. The current outputManifest file must be a gz-type compressed file by default. You can name its prefix based on your business needs.
+You can specify to generate a manifest file to record information such as the source file, target file and data size during the copy process. To generate manifest file, you must specify the requirePreviousManifest parameter as flase. The current outputManifest file will be a gz-type compressed file by default. You can name its prefix based on your own demand.
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-17.gz --requirePreviousManifest=false --parallelism 20
 ```
@@ -178,13 +181,13 @@ You can view the content of the generated outputManifest file.
 <a name="RtNQn"></a>
 #### 8、use --outputManifest and --previousManifest
 
-<br />In practice, the upstream process generates new files at a certain pace. For example, a new file may be created every hour or every minute. You can configure downstream processes to receive files according to different schedules. If data is transmitted to OSS, we want to process it on HDFS every day. Copying all files at a time does not extend well. Jindo distcp has a built-in solution to this problem. For this solution, we use the manifest file.<br />
+<br />In practice, the upstream process generates new files at a certain speed. For example, a new file may be created every hour or every minute. You can configure downstream processes to receive files according to different schedules. If data is transmitted to HDFS and we want to process it on OSS every day. Copying all files at a time does not work well. Jindo distcp has a built-in solution to this problem. For this solution, we use the manifest file.<br />
 <br />If two new files are added to the source folder, the following command example is used:<br />
 
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-18.gz --previousManifest=oss://yang-hhht/hourly_table/manifest-2020-04-17.gz --parallelism 20
 ```
-This command treats two manifest files as parameters: outputManifest and previousManifest. The first contains a list of all copied files (old files and new files), and the second contains a list of previously copied files. In this way, we can recreate the complete operation history and view which files were copied during each run:
+This command treats two manifest files as parameters: outputManifest and previousManifest. The first contains a list of all copied files (old files and new files), and the second contains a list of previously copied files. In this way, we can recreate the complete operation history and view which files were copied during each distcp job:
 ```bash
 [root@emr-header-1 opt]# hadoop fs -text oss://yang-hhht/hourly_table/manifest-2020-04-18.gz > current.lst
 [root@emr-header-1 opt]# diff before.lst current.lst 
@@ -193,11 +196,11 @@ This command treats two manifest files as parameters: outputManifest and previou
 > {"path":"oss://yang-hhht/hourly_table/2017-02-01/03/6.log","baseName":"2017-02-01/03/6.log","srcDir":"oss://yang-hhht/hourly_table","size":4891}
 ```
 
-jindo distcp uses the path/tmp/mymanifest.gz to create files in the local file system. After the copy operation is completed, it moves the inventory file to the dest directory.<br />
+jindo distcp uses the path /tmp/manifest.gz to create files in the local file system. After the copy operation is completed, it moves the manifest file to the dest directory.<br />
 
 <a name="BkPxT"></a>
 #### 9、use --copyFromManifest
-<br />After you use the outputManifest function to generate a manifest file, you can specify a fixed manifest file to copy the file. The manifest file records the relevant file information, therefore, you do not need to obtain data information from the src Directory. You only need to specify the dest directory as the directory to be copied, you can copy the files contained in the manifest file generated from the last copy to a new directory.
+<br />After you use the outputManifest option to generate a manifest file, you can specify this manifest file to copy files. The manifest file records the relevant file information, therefore, you do not need to obtain data information from the src Directory. You only need to specify the dest directory as the directory to be copied, you can copy the files to a new directory with files that contained in the manifest file generated from the last copy.
 
 The sample command is as follows:
 ```bash
@@ -207,13 +210,13 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 <a name="Cw3ym"></a>
 #### 10、use --**srcPrefixesFile**
-<br />Assume that we need to copy multiple folders. Generally, we run as many replication jobs as we need to copy folders. jindo distcp allows you to copy data at one time. We only need to prepare a file with a prefix list and use it as a tool parameter.
+<br />Assume that we need to copy multiple folders. Generally, we run as many replication jobs as we need to copy folders. jindo distcp allows you to copy data at one time. We only need to prepare a file with a prefix list and use it as a parameter.
 
-The command example is as follows:
+The command example as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --srcPrefixesFile file:///opt/folders.txt --parallelism 20
 ```
-The content of folders is as follows:
+The content of folders as follows:
 ```bash
 [root@emr-header-1 opt]# cat folders.txt 
 hdfs://emr-header-1.cluster-50466:9000/data/incoming/hourly_table/2017-02-01
@@ -229,9 +232,10 @@ drwxrwxrwx   -          0 1970-01-01 08:00 oss://yang-hhht/hourly_table/2017-02-
 <br />
 
 #### 11、use --groupBy and --targetSize
-After optimization, Hadoop can read a small number of large files from HDFS instead of a large number of small files. You can use jindo distcp to aggregate small files into smaller large files of a specified size, which can optimize analysis performance and cost.<br />In the following example, we merge small files into larger ones. To do this, we use a regular expression with the -- groupBy option.
+After optimization, Hadoop can read a small number of large files from HDFS instead of a large number of small files. You can use jindo distcp to aggregate small files into large files of a specified size, which can optimize analysis performance and cost.
+<br />In the following example, we merge small files into larger ones. To do this, we use a regular expression with the -- groupBy option.
 
-If you want to merge all txt files into one file at a maximum of 10MB, the sample command is as follows:
+If you want to merge all txt files into one file at a maximum of 10MB, the sample command as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --targetSize=10 --groupBy='.*/([a-z]+).*.txt' --parallelism 20
 ```
@@ -248,11 +252,6 @@ Found 8 items
 -rw-r-----   2 root hadoop       1016 2020-04-17 20:47 /data/incoming/hourly_table/2017-02-01/03/emp01.txt
 -rw-r-----   2 root hadoop       1016 2020-04-17 20:47 /data/incoming/hourly_table/2017-02-01/03/emp06.txt
 ```
-You can use the MR log to view files that conform to the regular expression, so that you can debug the correctness of the regular expression.
-```bash
-20/04/17 21:18:36 INFO distcp.FileInfoListing: meet groupby pattern -- hdfs://emr-header-1.cluster-50466:9000/data/incoming/hourly_table/2017-02-01/03/emp01.txt
-20/04/17 21:18:36 INFO distcp.FileInfoListing: meet groupby pattern -- hdfs://emr-header-1.cluster-50466:9000/data/incoming/hourly_table/2017-02-01/03/emp06.txt
-```
 <br />After merging, you can see that two txt files are merged into one file.
 ```bash
 [root@emr-header-1 opt]# hdfs dfs -ls oss://yang-hhht/hourly_table/2017-02-01/03/
@@ -260,7 +259,7 @@ Found 1 items
 -rw-rw-rw-   1       2032 2020-04-17 21:18 oss://yang-hhht/hourly_table/2017-02-01/03/emp2
 ```
 
-As you can see, we merge two txt data files into a file of no more than 10MB (the required size). Other files have been filtered out because the -- groupBy mode works in a similar way to the -- srcPattern mode. We recommend that the file size exceed the default block size. The final file name consists of groups and numbers in the regular expression used in -- groupBy to ensure the uniqueness of the name, therefore, at least one group must be defined to use this mode. You may occasionally receive the following error:
+As you can see, we merge two txt data files into a file of no more than 10MB (the required size). Other files have been filtered out because the groupBy mode works in a similar way to the srcPattern mode. We recommend that the file size exceed the default block size. The final file name consists of groups and numbers in the regular expression used in groupBy to ensure the uniqueness of the name, therefore, at least one group must be defined to use this mode. You may occasionally receive the following error:
 ```bash
 20/04/17 21:24:24 INFO distcp.JindoDistCp: Created 0 files to copy 0 files 
 20/04/17 21:24:24 INFO distcp.JindoDistCp: Found 0 source files cost 22 ms
@@ -282,30 +281,30 @@ In this example, important information is included in distcp.JindoDistCp: Create
 <a name="zJOc9"></a>
 #### 12、use --enableBalancePlan
 
-If the overall size of the data you want to copy is relatively uniform, you can specify the -- enableBalancePlan parameter to change the job allocation plan of Jindo distcp. Use this plan to evenly process the data volume of each task to achieve better distcp performance.<br />
-<br />The sample command is as follows:<br />
+If the overall size of the data you want to copy is relatively uniform, you can specify the enableBalancePlan parameter to change the job execute plan of Jindo distcp. Use this plan to make the data volume of each task balance and achieve better distcp performance.<br />
+<br />The sample command as follows:<br />
 
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableBalancePlan --parallelism 20
 ```
 
-<br />This parameter cannot be used with the -- groupby and -- targetSize parameters.<br />
+<br />This parameter cannot be used with the --groupby and --targetSize parameters.<br />
 
 <a name="oM2mZ"></a>
 #### 13、--enableDynamicPlan
 
-In scenarios where the size of the data you want to copy is highly differentiated and there are many small files, you can specify the -- enableDynamicPlan parameter to change the job allocation plan of Jindo distcp, to achieve better distcp performance.<br />
+In scenarios where the size of the data you want to copy is highly differentiated such as there are many small files, you can specify the --enableDynamicPlan parameter to change the job execute plan of Jindo distcp, to achieve better distcp performance.<br />
 <br />
 The sample command is as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableDynamicPlan --parallelism 20
 ```
-<br />This parameter cannot be used with the -- groupby and -- targetSize parameters.<br />
+<br />This parameter cannot be used with the --groupby and --targetSize parameters.<br />
 
 <a name="ePqFH"></a>
-#### 14、use --**enableTransaction**
+#### 14、use --enableTransaction
 
-Jindo distcp uses task-level integrity by default. To ensure Job-level integrity and transaction support between jobs, you can use the -- enableTransaction parameter.<br />
+Jindo distcp uses task-level integrity by default. To ensure Job-level integrity and transaction support between jobs, you can use the --enableTransaction parameter.<br />
 <br />The sample command is as follows:<br />
 
 ```bash
@@ -316,7 +315,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 <a name="pjlfG"></a>
 #### 15、use --diff
 
-After your distcp task is completed, you can specify src and dest to check the file differences of the current distcp. If the src file cannot be synchronized to dest, A manifest file is generated in the current directory. You can use the -- copyFromManifest parameter to copy the remaining files to verify the data size and the number of files. If your distcp task contains compression or decompression, -- diff cannot display the correct file difference, because compression or decompression will change the file size.<br />
+After your distcp task is completed, you can specify src and dest to check the file differences of the current distcp job. If the src file cannot be synchronized to dest, A manifest file is generated in the current directory. You can use the copyFromManifest parameter to copy the remaining files to verify the data size and the number of files. If your distcp task contains compression or decompression, diff cannot display the correct file difference, because compression or decompression will change the file size.<br />
 <br />The sample command is as follows:<br />
 
 ```bash
@@ -329,7 +328,7 @@ INFO distcp.JindoDistCp: distcp has been done completely
 ```
 
 
-If your -- dest is The HDFS path, you can write/path, hdfs:// hostname:ip/path, hdfs:// headerIp:ip/path. Currently, you cannot write hdfs:/// path, hdfs:/path, and other custom writing methods.<br />For the generated manifest file, you can use the -- copyFromManifest and -- previousManifest commands to copy the remaining files.<br />The sample command is as follows:
+If your -- dest is The HDFS path, you can write/path, hdfs://hostname:ip/path, hdfs://headerIp:ip/path. Currently, you cannot write hdfs:/// path, hdfs:/path, and other custom writing methods.<br />For the generated manifest file, you can use the --copyFromManifest and --previousManifest commands to copy the remaining files.<br />The sample command is as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=file:///opt/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
 ```
@@ -355,13 +354,13 @@ Shuffle Errors
 
 
 #### 17、use OSS AK
-If there is a problem outside the EMR or the password-free service, you can specify an AK to obtain access to OSS. You can use the -- ossKey, -- ossSecret, and -- ossEndPoint options are used to specify the AK.<br />
+If there is a problem with the password-free service or your cluster is outside the EMR, you can specify an AK to get access to OSS. You can use the --ossKey, --ossSecret, and --ossEndPoint options are used to specify the AK.<br />
 <br />The sample command is as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ossKey yourkey --ossSecret yoursecret --ossEndPoint oss-cn-hangzhou.aliyuncs.com --parallelism 20
 ```
 
-<br />You can also pre-configure the oss ak, secret, and endpoint in the hadoop core-site.xml file to avoid filling in the ak for each use.
+<br />You can also pre-configure the oss ak, secret, and endpoint in the hadoop core-site.xml file to avoid filling in the ak each time.
 ```xml
 <configuration>
     <property>
@@ -385,7 +384,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 <a name="IMjaY"></a>
 #### 18、Write data to OSS by archive or low frequency
-<br />When writing a distcp task to OSS, you can use -- archive and -- ia to specify whether to write the task to OSS in archive or low frequency mode for data storage.
+<br />When writing a distcp task to OSS, you can use --archive and --ia to specify whether to write the task to OSS in archive or low frequency mode for data storage.
 
 Use the archive sample command as follows:
 ```bash
@@ -400,7 +399,7 @@ If you do not specify this parameter, the data is written in standard or standar
 
 <a name="UEx2K"></a>
 #### 19、Clean up residual files
-<br />During the completion of your distcp, files that are not uploaded correctly may be generated in your destination directory for various reasons. These files are managed by OSS through uploadId, you can specify the -- cleanUpPending option to clear the remaining files when the distcp task ends, or you can use the OSS console to clean the remaining files.<br />
+<br />During the completion of your distcp, files that are not uploaded correctly may be generated in your destination directory for various reasons. These files are managed by OSS through uploadId, you can specify the cleanUpPending option to clear the remaining files when the distcp task finish, or you can use the OSS console to clean the remaining files.<br />
 <br />The sample command is as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --cleanUpPending --parallelism 20
@@ -409,7 +408,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 <a name="7WRjP"></a>
 #### 20、use --queue
-During the distcp process, you can specify the name of the yarn queue where the distcp task is located. You can use -- queue to specify<br />The sample command is as follows:
+During the distcp process, you can specify the name of the yarn queue where the distcp task is resigned. You can use --queue to specify this option<br />The sample command as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --queue yarnqueue
 ```
@@ -426,7 +425,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 <a name="UjU6Y"></a>
 #### 22、Use s3 as the data source
 
-You can specify the data source as s3. Currently, the prefix s3a/s3n/s3 is supported. You can use the -- s3Key, -- s3Secret, and -- s3EndPoint options in the command to specify the information about connecting to s3. You can also specify only s3EndPoint to use S3.<br />
+You can specify the data source as s3. Currently, the prefix s3a/s3n/s3 is supported. You can use the --s3Key, --s3Secret, and --s3EndPoint options in the command to specify the information about connecting to s3. You can also specify only s3EndPoint to use S3.<br />
 <br />The sample command is as follows:
 ```bash
 hadoop jar jindo-distcp-2.7.3.jar --src s3a://yourbucket/ --dest oss://yang-hhht/hourly_table --s3Key yourkey --s3Secret yoursecret --s3EndPoint s3-us-west-1.amazonaws.com 
@@ -452,7 +451,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src s3a://yourbucket/ --dest oss://yang-hhht
 </configuration>
 ```
 
-<br />If you use S3 password-free command, the sample command is as follows. You do not need to specify an AK, but you need to specify an endPoint.<br />
+<br />If you are in the S3 password-free environment, the sample command as follows. You do not need to specify an AK, but you need to specify an endPoint.<br />
 
 ```bash
 hadoop jar /tmp/jindo-distcp-2.7.3.jar --src s3://smartdata1/ --dest s3://smartdata1/tmp --s3EndPoint  s3-us-west-1.amazonaws.com
@@ -500,5 +499,5 @@ put jdk-8u251-linux-x64.tar.gz to tmp/
 
 <a name="TqRR6"></a>
 ### v2.7.3
-日期：20200803
+date：20200803
 

@@ -238,11 +238,6 @@ Found 8 items
 -rw-r-----   2 root hadoop       1016 2020-04-17 20:47 /data/incoming/hourly_table/2017-02-01/03/emp01.txt
 -rw-r-----   2 root hadoop       1016 2020-04-17 20:47 /data/incoming/hourly_table/2017-02-01/03/emp06.txt
 ```
-您可以通过MR的log观察到符合正则的文件，便于您调试正则表达式的正确性。
-```bash
-20/04/17 21:18:36 INFO distcp.FileInfoListing: meet groupby pattern -- hdfs://emr-header-1.cluster-50466:9000/data/incoming/hourly_table/2017-02-01/03/emp01.txt
-20/04/17 21:18:36 INFO distcp.FileInfoListing: meet groupby pattern -- hdfs://emr-header-1.cluster-50466:9000/data/incoming/hourly_table/2017-02-01/03/emp06.txt
-```
 经过合并后，可以看到两个txt文件被合并成了一个文件
 ```bash
 [root@emr-header-1 opt]# hdfs dfs -ls oss://yang-hhht/hourly_table/2017-02-01/03/
