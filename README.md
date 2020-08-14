@@ -92,12 +92,6 @@
             <artifactId>emr-redis_2.11</artifactId>
             <version>2.0.0</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-oss</artifactId>
-            <version>2.0.0</version>
-        </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
@@ -111,9 +105,9 @@
 
 * [How to run tests](docs/how_to_run_tests.md)
 
-## OSS support
+## JindoFS/OSS support
 
-* [Hadoop/Spark on OSS](docs/jindofs_sdk_how_to.md)
+* [Hadoop on JindoFS/OSS](docs/jindofs_sdk_how_to.md) (Hive, Spark, Presto, Impala, Hbase and Flink are also supported)
 
 ## MaxCompute support
 

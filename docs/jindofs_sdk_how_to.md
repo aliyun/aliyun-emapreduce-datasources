@@ -87,7 +87,7 @@ hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
     </property>
 </configuration>
 ```
-然后就可以用以下方式访问OSS
+然后就可以用以下方式访问OSS (或者JindoFS Cache模式)
 ```
 hadoop fs -ls oss://<bucket>/
 ```
