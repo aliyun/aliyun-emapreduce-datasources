@@ -76,8 +76,8 @@ class KuduSourceProvider extends DefaultSource with Logging {
     val writeOptions =
       KuduWriteOptions(ignoreDuplicateRowErrors, ignoreNull, repartition, repartitionSort)
 
-    new KuduUpdatableRelation(tableName, kuduMaster, operationType, schemaOption,
-      readOptions, writeOptions)(sqlContext)
+    new KuduUpdatableRelation(sqlContext, tableName, kuduMaster, operationType, schemaOption,
+      readOptions, writeOptions)
   }
 }
 

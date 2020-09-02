@@ -24,13 +24,13 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.types.StructType
 
 class KuduUpdatableRelation(
+    override val sqlContext: SQLContext,
     override val tableName: String,
     override val masterAddrs: String,
     override val operationType: OperationType,
     override val userSchema: Option[StructType],
     override val readOptions: KuduReadOptions = new KuduReadOptions,
     override val writeOptions: KuduWriteOptions = new KuduWriteOptions)
-    (override val sqlContext: SQLContext)
   extends KuduRelation(tableName, masterAddrs, operationType, userSchema,
     readOptions, writeOptions)(sqlContext) with Serializable {
 
@@ -39,9 +39,23 @@ class KuduUpdatableRelation(
   def merge(data: DataFrame, opTypeColumn: Column): Unit = {
     val syncClient: KuduClient = KuduClientCache.getAsyncClient(masterAddrs).syncClient()
     val lastPropagatedTimestamp = syncClient.getLastPropagatedTimestamp
+    val opTypeColumnName = opTypeColumn.toString()
+    doMerge(data, opTypeColumnName, lastPropagatedTimestamp, masterAddrs, schema,
+      tableName, readOptions, writeOptions)
+  }
+
+  private def doMerge(
+      data: DataFrame,
+      opTypeColumnName: String,
+      lastPropagatedTimestamp: Long,
+      masterAddrs: String,
+      schema: StructType,
+      tableName: String,
+      readOptions: KuduReadOptions,
+      writeOptions: KuduWriteOptions): Unit = {
     data.toDF().foreachPartition(it => {
       val operator = new KuduOperator(masterAddrs)
-      val pendingErrors = operator.writePartitionRows(it, schema, opTypeColumn.toString(),
+      val pendingErrors = operator.writePartitionRows(it, schema, opTypeColumnName,
         tableName, lastPropagatedTimestamp, writeOptions)
       if (pendingErrors.getRowErrors.nonEmpty) {
         val errors = pendingErrors.getRowErrors
