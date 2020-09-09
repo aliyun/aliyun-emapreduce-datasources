@@ -63,7 +63,7 @@
         <dts.version>3.0.0</dts.version>
         <dts.subsribe.version>4.6.27.12.0</dts.subsribe.version>
         <hadoop.version>2.9.0</hadoop.version>
-        <fastjson.version>1.2.45</fastjson.version>
+        <fastjson.version>1.2.69</fastjson.version>
         <hive.version>2.0.1</hive.version>
         <guava.version>14.0.1</guava.version>
         <scalatest.version>3.0.3</scalatest.version>
@@ -79,7 +79,7 @@
         <commons.lang3.version>3.3.2</commons.lang3.version>
         <kafka.version>2.0.0</kafka.version>
         <yammer.metrics.version>2.2.0</yammer.metrics.version>
-        <datahub.verion>2.13.0-public</datahub.verion>
+        <datahub.verion>2.15.0-public</datahub.verion>
         <confluent.version>5.0.0</confluent.version>
         <avro.version>1.8.2</avro.version>
         <protobuf.version>2.5.0</protobuf.version>
