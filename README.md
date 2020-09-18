@@ -17,8 +17,8 @@
 
 ```
 
-	    git clone https://github.com/aliyun/aliyun-spark-sdk.git
-	    cd  aliyun-spark-sdk
+	    git clone https://github.com/aliyun/aliyun-emapreduce-datasources.git
+	    cd  aliyun-emapreduce-datasources
 	    mvn clean package -DskipTests
 
 ```
@@ -59,31 +59,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-datahub_2.11</artifactId>
-            <version>2.1.0</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-jdbc_2.11</artifactId>
-            <version>2.1.0</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-druid_2.11</artifactId>
-            <version>2.1.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-hbase_2.11</artifactId>
-            <version>2.1.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-kudu_2.11</artifactId>
+            <artifactId>emr-mns_2.11</artifactId>
             <version>2.1.0</version>
         </dependency>
         
@@ -95,7 +71,61 @@
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-common_2.11</artifactId>
+            <artifactId>emr-hbase_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-jdbc_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-dts_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-kudu_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-datahub_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-druid_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-sql_2.11</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-oss</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-common</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.aliyun.emr</groupId>
+            <artifactId>emr-kafka-client-metrics</artifactId>
             <version>2.1.0</version>
         </dependency>
 
