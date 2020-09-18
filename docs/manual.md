@@ -6,7 +6,7 @@
 
 ## Introduction
 
-- This SDK supports interaction with Aliyun's base service, e.g. OSS, ODPS, LogService and ONS, in Spark runtime environment.
+- This project supports interaction with Aliyun's base service, e.g. OSS, ODPS, LogService and ONS, in Spark runtime environment.
 
 ## Build and Install
 

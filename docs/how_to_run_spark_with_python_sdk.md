@@ -1,6 +1,6 @@
 # Python Support
 
-Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in pyspark. What calls for special attention is that E-MapReduce SDK and its dependencies should be included in class path. Try one of the following:
+Bellow document will show you how to use Loghub (ODPS, ONS, MNS and so on) in pyspark. What calls for special attention is that E-MapReduce DataSources and its dependencies should be included in class path. Try one of the following:
 
 - Choice one
 
