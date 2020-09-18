@@ -81,7 +81,7 @@ class MnsUtils(object):
         print("""
 ________________________________________________________________________________________________
 
-  E-MapReduce SDK's libraries not found in class path. Try one of the following.
+  E-MapReduce DataSources's libraries not found in class path. Try one of the following.
 
   1. Include the 'emr-mns_2.11' library and its dependencies with in the
      spark-submit command as

@@ -3,7 +3,7 @@
 [![HitCount](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk.svg)](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk)
 [![License Apache2](https://img.shields.io/badge/license-Apache2-blue.svg?style=flat-square)](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master-2.x/LICENSE)
 
-# E-MapReduce SDK
+# E-MapReduce DataSources
 
 ## Requirements
 
@@ -11,7 +11,7 @@
 
 ## Introduction
 
-- This SDK supports interaction with Aliyun's base service, e.g. OSS, ODPS, LogService and ONS, in Spark runtime environment.
+- This project supports interaction with Aliyun's base service, e.g. OSS, ODPS, LogService and ONS, in Spark runtime environment.
 
 ## Build and Install
 
