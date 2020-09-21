@@ -90,9 +90,7 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
       val reader = downloadSession.openRecordReader(split.start, split.count)
       val inputMetrics = context.taskMetrics.inputMetrics
 
-      context.addTaskCompletionListener {
-        context => closeIfNeeded()
-      }
+      context.addTaskCompletionListener[Unit](_ => closeIfNeeded())
 
       override def getNext() = {
         var ret = null.asInstanceOf[T]

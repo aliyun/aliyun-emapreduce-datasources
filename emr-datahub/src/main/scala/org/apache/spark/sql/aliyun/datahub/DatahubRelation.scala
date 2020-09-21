@@ -42,7 +42,7 @@ class DatahubRelation(
     val project = parameters.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
     val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
     val schemaDDL = schema.toDDL
-    data.foreachPartition { it =>
+    data.foreachPartition { it: Iterator[Row] =>
       val encoderForDataColumns = RowEncoder(StructType.fromDDL(schemaDDL)).resolveAndBind()
       val writer = new DatahubWriter(project, topic, parameters, None)
         .createWriterFactory().createDataWriter(-1, -1, -1)

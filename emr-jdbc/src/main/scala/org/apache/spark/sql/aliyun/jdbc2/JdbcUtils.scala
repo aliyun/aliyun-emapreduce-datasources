@@ -409,7 +409,7 @@ object JdbcUtils extends Logging {
     val encoder = RowEncoder(schema).resolveAndBind()
     val internalRows =
       resultSetToSparkInternalRows(resultSet, schema, inputMetrics)
-    internalRows.map(encoder.fromRow)
+    internalRows.map(encoder.createDeserializer().apply(_))
   }
 
   private[spark] def resultSetToSparkInternalRows(

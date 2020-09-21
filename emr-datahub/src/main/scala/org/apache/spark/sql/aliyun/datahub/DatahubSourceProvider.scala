@@ -30,7 +30,7 @@ import com.aliyun.datahub.client.http.HttpConfig
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2._
@@ -130,7 +130,7 @@ class DatahubSourceProvider extends DataSourceRegister
 
     val project = parameters.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
     val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
-    data.foreachPartition { it =>
+    data.foreachPartition { it: Iterator[Row] =>
       val writer = new DatahubWriter(project, topic, parameters, None)
         .createWriterFactory().createDataWriter(-1, -1, -1)
       it.foreach(t => writer.write(t.asInstanceOf[InternalRow]))

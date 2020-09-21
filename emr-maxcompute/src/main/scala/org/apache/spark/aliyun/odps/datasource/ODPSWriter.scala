@@ -205,7 +205,7 @@ class ODPSWriter(
       val dataSchema = odpsUtils.getTableSchema(project, table, false)
         .map{ e => (e._1, e._2.getOdpsType) }
       data.foreachPartition {
-        iterator =>
+        iterator: Iterator[Row] =>
           writeToFile(dataSchema, iterator)
       }
       val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))

@@ -22,7 +22,7 @@ import java.util.UUID
 import io.delta.tables.DeltaTable
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
+import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.types.{DataTypes, StructField}
@@ -160,7 +160,7 @@ object DeltaTableStoreCDC extends Logging {
     val task = dataStream.writeStream
       .option("checkpointLocation", checkpointLocation)
       .trigger(Trigger.ProcessingTime("30 seconds"))
-      .foreachBatch((ops, id) => {
+      .foreachBatch((ops: DataFrame, id: Long) => {
         val mergeDf = ops.select(
           col("RecordId"),
           col("RecordType"),

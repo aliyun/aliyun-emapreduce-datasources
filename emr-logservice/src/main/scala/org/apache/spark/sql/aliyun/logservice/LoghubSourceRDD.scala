@@ -96,7 +96,7 @@ class LoghubSourceRDD(
         private val valueConverters =
           schema.map(f => Utils.makeConverter(f.name, f.dataType, f.nullable)).toArray
 
-        context.addTaskCompletionListener {
+        context.addTaskCompletionListener[Unit] {
           _ => closeIfNeeded()
         }
 

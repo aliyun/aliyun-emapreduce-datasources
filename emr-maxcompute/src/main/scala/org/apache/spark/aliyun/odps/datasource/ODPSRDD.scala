@@ -70,7 +70,7 @@ class ODPSRDD(
       val reader = downloadSession.openRecordReader(split.start, split.count)
       val inputMetrics = context.taskMetrics.inputMetrics
 
-      context.addTaskCompletionListener {
+      context.addTaskCompletionListener[Unit] {
         context => closeIfNeeded()
       }
 
