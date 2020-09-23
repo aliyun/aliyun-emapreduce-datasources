@@ -122,7 +122,8 @@ Add local JindoFS SDK jars to maven dependencies.
             <artifactId>jindofs</artifactId>
             <version>0.0.1</version>
             <scope>system</scope>
-            <systemPath>/Users/xx/xx/jindofs-sdk-2.7.1.jar</systemPath>
+            <systemPath>/Users/xx/xx/jindofs-sdk-${version}.jar</systemPath>
+            <!-- please replace ${version} with specific version -->
         </dependency>
 ```
 
@@ -150,6 +151,12 @@ Note: make sure the B2SDK_CONF_DIR environment variable is set in an IDE environ
 
 <a name="WwYXi"></a>
 # Release Notes
+
+<a name="TqRR6"></a>
+### v2.7.401
+Date：20190914<br />File：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />Major fixes：
+
+1. Fix many bugs.
 
 <a name="TqRR6"></a>
 ### v2.7.1
