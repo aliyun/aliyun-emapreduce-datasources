@@ -117,7 +117,8 @@ hadoop fs -ls jfs://<namespace>/
             <artifactId>jindofs</artifactId>
             <version>0.0.1</version>
             <scope>system</scope>
-            <systemPath>/Users/xx/xx/jindofs-sdk-2.7.1.jar</systemPath>
+            <systemPath>/Users/xx/xx/jindofs-sdk-${version}.jar</systemPath>
+            <!-- 请将${version}替换为具体的版本号 -->
         </dependency>
 ```
 然后您可以编写Java程序使用SDK
@@ -143,6 +144,12 @@ public class TestJindoSDK {
 
 <a name="WwYXi"></a>
 # 发布日志
+
+<a name="TqRR6"></a>
+### v2.7.401
+日期：20190914<br />文件：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />更新内容：
+
+1. 修复多个bugs.
 
 <a name="TqRR6"></a>
 ### v2.7.1
