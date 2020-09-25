@@ -1,5 +1,5 @@
 [![version](https://badge.fury.io/gh/aliyun%2Faliyun-emapreduce-sdk.svg)](https://badge.fury.io/gh/aliyun%2Faliyun-emapreduce-sdk)
-[![build](https://travis-ci.org/aliyun/aliyun-emapreduce-sdk.svg?branch=master-2.x)](https://travis-ci.org/aliyun/aliyun-emapreduce-datasources)
+[![build](https://api.travis-ci.org/aliyun/aliyun-emapreduce-datasources.svg?branch=master-2.x)](https://travis-ci.org/aliyun/aliyun-emapreduce-datasources)
 [![HitCount](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk.svg)](http://hits.dwyl.io/aliyun/aliyun-emapreduce-sdk)
 [![License Apache2](https://img.shields.io/badge/license-Apache2-blue.svg?style=flat-square)](https://github.com/aliyun/aliyun-emapreduce-sdk/blob/master-2.x/LICENSE)
 
