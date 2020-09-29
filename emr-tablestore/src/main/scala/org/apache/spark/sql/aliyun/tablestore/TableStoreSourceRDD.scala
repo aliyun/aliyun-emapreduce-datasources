@@ -117,7 +117,7 @@ class TableStoreSourceRDD(
           private var isFirstFetch = true
           private val inputMetrics = context.taskMetrics().inputMetrics
 
-          context.addTaskCompletionListener { _ => closeIfNeeded() }
+          context.addTaskCompletionListener[Unit] { _ => closeIfNeeded() }
 
           logInfo(s"In rdd compute, ${endpoint}, ${instanceName}, ${tableName}, ${tunnelId}, " +
             s"${channelId}")

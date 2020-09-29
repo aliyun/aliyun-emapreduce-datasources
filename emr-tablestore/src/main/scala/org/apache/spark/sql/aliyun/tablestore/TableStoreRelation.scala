@@ -19,16 +19,17 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.util
 
-import scala.collection.JavaConverters._
-
 import com.alicloud.openservices.tablestore.SyncClient
-import com.alicloud.openservices.tablestore.model._
-import com.alicloud.openservices.tablestore.model.{Row => TSRow}
+import com.alicloud.openservices.tablestore.ecosystem.{Filter => OTSFilter, FilterPushdownConfig, TablestoreSplit}
+import com.alicloud.openservices.tablestore.model.{Row => TSRow, _}
 import com.aliyun.openservices.tablestore.hadoop._
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.serde2.SerDeException
 import org.apache.hadoop.io.Writable
 import org.apache.hadoop.mapreduce.Job
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
@@ -36,7 +37,6 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
-
 
 class TableStoreRelation(
     parameters: Map[String, String],
@@ -54,9 +54,55 @@ class TableStoreRelation(
   val instanceName: String = parameters("instance.name")
   val batchUpdateSize: String = parameters.getOrElse("batch.update.size", "0")
 
+  // batch
   val computeMode: String = parameters.getOrElse("compute.mode", "KV")
   val maxSplitsCount: Int = parameters.getOrElse("max.split.count", "1000").toInt
   val splitSizeInMbs: Long = parameters.getOrElse("split.size.mbs", "100").toLong
+  val searchIndexName: String = parameters.getOrElse("search.index.name", "")
+  val pushdownRangeLong: Boolean = parameters.getOrElse("push.down.range.long", "true").toBoolean
+  val pushdownRangeString: Boolean = parameters.
+    getOrElse("push.down.range.string", "true").toBoolean
+  val pushdownConfig = new FilterPushdownConfigSerialize(pushdownRangeLong, pushdownRangeString)
+
+  // sink
+  val version: String = parameters.getOrElse("version", "v1")
+
+  val writerBatchRequestType: String = parameters.getOrElse("writer.batch.request.type",
+    "bulk_import").toLowerCase()
+  val writerBatchOrderGuaranteed: Boolean = parameters.getOrElse("writer.batch.order.guaranteed",
+    "false").toBoolean
+  val writerBatchDuplicateAllowed: Boolean = parameters.getOrElse("writer.batch.duplicate.allowed",
+    "false").toBoolean
+  val writerRowChangeType: String = parameters.getOrElse("writer.row.change.type",
+    "put").toLowerCase()
+
+  val writerBucketNum: Int = parameters.getOrElse("writer.bucket.num",
+    String.valueOf(Runtime.getRuntime.availableProcessors * 2)).toInt
+  val writerCallbackPoolNum: Int = parameters.getOrElse("writer.callback.pool.num",
+    String.valueOf(Runtime.getRuntime.availableProcessors + 1)).toInt
+  val writerCallbackPoolQueueSize: Int = parameters.getOrElse("writer.callback.pool.queue.size",
+    "1024").toInt
+  val writerConcurrency: Int = parameters.getOrElse("writer.concurrency", "10").toInt
+  val writerBufferSize: Int = parameters.getOrElse("writer.buffer.size", "1024").toInt
+  val writerFlushIntervalMs: Int = parameters.getOrElse("writer.flush.interval.ms", "10000").toInt
+  val clientIoPool: Int = parameters.getOrElse("client.io.pool",
+    String.valueOf(Runtime.getRuntime.availableProcessors)).toInt
+
+  val writerMaxBatchSize: Int = parameters.getOrElse("writer.max.batch.size.byte",
+    String.valueOf(4 * 1024 * 1024)).toInt
+  val writerMaxBatchCount: Int = parameters.getOrElse("writer.max.batch.count", "200").toInt
+  val writerMaxColumnCount: Int = parameters.getOrElse("writer.max.column.count", "128").toInt
+  val writerMaxAttrSize: Int = parameters.getOrElse("writer.max.attr.size.byte",
+    String.valueOf(2 * 1024 * 1024)).toInt
+  val writerMaxPkSize: Int = parameters.getOrElse("writer.max.pk.size.byte", "1024").toInt
+  val clientRetryStrategy: String = parameters.getOrElse("client.retry.strategy",
+    "time").toLowerCase()
+  val clientRetryTime: Int = parameters.getOrElse("client.retry.time.s", "10").toInt
+  val clientRetryCount: Int = parameters.getOrElse("client.retry.count", "3").toInt
+  val clientRetryPause: Int = parameters.getOrElse("client.retry.pause.ms", "1000").toInt
+
+  val ignoreOnFailureEnabled: Boolean = parameters.getOrElse("spark.ignore.on-failure.enabled",
+    "false").toBoolean
 
   override def schema: StructType =
     userSpecifiedSchema.getOrElse(TableStoreCatalog(parameters).schema)
@@ -64,17 +110,23 @@ class TableStoreRelation(
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val hadoopConf = new Configuration()
     hadoopConf.set(TableStoreInputFormat.TABLE_NAME, tbName)
-    val computeParams = new ComputeParams(maxSplitsCount, splitSizeInMbs, computeMode)
-    hadoopConf.set(TableStoreInputFormat.COMPUTE_PARAMS, computeParams.serialize)
+    if (searchIndexName != null && !searchIndexName.isEmpty) {
+      val computeParams = new ComputeParams(searchIndexName, maxSplitsCount)
+      hadoopConf.set(TableStoreInputFormat.COMPUTE_PARAMS, computeParams.serialize)
+    } else {
+      val computeParams = new ComputeParams(maxSplitsCount, splitSizeInMbs, computeMode)
+      hadoopConf.set(TableStoreInputFormat.COMPUTE_PARAMS, computeParams.serialize)
+    }
     val otsFilter = TableStoreFilter.buildFilters(filters, this)
     val otsRequiredColumns = requiredColumns.toList.asJava
     hadoopConf.set(TableStoreInputFormat.FILTER,
       new TableStoreFilterWritable(otsFilter, otsRequiredColumns).serialize)
 
+    TableStore.setFilterPushdownConfig(hadoopConf, pushdownConfig)
+
     TableStore.setCredential(hadoopConf, new Credential(accessKeyId, accessKeySecret, null))
     val ep = new Endpoint(endpoint, instanceName)
     TableStore.setEndpoint(hadoopConf, ep)
-    TableStoreInputFormat.addCriteria(hadoopConf, fetchCriteria())
     val rawRdd = sqlContext.sparkContext.newAPIHadoopRDD(
       hadoopConf,
       classOf[TableStoreInputFormat],
@@ -82,7 +134,7 @@ class TableStoreRelation(
       classOf[RowWritable])
 
     val rdd = rawRdd.mapPartitions(it =>
-      it.map {case (_, rw) =>
+      it.map { case (_, rw) =>
         val values = requiredColumns.map(fieldName => extractValue(rw.getRow, fieldName))
         Row.fromSeq(values)
       }
@@ -107,6 +159,15 @@ class TableStoreRelation(
       new Credential(accessKeyId, accessKeySecret, null).serialize())
     jobConfig.set(TableStore.ENDPOINT, new Endpoint(endpoint, instanceName).serialize())
     jobConfig.set(TableStoreOutputFormat.MAX_UPDATE_BATCH_SIZE, batchUpdateSize)
+    jobConfig.set(TableStoreOutputFormat.SINK_CONFIG, new SinkConfig(version,
+      writerBatchRequestType, writerBatchOrderGuaranteed, writerBatchDuplicateAllowed,
+      writerRowChangeType,
+      writerBucketNum, writerCallbackPoolNum, writerCallbackPoolQueueSize, writerConcurrency,
+      writerBufferSize, writerFlushIntervalMs, clientIoPool,
+      writerMaxBatchSize, writerMaxBatchCount, writerMaxColumnCount, writerMaxAttrSize,
+      writerMaxPkSize, clientRetryStrategy, clientRetryTime, clientRetryCount, clientRetryPause,
+      ignoreOnFailureEnabled
+    ).serialize())
 
     // df.queryExecution.toRdd
     val rdd = data.rdd
@@ -117,7 +178,7 @@ class TableStoreRelation(
     }).saveAsNewAPIHadoopDataset(jobConfig)
   }
 
-  private def convertToOtsRow(row: Row, tbMeta: TableMeta): BatchWriteWritable = {
+  private[sql] def convertToOtsRow(row: Row, tbMeta: TableMeta): BatchWriteWritable = {
     val batch = new BatchWriteWritable()
     val pkeyNames = new util.HashSet[String]()
     val pkeyCols = new util.ArrayList[PrimaryKeyColumn]()
@@ -156,32 +217,43 @@ class TableStoreRelation(
     val attrs = new util.ArrayList[Column]()
     schema.fieldNames.foreach(field => {
       if (!pkeyNames.contains(field)) {
-        schema(field).dataType match {
-          case LongType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Long](field))))
-          case IntegerType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Int](field).toLong)))
-          case FloatType =>
-            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Float](field).toDouble)))
-          case DoubleType =>
-            attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](field))))
-          case ShortType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Short](field).toLong)))
-          case ByteType =>
-            attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Byte](field).toLong)))
-          case StringType =>
-            attrs.add(new Column(field, ColumnValue.fromString(row.getAs[String](field))))
-          case BinaryType =>
-            attrs.add(new Column(field, ColumnValue.fromBinary(row.getAs[Array[Byte]](field))))
-          case BooleanType =>
-            attrs.add(new Column(field, ColumnValue.fromBoolean(row.getAs[Boolean](field))))
+        val fieldIdx = row.fieldIndex(field)
+        if (!row.isNullAt(fieldIdx)) {
+          schema(field).dataType match {
+            case LongType =>
+              attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Long](fieldIdx))))
+            case IntegerType =>
+              attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Int](fieldIdx).toLong)))
+            case FloatType =>
+              attrs.add(new Column(field,
+                ColumnValue.fromDouble(row.getAs[Float](fieldIdx).toDouble)))
+            case DoubleType =>
+              attrs.add(new Column(field, ColumnValue.fromDouble(row.getAs[Double](fieldIdx))))
+            case ShortType =>
+              attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Short](fieldIdx).toLong)))
+            case ByteType =>
+              attrs.add(new Column(field, ColumnValue.fromLong(row.getAs[Byte](fieldIdx).toLong)))
+            case StringType =>
+              attrs.add(new Column(field, ColumnValue.fromString(row.getAs[String](fieldIdx))))
+            case BinaryType =>
+              attrs.add(new Column(field, ColumnValue.fromBinary(row.getAs[Array[Byte]](fieldIdx))))
+            case BooleanType =>
+              attrs.add(new Column(field, ColumnValue.fromBoolean(row.getAs[Boolean](fieldIdx))))
+          }
         }
       }
     })
 
-    val putRow = new RowPutChange(tbName, new PrimaryKey(pkeyCols))
-    putRow.addColumns(attrs)
-    batch.addRowChange(putRow)
+    if ("update".equals(writerRowChangeType)) {
+      val updateRow = new RowUpdateChange(tbName, new PrimaryKey(pkeyCols))
+      updateRow.put(attrs)
+      batch.addRowChange(updateRow)
+    } else {
+      val putRow = new RowPutChange(tbName, new PrimaryKey(pkeyCols))
+      putRow.addColumns(attrs)
+      batch.addRowChange(putRow)
+    }
+
     batch
   }
 
@@ -215,12 +287,12 @@ class TableStoreRelation(
     new SyncClient(endpoint, accessKeyId, accessKeySecret, instanceName)
   }
 
-  private def extractValue(row: TSRow, filedName: String): Any = {
-    val isPrimaryKey = row.getPrimaryKey.contains(filedName)
-    val isPropertyKey = row.contains(filedName)
+  private def extractValue(row: TSRow, fieldName: String): Any = {
+    val isPrimaryKey = row.getPrimaryKey.contains(fieldName)
+    val isPropertyKey = row.contains(fieldName)
 
     if (isPrimaryKey) {
-      val pkColumn = row.getPrimaryKey.getPrimaryKeyColumn(filedName)
+      val pkColumn = row.getPrimaryKey.getPrimaryKeyColumn(fieldName)
       pkColumn.getValue.getType match {
         case PrimaryKeyType.INTEGER =>
           schema(pkColumn.getName).dataType match {
@@ -250,7 +322,7 @@ class TableStoreRelation(
             s"key: ${pkColumn.getValue.getType}")
       }
     } else if (isPropertyKey) {
-      val col = row.getLatestColumn(filedName)
+      val col = row.getLatestColumn(fieldName)
       col.getValue.getType match {
         case ColumnType.INTEGER =>
           val value = col.getValue.asLong()
@@ -283,7 +355,86 @@ class TableStoreRelation(
           throw new SerDeException(s"unknown data type of primary key: ${col.getValue.getType}")
       }
     } else {
-      throw new SerDeException(s"unknown filed name: $filedName")
+      logWarning(s"unknown field name: $fieldName")
+      null
     }
   }
+
+
+  override def unhandledFilters(filters: Array[Filter]): Array[Filter] = {
+    val otsClient = getOTSClient
+    try {
+      if (searchIndexName == null || searchIndexName.isEmpty) {
+        filters
+      } else {
+        var unhandledSparkFilters = new ArrayBuffer[Filter]()
+        val otsFilterPushed = TableStoreFilter.buildFilters(filters, this)
+
+        val filterOtsUnhandled: OTSFilter = TablestoreSplit.getUnhandledOtsFilter(
+          otsClient,
+          otsFilterPushed,
+          tbName,
+          searchIndexName,
+          new FilterPushdownConfig(pushdownConfig.pushRangeLong, pushdownConfig.pushRangeString)
+        )
+
+        logInfo(s"search index mode: push.down.range.long: $pushdownRangeLong, " +
+          s"push.down.range.long $pushdownRangeString")
+        if (filterOtsUnhandled == null) {
+
+        } else if (!filterOtsUnhandled.isNested) {
+          val filterSpark = otsFilterToSparkFilter(filterOtsUnhandled)
+          unhandledSparkFilters += filterSpark
+        } else {
+          val subFilters = filterOtsUnhandled.getSubFilters.asScala
+          for (filterOtsUnhandled2 <- subFilters) {
+            var filterSpark = otsFilterToSparkFilter(filterOtsUnhandled2)
+            unhandledSparkFilters += filterSpark
+          }
+        }
+        val objectMapper = new ObjectMapper()
+        val str1 = objectMapper.writeValueAsString(filterOtsUnhandled)
+        logInfo(s"filterOtsUnhandled:$str1")
+        val str2 = objectMapper.writeValueAsString(unhandledSparkFilters)
+        logInfo(s"unhandledSparkFilters:$str2")
+        unhandledSparkFilters.toArray
+      }
+    } finally {
+      otsClient.shutdown()
+    }
+  }
+
+
+  private def otsFilterToSparkFilter(filterOts: OTSFilter): Filter = {
+    filterOts.getCompareOperator match {
+      case OTSFilter.CompareOperator.EQUAL =>
+        EqualTo(filterOts.getColumnName, filterOts.getColumnValue.getValue)
+      case OTSFilter.CompareOperator.IS_NULL =>
+        IsNotNull(filterOts.getColumnName)
+      case OTSFilter.CompareOperator.START_WITH =>
+        StringStartsWith(filterOts.getColumnName, filterOts.getColumnValue.asString())
+      case OTSFilter.CompareOperator.GREATER_THAN =>
+        GreaterThan(filterOts.getColumnName, filterOts.getColumnValue.getValue)
+      case OTSFilter.CompareOperator.GREATER_EQUAL =>
+        GreaterThanOrEqual(filterOts.getColumnName, filterOts.getColumnValue.getValue)
+      case OTSFilter.CompareOperator.LESS_THAN =>
+        LessThan(filterOts.getColumnName, filterOts.getColumnValue.getValue)
+      case OTSFilter.CompareOperator.LESS_EQUAL =>
+        LessThanOrEqual(filterOts.getColumnName, filterOts.getColumnValue.getValue)
+      case OTSFilter.CompareOperator.IN =>
+        val value: scala.collection.mutable.Buffer[ColumnValue] = filterOts.
+          getColumnValuesForInOperator.asScala
+        val buffer = new ArrayBuffer[Any]()
+        for (columnValue <- value) {
+          buffer += columnValue.getValue
+        }
+        val array = buffer.toArray
+        In(filterOts.getColumnName, array)
+      case OTSFilter.CompareOperator.NOT_EQUAL =>
+        Not(EqualTo(filterOts.getColumnName, filterOts.getColumnValue.getValue))
+      case _ =>
+        null
+    }
+  }
+
 }
