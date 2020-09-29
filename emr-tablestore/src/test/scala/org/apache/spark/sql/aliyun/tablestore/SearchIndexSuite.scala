@@ -17,24 +17,31 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
-import com.alicloud.openservices.tablestore.model.{PrimaryKeyType, TableMeta}
-import org.apache.hadoop.hive.serde2.SerDeException
-
 import org.apache.spark.sql.{DataFrame, QueryTest}
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.test.SharedSQLContext
-import org.apache.spark.sql.types.{LongType, StringType, StructType}
-import org.apache.spark.unsafe.types.UTF8String
 
-class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
+class SearchIndexSuite extends QueryTest with SharedSQLContext {
   private val testUtils = new TableStoreTestUtil()
+  val searchIndexSuiteTableName = "spark_test_searchindex2"
+  private val searchindexname: String =
+    Option(System.getenv("SEARCH_INDEX_NAME")).getOrElse("spark_test_searchindex2_index")
 
   override def beforeEach(): Unit = {
     testUtils.deleteTunnel()
-    testUtils.deleteTable()
-    testUtils.createTable()
-    Thread.sleep(2000)
+
+    testUtils.deleteTable(searchIndexSuiteTableName)
+    if (!testUtils.containTable(searchIndexSuiteTableName)) {
+      testUtils.createTable(searchIndexSuiteTableName)
+      testUtils.insertData(50000, searchIndexSuiteTableName)
+      Thread.sleep(2000)
+    }
+
+    if (!testUtils.containSearchIndex(searchindexname,
+      searchIndexSuiteTableName)) {
+      testUtils.createSearchIndex(searchIndexSuiteTableName,
+        searchindexname, null)
+      Thread.sleep(50000)
+    }
   }
 
   private def createDF(
@@ -44,7 +51,11 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
         Map(
           "catalog" -> TableStoreTestUtil.catalog,
           "maxOffsetsPerChannel" -> "10000"
-        )
+        ),
+        searchIndexSuiteTableName,
+        searchindexname,
+        "true",
+        "true"
       )
     val df = spark
       .read
@@ -56,8 +67,6 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   test("select * or column from tablestore relation") {
-    testUtils.insertData(50000)
-
     val df = createDF(Map.empty)
     assert(df.select("PkString").count() == 50000)
     assert(df.select("col5").count() == 50000)
@@ -66,8 +75,6 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   test("select * from tablestore with single filter") {
-    testUtils.insertData(50000)
-
     val df = createDF(Map.empty)
     assert(df.select("*").filter("PkInt >= 10000").count() == 40000)
     assert(df.select("*").filter("PkInt > 10000").count() == 39999)
@@ -78,8 +85,6 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   test("select columns from tablestore with single filter") {
-    testUtils.insertData(50000)
-
     val df = createDF(Map.empty)
     assert(df.select("PkString", "col5").filter("PkInt >= 10000").count() == 40000)
     assert(df.select("PkString", "col1").filter("PkInt > 10000").count() == 39999)
@@ -90,8 +95,6 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
   }
 
   test("select columns from tablestore with complex filter") {
-    testUtils.insertData(50000)
-
     val df = createDF(Map.empty)
     assert(df.select("PkString", "PkInt").filter(
       "PkInt >= 10000 AND col6 == true").count() == 20000)
@@ -103,43 +106,5 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
       "PkString == '6666' AND PkInt != 8888").count() == 1)
     assert(df.select("PkString", "PkInt").filter(
       "(PkString == 6666 OR (PkInt >= 10000 AND PkInt < 20000 AND col6 == true))").count() == 5001)
-  }
-
-  test("convert to ots row") {
-    val schema = (new StructType)
-      .add("pk", StringType, nullable = false)
-      .add("col_long", LongType, nullable = true)
-      .add("col_string", StringType, nullable = true)
-    val encoder = RowEncoder(schema).resolveAndBind()
-    val tsRelation = new TableStoreRelation(
-      new TableStoreTestUtil().getTestOptions(Map()), Option(schema))(null)
-    val tableMeta = new TableMeta("test_table")
-    tableMeta.addPrimaryKeyColumn("pk", PrimaryKeyType.STRING)
-    try {
-      val row = encoder.fromRow(
-        InternalRow(UTF8String.fromString("pk1"), 1L, UTF8String.fromString("col_str1")))
-      tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
-    } catch {
-      case _: SerDeException =>
-        fail("should not achieve here")
-    }
-
-    try {
-      val row = encoder.fromRow(
-        InternalRow(UTF8String.fromString("pk1"), null, null))
-      tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
-    } catch {
-      case _: SerDeException =>
-        fail("should not achieve here")
-    }
-
-    try {
-      val row = encoder.fromRow(
-        InternalRow(UTF8String.fromString("pk1"), 1L, null))
-      tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
-    } catch {
-      case _: SerDeException =>
-        fail("should not achieve here")
-    }
   }
 }

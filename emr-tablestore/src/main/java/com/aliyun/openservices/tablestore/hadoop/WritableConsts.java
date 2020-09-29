@@ -51,6 +51,7 @@ public class WritableConsts {
     public static final byte CREDENTIAL_SECURITY_TOKEN = 54;
     public static final byte ENDPOINT = 57;
     public static final byte MULTI_CRITERIA = 58;
+    public static final byte FILTER_PUSHDOWN_CONFIG = 59;
 
     public static final byte FILTER = 60;
     public static final byte FILTER_EMPTY = 61;
@@ -60,13 +61,17 @@ public class WritableConsts {
     public static final byte FILTER_NOT_EQUAL = 68;
     public static final byte FILTER_GREATER = 71;
     public static final byte FILTER_GREATER_EQUAL = 72;
-    public static final byte FILTER_LESS = 75;
-    public static final byte FILTER_LESS_EQUAL = 77;
+    public static final byte FILTER_LESS = 73;
+    public static final byte FILTER_LESS_EQUAL = 74;
+    public static final byte FILTER_IN = 75;
+    public static final byte FILTER_IS_NULL = 76;
+//    public static final byte FILTER_IS_NOT_NULL = 77;
     public static final byte FILTER_COMPOSITED = 78;
     public static final byte FILTER_START_WITH = 79;
     public static final byte FILTER_NOT = 80;
     public static final byte FILTER_AND = 83;
     public static final byte FILTER_OR = 85;
+
 
     public static final byte BATCH_WRITE = 86;
     public static final byte PUT_ROW = 89;
@@ -86,7 +91,10 @@ public class WritableConsts {
     public static final byte COMPUTE_PARAMETERS = 115;
     public static final byte SPLIT = 120;
     public static final byte COMPUTE_SPLIT = 121;
+    public static final byte KV_SPLIT = 122;
+    public static final byte SEARCH_INDEX_SPLIT = 123;
     public static final byte REQUIRED_COLUMNS = 126;
+    public static final byte SINK_PARAMETERS = 127;
 
     // public static final byte x = 114;
     // public static final byte x = 116;

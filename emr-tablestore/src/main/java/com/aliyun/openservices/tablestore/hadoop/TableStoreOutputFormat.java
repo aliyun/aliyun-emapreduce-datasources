@@ -20,6 +20,7 @@ package com.aliyun.openservices.tablestore.hadoop;
 
 import java.io.IOException;
 
+import com.alicloud.openservices.tablestore.TableStoreWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,7 @@ import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWritable> {
     public static final String OUTPUT_TABLE = "TABLESTORE_OUTPUT_TABLE";
     public static final String MAX_UPDATE_BATCH_SIZE = "TABLESTORE_MAX_UPDATE_BATCH_SIZE";
+    public static final String SINK_CONFIG = "TABLESTORE_SINK_CONFIG";
 
     private static final Logger logger = LoggerFactory.getLogger(TableStoreOutputFormat.class);
 
@@ -191,14 +193,22 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
     @Override public RecordWriter<Writable, BatchWriteWritable> getRecordWriter(
         TaskAttemptContext context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
-        String outputTable = conf.get(OUTPUT_TABLE);
-        Preconditions.checkNotNull(outputTable, "Output table must be set.");
-        SyncClientInterface ots = TableStore.newOtsClient(conf);
-        int maxBatchSize = conf.getInt(MAX_UPDATE_BATCH_SIZE, 0);
-        if (maxBatchSize == 0) {
-            return new TableStoreRecordWriter(ots, outputTable);
+
+        SinkConfig sinkConfig = SinkConfig.deserialize(conf.get(TableStoreOutputFormat.SINK_CONFIG));
+        if ("v2".equals(sinkConfig.getVersion())) {
+            TableStoreWriter ots = TableStore.newOtsWriter(conf);
+            return new TableStoreRecordWriterV2(ots, sinkConfig);
         } else {
-            return new TableStoreRecordWriter(ots, outputTable, maxBatchSize);
+            String outputTable = conf.get(TableStoreOutputFormat.OUTPUT_TABLE);
+            Preconditions.checkNotNull(outputTable, "Output table must be set.");
+
+            SyncClientInterface ots = TableStore.newOtsClient(conf);
+            int maxBatchSize = conf.getInt(TableStoreOutputFormat.MAX_UPDATE_BATCH_SIZE, 0);
+            if (maxBatchSize == 0) {
+                return new TableStoreRecordWriter(ots, outputTable);
+            } else {
+                return new TableStoreRecordWriter(ots, outputTable, maxBatchSize);
+            }
         }
     }
 }

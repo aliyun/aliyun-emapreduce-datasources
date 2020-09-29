@@ -30,6 +30,7 @@ import org.apache.spark.sql.types.StructType
 class TableStoreSourceProvider
     extends DataSourceRegister
     with RelationProvider
+    with SchemaRelationProvider
     with CreatableRelationProvider
     with StreamSourceProvider
     with StreamSinkProvider
@@ -74,7 +75,15 @@ class TableStoreSourceProvider
 
   override def createRelation(
       sqlContext: SQLContext,
-      parameters: Map[String, String]): BaseRelation = {
+      parameters: Map[String, String],
+      schema: StructType): BaseRelation = {
+    validateOptions(parameters, isStream = false)
+    new TableStoreRelation(parameters, Some(schema))(sqlContext)
+  }
+
+  override def createRelation(
+     sqlContext: SQLContext,
+     parameters: Map[String, String]): BaseRelation = {
     validateOptions(parameters, isStream = false)
     new TableStoreRelation(parameters, Some(TableStoreCatalog(parameters).schema))(sqlContext)
   }
