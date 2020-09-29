@@ -16,7 +16,10 @@
  */
 package org.apache.spark.sql.aliyun.tablestore
 
-import com.alibaba.fastjson.JSONObject
+import scala.collection.mutable
+
+import org.json4s.DefaultFormats
+import org.json4s.jackson.Serialization
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.aliyun.tablestore.TableStoreSourceProvider._
@@ -33,11 +36,13 @@ class SchemaTableStoreData(
     content: Array[(String, Any)])
   extends TableStoreData(content) with Logging with Serializable {
   override def getContent: Array[Byte] = {
-    val obj = new JSONObject()
-    obj.put(__OTS_RECORD_TYPE__, recordType)
-    obj.put(__OTS_RECORD_TIMESTAMP__, recordTimeStamp)
-    content.foreach(o => obj.put(o._1, o._2))
-    obj.toJSONString.getBytes
+    val m = new mutable.HashMap[String, Any]()
+    m.put(__OTS_RECORD_TYPE__, recordType)
+    m.put(__OTS_RECORD_TIMESTAMP__, recordTimeStamp)
+    content.foreach(o => m.put(o._1, o._2))
+
+    implicit val formats: DefaultFormats.type = org.json4s.DefaultFormats
+    Serialization.write(m).getBytes
   }
 
   override def toArray: Array[Any] = {
