@@ -29,7 +29,18 @@ import java.io.IOException;
 public class ComputeSplitWritable implements Writable {
     private Split split;
 
+    // SearchIndex Split
+    private byte[] sessionId;
+    private int splitId;
+    private int maxParallel;
+
     public ComputeSplitWritable() {
+    }
+
+    public ComputeSplitWritable(byte[] sessionId, int splitId, int maxParallel) {
+        this.sessionId = sessionId;
+        this.splitId = splitId;
+        this.maxParallel = maxParallel;
     }
 
     public ComputeSplitWritable(Split split) {
@@ -39,13 +50,26 @@ public class ComputeSplitWritable implements Writable {
     @Override
     public void write(DataOutput out) throws IOException {
         out.write(WritableConsts.COMPUTE_SPLIT);
-        write(out, split);
+        if (split != null) {
+            write(out, split);
+        } else {
+            write(out, sessionId, splitId);
+        }
     }
 
     public void write(DataOutput out, Split split) throws IOException {
+        out.writeByte(WritableConsts.KV_SPLIT);
         out.writeUTF(split.getLocation());
         new PrimaryKeyWritable(split.getLowerBound()).write(out);
         new PrimaryKeyWritable(split.getUpperBound()).write(out);
+    }
+
+    public void write(DataOutput out, byte[] sessionId, int splitId) throws IOException {
+        out.writeByte(WritableConsts.SEARCH_INDEX_SPLIT);
+        out.writeInt(sessionId.length);
+        out.write(sessionId);
+        out.writeInt(splitId);
+        out.writeInt(maxParallel);
     }
 
     public static ComputeSplitWritable read(DataInput in) throws IOException {
@@ -60,7 +84,18 @@ public class ComputeSplitWritable implements Writable {
         if (tag != WritableConsts.COMPUTE_SPLIT) {
             throw new IOException("broken input stream");
         }
-        split = readSplit(in);
+        byte splitType = in.readByte();
+        if (splitType == WritableConsts.KV_SPLIT) {
+            split = readSplit(in);
+        } else if (splitType == WritableConsts.SEARCH_INDEX_SPLIT) {
+            int len = in.readInt();
+            sessionId = new byte[len];
+            in.readFully(sessionId);
+            splitId = in.readInt();
+            maxParallel = in.readInt();
+        } else {
+            throw new IOException("broken input stream");
+        }
     }
 
     private static Split readSplit(DataInput in) throws IOException {
@@ -72,5 +107,17 @@ public class ComputeSplitWritable implements Writable {
 
     public Split getSplit() {
         return split;
+    }
+
+    public byte[] getSessionId() {
+        return sessionId;
+    }
+
+    public int getSplitId() {
+        return splitId;
+    }
+
+    public int getMaxParallel() {
+        return maxParallel;
     }
 }
