@@ -91,6 +91,9 @@ class DatahubDataWriter(
         case e: DatahubClientException =>
           logError(e.getErrorMessage)
           throw e
+        case e: Exception =>
+          logError(e.getMessage)
+          throw e
       }
     }
   }

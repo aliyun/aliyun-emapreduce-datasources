@@ -22,15 +22,13 @@ import java.util.concurrent.locks.{ReadWriteLock, ReentrantReadWriteLock}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
 import com.aliyun.datahub.client.{DatahubClient, DatahubClientBuilder}
 import com.aliyun.datahub.client.auth.AliyunAccount
 import com.aliyun.datahub.client.common.DatahubConfig
 import com.aliyun.datahub.client.http.HttpConfig
 import org.apache.commons.cli.MissingArgumentException
-
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sources.v2._
@@ -38,6 +36,7 @@ import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, Micro
 import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.util.{Utils => SUtils}
 
 class DatahubSourceProvider extends DataSourceRegister
   with MicroBatchReadSupport
@@ -130,10 +129,13 @@ class DatahubSourceProvider extends DataSourceRegister
 
     val project = parameters.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
     val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
-    data.foreachPartition { it =>
+
+    data.queryExecution.toRdd.foreachPartition { iter =>
       val writer = new DatahubWriter(project, topic, parameters, None)
         .createWriterFactory().createDataWriter(-1, -1, -1)
-      it.foreach(t => writer.write(t.asInstanceOf[InternalRow]))
+      while (iter.hasNext) {
+        writer.write(iter.next())
+      }
     }
 
     /* This method is suppose to return a relation that reads the data that was written.
