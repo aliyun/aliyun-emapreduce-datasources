@@ -57,7 +57,7 @@
         <loghubb.client.version>0.6.15</loghubb.client.version>
         <aliyun.sdk.core>4.3.2</aliyun.sdk.core>
         <aliyun.log.version>0.6.37</aliyun.log.version>
-        <aliyun.log.producer.version>0.3.3</aliyun.log.producer.version>
+        <aliyun.log.producer.version>0.3.7</aliyun.log.producer.version>
         <ons.version>1.8.2.Final</ons.version>
         <mns.version>1.1.8.4</mns.version>
         <dts.version>3.0.0</dts.version>
