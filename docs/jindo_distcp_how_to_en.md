@@ -24,8 +24,8 @@ Jindo DistCp (distributed file copy tool) is a tool for copying files within and
 ---
 
 
-<br />If you are using Hadoop 2.7+, please [download](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop2.7%2BS3/jindo-distcp-2.7.3.jar)<br />
-<br />If you are using Hadoop 3.x, please [download](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp/Hadoop3.x%2BS3/jindo-distcp-2.7.3.jar)<br />
+<br />If you are using Hadoop 2.7+, please [download](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp-3.0/Hadoop2.7%2B/jindo-distcp-3.0.0.jar)<br />
+<br />If you are using Hadoop 3.x, please [download](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/Jindo-distcp-3.0/Hadoop3.x/jindo-distcp-3.0.0.jar)<br />
 
 <a name="WpDlv"></a>
 # User Guide
@@ -38,7 +38,7 @@ Jindo DistCp provides a jar package for use. You can use the hadoop jar command 
 <a name="LOd8o"></a>
 #### 1、use --help
 ```bash
-[root@emr-header-1 opt]# hadoop jar jindo-distcp-2.7.3.jar --help
+[root@emr-header-1 opt]# hadoop jar jindo-distcp-3.0.0.jar --help
      --help   -   Print help text
      --src=VALUE   -   Directory to copy files from
      --dest=VALUE   -   Directory to copy files to
@@ -76,7 +76,7 @@ Jindo DistCp provides a jar package for use. You can use the hadoop jar command 
 <br />--src     Indicates the path of the specified source path<br />--dest   Indicates the path of the target path<br />
 If you copy the/opt/tmp directory from HDFS to an OSS bucket, run the following statement:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /opt/tmp --dest oss://yang-hhht/tmp
+hadoop jar jindo-distcp-3.0.0.jar --src /opt/tmp --dest oss://yang-hhht/tmp
 ```
 
 You can specify the dest path to determine the level of the copied file. For example, if you need to copy the files under /opt/tmp to the oss://yang-hhht/tmp bucket, you can use the example statement. This is different from the distcp behavior of Hadoop. jindo distcp copies all files in the src directory to the dest path you specify by default, excluding the current root directory name, you can specify the root directory of the copy path in dest. If it does not exist, it is automatically created.<br />
@@ -88,7 +88,7 @@ You can specify the dest path to determine the level of the copied file. For exa
 <br />If you copy the/opt/tmp directory from HDFS to an OSS bucket, you can run<br />
 
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /opt/tmp --dest oss://yang-hhht/tmp --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /opt/tmp --dest oss://yang-hhht/tmp --parallelism 20
 ```
 
 
@@ -110,7 +110,7 @@ Found 6 items
 ```
 You can copy data by specifying the regular expression of srcPattern.
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --srcPattern .*\.log --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --srcPattern .*\.log --parallelism 20
 ```
 Check whether only files ending with log are copied in the target bucket.
 ```bash
@@ -127,7 +127,7 @@ Sometimes we want to move data instead of copying data. We can use the -- delete
 
 The sample command as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --deleteOnSuccess --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --deleteOnSuccess --parallelism 20
 ```
 After the statement is executed, the file can be deleted from the source location.<br />
 
@@ -137,7 +137,7 @@ After the statement is executed, the file can be deleted from the source locatio
 
 The command example as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputCodec=gz --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputCodec=gz --parallelism 20
 ```
 The current version of jindo distcp supports codecs gzip, gz, lzo, lzop, snappy, none and keep (default). These keywords have the following meanings:
 
@@ -163,7 +163,7 @@ Found 6 items
 
 You can specify to generate a manifest file to record information such as the source file, target file and data size during the copy process. To generate manifest file, you must specify the requirePreviousManifest parameter as flase. The current outputManifest file will be a gz-type compressed file by default. You can name its prefix based on your own demand.
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-17.gz --requirePreviousManifest=false --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-17.gz --requirePreviousManifest=false --parallelism 20
 ```
 You can view the content of the generated outputManifest file.
 ```bash
@@ -185,7 +185,7 @@ You can view the content of the generated outputManifest file.
 <br />If two new files are added to the source folder, the following command example is used:<br />
 
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-18.gz --previousManifest=oss://yang-hhht/hourly_table/manifest-2020-04-17.gz --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --outputManifest=manifest-2020-04-18.gz --previousManifest=oss://yang-hhht/hourly_table/manifest-2020-04-17.gz --parallelism 20
 ```
 This command treats two manifest files as parameters: outputManifest and previousManifest. The first contains a list of all copied files (old files and new files), and the second contains a list of previously copied files. In this way, we can recreate the complete operation history and view which files were copied during each distcp job:
 ```bash
@@ -204,7 +204,7 @@ jindo distcp uses the path /tmp/manifest.gz to create files in the local file sy
 
 The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=oss://yang-hhht/hourly_table/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=oss://yang-hhht/hourly_table/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
 ```
 
 
@@ -214,7 +214,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 The command example as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --srcPrefixesFile file:///opt/folders.txt --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --srcPrefixesFile file:///opt/folders.txt --parallelism 20
 ```
 The content of folders as follows:
 ```bash
@@ -237,7 +237,7 @@ After optimization, Hadoop can read a small number of large files from HDFS inst
 
 If you want to merge all txt files into one file at a maximum of 10MB, the sample command as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --targetSize=10 --groupBy='.*/([a-z]+).*.txt' --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --targetSize=10 --groupBy='.*/([a-z]+).*.txt' --parallelism 20
 ```
 <br />The original folder contains two txt files.
 ```bash
@@ -285,7 +285,7 @@ If the overall size of the data you want to copy is relatively uniform, you can 
 <br />The sample command as follows:<br />
 
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableBalancePlan --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableBalancePlan --parallelism 20
 ```
 
 <br />This parameter cannot be used with the --groupby and --targetSize parameters.<br />
@@ -297,7 +297,7 @@ In scenarios where the size of the data you want to copy is highly differentiate
 <br />
 The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableDynamicPlan --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableDynamicPlan --parallelism 20
 ```
 <br />This parameter cannot be used with the --groupby and --targetSize parameters.<br />
 
@@ -308,7 +308,7 @@ Jindo distcp uses task-level integrity by default. To ensure Job-level integrity
 <br />The sample command is as follows:<br />
 
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableTransaction --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --enableTransaction --parallelism 20
 ```
 
 
@@ -319,7 +319,7 @@ After your distcp task is completed, you can specify src and dest to check the f
 <br />The sample command is as follows:<br />
 
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --diff
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --diff
 ```
 <br />If all tasks are completed, the following message is displayed. Otherwise, a manifest file is generated in the execution directory.
 
@@ -330,7 +330,7 @@ INFO distcp.JindoDistCp: distcp has been done completely
 
 If your -- dest is The HDFS path, you can write/path, hdfs://hostname:ip/path, hdfs://headerIp:ip/path. Currently, you cannot write hdfs:/// path, hdfs:/path, and other custom writing methods.<br />For the generated manifest file, you can use the --copyFromManifest and --previousManifest commands to copy the remaining files.<br />The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=file:///opt/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --dest oss://yang-hhht/hourly_table --previousManifest=file:///opt/manifest-2020-04-17.gz --copyFromManifest --parallelism 20
 ```
 <br />
 
@@ -357,7 +357,7 @@ Shuffle Errors
 If there is a problem with the password-free service or your cluster is outside the EMR, you can specify an AK to get access to OSS. You can use the --ossKey, --ossSecret, and --ossEndPoint options are used to specify the AK.<br />
 <br />The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ossKey yourkey --ossSecret yoursecret --ossEndPoint oss-cn-hangzhou.aliyuncs.com --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ossKey yourkey --ossSecret yoursecret --ossEndPoint oss-cn-hangzhou.aliyuncs.com --parallelism 20
 ```
 
 <br />You can also pre-configure the oss ak, secret, and endpoint in the hadoop core-site.xml file to avoid filling in the ak each time.
@@ -388,11 +388,11 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 
 Use the archive sample command as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --archive --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --archive --parallelism 20
 ```
 Use the ia sample command as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ia --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --ia --parallelism 20
 ```
 
 If you do not specify this parameter, the data is written in standard or standard mode by default, and no archiving or low-frequency operations are performed.<br />
@@ -402,7 +402,7 @@ If you do not specify this parameter, the data is written in standard or standar
 <br />During the completion of your distcp, files that are not uploaded correctly may be generated in your destination directory for various reasons. These files are managed by OSS through uploadId, you can specify the cleanUpPending option to clear the remaining files when the distcp task finish, or you can use the OSS console to clean the remaining files.<br />
 <br />The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --cleanUpPending --parallelism 20
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --cleanUpPending --parallelism 20
 ```
 
 
@@ -410,7 +410,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 #### 20、use --queue
 During the distcp process, you can specify the name of the yarn queue where the distcp task is resigned. You can use --queue to specify this option<br />The sample command as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --queue yarnqueue
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --queue yarnqueue
 ```
 
 
@@ -418,7 +418,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 #### 21、use --bandwidth
 During the distcp process, you can specify the bandwidth (in MB) used for this distcp task to avoid excessive bandwidth usage.<br />The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --bandwidth 6
+hadoop jar jindo-distcp-3.0.0.jar --src /data/incoming/hourly_table --dest oss://yang-hhht/hourly_table --bandwidth 6
 ```
 
 
@@ -428,7 +428,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src /data/incoming/hourly_table --dest oss:/
 You can specify the data source as s3. Currently, the prefix s3a/s3n/s3 is supported. You can use the --s3Key, --s3Secret, and --s3EndPoint options in the command to specify the information about connecting to s3. You can also specify only s3EndPoint to use S3.<br />
 <br />The sample command is as follows:
 ```bash
-hadoop jar jindo-distcp-2.7.3.jar --src s3a://yourbucket/ --dest oss://yang-hhht/hourly_table --s3Key yourkey --s3Secret yoursecret --s3EndPoint s3-us-west-1.amazonaws.com 
+hadoop jar jindo-distcp-3.0.0.jar --src s3a://yourbucket/ --dest oss://yang-hhht/hourly_table --s3Key yourkey --s3Secret yoursecret --s3EndPoint s3-us-west-1.amazonaws.com 
 ```
 
 <br />You can also pre-configure the key, secret, and endpoint of s3 in the core-site.xml file of hadoop to avoid filling in the ak for each use.
@@ -454,7 +454,7 @@ hadoop jar jindo-distcp-2.7.3.jar --src s3a://yourbucket/ --dest oss://yang-hhht
 <br />If you are in the S3 password-free environment, the sample command as follows. You do not need to specify an AK, but you need to specify an endPoint.<br />
 
 ```bash
-hadoop jar /tmp/jindo-distcp-2.7.3.jar --src s3://smartdata1/ --dest s3://smartdata1/tmp --s3EndPoint  s3-us-west-1.amazonaws.com
+hadoop jar /tmp/jindo-distcp-3.0.0.jar --src s3://smartdata1/ --dest s3://smartdata1/tmp --s3EndPoint  s3-us-west-1.amazonaws.com
 ```
 <a name="tqzlD"></a>
 #### 
