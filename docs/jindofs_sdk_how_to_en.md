@@ -153,6 +153,12 @@ Note: make sure the B2SDK_CONF_DIR environment variable is set in an IDE environ
 # Release Notes
 
 <a name="TqRR6"></a>
+### v3.0.0
+Date：20201016<br />File：[jindofs-sdk-3.0.0.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.0.0.jar)<br />Major fixes：
+
+1. Fix some bugs.
+
+<a name="TqRR6"></a>
 ### v2.7.401
 Date：20190914<br />File：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />Major fixes：
 
