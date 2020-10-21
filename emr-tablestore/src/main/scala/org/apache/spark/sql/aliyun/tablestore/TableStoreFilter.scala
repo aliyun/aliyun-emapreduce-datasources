@@ -19,6 +19,8 @@ package org.apache.spark.sql.aliyun.tablestore
 
 import java.{util => ju}
 
+import scala.collection.JavaConverters._
+
 import com.alicloud.openservices.tablestore.ecosystem.{Filter => OTSFilter}
 import com.alicloud.openservices.tablestore.ecosystem.Filter.{CompareOperator, LogicOperator}
 import com.alicloud.openservices.tablestore.model.ColumnValue
@@ -73,6 +75,10 @@ object TableStoreFilter extends Logging {
         convertToOtsFilter(CompareOperator.GREATER_THAN, attribute, value, schema)
       case StringStartsWith(attribute, value) =>
         convertToOtsFilter(CompareOperator.START_WITH, attribute, value, schema)
+      case In(attribute, values) =>
+        convertToOtsFilter(CompareOperator.IN, attribute, values, schema)
+      case IsNull(attribute) =>
+        convertToOtsFilter(CompareOperator.IS_NULL, attribute);
       case _ =>
         OTSFilter.emptyFilter
     }
@@ -81,7 +87,13 @@ object TableStoreFilter extends Logging {
   }
 
   def and(left: OTSFilter, right: OTSFilter): OTSFilter = {
-    new OTSFilter(LogicOperator.AND, ju.Arrays.asList(left, right))
+    if (left.getCompareOperator == CompareOperator.EMPTY_FILTER) {
+      right
+    } else if (right.getCompareOperator == CompareOperator.EMPTY_FILTER) {
+      left
+    } else {
+      new OTSFilter(LogicOperator.AND, ju.Arrays.asList(left, right))
+    }
   }
 
   def or(left: OTSFilter, right: OTSFilter): OTSFilter = {
@@ -92,6 +104,20 @@ object TableStoreFilter extends Logging {
                          value: Any, schema: StructType): OTSFilter = {
     val dataType = schema(attribute).dataType
     new OTSFilter(co, attribute, convertToColumnValue(value, dataType))
+  }
+
+  // for "IS_NULL" "IS_NOT_NULL"
+  def convertToOtsFilter(co: CompareOperator, attribute: String): OTSFilter = {
+    new OTSFilter(co, attribute)
+  }
+
+  // for "IN"
+  def convertToOtsFilter(co: CompareOperator, attribute: String,
+                         values: Array[Any], schema: StructType): OTSFilter = {
+    val dataType = schema(attribute).dataType
+    val columnValueArray: Array[ColumnValue] = values.map(x => convertToColumnValue(x, dataType));
+    val list: java.util.List[ColumnValue] = columnValueArray.toList.asJava
+    new OTSFilter(co, attribute, list)
   }
 
   def convertToColumnValue(value: Any, dataType: DataType): ColumnValue = {

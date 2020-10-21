@@ -24,25 +24,43 @@ import org.apache.hadoop.io.Writable;
 import java.io.*;
 
 public class ComputeParams implements Writable {
+    private static final String COMPUTE_MODE_KV = "KV";
+    private static final String COMPUTE_MODE_SEARCH = "Search";
+    private static final String COMPUTE_MODE_AUTO = "Auto";
+
     private int maxSplitsCount;
-    private long splitSizeInMbs;
+    private long splitSizeInMBs;
     private String computeMode;
+
+    private String searchIndexName = "";
 
     public ComputeParams() {
     }
 
-    public ComputeParams(int maxSplitsCount, long splitSizeInMbs, String computeMode) {
+    public ComputeParams(int maxSplitsCount, long splitSizeInMBs, String computeMode) {
         this.maxSplitsCount = maxSplitsCount;
-        this.splitSizeInMbs = splitSizeInMbs;
+        this.splitSizeInMBs = splitSizeInMBs;
         this.computeMode = computeMode;
+    }
+
+    public ComputeParams(String searchIndexName) {
+        this.computeMode = COMPUTE_MODE_SEARCH;
+        this.searchIndexName = searchIndexName;
+    }
+
+    public ComputeParams(String searchIndexName, int maxSplitsCount) {
+        this.computeMode = COMPUTE_MODE_SEARCH;
+        this.searchIndexName = searchIndexName;
+        this.maxSplitsCount = maxSplitsCount;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
         out.write(WritableConsts.COMPUTE_PARAMETERS);
         out.writeInt(maxSplitsCount);
-        out.writeLong(splitSizeInMbs);
+        out.writeLong(splitSizeInMBs);
         out.writeUTF(computeMode);
+        out.writeUTF(searchIndexName);
     }
 
     @Override
@@ -52,8 +70,9 @@ public class ComputeParams implements Writable {
             throw new IOException("broken input stream");
         }
         maxSplitsCount = in.readInt();
-        splitSizeInMbs = in.readLong();
+        splitSizeInMBs = in.readLong();
         computeMode = in.readUTF();
+        searchIndexName = in.readUTF();
     }
 
     public static ComputeParams read(DataInput in) throws IOException {
@@ -84,11 +103,15 @@ public class ComputeParams implements Writable {
         return maxSplitsCount;
     }
 
-    public long getSplitSizeInMbs() {
-        return splitSizeInMbs;
+    public long getSplitSizeInMBs() {
+        return splitSizeInMBs;
     }
 
     public String getComputeMode() {
         return computeMode;
+    }
+
+    public String getSearchIndexName() {
+        return searchIndexName;
     }
 }

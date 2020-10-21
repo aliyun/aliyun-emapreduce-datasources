@@ -41,6 +41,9 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
 
     private static final Logger LOG = LoggerFactory.getLogger(TableStoreInputFormat.class);
 
+    private static SyncClientInterface ots;
+    private static ITablestoreSplitManager splitManager;
+
     /**
      * Set access-key id/secret into a JobContext.
      * <p>
@@ -151,12 +154,15 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
     public List<InputSplit> getSplits(JobContext job)
             throws IOException, InterruptedException {
         Configuration conf = job.getConfiguration();
-        SyncClientInterface syncClient = TableStore.newOtsClient(conf);
-        try {
-            return getSplits(conf, syncClient);
-        } finally {
-            syncClient.shutdown();
+        if (ots == null) {
+            synchronized (TableStoreRecordReader.class) {
+                if (ots == null) {
+                    LOG.info("Initial ots client in tablestore inputformat");
+                    ots = TableStore.newOtsClient(conf);
+                }
+            }
         }
+        return getSplits(conf, ots);
     }
 
     /**
@@ -173,16 +179,41 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
 
         ComputeParams cp = ComputeParams.deserialize(conf.get(COMPUTE_PARAMS));
         ComputeParameters.ComputeMode computeMode = ComputeParameters.ComputeMode.valueOf(cp.getComputeMode());
-        ComputeParameters computeParams = new ComputeParameters(cp.getMaxSplitsCount(), cp.getSplitSizeInMbs(), computeMode);
-        ITablestoreSplitManager splitManager = new DefaultTablestoreSplitManager((SyncClient) syncClient);
+        ComputeParameters computeParams;
+        LOG.info("Compute mode: {}, max splits: {}, split size: {}MB, seachIndexName: {}",
+                cp.getComputeMode(), cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), cp.getSearchIndexName());
+        if (computeMode == ComputeParameters.ComputeMode.Search && !cp.getSearchIndexName().isEmpty()) {
+            LOG.info("Generate Search compute parameters");
+            computeParams = new ComputeParameters(cp.getSearchIndexName(), cp.getMaxSplitsCount());
+        } else {
+            computeParams = new ComputeParameters(cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), computeMode);
+        }
+        if (splitManager == null) {
+            synchronized (TableStoreInputFormat.class) {
+                LOG.info("Initial split manager in tablestore inputformat");
+                splitManager = new DefaultTablestoreSplitManager((SyncClient) syncClient);
+            }
+        }
         List<ITablestoreSplit> splits = splitManager.generateTablestoreSplits(
                 (SyncClient) syncClient, filter, conf.get(TABLE_NAME), computeParams, requiredColumns);
 
         List<InputSplit> inputSplits = new ArrayList<InputSplit>();
         for (ITablestoreSplit split : splits) {
-            inputSplits.add(new TableStoreInputSplit((TablestoreSplit)split));
+            inputSplits.add(new TableStoreInputSplit((TablestoreSplit) split));
         }
-        LOG.info("generate {} splits", inputSplits.size());
+        LOG.info("Generate {} splits", inputSplits.size());
         return inputSplits;
+    }
+
+    public static void shutdown() {
+        if (ots != null) {
+            synchronized (TableStoreRecordReader.class) {
+                if (ots != null) {
+                    LOG.info("shutdown ots client in tablestore inputformat");
+                    ots.shutdown();
+                    ots = null;
+                }
+            }
+        }
     }
 }

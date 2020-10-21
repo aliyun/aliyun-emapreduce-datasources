@@ -18,7 +18,6 @@
 
 package com.aliyun.openservices.tablestore.hadoop;
 
-import com.alicloud.openservices.tablestore.ecosystem.Filter;
 import com.alicloud.openservices.tablestore.ecosystem.TablestoreSplit;
 import com.alicloud.openservices.tablestore.model.Split;
 import org.apache.hadoop.io.Writable;
@@ -26,6 +25,8 @@ import org.apache.hadoop.io.Writable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TableStoreSplitWritable implements Writable {
     private TablestoreSplit split;
@@ -43,8 +44,21 @@ public class TableStoreSplitWritable implements Writable {
         out.writeUTF(split.getType().name());
         out.writeUTF(split.getSplitName());
         out.writeUTF(split.getTableName());
-        new ComputeSplitWritable(split.getKvSplit()).write(out);
+        if (split.getKvSplit() != null) {
+            new ComputeSplitWritable(split.getKvSplit()).write(out);
+        } else {
+            new ComputeSplitWritable(split.getSessionId(), split.getSplitId(), split.getMaxParallel()).write(out);
+        }
         new TableStoreFilterWritable(split.getFilter(), split.getRequiredColumns()).write(out);
+        List<String> geoColumnNames = split.getGeoColumnNames();
+        if (geoColumnNames == null) {
+            out.writeInt(0);
+        } else {
+            out.writeInt(geoColumnNames.size());
+            for (String columnName : geoColumnNames) {
+                out.writeUTF(columnName);
+            }
+        }
     }
 
     public static TableStoreSplitWritable read(DataInput in) throws IOException {
@@ -66,9 +80,16 @@ public class TableStoreSplitWritable implements Writable {
         TablestoreSplit.SplitType splitType = TablestoreSplit.SplitType.valueOf(in.readUTF());
         String splitName = in.readUTF();
         String tableName = in.readUTF();
-        Split kvSplit = ComputeSplitWritable.read(in).getSplit();
+        ComputeSplitWritable splitWritable = ComputeSplitWritable.read(in);
+        Split kvSplit = splitWritable.getSplit();
         TableStoreFilterWritable fw = TableStoreFilterWritable.read(in);
-        TablestoreSplit rtSplit = new TablestoreSplit(splitType, fw.getFilter(), fw.getRequiredColumns());
+        int geoColumnSize = in.readInt();
+        List<String> geoColumnNames = new ArrayList<>(geoColumnSize);
+        for (int i = 0; i < geoColumnSize; i++) {
+            geoColumnNames.add(in.readUTF());
+        }
+        TablestoreSplit rtSplit = new TablestoreSplit(splitType, fw.getFilter(), fw.getRequiredColumns(),
+                splitWritable.getSessionId(), splitWritable.getSplitId(), splitWritable.getMaxParallel(), geoColumnNames);
         rtSplit.setSplitName(splitName);
         rtSplit.setTableName(tableName);
         rtSplit.setKvSplit(kvSplit);

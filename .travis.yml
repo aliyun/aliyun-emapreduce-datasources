@@ -25,5 +25,6 @@ script:
 # 5. Branches only
 branches:
   only:
+  - main
   - master
   - master-2.x

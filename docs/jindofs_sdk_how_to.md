@@ -146,6 +146,12 @@ public class TestJindoSDK {
 # 发布日志
 
 <a name="TqRR6"></a>
+### v3.0.0
+日期：20201016<br />文件：[jindofs-sdk-3.0.0.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.0.0.jar)<br />更新内容：
+
+1. 修复多个bugs.
+
+<a name="TqRR6"></a>
 ### v2.7.401
 日期：20190914<br />文件：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />更新内容：
 

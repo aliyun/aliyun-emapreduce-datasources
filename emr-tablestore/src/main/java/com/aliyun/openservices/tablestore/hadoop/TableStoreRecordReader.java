@@ -20,6 +20,8 @@ package com.aliyun.openservices.tablestore.hadoop;
 
 import com.alicloud.openservices.tablestore.SyncClient;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
+import com.alicloud.openservices.tablestore.ecosystem.CatalogManager;
+import com.alicloud.openservices.tablestore.ecosystem.FilterPushdownConfig;
 import com.alicloud.openservices.tablestore.ecosystem.TablestoreSplit;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.Row;
@@ -35,7 +37,7 @@ import java.util.Iterator;
 public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, RowWritable> {
     private static final Logger logger = LoggerFactory.getLogger(TableStoreRecordReader.class);
 
-    private SyncClient ots;
+    private static SyncClient ots;
     private PrimaryKey currentKey;
     private Row currentValue;
     private Iterator<Row> results;
@@ -43,10 +45,6 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
 
     @Override
     public void close() {
-        if (ots != null) {
-            ots.shutdown();
-            ots = null;
-        }
         currentKey = null;
         currentValue = null;
         results = null;
@@ -106,15 +104,50 @@ public class TableStoreRecordReader extends RecordReader<PrimaryKeyWritable, Row
             Preconditions.checkNotNull(in, "Must set \"TABLESTORE_ENDPOINT\"");
             ep = Endpoint.deserialize(in);
         }
+        FilterPushdownConfigSerialize filterPushdownConfigSerialize;
+        {
+            String in = cfg.get(TableStore.FILTER_PUSHDOWN_CONFIG);
+            if( in!=null && !in.isEmpty()){
+                filterPushdownConfigSerialize = FilterPushdownConfigSerialize.deserialize(in);
+            }else {
+                filterPushdownConfigSerialize = new
+                        FilterPushdownConfigSerialize(false,false);
+            }
+
+        }
         if (cred.securityToken == null) {
-            ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
+            if (ots == null) {
+                synchronized (TableStoreRecordReader.class) {
+                    if (ots == null) {
+                        ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret, ep.instance);
+                    }
+                }
+            }
         } else {
-            ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret,
-                    ep.instance, cred.securityToken);
+            if (ots == null) {
+                synchronized (TableStoreRecordReader.class) {
+                    if (ots == null) {
+                        ots = new SyncClient(ep.endpoint, cred.accessKeyId, cred.accessKeySecret,
+                                ep.instance, cred.securityToken);
+                    }
+                }
+            }
         }
 
         TablestoreSplit tsSplit = ((TableStoreInputSplit) split).getSplit();
         tsSplit.initial(ots);
-        results = tsSplit.getRowIterator(ots);
+        results = tsSplit.getRowIterator(ots, new FilterPushdownConfig(filterPushdownConfigSerialize.pushRangeLong, filterPushdownConfigSerialize.pushRangeString));
+    }
+
+    public static void shutdown() {
+        if (ots != null) {
+            synchronized (TableStoreRecordReader.class) {
+                if (ots != null) {
+                    logger.info("shutdown ots client in tablestore record reader");
+                    ots.shutdown();
+                    ots = null;
+                }
+            }
+        }
     }
 }
