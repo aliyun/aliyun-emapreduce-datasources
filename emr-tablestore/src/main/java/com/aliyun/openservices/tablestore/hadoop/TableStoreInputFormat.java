@@ -125,6 +125,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         }
         cri.addCriteria(criteria);
         conf.set(CRITERIA, cri.serialize());
+        conf.set(TABLE_NAME, criteria.getTableName());
     }
 
     /**
@@ -169,25 +170,31 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
      * for internal usage only
      */
     public static List<InputSplit> getSplits(Configuration conf, SyncClientInterface syncClient) {
-        Filter filter = null;
-        List<String> requiredColumns = null;
-        TableStoreFilterWritable origFilter = TableStoreFilterWritable.deserialize(conf.get(FILTER));
-        if (origFilter != null) {
-            filter = origFilter.getFilter();
-            requiredColumns = origFilter.getRequiredColumns();
+        Filter filter = new Filter(Filter.CompareOperator.EMPTY_FILTER);
+        List<String> requiredColumns = new ArrayList<>();
+        if (conf.get(FILTER) != null) {
+            TableStoreFilterWritable origFilter = TableStoreFilterWritable.deserialize(conf.get(FILTER));
+            if (origFilter != null) {
+                filter = origFilter.getFilter();
+                requiredColumns = origFilter.getRequiredColumns();
+                LOG.info("Set customed filter and requiredColumns: {}", requiredColumns);
+            }
         }
 
-        ComputeParams cp = ComputeParams.deserialize(conf.get(COMPUTE_PARAMS));
-        ComputeParameters.ComputeMode computeMode = ComputeParameters.ComputeMode.valueOf(cp.getComputeMode());
-        ComputeParameters computeParams;
-        LOG.info("Compute mode: {}, max splits: {}, split size: {}MB, seachIndexName: {}",
-                cp.getComputeMode(), cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), cp.getSearchIndexName());
-        if (computeMode == ComputeParameters.ComputeMode.Search && !cp.getSearchIndexName().isEmpty()) {
-            LOG.info("Generate Search compute parameters");
-            computeParams = new ComputeParameters(cp.getSearchIndexName(), cp.getMaxSplitsCount());
-        } else {
-            computeParams = new ComputeParameters(cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), computeMode);
+        ComputeParameters computeParams = new ComputeParameters();
+        if (conf.get(COMPUTE_PARAMS) != null) {
+            ComputeParams cp = ComputeParams.deserialize(conf.get(COMPUTE_PARAMS));
+            ComputeParameters.ComputeMode computeMode = ComputeParameters.ComputeMode.valueOf(cp.getComputeMode());
+            LOG.info("Compute mode: {}, max splits: {}, split size: {}MB, seachIndexName: {}",
+                    cp.getComputeMode(), cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), cp.getSearchIndexName());
+            if (computeMode == ComputeParameters.ComputeMode.Search && !cp.getSearchIndexName().isEmpty()) {
+                LOG.info("Generate Search compute parameters");
+                computeParams = new ComputeParameters(cp.getSearchIndexName(), cp.getMaxSplitsCount());
+            } else {
+                computeParams = new ComputeParameters(cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), computeMode);
+            }
         }
+
         if (splitManager == null) {
             synchronized (TableStoreInputFormat.class) {
                 LOG.info("Initial split manager in tablestore inputformat");

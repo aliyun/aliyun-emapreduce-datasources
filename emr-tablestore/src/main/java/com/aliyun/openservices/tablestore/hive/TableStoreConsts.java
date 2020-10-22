@@ -26,8 +26,12 @@ public class TableStoreConsts {
     final public static String ACCESS_KEY_SECRET = "tablestore.access_key_secret";
     final public static String SECURITY_TOKEN = "tablestore.security_token";
     final public static String MAX_UPDATE_BATCH_SIZE = "tablestore.max_update_batch_size";
+    final public static String COMPUTE_MODE = "tablestore.compute.mode";
+    final public static String MAX_SPLIT_COUNT = "tablestore.max.split.count";
+    final public static String SPLIT_SIZE_MBS = "tablestore.split.size.mbs";
 
     final public static String COLUMNS_MAPPING = "tablestore.columns.mapping";
+    final public static String FILTER = "filters";
 
     final public static String[] REQUIRES = new String[] {
         ENDPOINT,
