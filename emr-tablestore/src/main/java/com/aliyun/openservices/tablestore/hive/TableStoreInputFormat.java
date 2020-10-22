@@ -18,15 +18,15 @@
 
 package com.aliyun.openservices.tablestore.hive;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.IOException;
 
+import com.alicloud.openservices.tablestore.ecosystem.Filter;
+import com.aliyun.openservices.tablestore.hadoop.*;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.RecordReader;
-import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
-import com.aliyun.openservices.tablestore.hadoop.RowWritable;
-import com.aliyun.openservices.tablestore.hadoop.TableStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +73,9 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
             RangeRowQueryCriteria criteria = fetchCriteria(meta, columns);
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
               .addCriteria(dest, criteria);
+            dest.set(TableStoreConsts.FILTER, new TableStoreFilterWritable(
+                    new Filter(Filter.CompareOperator.EMPTY_FILTER),
+                    Arrays.asList(columns.split(","))).serialize());
             splits = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
               .getSplits(dest, ots);
         } finally {
@@ -116,6 +119,14 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                   endpoint, instance);
             }
             TableStore.setEndpoint(to, ep);
+            TableStore.setTableName(to, from.get(TableStoreConsts.TABLE_NAME));
+        }
+        {
+            ComputeParams computeParams = new ComputeParams(
+                    from.getInt(TableStoreConsts.MAX_SPLIT_COUNT, 1000),
+                    from.getLong(TableStoreConsts.SPLIT_SIZE_MBS, 100),
+                    from.getTrimmed(TableStoreConsts.COMPUTE_MODE, "KV"));
+            TableStore.setComputeParams(to, computeParams);
         }
         return to;
     }

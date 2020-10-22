@@ -106,6 +106,24 @@ public class TableStore {
     }
 
     /**
+     * Set ComputeParams(maxSplitsCount, splitSizeInMBs, computeMode) into a Configuration.
+     */
+    public static void setComputeParams(Configuration conf, ComputeParams cp) {
+        Preconditions.checkNotNull(conf, "conf must be nonnull");
+        Preconditions.checkNotNull(cp, "cp must be nonnull");
+        conf.set(TableStoreInputFormat.COMPUTE_PARAMS, cp.serialize());
+    }
+
+    /**
+     * Set table name into a Configuration.
+     */
+    public static void setTableName(Configuration conf, String tableName) {
+        Preconditions.checkNotNull(conf, "conf must be nonnull");
+        Preconditions.checkNotNull(tableName, "tableName must be nonnull");
+        conf.set(TableStoreInputFormat.TABLE_NAME, tableName);
+    }
+
+    /**
      * for internal use only
      */
 
