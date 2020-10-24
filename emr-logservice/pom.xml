@@ -15,7 +15,7 @@
     <name>Aliyun E-MapReduce External LogService Support</name>
 
     <properties>
-        <guava.version>27.0-jre</guava.version>
+        <guava.version>30.0-android</guava.version>
     </properties>
 
     <dependencies>
