@@ -33,6 +33,8 @@ public class TableStoreConsts {
     final public static String COLUMNS_MAPPING = "tablestore.columns.mapping";
     final public static String FILTER = "filters";
 
+    final public static  String PROPERTIES_FILE_PATH = "tablestore.properties.path";
+
     final public static String[] REQUIRES = new String[] {
         ENDPOINT,
         TABLE_NAME,

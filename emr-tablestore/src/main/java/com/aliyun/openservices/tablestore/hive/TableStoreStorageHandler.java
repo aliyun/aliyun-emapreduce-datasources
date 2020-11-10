@@ -18,6 +18,8 @@
 
 package com.aliyun.openservices.tablestore.hive;
 
+import java.io.IOException;
+import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.Map;
@@ -25,6 +27,10 @@ import java.util.Set;
 
 import com.aliyun.openservices.tablestore.hadoop.Credential;
 import com.aliyun.openservices.tablestore.hadoop.Endpoint;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
@@ -34,38 +40,75 @@ import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 
 public class TableStoreStorageHandler extends DefaultStorageHandler {
-    private static Logger logger = LoggerFactory.getLogger(TableStoreStorageHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TableStoreStorageHandler.class);
 
-    @Override public Class<? extends org.apache.hadoop.mapred.InputFormat> getInputFormatClass() {
+    @Override
+    public Class<? extends org.apache.hadoop.mapred.InputFormat<?, ?>> getInputFormatClass() {
         return TableStoreInputFormat.class;
     }
 
-    @Override public Class<? extends org.apache.hadoop.mapred.OutputFormat> getOutputFormatClass() {
+    @Override
+    public Class<? extends org.apache.hadoop.mapred.OutputFormat<?, ?>> getOutputFormatClass() {
         return TableStoreOutputFormat.class;
     }
 
-    @Override public Class<? extends SerDe> getSerDeClass() {
+    @Override
+    public Class<? extends SerDe> getSerDeClass() {
         return TableStoreSerDe.class;
     }
 
-    @Override public void configureInputJobProperties(TableDesc tableDesc,
-        Map<String,String> jobProperties) {
+    private Properties getProperties(
+            final Configuration conf, final String fileName) throws IOException {
+        Path propertiesFilePath = new Path(fileName);
+        FileSystem fs = FileSystem.get(URI.create(fileName), conf);
+        if (!fs.exists(propertiesFilePath)) {
+            throw new IOException(
+                    "Properties file does not exist: " + fileName);
+        }
+        FSDataInputStream inputStream = fs.open(propertiesFilePath);
+        Properties properties = new Properties();
+        try {
+            properties.load(inputStream);
+        } finally {
+            inputStream.close();
+        }
+        return properties;
+    }
+
+    @Override
+    public void configureInputJobProperties(TableDesc tableDesc,
+                                            Map<String, String> jobProperties) {
         Properties props = tableDesc.getProperties();
-        logger.debug("TableDesc: {}", props);
-        for(String key: TableStoreConsts.REQUIRES) {
-            String val = copyToMap(jobProperties, props, key);
-            if (val == null) {
-                logger.error("missing required table properties: {}", key);
+        LOG.debug("TableDesc: {}", props);
+        String propertiesFilePath = props.getProperty(TableStoreConsts.PROPERTIES_FILE_PATH);
+        if (propertiesFilePath != null) {
+            try {
+                Properties properties = getProperties(getConf(), propertiesFilePath);
+                for (Map.Entry<Object, Object> prop : properties.entrySet()) {
+                    String key = (String) prop.getKey();
+                    String value = (String) prop.getValue();
+                    jobProperties.put(key, value);
+                }
+            } catch (IOException e) {
+                LOG.error("Error while trying to read properties file " + propertiesFilePath, e);
+            }
+        }
+        // custom properties has higher priority
+        for (String key : TableStoreConsts.REQUIRES) {
+            copyToMap(jobProperties, props, key);
+            if (jobProperties.get(key) == null) {
+                LOG.error("missing required table properties: {}", key);
                 throw new IllegalArgumentException("missing required table properties: " + key);
             }
         }
-        for(String key: TableStoreConsts.OPTIONALS) {
+
+        for (String key : TableStoreConsts.OPTIONALS) {
             copyToMap(jobProperties, props, key);
         }
     }
 
     private static String copyToMap(Map<String, String> to, Properties from,
-        String key) {
+                                    String key) {
         String val = from.getProperty(key);
         if (val != null) {
             to.put(key, val);
@@ -73,85 +116,99 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         return val;
     }
 
-    @Override public void configureOutputJobProperties(TableDesc tableDesc,
-        Map<String,String> jobProperties) {
+    @Override
+    public void configureOutputJobProperties(TableDesc tableDesc,
+                                             Map<String, String> jobProperties) {
         configureInputJobProperties(tableDesc, jobProperties);
     }
 
-    @Override public void configureTableJobProperties(TableDesc tableDesc,
-        Map<String,String> jobProperties) {
+    @Override
+    public void configureTableJobProperties(TableDesc tableDesc,
+                                            Map<String, String> jobProperties) {
         throw new UnsupportedOperationException();
     }
 
-    @Override public void configureJobConf(TableDesc tableDesc,
-        org.apache.hadoop.mapred.JobConf jobConf) {
+    @Override
+    public void configureJobConf(TableDesc tableDesc,
+                                 org.apache.hadoop.mapred.JobConf jobConf) {
         try {
             Properties from = tableDesc.getProperties();
-            logger.debug("TableDesc: {}", from);
-            logger.debug("job conf: {}", jobConf);
+            LOG.debug("TableDesc: {}", from);
+            LOG.debug("job conf: {}", jobConf);
             jobConf.setJarByClass(TableStoreStorageHandler.class);
+            String propertiesFilePath = from.getProperty(TableStoreConsts.PROPERTIES_FILE_PATH);
+            if (propertiesFilePath != null) {
+                try {
+                    Properties properties = getProperties(getConf(), propertiesFilePath);
+                    for (Map.Entry<Object, Object> prop : properties.entrySet()) {
+                        String key = (String) prop.getKey();
+                        String value = (String) prop.getValue();
+                        from.putIfAbsent(key, value);
+                    }
+                } catch (IOException e) {
+                    LOG.error("Error while trying to read properties file " + propertiesFilePath, e);
+                }
+            }
 
             String accessKeyId = from.getProperty(TableStoreConsts.ACCESS_KEY_ID);
             if (accessKeyId == null) {
-                logger.error("{} is required.", TableStoreConsts.ACCESS_KEY_ID);
+                LOG.error("{} is required.", TableStoreConsts.ACCESS_KEY_ID);
                 throw new IllegalArgumentException(
-                    TableStoreConsts.ACCESS_KEY_ID + " is required.");
+                        TableStoreConsts.ACCESS_KEY_ID + " is required.");
             }
             String accessKeySecret = from.getProperty(TableStoreConsts.ACCESS_KEY_SECRET);
             if (accessKeySecret == null) {
-                logger.error("{} is required.", TableStoreConsts.ACCESS_KEY_SECRET);
+                LOG.error("{} is required.", TableStoreConsts.ACCESS_KEY_SECRET);
                 throw new IllegalArgumentException(
-                    TableStoreConsts.ACCESS_KEY_SECRET + " is required.");
+                        TableStoreConsts.ACCESS_KEY_SECRET + " is required.");
             }
             Credential cred = new Credential(accessKeyId, accessKeySecret,
-                from.getProperty(TableStoreConsts.SECURITY_TOKEN));
+                    from.getProperty(TableStoreConsts.SECURITY_TOKEN));
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setCredential(jobConf, cred);
+                    .setCredential(jobConf, cred);
 
             String endpoint = from.getProperty(TableStoreConsts.ENDPOINT);
             if (endpoint == null) {
-                logger.error("{} is required.", TableStoreConsts.ENDPOINT);
+                LOG.error("{} is required.", TableStoreConsts.ENDPOINT);
                 throw new IllegalArgumentException(
-                    TableStoreConsts.ENDPOINT + " is required.");
+                        TableStoreConsts.ENDPOINT + " is required.");
             }
             String instance = from.getProperty(TableStoreConsts.INSTANCE);
             Endpoint ep;
             if (instance == null) {
-                ep = new Endpoint(
-                    endpoint);
+                ep = new Endpoint(endpoint);
             } else {
-                ep = new Endpoint(
-                    endpoint, instance);
+                ep = new Endpoint(endpoint, instance);
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                .setEndpoint(jobConf, ep);
+                    .setEndpoint(jobConf, ep);
 
             String table = from.getProperty(TableStoreConsts.TABLE_NAME);
             if (table == null) {
-                logger.error("{} is required.", TableStoreConsts.TABLE_NAME);
+                LOG.error("{} is required.", TableStoreConsts.TABLE_NAME);
                 throw new IllegalArgumentException(
-                    TableStoreConsts.TABLE_NAME + " is required.");
+                        TableStoreConsts.TABLE_NAME + " is required.");
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
-                .setOutputTable(jobConf, table);
+                    .setOutputTable(jobConf, table);
 
             String t = from.getProperty(TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
             if (t != null) {
                 try {
                     int batchSize = Integer.valueOf(t);
                     if (batchSize <= 0) {
-                        logger.error("{} must be greater than 0.",
-                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                        LOG.error("{} must be greater than 0.",
+                                TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
                         throw new IllegalArgumentException(
-                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be greater than 0.");
+                                TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be greater than 0.");
                     }
                     com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
-                        .setMaxBatchSize(jobConf, batchSize);
+                            .setMaxBatchSize(jobConf, batchSize);
                 } catch (NumberFormatException ex) {
-                    logger.error("{} must be a positive integer.",
-                        TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                    LOG.error("{} must be a positive integer.",
+                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
                     throw new IllegalArgumentException(
-                        TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be a positive integer.");
+                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be a positive integer.");
                 }
             }
 
