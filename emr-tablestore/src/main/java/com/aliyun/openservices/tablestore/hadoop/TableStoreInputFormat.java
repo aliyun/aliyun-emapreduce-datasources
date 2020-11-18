@@ -156,7 +156,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
             throws IOException, InterruptedException {
         Configuration conf = job.getConfiguration();
         if (ots == null) {
-            synchronized (TableStoreRecordReader.class) {
+            synchronized (TableStoreInputFormat.class) {
                 if (ots == null) {
                     LOG.info("Initial ots client in tablestore inputformat");
                     ots = TableStore.newOtsClient(conf);
@@ -214,7 +214,7 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
 
     public static void shutdown() {
         if (ots != null) {
-            synchronized (TableStoreRecordReader.class) {
+            synchronized (TableStoreInputFormat.class) {
                 if (ots != null) {
                     LOG.info("shutdown ots client in tablestore inputformat");
                     ots.shutdown();

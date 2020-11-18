@@ -54,44 +54,45 @@ import com.alicloud.openservices.tablestore.model.DescribeTableResponse;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, RowWritable> {
-    private static Logger logger = LoggerFactory.getLogger(TableStoreInputFormat.class);
+    private static Logger LOG = LoggerFactory.getLogger(TableStoreInputFormat.class);
+    private static SyncClientInterface ots;
 
-    @Override public InputSplit[] getSplits(JobConf job, int numSplits)
-      throws IOException {
+    @Override
+    public InputSplit[] getSplits(JobConf job, int numSplits)
+            throws IOException {
         Configuration dest = translateConfig(job);
-        SyncClientInterface ots = null;
+        if (ots == null) {
+            synchronized (TableStoreInputFormat.class) {
+                if (ots == null) {
+                    LOG.info("Initial ots client in tablestore inputformat");
+                    ots = TableStore.newOtsClient(dest);
+                }
+            }
+        }
         String columns = job.get(TableStoreConsts.COLUMNS_MAPPING);
         if (columns == null) {
             columns = job.get(serdeConstants.LIST_COLUMNS);
         }
-        logger.debug("columns to get: {}", columns);
+        LOG.debug("columns to get: {}", columns);
         List<org.apache.hadoop.mapreduce.InputSplit> splits;
-        try {
-            ots = TableStore.newOtsClient(dest);
-            TableMeta meta = fetchTableMeta(ots,
-              job.get(TableStoreConsts.TABLE_NAME));
-            RangeRowQueryCriteria criteria = fetchCriteria(meta, columns);
-            com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-              .addCriteria(dest, criteria);
-            dest.set(TableStoreConsts.FILTER, new TableStoreFilterWritable(
-                    new Filter(Filter.CompareOperator.EMPTY_FILTER),
-                    Arrays.asList(columns.split(","))).serialize());
-            splits = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-              .getSplits(dest, ots);
-        } finally {
-            if (ots != null) {
-                ots.shutdown();
-                ots = null;
-            }
-        }
+        TableMeta meta = fetchTableMeta(ots,
+                job.get(TableStoreConsts.TABLE_NAME));
+        RangeRowQueryCriteria criteria = fetchCriteria(meta, columns);
+        com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
+                .addCriteria(dest, criteria);
+        dest.set(TableStoreConsts.FILTER, new TableStoreFilterWritable(
+                new Filter(Filter.CompareOperator.EMPTY_FILTER),
+                Arrays.asList(columns.split(","))).serialize());
+        splits = com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
+                .getSplits(dest, ots);
         InputSplit[] res = new InputSplit[splits.size()];
         JobContext jobContext = ShimLoader.getHadoopShims().newJobContext(new Job(job));
-        Path [] tablePaths = FileInputFormat.getInputPaths(jobContext);
+        Path[] tablePaths = FileInputFormat.getInputPaths(jobContext);
         int i = 0;
-        for(org.apache.hadoop.mapreduce.InputSplit split: splits) {
+        for (org.apache.hadoop.mapreduce.InputSplit split : splits) {
             res[i] = new TableStoreInputSplit(
-              (com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit) split,
-              tablePaths[0]);
+                    (com.aliyun.openservices.tablestore.hadoop.TableStoreInputSplit) split,
+                    tablePaths[0]);
             ++i;
         }
         return res;
@@ -101,10 +102,10 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         Configuration to = new Configuration();
         {
             com.aliyun.openservices.tablestore.hadoop.Credential cred =
-              new com.aliyun.openservices.tablestore.hadoop.Credential(
-                from.get(TableStoreConsts.ACCESS_KEY_ID),
-                from.get(TableStoreConsts.ACCESS_KEY_SECRET),
-                from.get(TableStoreConsts.SECURITY_TOKEN));
+                    new com.aliyun.openservices.tablestore.hadoop.Credential(
+                            from.get(TableStoreConsts.ACCESS_KEY_ID),
+                            from.get(TableStoreConsts.ACCESS_KEY_SECRET),
+                            from.get(TableStoreConsts.SECURITY_TOKEN));
             TableStore.setCredential(to, cred);
         }
         {
@@ -113,10 +114,10 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
             com.aliyun.openservices.tablestore.hadoop.Endpoint ep;
             if (instance == null) {
                 ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
-                  endpoint);
+                        endpoint);
             } else {
                 ep = new com.aliyun.openservices.tablestore.hadoop.Endpoint(
-                  endpoint, instance);
+                        endpoint, instance);
             }
             TableStore.setEndpoint(to, ep);
             TableStore.setTableName(to, from.get(TableStoreConsts.TABLE_NAME));
@@ -136,7 +137,7 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
         res.setMaxVersions(1);
         List<PrimaryKeyColumn> lower = new ArrayList<PrimaryKeyColumn>();
         List<PrimaryKeyColumn> upper = new ArrayList<PrimaryKeyColumn>();
-        for(PrimaryKeySchema schema: meta.getPrimaryKeyList()) {
+        for (PrimaryKeySchema schema : meta.getPrimaryKeyList()) {
             lower.add(new PrimaryKeyColumn(schema.getName(), PrimaryKeyValue.INF_MIN));
             upper.add(new PrimaryKeyColumn(schema.getName(), PrimaryKeyValue.INF_MAX));
         }
@@ -148,17 +149,18 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
 
     private static TableMeta fetchTableMeta(SyncClientInterface ots, String table) {
         DescribeTableResponse resp = ots.describeTable(
-          new DescribeTableRequest(table));
+                new DescribeTableRequest(table));
         return resp.getTableMeta();
     }
 
-    @Override public RecordReader<PrimaryKeyWritable, RowWritable> getRecordReader(
-      InputSplit split, JobConf job, Reporter reporter) throws IOException {
+    @Override
+    public RecordReader<PrimaryKeyWritable, RowWritable> getRecordReader(
+            InputSplit split, JobConf job, Reporter reporter) throws IOException {
         Preconditions.checkNotNull(split, "split must be nonnull");
         Preconditions.checkNotNull(job, "job must be nonnull");
         Preconditions.checkArgument(
-          split instanceof TableStoreInputSplit,
-          "split must be an instance of " + TableStoreInputSplit.class.getName());
+                split instanceof TableStoreInputSplit,
+                "split must be an instance of " + TableStoreInputSplit.class.getName());
         TableStoreInputSplit tsSplit = (TableStoreInputSplit) split;
         Configuration conf;
         if (isHiveConfiguration(job)) {
@@ -169,11 +171,12 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
             conf = job;
         }
         final com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader rdr =
-          new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader();
+                new com.aliyun.openservices.tablestore.hadoop.TableStoreRecordReader();
         rdr.initialize(tsSplit.getDelegated(), conf);
         return new RecordReader<PrimaryKeyWritable, RowWritable>() {
-            @Override public boolean next(PrimaryKeyWritable key,
-                                          RowWritable value) throws IOException {
+            @Override
+            public boolean next(PrimaryKeyWritable key,
+                                RowWritable value) throws IOException {
                 boolean next = rdr.nextKeyValue();
                 if (next) {
                     key.setPrimaryKey(rdr.getCurrentKey().getPrimaryKey());
@@ -182,23 +185,28 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
                 return next;
             }
 
-            @Override public PrimaryKeyWritable createKey() {
+            @Override
+            public PrimaryKeyWritable createKey() {
                 return new PrimaryKeyWritable();
             }
 
-            @Override public RowWritable createValue() {
+            @Override
+            public RowWritable createValue() {
                 return new RowWritable();
             }
 
-            @Override public long getPos() throws IOException {
+            @Override
+            public long getPos() throws IOException {
                 return 0;
             }
 
-            @Override public void close() throws IOException {
+            @Override
+            public void close() throws IOException {
                 rdr.close();
             }
 
-            @Override public float getProgress() throws IOException {
+            @Override
+            public float getProgress() throws IOException {
                 return rdr.getProgress();
             }
         };
@@ -207,5 +215,17 @@ public class TableStoreInputFormat implements InputFormat<PrimaryKeyWritable, Ro
     private boolean isHiveConfiguration(Configuration conf) {
         String endpoint = conf.get(TableStoreConsts.ENDPOINT);
         return endpoint != null;
+    }
+
+    public static void shutdown() {
+        if (ots != null) {
+            synchronized (TableStoreInputFormat.class) {
+                if (ots != null) {
+                    LOG.info("shutdown ots client in tablestore inputformat");
+                    ots.shutdown();
+                    ots = null;
+                }
+            }
+        }
     }
 }
