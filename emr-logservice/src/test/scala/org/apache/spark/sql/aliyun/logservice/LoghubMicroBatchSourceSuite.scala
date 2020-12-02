@@ -24,15 +24,16 @@ import scala.io.Source
 
 import org.scalatest.time.SpanSugar._
 
+import org.apache.spark.sql.connector.read.streaming.SparkDataStream
 import org.apache.spark.sql.execution.datasources.v2.StreamingDataSourceV2Relation
 import org.apache.spark.sql.execution.streaming._
 import org.apache.spark.sql.execution.streaming.continuous.ContinuousExecution
 import org.apache.spark.sql.functions.{count, window}
-import org.apache.spark.sql.streaming.{ProcessingTime, StreamTest}
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.streaming.{StreamTest, Trigger}
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{StringType, StructField, StructType, TimestampType}
 
-abstract class LoghubSourceTest extends StreamTest with SharedSQLContext {
+abstract class LoghubSourceTest extends StreamTest with SharedSparkSession {
   var testUtils: LoghubTestUtils = _
   val defaultSchema = StructType(Array(StructField("msg", StringType)))
 
@@ -68,7 +69,7 @@ abstract class LoghubSourceTest extends StreamTest with SharedSQLContext {
       message: String = "",
       action: (String, Option[Int]) => Unit = (_, _) => {}) extends AddData {
 
-    override def addData(query: Option[StreamExecution]): (BaseStreamingSource, Offset) = {
+    override def addData(query: Option[StreamExecution]): (SparkDataStream, Offset) = {
       query match {
         // Make sure no Spark job is running when deleting a topic
         case Some(m: MicroBatchExecution) => m.processAllAvailable()
@@ -94,7 +95,7 @@ abstract class LoghubSourceTest extends StreamTest with SharedSQLContext {
         } ++ (query.get.lastExecution match {
           case null => Seq()
           case e => e.logical.collect {
-            case StreamingDataSourceV2Relation(_, _, _, reader: LoghubContinuousReader) => reader
+            case StreamingDataSourceV2Relation(_, _, stream: LoghubContinuousStream, _, _) => stream
           }
         })
       }.distinct
@@ -334,7 +335,7 @@ abstract class LoghubMicroBatchSourceSuiteBase extends LoghubSourceSuiteBase {
 
     val mapped = loghub.map(d => d.toInt + 1)
     testStream(mapped)(
-      StartStream(trigger = ProcessingTime(1)),
+      StartStream(Trigger.ProcessingTime(1)),
       makeSureGetOffsetCalled,
       AddLogStoreData(logStore, None, 1, 2, 3),
       CheckAnswer(2, 3, 4),

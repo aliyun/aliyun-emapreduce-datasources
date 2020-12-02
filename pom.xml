@@ -29,7 +29,7 @@
         <module>emr-common</module>
         <module>emr-jdbc</module>
         <module>emr-maxcompute</module>
-        <!--<module>emr-logservice</module>-->
+        <module>emr-logservice</module>
         <!--<module>emr-tablestore</module>-->
         <!--<module>emr-hbase</module>-->
         <module>emr-mns</module>
