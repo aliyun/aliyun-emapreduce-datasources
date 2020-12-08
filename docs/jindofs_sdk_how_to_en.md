@@ -1,22 +1,22 @@
 # JindoFS SDK User Guide
 [中文版](./jindofs_sdk_how_to.md)
 
-<a name="V3xjc"></a>
+
 # Indroduce
 JindoFS SDK is an easy-to-use OSS client for Hadoop/Spark ecosystem, providing highly optimized Hadoop FileSystem implementation for Ali Cloud OSS. Through it you can do the following operations:
 
 1. Access to OSS (as an OSS client)
-1. Access to JindoFS Cache mode cluster
-1. Access to JindoFS Block mode cluster
+1. Access to JindoFS cluster (Cache mode or Block mode)
 
 
 <br />Even if you use JindoFS SDK only as an OSS client, you can get better performance and more professional support from the Aliyun E-MapReduce technical team than the OSS client implementation of Hadoop community.<br />
 <br />Currently JindoFS SDK supported Hadoop 2.7+ and Hadoop 3.x versions. If you have any questions, please give feedback. Open PR, and we will deal with it in time.<br />
 <br />For a performance comparison between the JindoFS SDK and the Hadoop Community OSS Connector, refer to the documentation [Performance Comparison of JindoFS SDK and Hadoop-OSS-SDK](./jindofs_sdk_vs_hadoop_sdk_en.md).<br />
 
-<a name="7QUTJ"></a>
-# Steps
-<a name="dWKjA"></a>
+<br />
+
+# Access to OSS (as an OSS client)
+
 ### 1. Deploy JindoFS SDK jar
 Download the latest JindoFS SDK jar package jindofs-sdk-x.x.x.jar and install the SDK package under the Hadoop classpath.
 ```
@@ -25,35 +25,15 @@ cp ./jindofs-sdk-*.jar hadoop-2.8.5/share/hadoop/hdfs/lib/jindofs-sdk.jar
 
 Note： currently, JindoFS SDK only supports Linux and MacOS operating systems.<br />
 
-<a name="WHNoU"></a>
-### 2. Create a client configuration file
-Add the following environment variable to /etc/profile
-```
-export B2SDK_CONF_DIR=/etc/jindofs-sdk-conf
-```
+### 2. Access to OSS
 
-Create a file /etc/jindofs-sdk-conf/bigboot.cfg with following contents
-```
-[bigboot]
-logger.dir = /tmp/bigboot-log
-[bigboot-client]
-client.oss.retry=5
-client.oss.upload.threads=4
-client.oss.upload.queue.size=5
-client.oss.upload.max.parallelism=16
-client.oss.timeout.millisecond=30000
-client.oss.connection.timeout.millisecond=3000
-```
-
-<a name="itFcV"></a>
-### 3. Use JindoFS SDK
-<a name="exCE9"></a>
-#### 3.1 Access to OSS (Cache Mode) 
 ```
 hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
 ```
 
-You can also pre-configure ak, secret and endpoint of OSS to hadoop-2.8.5/etc/hadoop-core-site.xml to avoid filling in these each time you use it.
+#### 2.1 （optional）Pre-configure Access Key
+
+You can also pre-configure ak, secret and endpoint of OSS to hadoop-2.8.5/etc/hadoop-core-site.xml to avoid filling in these each time you use it：
 ```xml
 <configuration>
     <property>
@@ -80,36 +60,58 @@ You can also pre-configure ak, secret and endpoint of OSS to hadoop-2.8.5/etc/ha
         <name>fs.jfs.cache.oss-endpoint</name>
         <value>oss-cn-xxx.aliyuncs.com</value>
     </property>
-
-  	<property>
-  			<name>fs.jfs.cache.copy.simple.max.byte</name>
-  			<value>67108864</value>
-      	<description>set to -1 if your oss bucket supports shallow copy.</description>
-		</property>
 </configuration>
 ```
-
 Then OSS can then be accessed in the following way:
 ```
 hadoop fs -ls oss://<bucket>/
 ```
 
-<a name="23Hbj"></a>
-#### 3.2 Access to JindoFS Cluster (Block Mode）
-Additional configurations are required if you deploy a block mode JindoFS cluster, or if caching is enabled in cache mode.
+<br />
+
+# Access to JindoFS Cluster (Cache/Block Mode）
+
+When you have already created an E-MapReduce JindoFS cluster, and you need access to the JindoFS cluster in another cluster or in ECS node, you can use this approach.
+
+### Prerequisite
+
+1. Already have an E-MapReduce JindoFS cluster
+2. Already knows the JindoFS header node(s) address, and the other cluster or ECS node is able to connect to the address.
+
+### 1. Deploy JindoFS SDK jar
+Install the SDK package under the Hadoop classpath. The method is same as above.
+
+About the version compatibility. The SDK and the server are compatible if their versions differ within minor number. You can get SDK package that has exactly same version as the server from the directory /usr/lib/b2jindosdk-current/lib/ in the E-MapReduce cluster.
+
+
+### 2. Create a client configuration file
+Add the following environment variable to /etc/profile
 ```
+export B2SDK_CONF_DIR=/etc/jindofs-sdk-conf
+```
+Create a file /etc/jindofs-sdk-conf/bigboot.cfg with following contents
+```
+[bigboot]
+logger.dir = /tmp/bigboot-log
+
 [bigboot-client]
-client.storage.rpc.port=6101
-client.namespace.rpc.address=header-1:8101 # the address of nameservice node
+client.storage.rpc.port = 6101
+client.namespace.rpc.address = localhost:8101
 ```
+You need set client.namespace.rpc.address to the address of JindoFS namespace service.
+
+
+### 3. Access to JindoFS Cluster
 
 Then JindoFS cluster can then be accessed in the following way:
 ```
 hadoop fs -ls jfs://<namespace>/
 ```
 
-<a name="ko0uT"></a>
-#### 3.3 Using SDK in Java Code
+<br />
+
+# Using SDK in IDE
+
 Add local JindoFS SDK jars to maven dependencies.
 ```xml
         <dependency>
@@ -123,10 +125,9 @@ Add local JindoFS SDK jars to maven dependencies.
             <version>0.0.1</version>
             <scope>system</scope>
             <systemPath>/Users/xx/xx/jindofs-sdk-${version}.jar</systemPath>
-            <!-- please replace ${version} with specific version -->
+            <!-- Please set ${version} to specific number -->
         </dependency>
 ```
-
 Then you can write a Java program using the JindoFS SDK.
 ```java
 import org.apache.hadoop.conf.Configuration;
@@ -146,25 +147,68 @@ public class TestJindoSDK {
   }
 }
 ```
+Note: make sure the B2SDK_CONF_DIR environment variable is set in an IDE environment.
 
-Note: make sure the B2SDK_CONF_DIR environment variable is set in an IDE environment.<br />
+<br />
 
-<a name="WwYXi"></a>
+# Appendix: SDK Configuration
+
+configuration file name is bigboot.cfg, the file has 2 sections: bigboot section about logs，bigboot-client about client configurations. The following is a template:
+
+```
+[bigboot]
+logger.dir = /tmp/bigboot-log
+logger.sync = false
+
+[bigboot-client]
+client.storage.rpc.port = 6101
+client.namespace.rpc.address = header-1:8101
+
+```
+
+
+The followings are some important configurations:
+| Key                                    | Section          | Default           | Description                                                            |
+| ----------------------------------------- | ---------------- | ---------------- | --------------------------------------------------------------- |
+| logger.dir                                | [bigboot]        | /tmp/bigboot-log | log destination                                                        |
+| logger.sync                               | [bigboot]        | false            | if should flush to disk on every log                                           |
+| client.storage.rpc.port                   | [bigboot-client] | 6101             | local storage service port                                       |
+| client.namespace.rpc.address              | [bigboot-client] | localhost:8101   | the namespace service address wanted to <br />access to（block/cache mode） |
+| client.oss.retry                          | [bigboot-client] | 5                | max retry count if oss request failure                                             |
+| client.oss.upload.threads                 | [bigboot-client] | 5                | oss concurrent upload threads                                       |
+| client.oss.upload.queue.size              | [bigboot-client] | 5                | oss upload queue size                                         |
+| client.oss.upload.max.parallelism         | [bigboot-client] | 16               | oss upload parallelism per process                                     |
+| client.oss.timeout.millisecond            | [bigboot-client] | 30000            | oss request timeout in millseconds                                         |
+| client.oss.connection.timeout.millisecond | [bigboot-client] | 3000             | oss connection timeout in millseconds                                         |
+| client.read.oss.readahead.buffer.size     | [bigboot-client] | 1048576          | buffer size for oss readahead per file                                             |
+| client.read.oss.readahead.buffer.count    | [bigboot-client] | 4                | buffer counts for oss readahead                                         |
+| jfs.cache.data-cache.enable               | [bigboot-client] | false            | (only for cache mode)enable data cache                          |
+
+<br />
+
+
 # Release Notes
 
-<a name="TqRR6"></a>
+### v3.1.1
+Date：20201207<br />文件：[jindofs-sdk-3.1.1.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.1.1.jar)<br />
+
+1. Fix some bugs.
+2. Minor performance improvement.
+3. Compatibility improvement.
+
+
 ### v3.0.0
 Date：20201016<br />File：[jindofs-sdk-3.0.0.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.0.0.jar)<br />Major fixes：
 
 1. Fix some bugs.
 
-<a name="TqRR6"></a>
+
 ### v2.7.401
 Date：20190914<br />File：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />Major fixes：
 
 1. Fix many bugs.
 
-<a name="TqRR6"></a>
+
 ### v2.7.1
 Date：20190619<br />File：[jindofs-sdk-2.7.1.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.1.jar)<br />Major Features：
 
