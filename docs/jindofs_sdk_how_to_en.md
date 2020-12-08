@@ -2,25 +2,19 @@
 [中文版](./jindofs_sdk_how_to.md)
 
 
-# Indroduce
-JindoFS SDK is an easy-to-use OSS client for Hadoop/Spark ecosystem, providing highly optimized Hadoop FileSystem implementation for Ali Cloud OSS. Through it you can do the following operations:
+# Access to OSS (as an OSS client)
 
-1. Access to OSS (as an OSS client)
-1. Access to JindoFS cluster (Cache mode or Block mode)
-
-
+JindoFS SDK is an easy-to-use OSS client for Hadoop/Spark ecosystem, providing highly optimized Hadoop FileSystem implementation for Ali Cloud OSS.<br />
 <br />Even if you use JindoFS SDK only as an OSS client, you can get better performance and more professional support from the Aliyun E-MapReduce technical team than the OSS client implementation of Hadoop community.<br />
 <br />Currently JindoFS SDK supported Hadoop 2.7+ and Hadoop 3.x versions. If you have any questions, please give feedback. Open PR, and we will deal with it in time.<br />
 <br />For a performance comparison between the JindoFS SDK and the Hadoop Community OSS Connector, refer to the documentation [Performance Comparison of JindoFS SDK and Hadoop-OSS-SDK](./jindofs_sdk_vs_hadoop_sdk_en.md).<br />
 
-<br />
-
-# Access to OSS (as an OSS client)
+## Steps
 
 ### 1. Deploy JindoFS SDK jar
 Download the latest JindoFS SDK jar package jindofs-sdk-x.x.x.jar and install the SDK package under the Hadoop classpath.
 ```
-cp ./jindofs-sdk-*.jar hadoop-2.8.5/share/hadoop/hdfs/lib/jindofs-sdk.jar
+cp ./jindofs-sdk-*.jar <HADOOP_HOME>/share/hadoop/hdfs/lib/jindofs-sdk.jar
 ```
 
 Note： currently, JindoFS SDK only supports Linux and MacOS operating systems.<br />
@@ -33,7 +27,7 @@ hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
 
 #### 2.1 （optional）Pre-configure Access Key
 
-You can also pre-configure ak, secret and endpoint of OSS to hadoop-2.8.5/etc/hadoop-core-site.xml to avoid filling in these each time you use it：
+You can also pre-configure ak, secret and endpoint of OSS to hadoop core-site.xml to avoid filling in these each time you use it：
 ```xml
 <configuration>
     <property>
@@ -47,17 +41,17 @@ You can also pre-configure ak, secret and endpoint of OSS to hadoop-2.8.5/etc/ha
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-accessKeyId</name>
+        <name>fs.jfs.cache.oss.accessKeyId</name>
         <value>xxx</value>
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-accessKeySecret</name>
+        <name>fs.jfs.cache.oss.accessKeySecret</name>
         <value>xxx</value>
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-endpoint</name>
+        <name>fs.jfs.cache.oss.endpoint</name>
         <value>oss-cn-xxx.aliyuncs.com</value>
     </property>
 </configuration>
@@ -69,7 +63,7 @@ hadoop fs -ls oss://<bucket>/
 
 <br />
 
-# Access to JindoFS Cluster (Cache/Block Mode）
+# Access to JindoFS Cache/Block Mode Cluster
 
 When you have already created an E-MapReduce JindoFS cluster, and you need access to the JindoFS cluster in another cluster or in ECS node, you can use this approach.
 
