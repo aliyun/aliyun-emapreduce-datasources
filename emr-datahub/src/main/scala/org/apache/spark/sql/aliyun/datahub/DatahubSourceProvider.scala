@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.aliyun.datahub
 
-import java.util.{Locale, Optional, UUID}
+import java.util
 import java.util.concurrent.locks.{ReadWriteLock, ReentrantReadWriteLock}
 
 import scala.collection.JavaConverters._
@@ -30,78 +30,28 @@ import com.aliyun.datahub.client.http.HttpConfig
 import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
+import org.apache.spark.sql.aliyun.datahub.DatahubOffsetRangeLimit.{ENDING_OFFSETS_OPTION_KEY, STARTING_OFFSETS_OPTION_KEY}
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
+import org.apache.spark.sql.connector.catalog._
+import org.apache.spark.sql.connector.expressions.Transform
+import org.apache.spark.sql.connector.read.{Batch, Scan, ScanBuilder}
+import org.apache.spark.sql.connector.read.streaming.{ContinuousStream, MicroBatchStream}
+import org.apache.spark.sql.connector.write.{BatchWrite, LogicalWriteInfo, PhysicalWriteInfoImpl, WriteBuilder}
+import org.apache.spark.sql.connector.write.streaming.StreamingWrite
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.sources.v2._
-import org.apache.spark.sql.sources.v2.reader.streaming.{ContinuousReader, MicroBatchReader}
-import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
-import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 class DatahubSourceProvider extends DataSourceRegister
-  with MicroBatchReadSupport
-  with ContinuousReadSupport
-  with StreamWriteSupport
+  with TableProvider
+  with SchemaRelationProvider
   with CreatableRelationProvider
-  with RelationProvider
-  with SchemaRelationProvider {
+  with RelationProvider {
+
   override def shortName(): String = "datahub"
-
-  override def createContinuousReader(
-      schema: Optional[StructType],
-      checkpointLocation: String,
-      options: DataSourceOptions): ContinuousReader = {
-    val parameters = options.asMap().asScala.toMap
-    val uniqueGroupId = s"spark-datahub-source-${UUID.randomUUID}-${checkpointLocation.hashCode}"
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
-    val startingStreamOffset = DatahubOffsetRangeLimit.getOffsetRangeLimit(caseInsensitiveParams,
-      DatahubOffsetRangeLimit.STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
-    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
-    new DatahubContinuousReader(
-      Some(schema.orElse(new StructType())),
-      datahubOffsetReader,
-      paramsForExecutors(parameters, uniqueGroupId),
-      parameters,
-      checkpointLocation,
-      startingStreamOffset)
-  }
-
-  private def paramsForExecutors(
-      specifiedDatahubParams: Map[String, String],
-      uniqueGroupId: String): java.util.Map[String, Object] =
-    ConfigUpdater("executor", specifiedDatahubParams)
-      .build()
-
-  override def createMicroBatchReader(
-      schema: Optional[StructType],
-      checkpointLocation: String,
-      options: DataSourceOptions): MicroBatchReader = {
-    val parameters = options.asMap().asScala.toMap
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
-    val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveParams)
-    val startingStreamOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(caseInsensitiveParams,
-      "startingoffsets", LatestOffsetRangeLimit)
-
-    new DatahubMicroBatchReader(
-      datahubOffsetReader,
-      options,
-      checkpointLocation,
-      startingStreamOffsets,
-      caseInsensitiveParams.getOrElse("failondataloss", "true").toBoolean,
-      Some(schema.orElse(new StructType()).toDDL))
-  }
-
-  override def createStreamWriter(
-      queryId: String,
-      schema: StructType,
-      mode: OutputMode,
-      options: DataSourceOptions): StreamWriter = {
-    val opts = options.asMap().asScala.toMap
-    val project = opts.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
-    val topic = opts.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
-    new DatahubStreamWriter(project, topic, opts, None)
-  }
 
   override def createRelation(
       sqlContext: SQLContext,
@@ -132,7 +82,9 @@ class DatahubSourceProvider extends DataSourceRegister
     val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
     data.foreachPartition { it: Iterator[Row] =>
       val writer = new DatahubWriter(project, topic, parameters, None)
-        .createWriterFactory().createDataWriter(-1, -1, -1)
+        .createBatchWriterFactory(
+          PhysicalWriteInfoImpl(data.rdd.asInstanceOf[RDD[Row]].getNumPartitions))
+        .createWriter(-1, -1)
       it.foreach(t => writer.write(t.asInstanceOf[InternalRow]))
     }
 
@@ -150,6 +102,118 @@ class DatahubSourceProvider extends DataSourceRegister
         throw new UnsupportedOperationException("BaseRelation from Datahub write " +
             "operation is not usable.")
     }
+  }
+
+  class DatahubTable(userSpecifiedSchema: Option[StructType])
+    extends Table with SupportsRead with SupportsWrite {
+
+    override def name(): String = "DatahubTable"
+
+    override def schema(): StructType = userSpecifiedSchema.getOrElse(new StructType())
+
+    override def capabilities(): util.Set[TableCapability] = {
+      import TableCapability._
+      Set(BATCH_READ, BATCH_WRITE, MICRO_BATCH_READ, CONTINUOUS_READ, STREAMING_WRITE).asJava
+    }
+
+    override def newScanBuilder(caseInsensitiveStringMap: CaseInsensitiveStringMap): ScanBuilder = {
+      () => new DatahubScan(schema(), caseInsensitiveStringMap)
+    }
+
+    override def newWriteBuilder(info: LogicalWriteInfo): WriteBuilder = {
+      new WriteBuilder {
+        private val options = info.options
+        private val inputSchema: StructType = info.schema()
+        private val project: String = options.get(DatahubSourceProvider.OPTION_KEY_PROJECT)
+        private val topic: String = options.get(DatahubSourceProvider.OPTION_KEY_TOPIC)
+
+        override def buildForBatch(): BatchWrite = {
+          assert(inputSchema != null)
+          new DatahubWriter(Some(project), Some(topic), options.asScala.toMap, Some(inputSchema))
+        }
+
+        override def buildForStreaming(): StreamingWrite = {
+          assert(inputSchema != null)
+          new DatahubStreamWriter(
+            Some(project),
+            Some(topic),
+            options.asScala.toMap,
+            Some(inputSchema))
+        }
+      }
+    }
+  }
+
+  class DatahubScan(
+      schema: StructType,
+      options: CaseInsensitiveStringMap) extends Scan {
+
+    override def readSchema(): StructType = schema
+
+    override def toBatch(): Batch = {
+      val caseInsensitiveOptions = CaseInsensitiveMap(options.asScala.toMap)
+      val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveOptions)
+
+      val startingRelationOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(
+        caseInsensitiveOptions, STARTING_OFFSETS_OPTION_KEY, OldestOffsetRangeLimit)
+      assert(startingRelationOffsets != LatestOffsetRangeLimit)
+
+      val endingRelationOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(
+        caseInsensitiveOptions, ENDING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+      assert(endingRelationOffsets != OldestOffsetRangeLimit)
+
+      new DatahubBatch(
+        datahubOffsetReader,
+        options,
+        startingRelationOffsets,
+        endingRelationOffsets,
+        caseInsensitiveOptions.getOrElse("failondataloss", "true").toBoolean,
+        Some(schema.toDDL))
+    }
+
+    override def toMicroBatchStream(checkpointLocation: String): MicroBatchStream = {
+      val caseInsensitiveOptions = CaseInsensitiveMap(options.asScala.toMap)
+      val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveOptions)
+      val startingStreamOffsets = DatahubOffsetRangeLimit.getOffsetRangeLimit(
+        caseInsensitiveOptions,
+        "startingoffsets",
+        LatestOffsetRangeLimit)
+
+      new DatahubMicroBatchStream(
+        datahubOffsetReader,
+        options,
+        checkpointLocation,
+        startingStreamOffsets,
+        caseInsensitiveOptions.getOrElse("failondataloss", "true").toBoolean,
+        Some(schema.toDDL))
+    }
+
+    override def toContinuousStream(checkpointLocation: String): ContinuousStream = {
+      val caseInsensitiveOptions = CaseInsensitiveMap(options.asScala.toMap)
+      val startingStreamOffset = DatahubOffsetRangeLimit.getOffsetRangeLimit(caseInsensitiveOptions,
+        DatahubOffsetRangeLimit.STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+      val datahubOffsetReader = new DatahubOffsetReader(caseInsensitiveOptions)
+
+      new DatahubContinuousStream(
+        Some(schema),
+        datahubOffsetReader,
+        ConfigUpdater("executor", caseInsensitiveOptions).build(),
+        caseInsensitiveOptions,
+        checkpointLocation,
+        startingStreamOffset)
+    }
+  }
+
+  override def inferSchema(caseInsensitiveStringMap: CaseInsensitiveStringMap): StructType = {
+    null
+  }
+
+  override def getTable(
+      schema: StructType,
+      partitioning: Array[Transform],
+      properties: util.Map[String, String]): Table = {
+    assert(partitioning.isEmpty)
+    new DatahubTable(Option(schema))
   }
 }
 

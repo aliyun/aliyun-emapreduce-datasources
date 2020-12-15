@@ -18,15 +18,16 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import org.apache.spark.sql.QueryTest
+import org.apache.spark.sql.connector.read.streaming.SparkDataStream
 import org.apache.spark.sql.execution.datasources.v2.StreamingDataSourceV2Relation
 import org.apache.spark.sql.execution.streaming._
 import org.apache.spark.sql.execution.streaming.continuous.ContinuousExecution
-import org.apache.spark.sql.streaming.{ProcessingTime, StreamTest}
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.streaming.{StreamTest, Trigger}
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
 abstract class DatahubMicroBatchReaderSuiteBase
-  extends QueryTest with SharedSQLContext with StreamTest {
+  extends QueryTest with SharedSparkSession with StreamTest {
   import testImplicits._
 
   protected var testUtils: DatahubTestUtils = _
@@ -67,7 +68,7 @@ abstract class DatahubMicroBatchReaderSuiteBase
       message: String = "",
       action: (String, Option[Int]) => Unit = (_, _) => {}) extends AddData {
 
-    override def addData(query: Option[StreamExecution]): (BaseStreamingSource, Offset) = {
+    override def addData(query: Option[StreamExecution]): (SparkDataStream, Offset) = {
       query match {
         // Make sure no Spark job is running when deleting a topic
         case Some(m: MicroBatchExecution) => m.processAllAvailable()
@@ -91,8 +92,10 @@ abstract class DatahubMicroBatchReaderSuiteBase
         query.get.lastExecution match {
           case null => Seq()
           case e => e.logical.collect {
-            case StreamingDataSourceV2Relation(_, _, _, reader: DatahubMicroBatchReader) => reader
-            case StreamingDataSourceV2Relation(_, _, _, reader: DatahubContinuousReader) => reader
+            case StreamingDataSourceV2Relation(_, _, stream: DatahubMicroBatchStream, _, _) =>
+              stream
+            case StreamingDataSourceV2Relation(_, _, stream: DatahubContinuousStream, _, _) =>
+              stream
           }
         }
       }.distinct
@@ -181,7 +184,7 @@ abstract class DatahubMicroBatchReaderSuiteBase
 
     val mapped = datahub.map(d => d.toInt + 1)
     testStream(mapped)(
-      StartStream(trigger = ProcessingTime(1)),
+      StartStream(Trigger.ProcessingTime(1)),
       makeSureGetOffsetCalled,
       AddDatahubData(topic, shardId = Some(0), 1, 2, 3),
       CheckAnswer(0, 2, 3),
@@ -264,7 +267,7 @@ class DatahubMicroBatchV2SourceSuite extends DatahubMicroBatchReaderSuiteBase{
       makeSureGetOffsetCalled,
       AssertOnQuery { query =>
         query.logicalPlan.collect {
-          case StreamingExecutionRelation(_: DatahubMicroBatchReader, _) => true
+          case StreamingExecutionRelation(_: DatahubMicroBatchStream, _) => true
         }.nonEmpty
       }
     )

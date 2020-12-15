@@ -33,7 +33,7 @@ class DatahubSourceRDD(
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     val sourcePartition = split.asInstanceOf[DatahubInputPartition]
     val newRange = resolveOffset(sourcePartition.offsetRange)
-    val partitionReader = DatahubMicroBatchInputPartitionReader(
+    val partitionReader = DatahubBatchInputPartitionReader(
       newRange, false, parameters, sourcePartition.schemaDdl)
 
     if (newRange.fromOffset >= newRange.untilOffset) {

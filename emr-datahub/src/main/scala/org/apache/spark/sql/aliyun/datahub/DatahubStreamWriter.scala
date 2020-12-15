@@ -18,20 +18,20 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.sources.v2.writer.{DataWriter, DataWriterFactory, WriterCommitMessage}
-import org.apache.spark.sql.sources.v2.writer.streaming.StreamWriter
+import org.apache.spark.sql.connector.write.{DataWriter, DataWriterFactory, PhysicalWriteInfo, WriterCommitMessage}
+import org.apache.spark.sql.connector.write.streaming.{StreamingDataWriterFactory, StreamingWrite}
 import org.apache.spark.sql.types.StructType
 
 class DatahubStreamWriter(
     project: Option[String],
     topic: Option[String],
     datahubOptions: Map[String, String],
-    schema: Option[StructType]) extends StreamWriter {
+    schema: Option[StructType]) extends StreamingWrite {
   override def commit(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {}
 
   override def abort(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {}
 
-  override def createWriterFactory(): DatahubStreamWriterFactory = {
+  override def createStreamingWriterFactory(info: PhysicalWriteInfo): DatahubStreamWriterFactory = {
     DatahubStreamWriterFactory(project, topic, datahubOptions, schema)
   }
 }
@@ -40,21 +40,14 @@ case class DatahubStreamWriterFactory(
     project: Option[String],
     topic: Option[String],
     datahubParams: Map[String, String],
-    schema: Option[StructType]) extends DataWriterFactory[InternalRow] {
+    schema: Option[StructType]) extends StreamingDataWriterFactory {
 
-  override def createDataWriter(
+  override def createWriter(
       partitionId: Int,
       taskId: Long,
       epochId: Long): DataWriter[InternalRow] = {
     new DatahubDataWriter(project, topic, datahubParams, schema)
   }
-}
-
-class DatahubStreamDataWriter(
-    project: Option[String],
-    topic: Option[String],
-    datahubParams: Map[String, String],
-    schema: Option[StructType]) extends DatahubDataWriter(project, topic, datahubParams, schema) {
 }
 
 case object DatahubWriterCommitMessage extends WriterCommitMessage

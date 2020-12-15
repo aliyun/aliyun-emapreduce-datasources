@@ -35,7 +35,7 @@
         <module>emr-mns</module>
         <module>emr-ons</module>
         <!--<module>emr-dts</module>-->
-        <!--<module>emr-datahub</module>-->
+        <module>emr-datahub</module>
         <module>emr-kafka</module>
         <module>emr-redis</module>
         <!--<module>emr-druid</module>-->
