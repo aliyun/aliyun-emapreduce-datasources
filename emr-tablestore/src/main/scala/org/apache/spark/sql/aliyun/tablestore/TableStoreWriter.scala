@@ -29,7 +29,7 @@ class TableStoreWriter {
       sourceOptions: Map[String, String]): Unit = {
     val schema = StructType.fromAttributes(queryExecution.analyzed.output)
     val encoder = RowEncoder(schema).resolveAndBind()
-    val rdd = queryExecution.toRdd.map(r => encoder.fromRow(r))
+    val rdd = queryExecution.toRdd.map(r => encoder.createDeserializer().apply(r))
     val relation = new TableStoreRelation(parameters,
       Some(TableStoreCatalog(parameters).schema))(sparkSession.sqlContext)
     relation.insert(sparkSession.createDataFrame(rdd, schema), false)

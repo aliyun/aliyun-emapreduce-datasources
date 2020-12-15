@@ -17,10 +17,10 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest}
-import org.apache.spark.sql.test.SharedSQLContext
 
-class SearchIndexSuite extends QueryTest with SharedSQLContext {
+class SearchIndexSuite extends QueryTest with SharedSparkSession {
   private val testUtils = new TableStoreTestUtil()
   val searchIndexSuiteTableName = "spark_test_searchindex2"
   private val searchindexname: String =

@@ -48,6 +48,6 @@ class TableStoreDataSuite extends SparkFunSuite {
     //    val td = Array(("PkString", "1"), (null, null), ("PkInt", 2), (null, null), ("col1", ""))
     val data = new SchemaTableStoreData("PUT", 12345678, columnArray)
     val encoderForDataColumns = RowEncoder(testSchema).resolveAndBind()
-    encoderForDataColumns.toRow(new GenericRow(data.toArray))
+    encoderForDataColumns.createSerializer().apply(new GenericRow(data.toArray))
   }
 }

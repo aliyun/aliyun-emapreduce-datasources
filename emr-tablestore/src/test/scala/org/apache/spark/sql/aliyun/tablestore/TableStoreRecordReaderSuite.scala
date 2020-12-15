@@ -17,10 +17,10 @@
 
 package org.apache.spark.sql.aliyun.tablestore
 
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.{DataFrame, QueryTest}
-import org.apache.spark.sql.test.SharedSQLContext
 
-class TableStoreRecordReaderSuite extends QueryTest with SharedSQLContext {
+class TableStoreRecordReaderSuite extends QueryTest with SharedSparkSession {
   private val testUtils = new TableStoreTestUtil()
 
   override def beforeEach(): Unit = {
