@@ -2,25 +2,21 @@
 [English Version](./jindofs_sdk_how_to_en.md)
 
 
-# 介绍
+# 访问OSS（作为 OSS 客户端）
 
-JindoFS SDK是一个简单易用面向Hadoop/Spark生态的OSS客户端，为阿里云OSS提供高度优化的Hadoop FileSystem实现。通过它您可以
-
-1. 访问OSS（作为 OSS 客户端）
-2. 访问JindoFS集群 (Cache/Block模式)
+JindoFS SDK是一个简单易用面向Hadoop/Spark生态的OSS客户端，为阿里云OSS提供高度优化的Hadoop FileSystem实现。
 
 即使您使用JindoFS SDK仅仅作为OSS客户端，相对于Hadoop社区OSS客户端实现，您还可以获得更好的性能和阿里云E-MapReduce产品技术团队更专业的支持。
 
 目前支持的Hadoop版本包括Hadoop 2.7+和Hadoop 3.x。有问题请反馈，开PR，我们会及时处理。<br />
 <br />关于JindoFS SDK和Hadoop社区OSS connector的性能对比，请参考文档[JindoFS SDK和Hadoop-OSS-SDK性能对比测试](./jindofs_sdk_vs_hadoop_sdk.md)。<br />
-<br />
 
-# 访问OSS（作为 OSS 客户端）
+## 步骤
 
 ### 1. 安装jar包
 下载最新的jar包 jindofs-sdk-x.x.x.jar ，将sdk包安装到hadoop的classpath下
 ```
-cp ./jindofs-sdk-*.jar hadoop-2.8.5/share/hadoop/hdfs/lib/jindofs-sdk.jar
+cp ./jindofs-sdk-*.jar <HADOOP_HOME>/share/hadoop/hdfs/lib/jindofs-sdk.jar
 ```
 
 注意： 目前SDK只支持Linux、MacOS操作系统<br />
@@ -34,7 +30,7 @@ hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
 
 #### 2.1 （可选）配置AK
 
-上述方式，即在每个uri路径临时指定ak的方式比较繁琐，容易产生安全问题。您可以将oss的ak、secret、endpoint预先配置在hadoop-2.8.5/etc/hadoop/core-site.xml，配置项如下：
+上述方式，即在每个uri路径临时指定ak的方式比较繁琐，容易产生安全问题。您可以将oss的ak、secret、endpoint预先配置在hadoop的core-site.xml，配置项如下：
 ```xml
 <configuration>
     <property>
@@ -48,17 +44,17 @@ hadoop fs -ls oss://<ak>:<secret>@<bucket>.<endpoint>/
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-accessKeyId</name>
+        <name>fs.jfs.cache.oss.accessKeyId</name>
         <value>xxx</value>
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-accessKeySecret</name>
+        <name>fs.jfs.cache.oss.accessKeySecret</name>
         <value>xxx</value>
     </property>
 
     <property>
-        <name>fs.jfs.cache.oss-endpoint</name>
+        <name>fs.jfs.cache.oss.endpoint</name>
         <value>oss-cn-xxx.aliyuncs.com</value>
     </property>
 </configuration>
@@ -70,7 +66,7 @@ hadoop fs -ls oss://<bucket>/
 
 <br />
 
-# 访问JindoFS集群 (Cache/Block模式)
+# 访问JindoFS Cache/Block模式集群
 
 当您已经创建了一个E-MapReduce JindoFS集群，并且希望在另外一个集群或ECS机器上访问JindoFS集群时，可以使用该方法。
 
