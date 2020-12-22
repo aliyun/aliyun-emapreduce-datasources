@@ -20,6 +20,8 @@ package com.aliyun.ms;
 import com.aliyun.ms.utils.HttpClientUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.IOException;
 
@@ -33,6 +35,8 @@ public class MetaClient {
   static final String ROLE_ACCESS_KEY_SECRET_URL = "/role-access-key-secret";
   static final String ROLE_SECURITY_TOKEN_URL = "/role-security-token";
 
+  static final String metaServiceUrl = "http://100.100.100.200/latest/meta-data/";
+
   static private String trySend(String host, String url) {
     String finalUrl = "http://" + host + ":" + port + url;
     try {
@@ -43,12 +47,48 @@ public class MetaClient {
     }
   }
 
+  static private String trySendV2(String metaItem) {
+    String finalUrl = metaServiceUrl + metaItem;
+    try {
+      return HttpClientUtil.get(finalUrl);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  static public String getEMRCredentials(String type) {
+    String EMRRole = trySendV2("Ram/security-credentials/");
+    if (EMRRole == null)
+      return null;
+    String credentials = trySendV2("Ram/security-credentials/" + EMRRole);
+    if (credentials == null)
+      return null;
+    JsonParser parser = new JsonParser();
+    JsonObject jsonObject = parser.parse(credentials).getAsJsonObject();
+    if (jsonObject.get("Code").getAsString().equals("Success")) {
+      return jsonObject.get(type).getAsString();
+    } else {
+      LOG.debug("use old way to get ststoken");
+      return null;
+    }
+  }
   static public String getClusterRegionName() {
-    return trySend("localhost", CLUSTER_REGION_URL);
+    String regionName = trySendV2("region-id");
+    if (regionName == null) {
+      return trySend("localhost", CLUSTER_REGION_URL);
+    } else {
+      return regionName;
+    }
   }
 
   static public String getClusterNetworkType() {
-    return trySend("localhost", CLUSTER_NETWORK_TYPE_URL);
+    String networkType = trySendV2("network-type");
+    if (networkType == null) {
+      return trySend("localhost", CLUSTER_NETWORK_TYPE_URL);
+    } else {
+      return networkType;
+    }
   }
 
   static public String getClusterRoleName() {
@@ -56,14 +96,30 @@ public class MetaClient {
   }
 
   static public String getRoleAccessKeyId() {
-    return trySend("localhost", ROLE_ACCESS_KEY_ID_URL);
+    String AccessKeyId = getEMRCredentials("AccessKeyId");
+    if (AccessKeyId == null) {
+      return trySend("localhost", ROLE_ACCESS_KEY_ID_URL);
+    } else {
+      return AccessKeyId;
+    }
   }
 
   static public String getRoleAccessKeySecret() {
-    return trySend("localhost", ROLE_ACCESS_KEY_SECRET_URL);
+    String AccessKeySecret = getEMRCredentials("AccessKeySecret");
+    if (AccessKeySecret == null) {
+      return trySend("localhost", ROLE_ACCESS_KEY_SECRET_URL);
+    } else {
+      return AccessKeySecret;
+    }
   }
 
   static public String getRoleSecurityToken() {
-    return trySend("localhost", ROLE_SECURITY_TOKEN_URL);
+    String SecurityToken = getEMRCredentials("SecurityToken");
+    if (SecurityToken == null) {
+      return trySend("localhost", ROLE_SECURITY_TOKEN_URL);
+    } else {
+      return SecurityToken;
+    }
   }
+
 }
