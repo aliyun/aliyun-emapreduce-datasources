@@ -18,6 +18,9 @@
 package com.aliyun.ms;
 
 import com.aliyun.ms.utils.HttpClientUtil;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.google.gson.JsonObject;
@@ -37,6 +40,8 @@ public class MetaClient {
 
   static final String metaServiceUrl = "http://100.100.100.200/latest/meta-data/";
 
+  static final OkHttpClient clientV2 = new OkHttpClient();
+
   static private String trySend(String host, String url) {
     String finalUrl = "http://" + host + ":" + port + url;
     try {
@@ -50,7 +55,15 @@ public class MetaClient {
   static private String trySendV2(String metaItem) {
     String finalUrl = metaServiceUrl + metaItem;
     try {
-      return HttpClientUtil.get(finalUrl);
+      Request request = new Request.Builder()
+              .url(finalUrl)
+              .build();
+      Response response = clientV2.newCall(request).execute();
+      if (response.code() != 200 || response.body() == null) {
+        LOG.debug("failed to get response from clientV2");
+        return null;
+      }
+      return response.body().string();
     } catch (IOException e) {
       e.printStackTrace();
       return null;
@@ -76,19 +89,17 @@ public class MetaClient {
   static public String getClusterRegionName() {
     String regionName = trySendV2("region-id");
     if (regionName == null) {
-      return trySend("localhost", CLUSTER_REGION_URL);
-    } else {
-      return regionName;
+      regionName = trySend("localhost", CLUSTER_REGION_URL);
     }
+    return regionName;
   }
 
   static public String getClusterNetworkType() {
     String networkType = trySendV2("network-type");
     if (networkType == null) {
-      return trySend("localhost", CLUSTER_NETWORK_TYPE_URL);
-    } else {
-      return networkType;
+      networkType = trySend("localhost", CLUSTER_NETWORK_TYPE_URL);
     }
+    return networkType;
   }
 
   static public String getClusterRoleName() {
@@ -98,28 +109,25 @@ public class MetaClient {
   static public String getRoleAccessKeyId() {
     String AccessKeyId = getEMRCredentials("AccessKeyId");
     if (AccessKeyId == null) {
-      return trySend("localhost", ROLE_ACCESS_KEY_ID_URL);
-    } else {
-      return AccessKeyId;
+      AccessKeyId = trySend("localhost", ROLE_ACCESS_KEY_ID_URL);
     }
+    return AccessKeyId;
   }
 
   static public String getRoleAccessKeySecret() {
     String AccessKeySecret = getEMRCredentials("AccessKeySecret");
     if (AccessKeySecret == null) {
-      return trySend("localhost", ROLE_ACCESS_KEY_SECRET_URL);
-    } else {
-      return AccessKeySecret;
+      AccessKeySecret = trySend("localhost", ROLE_ACCESS_KEY_SECRET_URL);
     }
+    return AccessKeySecret;
   }
 
   static public String getRoleSecurityToken() {
     String SecurityToken = getEMRCredentials("SecurityToken");
     if (SecurityToken == null) {
-      return trySend("localhost", ROLE_SECURITY_TOKEN_URL);
-    } else {
-      return SecurityToken;
+      SecurityToken = trySend("localhost", ROLE_SECURITY_TOKEN_URL);
     }
+    return SecurityToken;
   }
 
 }
