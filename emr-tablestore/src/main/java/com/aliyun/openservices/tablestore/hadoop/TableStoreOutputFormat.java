@@ -194,7 +194,8 @@ public class TableStoreOutputFormat extends OutputFormat<Writable, BatchWriteWri
         TaskAttemptContext context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
 
-        SinkConfig sinkConfig = SinkConfig.deserialize(conf.get(TableStoreOutputFormat.SINK_CONFIG));
+        SinkConfig sinkConfig =
+            SinkConfig.deserialize(conf.get(TableStoreOutputFormat.SINK_CONFIG));
         if ("v2".equals(sinkConfig.getVersion())) {
             TableStoreWriter ots = TableStore.newOtsWriter(conf);
             return new TableStoreRecordWriterV2(ots, sinkConfig);

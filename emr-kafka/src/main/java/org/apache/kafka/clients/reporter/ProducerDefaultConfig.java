@@ -20,12 +20,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ProducerDefaultConfig {
-    public static final Map<String, Object> PRODUCER_CONFIG_DEFAULTS = new HashMap<String, Object>();
+    public static final Map<String, Object> PRODUCER_CONFIG_DEFAULTS = new HashMap<>();
     static {
         PRODUCER_CONFIG_DEFAULTS.put("acks", "all");
         PRODUCER_CONFIG_DEFAULTS.put("compression.type", "lz4");
-        PRODUCER_CONFIG_DEFAULTS.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-        PRODUCER_CONFIG_DEFAULTS.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        PRODUCER_CONFIG_DEFAULTS.put(
+            "key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+        PRODUCER_CONFIG_DEFAULTS.put(
+            "value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         PRODUCER_CONFIG_DEFAULTS.put("linger.ms", "500");
         PRODUCER_CONFIG_DEFAULTS.put("retries", 10);
         PRODUCER_CONFIG_DEFAULTS.put("interceptor.classes", "");

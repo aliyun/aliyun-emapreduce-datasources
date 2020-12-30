@@ -22,7 +22,7 @@ import com.alibaba.dts.recordprocessor.mysql.MysqlFieldConverter;
 
 public interface FieldConverter {
     FieldValue convert(Field field, Object o);
-    public static FieldConverter getConverter(String sourceName, String sourceVersion) {
+    static FieldConverter getConverter(String sourceName, String sourceVersion) {
         if (StringUtils.endsWithIgnoreCase("mysql", sourceName)) {
             return new MysqlFieldConverter();
         } else {

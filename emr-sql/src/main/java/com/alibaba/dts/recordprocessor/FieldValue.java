@@ -59,7 +59,8 @@ public class FieldValue  {
                 try {
                     return new String(getValue(), realEncoding);
                 } catch (UnsupportedEncodingException e1) {
-                    throw new RuntimeException("Unsupported encoding: origin " +  encoding + ", mapped " + realEncoding);
+                    throw new RuntimeException("Unsupported encoding: origin "
+                        +  encoding + ", mapped " + realEncoding);
                 }
             }
         }

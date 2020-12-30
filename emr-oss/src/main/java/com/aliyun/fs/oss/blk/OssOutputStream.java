@@ -111,7 +111,7 @@ public class OssOutputStream extends OutputStream {
   }
 
   @Override
-  public synchronized void write(byte b[], int off, int len) throws IOException {
+  public synchronized void write(byte[] b, int off, int len) throws IOException {
     if (closed) {
       throw new IOException("Stream closed");
     }

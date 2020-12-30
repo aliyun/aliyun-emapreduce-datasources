@@ -41,7 +41,8 @@ public class JarFinder {
   public JarFinder() {
   }
 
-  private static void copyToZipStream(File file, ZipEntry entry, ZipOutputStream zos) throws IOException {
+  private static void copyToZipStream(File file, ZipEntry entry, ZipOutputStream zos)
+      throws IOException {
     FileInputStream is = new FileInputStream(file);
 
     try {
@@ -79,7 +80,8 @@ public class JarFinder {
     zos.close();
   }
 
-  private static void zipDir(File dir, String relativePath, ZipOutputStream zos, boolean start) throws IOException {
+  private static void zipDir(File dir, String relativePath, ZipOutputStream zos, boolean start)
+      throws IOException {
     String[] dirList = dir.list();
     if (dirList != null) {
       String[] var5 = dirList;

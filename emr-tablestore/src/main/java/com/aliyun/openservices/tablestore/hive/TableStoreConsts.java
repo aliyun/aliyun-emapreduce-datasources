@@ -19,28 +19,28 @@
 package com.aliyun.openservices.tablestore.hive;
 
 public class TableStoreConsts {
-    final public static String ENDPOINT = "tablestore.endpoint";
-    final public static String INSTANCE = "tablestore.instance";
-    final public static String TABLE_NAME = "tablestore.table.name";
-    final public static String ACCESS_KEY_ID = "tablestore.access_key_id";
-    final public static String ACCESS_KEY_SECRET = "tablestore.access_key_secret";
-    final public static String SECURITY_TOKEN = "tablestore.security_token";
-    final public static String MAX_UPDATE_BATCH_SIZE = "tablestore.max_update_batch_size";
-    final public static String COMPUTE_MODE = "tablestore.compute.mode";
-    final public static String MAX_SPLIT_COUNT = "tablestore.max.split.count";
-    final public static String SPLIT_SIZE_MBS = "tablestore.split.size.mbs";
+    public static final String ENDPOINT = "tablestore.endpoint";
+    public static final String INSTANCE = "tablestore.instance";
+    public static final String TABLE_NAME = "tablestore.table.name";
+    public static final String ACCESS_KEY_ID = "tablestore.access_key_id";
+    public static final String ACCESS_KEY_SECRET = "tablestore.access_key_secret";
+    public static final String SECURITY_TOKEN = "tablestore.security_token";
+    public static final String MAX_UPDATE_BATCH_SIZE = "tablestore.max_update_batch_size";
+    public static final String COMPUTE_MODE = "tablestore.compute.mode";
+    public static final String MAX_SPLIT_COUNT = "tablestore.max.split.count";
+    public static final String SPLIT_SIZE_MBS = "tablestore.split.size.mbs";
 
-    final public static String COLUMNS_MAPPING = "tablestore.columns.mapping";
-    final public static String FILTER = "filters";
+    public static final String COLUMNS_MAPPING = "tablestore.columns.mapping";
+    public static final String FILTER = "filters";
 
-    final public static  String PROPERTIES_FILE_PATH = "tablestore.properties.path";
+    public static final  String PROPERTIES_FILE_PATH = "tablestore.properties.path";
 
-    final public static String[] REQUIRES = new String[] {
+    public static final String[] REQUIRES = new String[] {
         ENDPOINT,
         TABLE_NAME,
         ACCESS_KEY_ID,
         ACCESS_KEY_SECRET};
-    final public static String[] OPTIONALS = new String[] {
+    public static final String[] OPTIONALS = new String[] {
         INSTANCE,
         SECURITY_TOKEN,
         MAX_UPDATE_BATCH_SIZE,

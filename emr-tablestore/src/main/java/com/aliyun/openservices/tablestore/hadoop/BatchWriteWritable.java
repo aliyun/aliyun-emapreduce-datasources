@@ -65,7 +65,7 @@ public class BatchWriteWritable implements Writable, Externalizable {
                 out.writeByte(WritableConsts.UPDATE_ROW);
                 new RowUpdateChangeWritable((RowUpdateChange) rowChange).write(out);
             } else {
-                throw new AssertionError(
+                throw new IOException(
                     "unsupported RowChange type: " + rowChange.getClass().getName());
             }
         }

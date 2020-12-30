@@ -96,6 +96,8 @@
         <CodeCacheSize>512m</CodeCacheSize>
         <test_classpath_file>${project.build.directory}/spark-test-classpath.txt</test_classpath_file>
         <emr.shade.packageName>com.aliyun.emr_project</emr.shade.packageName>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <developers>
@@ -731,6 +733,40 @@
                         <configLocation>scalastyle-config.xml</configLocation>
                         <outputFile>${basedir}/target/scalastyle-output.xml</outputFile>
                     </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.1.0</version>
+                    <configuration>
+                        <failOnViolation>true</failOnViolation>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                        <sourceDirectories>
+                            <directory>${basedir}/src/main/java</directory>
+                            <directory>${basedir}/src/main/scala</directory>
+                        </sourceDirectories>
+                        <testSourceDirectories>
+                            <directory>${basedir}/src/test/java</directory>
+                        </testSourceDirectories>
+                        <configLocation>checkstyle.xml</configLocation>
+                        <outputFile>${basedir}/target/checkstyle-output.xml</outputFile>
+                        <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
+                        <outputEncoding>${project.reporting.outputEncoding}</outputEncoding>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.puppycrawl.tools</groupId>
+                            <artifactId>checkstyle</artifactId>
+                            <version>8.29</version>
+                        </dependency>
+                    </dependencies>
                     <executions>
                         <execution>
                             <goals>

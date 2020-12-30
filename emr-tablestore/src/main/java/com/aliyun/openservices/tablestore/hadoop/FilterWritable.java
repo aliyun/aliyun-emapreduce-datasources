@@ -51,7 +51,7 @@ public class FilterWritable implements Writable {
         write(out, filter);
     }
 
-    static private void write(DataOutput out, Filter filter) throws IOException {
+    private static void write(DataOutput out, Filter filter) throws IOException {
         if (filter instanceof ColumnPaginationFilter) {
             ColumnPaginationFilter paging = (ColumnPaginationFilter) filter;
             out.write(WritableConsts.FILTER_COLUMN_PAGINATION);
@@ -85,7 +85,7 @@ public class FilterWritable implements Writable {
                 out.write(WritableConsts.FILTER_LESS_EQUAL);
                 break;
             }
-            default: throw new AssertionError(
+            default: throw new IOException(
                 "unknown operator: " + single.getOperator().toString());
             }
             out.writeUTF(single.getColumnName());
@@ -108,7 +108,7 @@ public class FilterWritable implements Writable {
                 out.write(WritableConsts.FILTER_OR);
                 break;
             }
-            default: throw new AssertionError(
+            default: throw new IOException(
                 "unknown logical operator: " + comp.getOperationType().toString());
             }
             out.writeInt(comp.getSubFilters().size());
@@ -116,7 +116,7 @@ public class FilterWritable implements Writable {
                 write(out, f);
             }
         } else {
-            throw new AssertionError("unknown filter type " + filter.getFilterType().toString());
+            throw new IOException("unknown filter type " + filter.getFilterType().toString());
         }
     }
 

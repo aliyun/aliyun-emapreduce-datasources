@@ -62,8 +62,9 @@ public class OSSCopyTask extends Task {
     public void execute(TaskEngine engineRef) {
         Result result = new Result();
         try {
-            UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(uploadId, srcBucket, dstBucket, srcKey,
-                    dstKey, partSize, beginIndex, partNumber, conf);
+            UploadPartCopyResult uploadPartCopyResult = ossClient.uploadPartCopy(
+                uploadId, srcBucket, dstBucket, srcKey, dstKey, partSize, beginIndex,
+                partNumber, conf);
             result.getModels().put("uploadPartCopyResult", uploadPartCopyResult);
             // TODO: fail?
             result.setSuccess(true);

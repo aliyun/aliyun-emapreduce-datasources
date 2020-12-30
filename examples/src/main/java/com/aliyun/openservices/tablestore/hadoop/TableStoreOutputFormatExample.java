@@ -22,18 +22,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Collections;
-
-import com.aliyun.openservices.tablestore.hadoop.BatchWriteWritable;
-import com.aliyun.openservices.tablestore.hadoop.Credential;
-import com.aliyun.openservices.tablestore.hadoop.Endpoint;
-import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
-import com.aliyun.openservices.tablestore.hadoop.RowWritable;
-import com.aliyun.openservices.tablestore.hadoop.TableStore;
-import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
-import com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
@@ -57,7 +45,6 @@ import com.alicloud.openservices.tablestore.model.Column;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
 
 public class TableStoreOutputFormatExample {
-    private static final Logger logger = LoggerFactory.getLogger(TableStoreOutputFormatExample.class);
     private static String endpoint;
     private static String accessKeyId;
     private static String accessKeySecret;
@@ -103,8 +90,10 @@ public class TableStoreOutputFormatExample {
         System.err.println("--security-token\t(optional) security token");
         System.err.println("--endpoint\tendpoint");
         System.err.println("--instance\tinstance name");
-        System.err.println("--input-table\tinput table name, which must be a \"pet\" table. See docs about TableStoreOutputFormat for details.");
-        System.err.println("--output-table\tinput table name, which must be a \"owner-pet\" table. See docs about TableStoreOutputFormat for details.");
+        System.err.println("--input-table\tinput table name, "
+            + "which must be a \"pet\" table. See docs about TableStoreOutputFormat for details.");
+        System.err.println("--output-table\tinput table name, which must be a \"owner-pet\" "
+            + "table. See docs about TableStoreOutputFormat for details.");
     }
 
     private static SyncClient getOTSClient() {

@@ -63,7 +63,7 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
         FileSystem fs = FileSystem.get(URI.create(fileName), conf);
         if (!fs.exists(propertiesFilePath)) {
             throw new IOException(
-                    "Properties file does not exist: " + fileName);
+                "Properties file does not exist: " + fileName);
         }
         FSDataInputStream inputStream = fs.open(propertiesFilePath);
         Properties properties = new Properties();
@@ -146,7 +146,8 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
                         from.putIfAbsent(key, value);
                     }
                 } catch (IOException e) {
-                    LOG.error("Error while trying to read properties file " + propertiesFilePath, e);
+                    LOG.error("Error while trying to read properties file "
+                        + propertiesFilePath, e);
                 }
             }
 
@@ -154,24 +155,24 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
             if (accessKeyId == null) {
                 LOG.error("{} is required.", TableStoreConsts.ACCESS_KEY_ID);
                 throw new IllegalArgumentException(
-                        TableStoreConsts.ACCESS_KEY_ID + " is required.");
+                    TableStoreConsts.ACCESS_KEY_ID + " is required.");
             }
             String accessKeySecret = from.getProperty(TableStoreConsts.ACCESS_KEY_SECRET);
             if (accessKeySecret == null) {
                 LOG.error("{} is required.", TableStoreConsts.ACCESS_KEY_SECRET);
                 throw new IllegalArgumentException(
-                        TableStoreConsts.ACCESS_KEY_SECRET + " is required.");
+                    TableStoreConsts.ACCESS_KEY_SECRET + " is required.");
             }
             Credential cred = new Credential(accessKeyId, accessKeySecret,
                     from.getProperty(TableStoreConsts.SECURITY_TOKEN));
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                    .setCredential(jobConf, cred);
+                .setCredential(jobConf, cred);
 
             String endpoint = from.getProperty(TableStoreConsts.ENDPOINT);
             if (endpoint == null) {
                 LOG.error("{} is required.", TableStoreConsts.ENDPOINT);
                 throw new IllegalArgumentException(
-                        TableStoreConsts.ENDPOINT + " is required.");
+                    TableStoreConsts.ENDPOINT + " is required.");
             }
             String instance = from.getProperty(TableStoreConsts.INSTANCE);
             Endpoint ep;
@@ -181,16 +182,16 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
                 ep = new Endpoint(endpoint, instance);
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat
-                    .setEndpoint(jobConf, ep);
+                .setEndpoint(jobConf, ep);
 
             String table = from.getProperty(TableStoreConsts.TABLE_NAME);
             if (table == null) {
                 LOG.error("{} is required.", TableStoreConsts.TABLE_NAME);
                 throw new IllegalArgumentException(
-                        TableStoreConsts.TABLE_NAME + " is required.");
+                    TableStoreConsts.TABLE_NAME + " is required.");
             }
             com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
-                    .setOutputTable(jobConf, table);
+                .setOutputTable(jobConf, table);
 
             String t = from.getProperty(TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
             if (t != null) {
@@ -198,17 +199,17 @@ public class TableStoreStorageHandler extends DefaultStorageHandler {
                     int batchSize = Integer.valueOf(t);
                     if (batchSize <= 0) {
                         LOG.error("{} must be greater than 0.",
-                                TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
-                        throw new IllegalArgumentException(
-                                TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be greater than 0.");
+                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                        throw new IllegalArgumentException(TableStoreConsts.MAX_UPDATE_BATCH_SIZE
+                            + " must be greater than 0.");
                     }
                     com.aliyun.openservices.tablestore.hadoop.TableStoreOutputFormat
                             .setMaxBatchSize(jobConf, batchSize);
                 } catch (NumberFormatException ex) {
                     LOG.error("{} must be a positive integer.",
-                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
-                    throw new IllegalArgumentException(
-                            TableStoreConsts.MAX_UPDATE_BATCH_SIZE + " must be a positive integer.");
+                        TableStoreConsts.MAX_UPDATE_BATCH_SIZE);
+                    throw new IllegalArgumentException(TableStoreConsts.MAX_UPDATE_BATCH_SIZE
+                        + " must be a positive integer.");
                 }
             }
 

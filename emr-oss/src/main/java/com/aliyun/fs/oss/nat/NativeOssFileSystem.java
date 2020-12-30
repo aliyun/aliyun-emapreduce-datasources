@@ -648,7 +648,7 @@ public class NativeOssFileSystem extends FileSystem {
     private Long blockWritten = 0L;
     private int blockId = 0;
 
-    public NativeOssFsOutputStream(Configuration conf,
+    NativeOssFsOutputStream(Configuration conf,
         NativeFileSystemStore store, String key, boolean append,
         Progressable progress, int bufferSize) throws IOException {
       this.conf = conf;

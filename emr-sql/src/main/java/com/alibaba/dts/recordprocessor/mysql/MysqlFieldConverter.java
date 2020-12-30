@@ -51,10 +51,10 @@ public class MysqlFieldConverter implements FieldConverter {
         DATA_ADAPTER[12] = new DateTimeAdapter(); //Type.DATETIME
         DATA_ADAPTER[13] = new YearAdapter(); //Type.YEAR
         DATA_ADAPTER[14] = new DateTimeAdapter(); //Type.DATETIME
-        DATA_ADAPTER[15] = new CharacterAdapter(); 	//Type.STRING
+        DATA_ADAPTER[15] = new CharacterAdapter(); //Type.STRING
         DATA_ADAPTER[16] = new NumberStringAdapter(); //Type.BIT
 
-        DATA_ADAPTER[255] = new GeometryAdapter(); 	//Type.GEOMETRY;
+        DATA_ADAPTER[255] = new GeometryAdapter(); //Type.GEOMETRY;
         DATA_ADAPTER[254] = new CharacterAdapter(); //Type.STRING;
         DATA_ADAPTER[253] = new CharacterAdapter(); //Type.STRING;
 
@@ -70,9 +70,9 @@ public class MysqlFieldConverter implements FieldConverter {
         DATA_ADAPTER[245] = new TextObjectAdapter();  //Type.JSON;
     }
 
-    
-    static interface DataAdapter {
-        
+
+    interface DataAdapter {
+
         FieldValue getFieldValue(Object data);
     }
 
@@ -94,7 +94,8 @@ public class MysqlFieldConverter implements FieldConverter {
         public FieldValue getFieldValue(Object data) {
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.Integer integer = (com.alibaba.dts.formats.avro.Integer) data;
+                com.alibaba.dts.formats.avro.Integer integer =
+                    (com.alibaba.dts.formats.avro.Integer) data;
                 fieldValue.setValue(integer.getValue().getBytes(US_ASCII));
             }
             fieldValue.setEncoding("ASCII");
@@ -106,7 +107,8 @@ public class MysqlFieldConverter implements FieldConverter {
         public FieldValue getFieldValue(Object data) {
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.Decimal decimal = (com.alibaba.dts.formats.avro.Decimal) data;
+                com.alibaba.dts.formats.avro.Decimal decimal =
+                    (com.alibaba.dts.formats.avro.Decimal) data;
                 fieldValue.setValue(decimal.getValue().getBytes(US_ASCII));
             }
             fieldValue.setEncoding("ASCII");
@@ -118,7 +120,8 @@ public class MysqlFieldConverter implements FieldConverter {
         public FieldValue getFieldValue(Object data) {
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.Float aFloat = (com.alibaba.dts.formats.avro.Float) data;
+                com.alibaba.dts.formats.avro.Float aFloat =
+                    (com.alibaba.dts.formats.avro.Float) data;
                 fieldValue.setValue(Double.toString(aFloat.getValue()).getBytes(US_ASCII));
             }
             fieldValue.setEncoding("ASCII");
@@ -135,7 +138,8 @@ public class MysqlFieldConverter implements FieldConverter {
             if (null != data) {
                 StringBuilder timestampBuilder = new StringBuilder(64);
 
-                com.alibaba.dts.formats.avro.Timestamp timestamp = (com.alibaba.dts.formats.avro.Timestamp) data;
+                com.alibaba.dts.formats.avro.Timestamp timestamp =
+                    (com.alibaba.dts.formats.avro.Timestamp) data;
 
                 timestampBuilder.append(timestamp.getTimestamp());
                 if (null != timestamp.getMillis()) {
@@ -151,7 +155,7 @@ public class MysqlFieldConverter implements FieldConverter {
         }
     }
 
-    static abstract class AbstractDateTimeAdapter implements DataAdapter {
+   abstract static class AbstractDateTimeAdapter implements DataAdapter {
 
         void encodeDate(com.alibaba.dts.formats.avro.DateTime dateTime, byte[] out, int position) {
             if (null != dateTime && null != out) {
@@ -168,7 +172,8 @@ public class MysqlFieldConverter implements FieldConverter {
             }
         }
 
-        void encodeTime(com.alibaba.dts.formats.avro.DateTime dateTime, byte[] out, int position) {
+        void encodeTime(
+            com.alibaba.dts.formats.avro.DateTime dateTime, byte[] out, int position) {
             if (null != dateTime && null != out) {
                 out[position + 0] = (byte) ('0' + (dateTime.getHour() / 10));
                 out[position + 1] = (byte) ('0' + (dateTime.getHour() % 10));
@@ -181,7 +186,8 @@ public class MysqlFieldConverter implements FieldConverter {
             }
         }
 
-        void encodeTimeMillis(com.alibaba.dts.formats.avro.DateTime dateTime, byte[] out, int position) {
+        void encodeTimeMillis(
+            com.alibaba.dts.formats.avro.DateTime dateTime, byte[] out, int position) {
             if (null != dateTime.getMillis() && 0 != dateTime.getMillis()) {
                 int mills = dateTime.getMillis();
                 out[position] = '.';
@@ -205,7 +211,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.DateTime dateTime = (com.alibaba.dts.formats.avro.DateTime) data;
+                com.alibaba.dts.formats.avro.DateTime dateTime =
+                    (com.alibaba.dts.formats.avro.DateTime) data;
 
                 byte[] date = new byte[10];
                 encodeDate(dateTime, date, 0);
@@ -225,7 +232,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.DateTime dateTime = (com.alibaba.dts.formats.avro.DateTime)data;
+                com.alibaba.dts.formats.avro.DateTime dateTime =
+                    (com.alibaba.dts.formats.avro.DateTime)data;
 
                 // 判断是否是负数
                 int head = 0;
@@ -280,7 +288,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.DateTime dateTime = (com.alibaba.dts.formats.avro.DateTime) data;
+                com.alibaba.dts.formats.avro.DateTime dateTime =
+                    (com.alibaba.dts.formats.avro.DateTime) data;
 
                 byte[] time = null;
                 //忽略毫秒位值是0
@@ -310,7 +319,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.DateTime dateTime = (com.alibaba.dts.formats.avro.DateTime) data;
+                com.alibaba.dts.formats.avro.DateTime dateTime =
+                    (com.alibaba.dts.formats.avro.DateTime) data;
                 fieldValue.setValue(Integer.toString(dateTime.getYear()).getBytes(US_ASCII));
             }
 
@@ -326,7 +336,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.Character character = (com.alibaba.dts.formats.avro.Character) data;
+                com.alibaba.dts.formats.avro.Character character =
+                    (com.alibaba.dts.formats.avro.Character) data;
                 fieldValue.setValue(character.getValue().array());
                 fieldValue.setEncoding(character.getCharset());
             } else {
@@ -343,7 +354,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.BinaryGeometry geometry = (com.alibaba.dts.formats.avro.BinaryGeometry) data;
+                com.alibaba.dts.formats.avro.BinaryGeometry geometry =
+                    (com.alibaba.dts.formats.avro.BinaryGeometry) data;
                 fieldValue.setValue(geometry.getValue().array());
             }
             return fieldValue;
@@ -357,7 +369,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.BinaryObject binaryObject = (com.alibaba.dts.formats.avro.BinaryObject) data;
+                com.alibaba.dts.formats.avro.BinaryObject binaryObject =
+                    (com.alibaba.dts.formats.avro.BinaryObject) data;
                 fieldValue.setValue(binaryObject.getValue().array());
             }
             return fieldValue;
@@ -371,7 +384,8 @@ public class MysqlFieldConverter implements FieldConverter {
 
             FieldValue fieldValue = new FieldValue();
             if (null != data) {
-                com.alibaba.dts.formats.avro.TextObject textObject = (com.alibaba.dts.formats.avro.TextObject) data;
+                com.alibaba.dts.formats.avro.TextObject textObject =
+                    (com.alibaba.dts.formats.avro.TextObject) data;
                 byte[] bytes = textObject.getValue().getBytes(UTF_8);
                 fieldValue.setValue(bytes);
             }

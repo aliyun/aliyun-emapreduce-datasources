@@ -59,12 +59,14 @@ public final class RetryUtil {
         } else {
           retries = 0;
         }
-        LOG.warn("Connecting log-service failed: " + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
+        LOG.warn("Connecting log-service failed: "
+            + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
       } catch (Exception ex) {
         if (retries >= maxRetry) {
           throw ex;
         }
-        LOG.warn("Connecting log-service failed: " + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
+        LOG.warn("Connecting log-service failed: "
+            + ex.getMessage() + ", retrying " + retries + "/" + maxRetry);
         ++retries;
       }
       Thread.sleep(backoff);

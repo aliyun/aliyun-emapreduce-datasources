@@ -31,9 +31,11 @@ public class RegexMetricPredicate {
 
     public boolean matches(MetricName name, KafkaMetric metric) {
         Boolean excluded = pattern.matcher(name.name()).matches();
-        // Collect client aggregated metrics only. So we need to exclude topic-level or broker-level metrics, including:
+        // Collect client aggregated metrics only.
+        // So we need to exclude topic-level or broker-level metrics, including:
         // 1. exclude metrics whose `tags` contain "topic" and "node-id".
-        // 2. exclude metrics whose MetricName format is '{topic}-{partition}.xxx', like test-1.records-lag-avg.
+        // 2. exclude metrics whose MetricName format is '{topic}-{partition}.xxx',
+        //    like test-1.records-lag-avg.
         Boolean topicLevelMetrics = name.tags().containsKey("topic")
             || name.tags().containsKey("node-id")
             || name.name().contains(".");

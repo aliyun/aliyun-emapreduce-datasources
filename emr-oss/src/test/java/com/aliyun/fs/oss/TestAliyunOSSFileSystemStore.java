@@ -75,7 +75,8 @@ public class TestAliyunOSSFileSystemStore {
     if (envType == null) {
       envType = "public";
     } else if (!envType.equalsIgnoreCase("private") && !envType.equalsIgnoreCase("public")) {
-      throw new IOException("Unsupported test environment type: " + envType + ", only support private or public");
+      throw new IOException("Unsupported test environment type: " + envType
+          + ", only support private or public");
     }
     if (envType.equals("public")) {
       conf.set("fs.oss.endpoint", "oss-" + region + ".aliyuncs.com");
