@@ -41,13 +41,6 @@ import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
 
-import com.aliyun.openservices.tablestore.hadoop.Credential;
-import com.aliyun.openservices.tablestore.hadoop.Endpoint;
-import com.aliyun.openservices.tablestore.hadoop.PrimaryKeyWritable;
-import com.aliyun.openservices.tablestore.hadoop.RowWritable;
-import com.aliyun.openservices.tablestore.hadoop.TableStore;
-import com.aliyun.openservices.tablestore.hadoop.TableStoreInputFormat;
-
 public class RowCounter {
     private static String endpoint;
     private static String accessKeyId;
@@ -56,11 +49,11 @@ public class RowCounter {
     private static String instance;
     private static String table;
     private static String outputPath;
-    
-    public static class RowCounterMapper 
+
+    public static class RowCounterMapper
       extends Mapper<PrimaryKeyWritable, RowWritable, Text, LongWritable> {
-        private final static Text agg = new Text("TOTAL");
-        private final static LongWritable one = new LongWritable(1);
+        private static final Text agg = new Text("TOTAL");
+        private static final LongWritable one = new LongWritable(1);
 
         @Override public void map(PrimaryKeyWritable key, RowWritable value,
             Context context) throws IOException, InterruptedException {
@@ -80,7 +73,7 @@ public class RowCounter {
             context.write(key, new LongWritable(sum));
         }
     }
-    
+
     private static boolean parseArgs(String[] args) {
         for(int i = 0; i < args.length;) {
             if (args[i].equals("--endpoint")) {
@@ -163,7 +156,8 @@ public class RowCounter {
         System.err.println("--endpoint\tendpoint");
         System.err.println("--instance\tinstance name");
         System.err.println("--table\ttable name");
-        System.err.println("--output\tdirectory to place outputs. this directory must be nonexistent.");
+        System.err.println(
+            "--output\tdirectory to place outputs. this directory must be nonexistent.");
     }
 
     public static void main(String[] args) throws Exception {

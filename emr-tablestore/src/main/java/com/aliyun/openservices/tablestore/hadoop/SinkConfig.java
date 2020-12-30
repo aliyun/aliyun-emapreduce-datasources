@@ -56,12 +56,12 @@ public class SinkConfig implements Writable {
     public SinkConfig(String version,
                       String writerBatchRequestType, boolean writerBatchOrderGuaranteed,
                       boolean writerBatchDuplicateAllowed, String writerRowChangeType,
-                      int writerBucketNum, int writerCallbackPoolNum, int writerCallbackPoolQueueSize,
-                      int writerConcurrency, int writerBufferSize, int writerFlushIntervalMs, int clientIoPool,
-                      int writerMaxBatchSize, int writerMaxBatchCount, int writerMaxColumnCount, int writerMaxAttrSize,
-                      int writerMaxPkSize,
-                      String clientRetryStrategy, int clientRetryTime, int clientRetryCount, int clientRetryPause,
-                      boolean ignoreOnFailureEnabled) {
+                      int writerBucketNum, int writerCallbackPoolNum,
+                      int writerCallbackPoolQueueSize, int writerConcurrency, int writerBufferSize,
+                      int writerFlushIntervalMs, int clientIoPool, int writerMaxBatchSize,
+                      int writerMaxBatchCount, int writerMaxColumnCount, int writerMaxAttrSize,
+                      int writerMaxPkSize, String clientRetryStrategy, int clientRetryTime,
+                      int clientRetryCount, int clientRetryPause, boolean ignoreOnFailureEnabled) {
         this.version = version;
         this.writerBatchRequestType = writerBatchRequestType;
         this.writerBatchOrderGuaranteed = writerBatchOrderGuaranteed;

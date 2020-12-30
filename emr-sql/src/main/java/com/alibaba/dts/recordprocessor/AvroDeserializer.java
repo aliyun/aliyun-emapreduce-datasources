@@ -26,7 +26,8 @@ import org.slf4j.LoggerFactory;
 public class AvroDeserializer {
     private static final Logger log = LoggerFactory.getLogger(AvroDeserializer.class);
 
-    private final SpecificDatumReader<Record> reader = new SpecificDatumReader<Record>(com.alibaba.dts.formats.avro.Record.class);
+    private final SpecificDatumReader<Record> reader =
+        new SpecificDatumReader<>(com.alibaba.dts.formats.avro.Record.class);
 
     public AvroDeserializer() {}
 

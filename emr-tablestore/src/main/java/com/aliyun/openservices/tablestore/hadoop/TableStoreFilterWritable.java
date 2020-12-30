@@ -61,7 +61,7 @@ public class TableStoreFilterWritable implements Writable {
                     out.write(WritableConsts.FILTER_NOT);
                     break;
                 default:
-                    throw new AssertionError(
+                    throw new IOException(
                             "unknown logical operator: " + filter.getLogicOperator().toString());
             }
             out.writeInt(filter.getSubFilters().size());
@@ -102,7 +102,7 @@ public class TableStoreFilterWritable implements Writable {
                     out.write(WritableConsts.FILTER_IS_NULL);
                     break;
                 default:
-                    throw new AssertionError(
+                    throw new IOException(
                             "unknown operator: " + filter.getCompareOperator().toString());
             }
             out.writeUTF(filter.getColumnName());

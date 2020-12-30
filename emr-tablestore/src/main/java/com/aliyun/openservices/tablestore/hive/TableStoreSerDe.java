@@ -18,9 +18,6 @@
 
 package com.aliyun.openservices.tablestore.hive;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.IOException;
 import java.util.Properties;
 import java.util.Arrays;
 import java.util.List;
@@ -34,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.AbstractSerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
@@ -61,11 +57,8 @@ import com.alicloud.openservices.tablestore.model.RowUpdateChange;
 import com.alicloud.openservices.tablestore.model.PrimaryKey;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyColumn;
 import com.alicloud.openservices.tablestore.model.PrimaryKeyValue;
-import com.alicloud.openservices.tablestore.model.PrimaryKeyType;
 import com.alicloud.openservices.tablestore.model.PrimaryKeySchema;
-import com.alicloud.openservices.tablestore.model.Column;
 import com.alicloud.openservices.tablestore.model.ColumnValue;
-import com.alicloud.openservices.tablestore.model.ColumnType;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
 public class TableStoreSerDe extends AbstractSerDe {
@@ -86,7 +79,8 @@ public class TableStoreSerDe extends AbstractSerDe {
         throws SerDeException {
         logger.debug("table properties: {}", props);
         if (!"TRUE".equals(props.getProperty("EXTERNAL"))) {
-            logger.error("only external table are supported so far: {}", props.getProperty("EXTERNAL"));
+            logger.error("only external table are supported so far: {}",
+                props.getProperty("EXTERNAL"));
             throw new SerDeException("only external table are supported so far");
         }
 
@@ -356,7 +350,8 @@ public class TableStoreSerDe extends AbstractSerDe {
                         throw new SerDeException("data type mismatch");
                     }
                 default:
-                    logger.error("unknown data type on deserializing. row: {}, column: {}, value: {}",
+                    logger.error(
+                        "unknown data type on deserializing. row: {}, column: {}, value: {}",
                         pkey, name, val);
                     throw new SerDeException("unknown data type of primary key");
                 }

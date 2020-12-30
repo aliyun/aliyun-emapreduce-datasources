@@ -72,7 +72,7 @@ public class ColumnValueWritable implements Writable {
             break;
         }
         default: {
-            throw new AssertionError("unknown ColumnType");
+            throw new IOException("unknown ColumnType");
         }
         }
     }

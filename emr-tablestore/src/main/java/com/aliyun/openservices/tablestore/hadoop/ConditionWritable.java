@@ -36,8 +36,6 @@ import com.alicloud.openservices.tablestore.model.filter.Filter;
 import com.alicloud.openservices.tablestore.model.filter.CompositeColumnValueFilter;
 import com.alicloud.openservices.tablestore.model.filter.SingleColumnValueFilter;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
-import com.aliyun.openservices.tablestore.hadoop.FilterWritable;
-import com.aliyun.openservices.tablestore.hadoop.WritableConsts;
 
 public class ConditionWritable implements Writable, Externalizable {
     private Condition condition;
@@ -134,13 +132,13 @@ public class ConditionWritable implements Writable, Externalizable {
         this.write(out);
     }
 
-    private ColumnCondition filterToColumnCondition(Filter filter) {
+    private ColumnCondition filterToColumnCondition(Filter filter) throws IOException {
         if (filter instanceof SingleColumnValueFilter) {
             return ((SingleColumnValueFilter) filter).toCondition();
         } else if (filter instanceof CompositeColumnValueFilter) {
             return ((CompositeColumnValueFilter) filter).toCondition();
         } else {
-            throw new AssertionError("unknown filter type");
+            throw new IOException("unknown filter type");
         }
     }
 }

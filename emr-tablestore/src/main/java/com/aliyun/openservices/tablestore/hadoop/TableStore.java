@@ -1,3 +1,4 @@
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -97,7 +98,8 @@ public class TableStore {
     /**
      * Set an endpoint(with/without instance name) into a Configuration.
      */
-    public static void setFilterPushdownConfig(Configuration conf, FilterPushdownConfigSerialize filterPushdownConfigSerialize) {
+    public static void setFilterPushdownConfig(
+        Configuration conf, FilterPushdownConfigSerialize filterPushdownConfigSerialize) {
         Preconditions.checkNotNull(conf, "conf must be nonnull");
         if (filterPushdownConfigSerialize == null) {
             filterPushdownConfigSerialize = new FilterPushdownConfigSerialize(true, true);
@@ -145,12 +147,14 @@ public class TableStore {
         Credential cred = Credential.deserialize(conf.get(TableStore.CREDENTIAL));
         Endpoint ep = Endpoint.deserialize(conf.get(TableStore.ENDPOINT));
         String tableName = conf.get(TableStoreOutputFormat.OUTPUT_TABLE);
-        SinkConfig sinkConfig = SinkConfig.deserialize(conf.get(TableStoreOutputFormat.SINK_CONFIG));
+        SinkConfig sinkConfig =
+            SinkConfig.deserialize(conf.get(TableStoreOutputFormat.SINK_CONFIG));
 
         // Client Configurations
         ClientConfiguration cc = new ClientConfiguration();
         if ("time".equals(sinkConfig.getClientRetryStrategy())) {
-            cc.setRetryStrategy(new DefaultRetryStrategy(sinkConfig.getClientRetryTime(), TimeUnit.SECONDS));
+            cc.setRetryStrategy(
+                new DefaultRetryStrategy(sinkConfig.getClientRetryTime(), TimeUnit.SECONDS));
         } else if ("count".equals(sinkConfig.getClientRetryStrategy())) {
             cc.setRetryStrategy(new AlwaysRetryStrategy(sinkConfig.getClientRetryCount(),
                     sinkConfig.getClientRetryPause()));

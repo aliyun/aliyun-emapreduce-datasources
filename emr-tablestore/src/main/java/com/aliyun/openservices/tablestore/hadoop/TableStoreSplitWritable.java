@@ -47,7 +47,8 @@ public class TableStoreSplitWritable implements Writable {
         if (split.getKvSplit() != null) {
             new ComputeSplitWritable(split.getKvSplit()).write(out);
         } else {
-            new ComputeSplitWritable(split.getSessionId(), split.getSplitId(), split.getMaxParallel()).write(out);
+            new ComputeSplitWritable(split.getSessionId(), split.getSplitId(),
+                split.getMaxParallel()).write(out);
         }
         new TableStoreFilterWritable(split.getFilter(), split.getRequiredColumns()).write(out);
         List<String> geoColumnNames = split.getGeoColumnNames();
@@ -88,8 +89,9 @@ public class TableStoreSplitWritable implements Writable {
         for (int i = 0; i < geoColumnSize; i++) {
             geoColumnNames.add(in.readUTF());
         }
-        TablestoreSplit rtSplit = new TablestoreSplit(splitType, fw.getFilter(), fw.getRequiredColumns(),
-                splitWritable.getSessionId(), splitWritable.getSplitId(), splitWritable.getMaxParallel(), geoColumnNames);
+        TablestoreSplit rtSplit = new TablestoreSplit(splitType, fw.getFilter(),
+            fw.getRequiredColumns(), splitWritable.getSessionId(), splitWritable.getSplitId(),
+            splitWritable.getMaxParallel(), geoColumnNames);
         rtSplit.setSplitName(splitName);
         rtSplit.setTableName(tableName);
         rtSplit.setKvSplit(kvSplit);

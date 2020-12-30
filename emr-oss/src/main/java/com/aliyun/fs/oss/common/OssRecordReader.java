@@ -56,8 +56,8 @@ public class OssRecordReader implements RecordReader<LongWritable, Text> {
 
   public OssRecordReader(Configuration job, FileSplit split, FileSystem fs,
                          byte[] recordDelimiter) throws IOException {
-    this.maxLineLength = job.getInt(org.apache.hadoop.mapreduce.lib.input.
-        LineRecordReader.MAX_LINE_LENGTH, Integer.MAX_VALUE);
+    this.maxLineLength = job.getInt(org.apache.hadoop.mapreduce.lib.input
+        .LineRecordReader.MAX_LINE_LENGTH, Integer.MAX_VALUE);
     start = split.getStart();
     end = start + split.getLength();
     final Path file = split.getPath();

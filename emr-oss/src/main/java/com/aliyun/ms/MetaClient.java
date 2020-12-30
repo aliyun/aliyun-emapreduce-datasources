@@ -42,7 +42,7 @@ public class MetaClient {
 
   static final OkHttpClient ECS_META_CLIENT = new OkHttpClient();
 
-  static private String requestMetaFromEmr(String host, String url) {
+  private static String requestMetaFromEmr(String host, String url) {
     String finalUrl = "http://" + host + ":" + PORT + url;
     try {
       return HttpClientUtil.get(finalUrl);
@@ -52,7 +52,7 @@ public class MetaClient {
     }
   }
 
-  static private String requestMetaFromEcs(String metaItem) {
+  private static String requestMetaFromEcs(String metaItem) {
     String finalUrl = META_SERVICE_URL + metaItem;
     try {
       Request request = new Request.Builder()
@@ -70,16 +70,18 @@ public class MetaClient {
     }
   }
 
-  /* *
+  /**
    * use old way to get ststoken if return null
-   * */
-  static private String getEmrCredentials(String type) {
+   **/
+  private static String getEmrCredentials(String type) {
     String emrRole = requestMetaFromEcs("Ram/security-credentials/");
-    if (emrRole == null)
+    if (emrRole == null) {
       return null;
+    }
     String credentials = requestMetaFromEcs("Ram/security-credentials/" + emrRole);
-    if (credentials == null)
+    if (credentials == null) {
       return null;
+    }
     JsonParser parser = new JsonParser();
     JsonObject jsonObject = parser.parse(credentials).getAsJsonObject();
     if (jsonObject.get("Code").getAsString().equals("Success")) {
@@ -89,7 +91,7 @@ public class MetaClient {
       return null;
     }
   }
-  static public String getClusterRegionName() {
+  public static String getClusterRegionName() {
     String regionName = requestMetaFromEcs("region-id");
     if (regionName == null) {
       regionName = requestMetaFromEmr("localhost", CLUSTER_REGION_URL);
@@ -97,7 +99,7 @@ public class MetaClient {
     return regionName;
   }
 
-  static public String getClusterNetworkType() {
+  public static String getClusterNetworkType() {
     String networkType = requestMetaFromEcs("network-type");
     if (networkType == null) {
       networkType = requestMetaFromEmr("localhost", CLUSTER_NETWORK_TYPE_URL);
@@ -105,11 +107,11 @@ public class MetaClient {
     return networkType;
   }
 
-  static public String getClusterRoleName() {
+  public static String getClusterRoleName() {
     return requestMetaFromEmr("localhost", CLUSTER_ROLE_NAME_URL);
   }
 
-  static public String getRoleAccessKeyId() {
+  public static String getRoleAccessKeyId() {
     String accessKeyId = getEmrCredentials("accessKeyId");
     if (accessKeyId == null) {
       accessKeyId = requestMetaFromEmr("localhost", ROLE_ACCESS_KEY_ID_URL);
@@ -117,7 +119,7 @@ public class MetaClient {
     return accessKeyId;
   }
 
-  static public String getRoleAccessKeySecret() {
+  public static String getRoleAccessKeySecret() {
     String accessKeySecret = getEmrCredentials("accessKeySecret");
     if (accessKeySecret == null) {
       accessKeySecret = requestMetaFromEmr("localhost", ROLE_ACCESS_KEY_SECRET_URL);
@@ -125,12 +127,11 @@ public class MetaClient {
     return accessKeySecret;
   }
 
-  static public String getRoleSecurityToken() {
+  public static String getRoleSecurityToken() {
     String securityToken = getEmrCredentials("securityToken");
     if (securityToken == null) {
       securityToken = requestMetaFromEmr("localhost", ROLE_SECURITY_TOKEN_URL);
     }
     return securityToken;
   }
-
 }

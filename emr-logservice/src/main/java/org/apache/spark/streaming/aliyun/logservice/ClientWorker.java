@@ -47,7 +47,7 @@ public class ClientWorker implements Runnable {
   private final LogHubConfig mLogHubConfig;
   private final LogHubHeartBeat mLogHubHeartBeat;
   private boolean mShutDown = false;
-  private final Map<Integer, LogHubConsumer> mShardConsumer = new HashMap<Integer, LogHubConsumer>();
+  private final Map<Integer, LogHubConsumer> mShardConsumer = new HashMap<>();
   private final ExecutorService mExecutorService = Executors.newCachedThreadPool();
   private LogHubClientAdapter mLogHubClientAdapter;
   private Client mClient;

@@ -65,7 +65,7 @@ public class WritableConsts {
     public static final byte FILTER_LESS_EQUAL = 74;
     public static final byte FILTER_IN = 75;
     public static final byte FILTER_IS_NULL = 76;
-//    public static final byte FILTER_IS_NOT_NULL = 77;
+    // public static final byte FILTER_IS_NOT_NULL = 77;
     public static final byte FILTER_COMPOSITED = 78;
     public static final byte FILTER_START_WITH = 79;
     public static final byte FILTER_NOT = 80;
