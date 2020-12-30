@@ -44,7 +44,7 @@ OPTIONS(
 tunnel.id="07bb3bfc-4bb6-4285-b3d6-c7b77f36bc49",
 maxoffsetsperchannel="10000");
 
--- create temporary function ots_col_parser as 'org.apache.spark.sql.aliyun.udfs.tablestore.ResolveTableStoreBinlogUDF' using jar '/root/emr-sql_2.11-2.1.0.jar';
+-- create temporary function ots_col_parser as 'org.apache.spark.sql.aliyun.udfs.tablestore.ResolveTableStoreBinlogUDF' using jar '/root/emr-sql_2.11-2.2.0.jar';
 CREATE STREAM orders_job
 OPTIONS (
 checkpointLocation='/delta/orders_checkpoint',
