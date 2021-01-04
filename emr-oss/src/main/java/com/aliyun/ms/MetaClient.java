@@ -112,7 +112,7 @@ public class MetaClient {
   }
 
   public static String getRoleAccessKeyId() {
-    String accessKeyId = getEmrCredentials("accessKeyId");
+    String accessKeyId = getEmrCredentials("AccessKeyId");
     if (accessKeyId == null) {
       accessKeyId = requestMetaFromEmr("localhost", ROLE_ACCESS_KEY_ID_URL);
     }
@@ -120,7 +120,7 @@ public class MetaClient {
   }
 
   public static String getRoleAccessKeySecret() {
-    String accessKeySecret = getEmrCredentials("accessKeySecret");
+    String accessKeySecret = getEmrCredentials("AccessKeySecret");
     if (accessKeySecret == null) {
       accessKeySecret = requestMetaFromEmr("localhost", ROLE_ACCESS_KEY_SECRET_URL);
     }
@@ -128,7 +128,7 @@ public class MetaClient {
   }
 
   public static String getRoleSecurityToken() {
-    String securityToken = getEmrCredentials("securityToken");
+    String securityToken = getEmrCredentials("SecurityToken");
     if (securityToken == null) {
       securityToken = requestMetaFromEmr("localhost", ROLE_SECURITY_TOKEN_URL);
     }
