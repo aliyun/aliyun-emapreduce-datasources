@@ -37,13 +37,15 @@ public class VersionInfoUtils {
 
     public static String getDefaultUserAgent() {
         if (defaultUserAgent == null) {
-            defaultUserAgent = USER_AGENT_PREFIX + "-" + getVersion()+"/" + System.getProperty("java.version");
+            defaultUserAgent = USER_AGENT_PREFIX
+                + "-" + getVersion()+"/" + System.getProperty("java.version");
         }
         return defaultUserAgent;
     }
 
     private static void initializeVersion() {
-        InputStream inputStream = VersionInfoUtils.class.getClassLoader().getResourceAsStream(VERSION_INFO_FILE);
+        InputStream inputStream =
+            VersionInfoUtils.class.getClassLoader().getResourceAsStream(VERSION_INFO_FILE);
         Properties versionInfoProperties = new Properties();
         try {
             if (inputStream == null) {

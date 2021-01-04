@@ -173,7 +173,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         Filter filter = new Filter(Filter.CompareOperator.EMPTY_FILTER);
         List<String> requiredColumns = new ArrayList<>();
         if (conf.get(FILTER) != null) {
-            TableStoreFilterWritable origFilter = TableStoreFilterWritable.deserialize(conf.get(FILTER));
+            TableStoreFilterWritable origFilter =
+                TableStoreFilterWritable.deserialize(conf.get(FILTER));
             if (origFilter != null) {
                 filter = origFilter.getFilter();
                 requiredColumns = origFilter.getRequiredColumns();
@@ -184,14 +185,19 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
         ComputeParameters computeParams = new ComputeParameters();
         if (conf.get(COMPUTE_PARAMS) != null) {
             ComputeParams cp = ComputeParams.deserialize(conf.get(COMPUTE_PARAMS));
-            ComputeParameters.ComputeMode computeMode = ComputeParameters.ComputeMode.valueOf(cp.getComputeMode());
+            ComputeParameters.ComputeMode computeMode =
+                ComputeParameters.ComputeMode.valueOf(cp.getComputeMode());
             LOG.info("Compute mode: {}, max splits: {}, split size: {}MB, seachIndexName: {}",
-                    cp.getComputeMode(), cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), cp.getSearchIndexName());
-            if (computeMode == ComputeParameters.ComputeMode.Search && !cp.getSearchIndexName().isEmpty()) {
+                cp.getComputeMode(), cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(),
+                cp.getSearchIndexName());
+            if (computeMode == ComputeParameters.ComputeMode.Search
+                && !cp.getSearchIndexName().isEmpty()) {
                 LOG.info("Generate Search compute parameters");
-                computeParams = new ComputeParameters(cp.getSearchIndexName(), cp.getMaxSplitsCount());
+                computeParams = new ComputeParameters(cp.getSearchIndexName(),
+                    cp.getMaxSplitsCount());
             } else {
-                computeParams = new ComputeParameters(cp.getMaxSplitsCount(), cp.getSplitSizeInMBs(), computeMode);
+                computeParams = new ComputeParameters(cp.getMaxSplitsCount(),
+                    cp.getSplitSizeInMBs(), computeMode);
             }
         }
 
@@ -202,7 +208,8 @@ public class TableStoreInputFormat extends InputFormat<PrimaryKeyWritable, RowWr
             }
         }
         List<ITablestoreSplit> splits = splitManager.generateTablestoreSplits(
-                (SyncClient) syncClient, filter, conf.get(TABLE_NAME), computeParams, requiredColumns);
+            (SyncClient) syncClient, filter, conf.get(TABLE_NAME), computeParams,
+            requiredColumns);
 
         List<InputSplit> inputSplits = new ArrayList<InputSplit>();
         for (ITablestoreSplit split : splits) {

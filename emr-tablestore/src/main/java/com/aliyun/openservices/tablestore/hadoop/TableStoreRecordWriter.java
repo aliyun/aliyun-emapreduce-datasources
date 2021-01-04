@@ -39,7 +39,7 @@ import com.alicloud.openservices.tablestore.model.BatchWriteRowRequest;
 import com.alicloud.openservices.tablestore.model.BatchWriteRowResponse;
 import com.alicloud.openservices.tablestore.core.utils.Preconditions;
 
-public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWritable> {
+public class    TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWritable> {
     private static final Logger logger = LoggerFactory.getLogger(TableStoreRecordWriter.class);
 
     private SyncClientInterface ots;
@@ -150,7 +150,8 @@ public class TableStoreRecordWriter extends RecordWriter<Writable, BatchWriteWri
         BatchWriteRowResponse resp = ots.batchWriteRow(req);
         List<BatchWriteRowResponse.RowResult> failed = resp.getFailedRows();
         for(BatchWriteRowResponse.RowResult res: failed) {
-            logger.error("fail to write to TableStore. table: {} error-code: {} error-message: {} request-id: {}",
+            logger.error("fail to write to TableStore. table: {} error-code: {} error-message: "
+                + "{} request-id: {}",
                 res.getTableName(),
                 res.getError().getCode(),
                 res.getError().getMessage(),

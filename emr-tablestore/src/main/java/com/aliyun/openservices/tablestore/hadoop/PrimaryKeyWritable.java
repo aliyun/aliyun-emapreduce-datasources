@@ -77,7 +77,7 @@ public class PrimaryKeyWritable implements WritableComparable<PrimaryKeyWritable
                 out.writeInt(bs.length);
                 out.write(bs);
             } else {
-                throw new AssertionError("");
+                throw new IOException("");
             }
         }
     }

@@ -115,7 +115,7 @@ public class OssInputStream extends FSInputStream {
   }
 
   @Override
-  public synchronized int read(byte buf[], int off, int len)
+  public synchronized int read(byte[] buf, int off, int len)
       throws IOException {
     if (closed) {
       throw new IOException("Stream closed");

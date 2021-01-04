@@ -31,79 +31,79 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-maxcompute_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-logservice_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-tablestore</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-ons_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-mns_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-redis_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-hbase_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-jdbc_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-dts_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-kudu_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-datahub_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-druid_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-sql_2.11</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
         <dependency>
@@ -115,13 +115,13 @@
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-common</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
         
         <dependency>
             <groupId>com.aliyun.emr</groupId>
             <artifactId>emr-kafka-client-metrics</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0</version>
         </dependency>
 
 ```

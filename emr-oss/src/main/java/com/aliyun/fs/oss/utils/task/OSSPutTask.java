@@ -61,8 +61,8 @@ public class OSSPutTask extends Task {
     public void execute(TaskEngine engineRef) {
         Result result = new Result();
         try {
-            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadId, bucket, key, partSize, beginIndex,
-                    partNumber, localFile, conf);
+            UploadPartResult uploadPartResult = ossClient.uploadPart(uploadId, bucket, key,
+                partSize, beginIndex, partNumber, localFile, conf);
             result.getModels().put("uploadPartResult", uploadPartResult);
             // TODO: fail?
             result.setSuccess(true);

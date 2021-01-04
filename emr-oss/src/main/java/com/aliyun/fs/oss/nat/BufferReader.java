@@ -450,7 +450,7 @@ public class BufferReader {
     private int length = -1;
     private boolean _continue = true;
 
-    public ConcurrentReader(int readerId) throws FileNotFoundException {
+    ConcurrentReader(int readerId) throws FileNotFoundException {
       assert (bufferSize % 2 == 0);
       assert (concurrentStreams % 2 == 0);
       this.readerId = readerId;
@@ -495,6 +495,7 @@ public class BufferReader {
           try {
             Thread.sleep(100);
           } catch (InterruptedException e) {
+            // ok
           }
           if (i % 600 == 0) {
             LOG.info("[ConcurrentReader-" + readerId + "] waiting for " +

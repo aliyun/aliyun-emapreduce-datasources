@@ -40,9 +40,11 @@ public class TestAliyunONS {
     String accessId = args[4];
     String accessKey = args[5];
 
-    JavaStreamingContext jssc = new JavaStreamingContext(new SparkConf().setAppName("test-aliyun-ons"),
+    JavaStreamingContext jssc = new JavaStreamingContext(
+        new SparkConf().setAppName("test-aliyun-ons"),
         new Duration(duration));
-    OnsUtils.createDefaultStreams(jssc, consumerId, topic, tags, accessId, accessKey, StorageLevel.MEMORY_AND_DISK_2())
+    OnsUtils.createDefaultStreams(
+        jssc, consumerId, topic, tags, accessId, accessKey, StorageLevel.MEMORY_AND_DISK_2())
         .foreachRDD(new VoidFunction<JavaRDD<byte[]>>() {
           @Override
           public void call(JavaRDD<byte[]> javaRDD) throws Exception {

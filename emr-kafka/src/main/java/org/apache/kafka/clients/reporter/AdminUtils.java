@@ -33,13 +33,21 @@ public class AdminUtils {
     private ZkClient zkClient;
     private List<ACL> defaultAcls;
 
-    public AdminUtils(String zkUrl, int sessionTimeout, int connectionTimeout, boolean isZkSecurityEnabled) {
+    public AdminUtils(
+        String zkUrl,
+        int sessionTimeout,
+        int connectionTimeout,
+        boolean isZkSecurityEnabled) {
         ZkConnection zkConnection = new ZkConnection(zkUrl, sessionTimeout);
         this.zkClient = new ZkClient(zkConnection, connectionTimeout, new ZKStringSerializer());
         this.defaultAcls = defaultAcls(isZkSecurityEnabled);
     }
 
-    public void createTopic(String topic, int partitions, int replicationFactor, Properties topicConfig) {
+    public void createTopic(
+        String topic,
+        int partitions,
+        int replicationFactor,
+        Properties topicConfig) {
         String topicPath = "/brokers/topics/" + topic;
         try {
             if (zkClient.exists(topicPath)) {
@@ -110,7 +118,10 @@ public class AdminUtils {
         return validBrokerIds;
     }
 
-    private Map<String, int[]> createReplicaAssignment(List<String> brokerIds, int partitions, int replicationFactor) {
+    private Map<String, int[]> createReplicaAssignment(
+        List<String> brokerIds,
+        int partitions,
+        int replicationFactor) {
         int numBrokers = brokerIds.size();
         Map<String, int[]> replicaAssignment = new HashMap<>();
         for(int i = 0; i < partitions; i++) {
@@ -123,9 +134,13 @@ public class AdminUtils {
         return replicaAssignment;
     }
 
-    private void writeTopicPartitionAssignment(String topic, int partitions, int replicationFactor) {
+    private void writeTopicPartitionAssignment(
+        String topic,
+        int partitions,
+        int replicationFactor) {
         List<String> brokerIds = getBrokerIds();
-        Map<String, int[]> replicaAssignment = createReplicaAssignment(brokerIds, partitions, replicationFactor);
+        Map<String, int[]> replicaAssignment =
+            createReplicaAssignment(brokerIds, partitions, replicationFactor);
         String topicPath = "/brokers/topics/" + topic;
         StringBuilder sb = new StringBuilder();
         sb.append("{\"version\":1");

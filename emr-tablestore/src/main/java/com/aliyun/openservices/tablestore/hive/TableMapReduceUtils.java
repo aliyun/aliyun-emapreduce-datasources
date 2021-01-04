@@ -41,15 +41,17 @@ public class TableMapReduceUtils {
 
   public static void addDependencyJars(Job job) throws IOException {
     try {
-      addDependencyJarsForClasses(job.getConfiguration(), job.getMapOutputKeyClass(), job.getMapOutputValueClass(),
-        job.getInputFormatClass(), job.getOutputKeyClass(), job.getOutputValueClass(), job.getOutputFormatClass(),
-        job.getPartitionerClass(), job.getCombinerClass());
+      addDependencyJarsForClasses(job.getConfiguration(), job.getMapOutputKeyClass(),
+          job.getMapOutputValueClass(), job.getInputFormatClass(), job.getOutputKeyClass(),
+          job.getOutputValueClass(), job.getOutputFormatClass(), job.getPartitionerClass(),
+          job.getCombinerClass());
     } catch (ClassNotFoundException var2) {
       throw new IOException(var2);
     }
   }
 
-  public static void addDependencyJarsForClasses(Configuration conf, Class... classes) throws IOException {
+  public static void addDependencyJarsForClasses(Configuration conf, Class... classes)
+      throws IOException {
     FileSystem localFs = FileSystem.getLocal(conf);
     Set<String> jars = new HashSet();
     jars.addAll(conf.getStringCollection("tmpjars"));
@@ -62,7 +64,8 @@ public class TableMapReduceUtils {
       if (clazz != null) {
         Path path = findOrCreateJar(clazz, localFs, packagedClasses);
         if (path == null) {
-          LOG.warn("Could not find jar for class " + clazz + " in order to ship it to the cluster.");
+          LOG.warn(
+              "Could not find jar for class " + clazz + " in order to ship it to the cluster.");
         } else if (!localFs.exists(path)) {
           LOG.warn("Could not validate jar file " + path + " for class " + clazz);
         } else {
@@ -72,11 +75,13 @@ public class TableMapReduceUtils {
     }
 
     if (!jars.isEmpty()) {
-      conf.set("tmpjars", StringUtils.arrayToString((String[])jars.toArray(new String[jars.size()])));
+      conf.set("tmpjars", StringUtils.arrayToString(jars.toArray(new String[jars.size()])));
     }
   }
 
-  private static Path findOrCreateJar(Class<?> my_class, FileSystem fs, Map<String, String> packagedClasses) throws IOException {
+  private static Path findOrCreateJar(
+      Class<?> my_class, FileSystem fs, Map<String, String> packagedClasses)
+      throws IOException {
     String jar = findContainingJar(my_class, packagedClasses);
     if (null == jar || jar.isEmpty()) {
       jar = getJar(my_class);
@@ -91,9 +96,12 @@ public class TableMapReduceUtils {
     }
   }
 
-  private static String findContainingJar(Class<?> my_class, Map<String, String> packagedClasses) throws IOException {
+  private static String findContainingJar(
+      Class<?> my_class, Map<String, String> packagedClasses)
+      throws IOException {
     ClassLoader loader = my_class.getClassLoader();
-    String class_file = my_class.getName().replaceAll("\\.", "/") + ".class";
+    String class_file =
+        my_class.getName().replaceAll("\\.", "/") + ".class";
     if (loader != null) {
       Enumeration itr = loader.getResources(class_file);
 
@@ -126,7 +134,8 @@ public class TableMapReduceUtils {
     }
   }
 
-  private static void updateMap(String jar, Map<String, String> packagedClasses) throws IOException {
+  private static void updateMap(String jar, Map<String, String> packagedClasses)
+      throws IOException {
     if (null != jar && !jar.isEmpty()) {
       ZipFile zip = null;
 

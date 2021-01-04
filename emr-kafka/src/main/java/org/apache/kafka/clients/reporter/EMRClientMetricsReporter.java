@@ -85,7 +85,8 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
         this.executor.setThreadFactory(new ThreadFactory() {
             public Thread newThread(Runnable runnable)
             {
-                return EMRClientMetricsReporter.newThread("emr-metrics-reporter-scheduler", runnable, true);
+                return EMRClientMetricsReporter.newThread(
+                    "emr-metrics-reporter-scheduler", runnable, true);
             }
         });
     }
@@ -130,10 +131,14 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
     public void configure(Map<String, ?> configs) {
         this.producer = new KafkaProducer<>(EMRMetricsReporterConfig.producerProperties(configs));
         this.emrMetricsReporterConfig = new EMRMetricsReporterConfig(configs);
-        this.predicate = new RegexMetricPredicate(emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_EXCLUDE_REGEX));
-        this.reportIntervalMs = this.emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_UPLOAD_INTERVAL_MS);
-        this.metricsTopic = this.emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_TOPIC);
-        this.createTopic = this.emrMetricsReporterConfig.getBoolean(EMR_METRICS_REPORTER_TOPIC_CREATE);
+        this.predicate = new RegexMetricPredicate(
+            emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_EXCLUDE_REGEX));
+        this.reportIntervalMs =
+            this.emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_UPLOAD_INTERVAL_MS);
+        this.metricsTopic =
+            this.emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_TOPIC);
+        this.createTopic =
+            this.emrMetricsReporterConfig.getBoolean(EMR_METRICS_REPORTER_TOPIC_CREATE);
 
         if (configs.containsKey("key.deserializer")) {
             this.metricType = MetricsType.CONSUMER;
@@ -143,28 +148,38 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
             this.metricType = MetricsType.UNKNOWN;
         }
 
-        this.groupId = ((this.metricType == MetricsType.CONSUMER) && (configs.containsKey("group.id")) ? (String)configs.get("group.id") : "");
+        this.groupId = (
+            (this.metricType == MetricsType.CONSUMER) && (configs.containsKey("group.id"))
+                ? (String)configs.get("group.id")
+                : "");
     }
 
     @Override
     public void onUpdate(ClusterResource clusterResource) {
         if (!this.started) {
             this.clusterId = clusterResource.clusterId();
-            log.info("Starting EMR metrics reporter for cluster id {} with an interval of {} ms", this.clusterId,
+            log.info("Starting EMR metrics reporter for cluster id {} with an interval of {} ms",
+                this.clusterId,
                 this.reportIntervalMs);
-            this.executor.scheduleAtFixedRate(new MetricsReportWatcher(), this.reportIntervalMs, this.reportIntervalMs,
-                TimeUnit.MILLISECONDS);
+            this.executor.scheduleAtFixedRate(new MetricsReportWatcher(),
+                this.reportIntervalMs, this.reportIntervalMs, TimeUnit.MILLISECONDS);
             this.started = true;
         }
     }
 
     private boolean createTopicIfNotExists() {
-        int metricsTopicReplicas = emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_REPLICAS);
-        int metricsTopicPartitions = emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_PARTITIONS);
-        long retentionMs = emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_RETENTION_MS);
-        long retentionBytes = emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_RETENTION_BYTES);
-        long rollMs = emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_ROLL_MS);
-        int maxMessageBytes = emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_MAX_MESSAGE_BYTES);
+        int metricsTopicReplicas =
+            emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_REPLICAS);
+        int metricsTopicPartitions =
+            emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_PARTITIONS);
+        long retentionMs =
+            emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_RETENTION_MS);
+        long retentionBytes =
+            emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_RETENTION_BYTES);
+        long rollMs =
+            emrMetricsReporterConfig.getLong(EMR_METRICS_REPORTER_TOPIC_ROLL_MS);
+        int maxMessageBytes =
+            emrMetricsReporterConfig.getInt(EMR_METRICS_REPORTER_TOPIC_MAX_MESSAGE_BYTES);
         Properties topicConfig = new Properties();
         int minIsr = Math.min(3, metricsTopicReplicas < 3 ? 1 : metricsTopicReplicas - 1);
         topicConfig.put("min.insync.replicas", String.valueOf(minIsr));
@@ -174,10 +189,13 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
         topicConfig.put("max.message.bytes", String.valueOf(maxMessageBytes));
         topicConfig.put("message.timestamp.type", TimestampType.CREATE_TIME.name);
 
-        String zkConnect = emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_ZOOKEEPER_CONNECT);
+        String zkConnect =
+            emrMetricsReporterConfig.getString(EMR_METRICS_REPORTER_ZOOKEEPER_CONNECT);
         try {
-            AdminUtils utils = new AdminUtils(zkConnect, 30000, 30000, JaasUtils.isZkSecurityEnabled());
-            utils.createTopic(metricsTopic, metricsTopicPartitions, metricsTopicReplicas, topicConfig);
+            AdminUtils utils =
+                new AdminUtils(zkConnect, 30000, 30000, JaasUtils.isZkSecurityEnabled());
+            utils.createTopic(
+                metricsTopic, metricsTopicPartitions, metricsTopicReplicas, topicConfig);
             log.debug("Metrics reporter topic {} created successfully.", metricsTopic);
             return true;
         } catch (TopicExistsException e1) {
@@ -228,7 +246,7 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
     private class MetricsReportWatcher implements Runnable {
         private boolean metricsTopicExists = false;
 
-        public MetricsReportWatcher() {}
+        MetricsReportWatcher() {}
 
         @Override
         public void run() {
@@ -251,14 +269,26 @@ public class EMRClientMetricsReporter implements MetricsReporter, ClusterResourc
                         for (String msg : metricsMessages) {
                             log.trace("Created metrics message: " + msg);
                             long curTime = System.currentTimeMillis();
-                            producer.send(new ProducerRecord<>(metricsTopic, null, curTime, (byte[]) null, msg.getBytes(StandardCharsets.UTF_8)), new Callback() {
+                            producer.send(
+                                new ProducerRecord<>(
+                                    metricsTopic,
+                                    null,
+                                    curTime,
+                                    (byte[]) null,
+                                    msg.getBytes(StandardCharsets.UTF_8)),
+                                new Callback() {
                                 @Override
-                                public void onCompletion(RecordMetadata metadata, Exception exception) {
+                                public void onCompletion(RecordMetadata metadata,
+                                                         Exception exception) {
                                     if (exception != null) {
                                         log.warn("Failed to produce metrics message", exception);
                                     } else {
-                                        log.debug("Produced metrics message of size {} with offset {} to topic partition {}-{}",
-                                            metadata.serializedValueSize(), metadata.offset(), metadata.topic(), metadata.partition());
+                                        log.debug("Produced metrics message of size {} "
+                                            + "with offset {} to topic partition {}-{}",
+                                            metadata.serializedValueSize(),
+                                            metadata.offset(),
+                                            metadata.topic(),
+                                            metadata.partition());
                                     }
                                 }
                             });
