@@ -19,11 +19,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-oss</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>

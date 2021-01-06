@@ -42,7 +42,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-oss</artifactId>
+            <artifactId>emr-common_${scala.binary.version}</artifactId>
             <version>${project.version}</version>
         </dependency>
 
