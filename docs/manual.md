@@ -108,13 +108,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-oss</artifactId>
-            <version>2.0.0</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-common</artifactId>
+            <artifactId>emr-common_2.11</artifactId>
             <version>2.2.0</version>
         </dependency>
         
@@ -128,48 +122,8 @@
 
 ## OSS Support
 
-In this section, we will demonstrate how to manipulate the Aliyun OSS data in Spark.
-
-### OSS Extension - Native OSS FileSystem
-A native way to read and write regular files on Aliyun OSS. The advantage of this way is you can access files on OSS that came from other Aliyun base service or other tools. But file in Aliyun OSS has 48.8TB limit.
-
-### OSS URI
-
-- **oss**://[accesskeyId:accessKeySecret@]bucket[.endpoint]/object/path
-
-We can set OSS "AccessKeyId/AccessKeySecret" and "endpoint" in OSS URI.
-
-### OSS usage
-
-Now, we provide a transparent way to support Aliyun OSS, with no code changes and just few configurations. All you need to do is just to provide two configuations in your project:
-
-```
-
-	conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-
-
-```
-
-Then, you can load OSS data through `SparkContext.textFile(...)`, like:
-
-```
-
-	val conf = new SparkConf()
-    conf.set("spark.hadoop.fs.oss.impl", "com.aliyun.fs.oss.nat.NativeOssFileSystem")
-    val sc = new SparkContext(conf)
-	val path = "oss://accesskeyId:accessKeySecret@bucket.endpoint/input"
-	val rdd = sc.textFile(path)
-
-``` 
-
-Similarly, you can upload data through `RDD.saveAsTextFile(...)`, like:
-
-```
-
-	val data = sc.parallelize(1 to 10)
-	data.saveAsTextFile("oss://accesskeyId:accessKeySecret@bucket.endpoint/output")
-
-```
+Older OSS sdk was obsoleted by Jindofs sdk. Please refer to:
+[Jindofs sdk howto](./jindofs_sdk_how_to_en.md)
 
 ## ODPS Support
 
