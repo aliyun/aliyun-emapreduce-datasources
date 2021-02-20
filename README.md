@@ -137,7 +137,7 @@
 
 ## JindoFS/OSS support
 
-* [Hadoop on JindoFS/OSS](docs/jindofs_sdk_how_to.md) (Hive, Spark, Presto, Impala, Hbase and Flink are also supported)
+* [Hadoop on JindoFS/OSS](https://github.com/aliyun/alibabacloud-jindo-sdk) (Hive, Spark, Presto, Impala, Hbase and Flink are also supported)
 
 ## MaxCompute support
 
