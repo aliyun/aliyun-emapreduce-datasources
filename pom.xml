@@ -40,7 +40,7 @@
         <module>emr-redis</module>
         <!--<module>emr-druid</module>-->
         <!--<module>emr-kudu</module>-->
-        <!--<module>examples</module>-->
+        <module>examples</module>
         <module>emr-baseline-testing</module>
         <module>emr-sql</module>
         <module>assembly</module>
