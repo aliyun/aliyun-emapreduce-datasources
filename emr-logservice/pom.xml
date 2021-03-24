@@ -3,14 +3,14 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>emr_2.11</artifactId>
+        <artifactId>emr_2.12</artifactId>
         <groupId>com.aliyun.emr</groupId>
         <version>2.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-logservice_2.11</artifactId>
+    <artifactId>emr-logservice_2.12</artifactId>
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce External LogService Support</name>
 
@@ -22,7 +22,7 @@
 
         <dependency>
             <groupId>com.aliyun.emr</groupId>
-            <artifactId>emr-common_2.11</artifactId>
+            <artifactId>emr-common_2.12</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -214,7 +214,7 @@
                     <outputFile>${project.build.directory}/shaded/emr-logservice_shaded_${scala.binary.version}-${project.version}.jar</outputFile>
                     <artifactSet>
                         <includes>
-                            <include>com.aliyun.emr:emr-common_2.11</include>
+                            <include>com.aliyun.emr:emr-common_${scala.binary.version}</include>
                             <include>com.aliyun.openservices:aliyun-log</include>
                             <include>com.aliyun.openservices:loghub-client-lib</include>
                             <include>com.aliyun.openservices:aliyun-log-producer</include>

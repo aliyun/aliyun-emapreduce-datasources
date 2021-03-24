@@ -26,29 +26,33 @@ import com.aliyun.datahub.model.RecordEntry
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
-import org.apache.spark.sql.sources.v2.reader.{InputPartition, InputPartitionReader}
+import org.apache.spark.sql.connector.read.{InputPartition, PartitionReader, PartitionReaderFactory}
 import org.apache.spark.sql.types.StructType
 
-class DatahubMicroBatchInputPartition(
+case class DatahubBatchInputPartition(
     offsetRange: DatahubOffsetRange,
     failOnDataLoss: Boolean,
     sourceOptions: Map[String, String],
     schemaDdl: String)
-  extends InputPartition[InternalRow] {
+  extends InputPartition
 
-  override def preferredLocations(): Array[String] = Array.empty[String]
-
-  override def createPartitionReader(): InputPartitionReader[InternalRow] =
-    DatahubMicroBatchInputPartitionReader(offsetRange, failOnDataLoss,
-      sourceOptions, schemaDdl)
+object DatahubBatchReaderFactory extends PartitionReaderFactory {
+  override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
+    val p = partition.asInstanceOf[DatahubBatchInputPartition]
+    DatahubBatchInputPartitionReader(
+      p.offsetRange,
+      p.failOnDataLoss,
+      p.sourceOptions,
+      p.schemaDdl)
+  }
 }
 
-private case class DatahubMicroBatchInputPartitionReader(
+private case class DatahubBatchInputPartitionReader(
     offsetRange: DatahubOffsetRange,
     failOnDataLoss: Boolean,
     sourceOptions: Map[String, String],
     schemaDdl: String)
-  extends InputPartitionReader[InternalRow] with Logging {
+  extends PartitionReader[InternalRow] with Logging {
 
   private val accessKeyId = sourceOptions("access.key.id")
   private val accessKeySecret = sourceOptions("access.key.secret")

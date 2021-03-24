@@ -147,7 +147,7 @@ class LoghubBatchRDD(
     var logCache = new LinkedBlockingQueue[String]()
     var curCursor: String = startCursor
 
-    context.addTaskCompletionListener(context => closeIfNeeded())
+    context.addTaskCompletionListener[Unit](context => closeIfNeeded())
 
     override protected def getNext(): String = {
       if (logCache.isEmpty) {

@@ -32,6 +32,7 @@ import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.execution.datasources.RecordReaderIterator
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.internal.SQLConf.LegacyBehaviorPolicy
 import org.apache.spark.sql.types.StructType
 
 object ParquetFormatModelLoader {
@@ -46,7 +47,8 @@ object ParquetFormatModelLoader {
     val isParquetBinaryAsString = sqlConf.isParquetBinaryAsString
     val isParquetINT96AsTimestamp = sqlConf.isParquetINT96AsTimestamp
 
-    val reader = new ParquetRecordReader[UnsafeRow](new ParquetReadSupport(None))
+    val reader = new ParquetRecordReader[InternalRow](
+      new ParquetReadSupport(None, true, LegacyBehaviorPolicy.CORRECTED))
     val iter = new RecordReaderIterator(reader)
 
     val path = new Path(s"$modelPath/data")
@@ -89,7 +91,8 @@ object ParquetFormatModelLoader {
     reader.initialize(split, hadoopAttemptContext)
     val data = iter.asInstanceOf[Iterator[InternalRow]].next()
     val encoder = RowEncoder(requiredSchema).resolveAndBind()
-    val Row(weights: Vector, intercept: Double, threshold: Double) = encoder.fromRow(data)
+    val Row(weights: Vector, intercept: Double, threshold: Double) =
+      encoder.createDeserializer().apply(data)
     if (threshold == null) {
       (weights, intercept, None)
     } else {

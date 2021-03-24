@@ -17,8 +17,9 @@
 
 package org.apache.spark.sql.aliyun.hbase
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.datasources.hbase.HBaseRelation
 
@@ -30,7 +31,8 @@ class HBaseWriter(parameters: Map[String, String]) {
     val schema = queryExecution.analyzed.schema
     val relation = HBaseRelation(parameters, Some(schema))(sparkSession.sqlContext)
     val encoder = RowEncoder(schema).resolveAndBind()
-    val rdd = queryExecution.toRdd.map(r => encoder.fromRow(r))
+    val rdd = queryExecution.toRdd.map(
+      r => encoder.createDeserializer().apply(r))
     relation.insert(sparkSession.createDataFrame(rdd, schema), false)
   }
 }

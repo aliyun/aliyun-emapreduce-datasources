@@ -24,10 +24,10 @@ import org.scalatest.time.SpanSugar._
 import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SaveMode}
 import org.apache.spark.sql.execution.streaming.MemoryStream
 import org.apache.spark.sql.streaming._
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 
-class LoghubSinkSuite extends StreamTest with SharedSQLContext {
+class LoghubSinkSuite extends StreamTest with SharedSparkSession {
   import testImplicits._
   private var testUtils: LoghubTestUtils = _
   private val defaultSchema = StructType(Array(StructField("msg", StringType)))

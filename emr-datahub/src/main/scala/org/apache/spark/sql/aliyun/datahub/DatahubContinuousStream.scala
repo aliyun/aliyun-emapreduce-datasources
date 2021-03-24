@@ -17,7 +17,6 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import java.util
-import java.util.Optional
 import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.JavaConverters._
@@ -28,72 +27,65 @@ import com.aliyun.datahub.model.RecordEntry
 
 import org.apache.spark.TaskContext
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
 import org.apache.spark.sql.catalyst.expressions.codegen.UnsafeRowWriter
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.sources.v2.reader._
-import org.apache.spark.sql.sources.v2.reader.streaming._
+import org.apache.spark.sql.connector.read.InputPartition
+import org.apache.spark.sql.connector.read.streaming._
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
-class DatahubContinuousReader(
+class DatahubContinuousStream(
     schema: Option[StructType],
     offsetReader: DatahubOffsetReader,
     datahubParams: util.Map[String, Object],
     sourceOptions: Map[String, String],
     metadataPath: String,
     initialOffsets: DatahubOffsetRangeLimit)
-  extends ContinuousReader with Logging {
+  extends ContinuousStream with Logging {
 
-  private lazy val session = SparkSession.getActiveSession.get
-  private lazy val sc = session.sparkContext
-
-  private var offset: Offset = _
-
-  override lazy val readSchema: StructType = DatahubSchema.getSchema(schema, sourceOptions)
-
-  override def commit(end: Offset): Unit = {}
-
-  override def deserializeOffset(json: String): Offset = {
-    DatahubSourceOffset(DatahubSourceOffset.partitionOffsets(json))
+  override def planInputPartitions(offset: Offset): Array[InputPartition] = {
+    val startOffsets = DatahubSourceOffset.getShardOffsets(offset)
+    startOffsets.toSeq.map { case (datahubShard, of) =>
+      DatahubContinuousInputPartition(
+        datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
+    }.toArray
   }
 
-  override def getStartOffset: Offset = offset
-
-  override def setStartOffset(start: Optional[Offset]): Unit = {
-    offset = start.orElse {
-      val offsets = initialOffsets match {
-        case OldestOffsetRangeLimit => DatahubSourceOffset(offsetReader.fetchEarliestOffsets())
-        case LatestOffsetRangeLimit => DatahubSourceOffset(offsetReader.fetchLatestOffsets())
-        case SpecificOffsetRangeLimit(_) =>
-          throw new UnsupportedOperationException("Does not support SpecificOffsetRangeLimit.")
-      }
-      logInfo(s"Initial offsets: $offsets")
-      offsets
-    }
+  override def createContinuousReaderFactory(): ContinuousPartitionReaderFactory = {
+    DatahubContinuousReaderFactory
   }
 
-  override def mergeOffsets(offsets: Array[PartitionOffset]): Offset = {
-    val mergedMap = offsets.map {
+  override def mergeOffsets(partitionOffsets: Array[PartitionOffset]): Offset = {
+    val mergedMap = partitionOffsets.map {
       case DatahubShardOffset(lp, ls, shard, of) => Map(DatahubShard(lp, ls, shard) -> of)
     }.reduce(_ ++ _)
     DatahubSourceOffset(mergedMap)
   }
 
-  override def stop(): Unit = offsetReader.close()
+  override def initialOffset(): Offset = {
+    val offsets = initialOffsets match {
+      case OldestOffsetRangeLimit => DatahubSourceOffset(offsetReader.fetchEarliestOffsets())
+      case LatestOffsetRangeLimit => DatahubSourceOffset(offsetReader.fetchLatestOffsets())
+      case SpecificOffsetRangeLimit(_) =>
+        throw new UnsupportedOperationException("Does not support SpecificOffsetRangeLimit.")
+    }
+    logInfo(s"Initial offsets: $offsets")
+    offsets
+  }
+
+  override def deserializeOffset(json: String): Offset = {
+    DatahubSourceOffset(DatahubSourceOffset.partitionOffsets(json))
+  }
+
+  override def commit(offset: Offset): Unit = {}
+
+  override def stop(): Unit = synchronized {
+    offsetReader.close()
+  }
 
   override def toString(): String = s"DatahubSource[$offsetReader]"
-
-  override def planInputPartitions(): util.List[InputPartition[InternalRow]] = {
-    val startOffsets = DatahubSourceOffset.getShardOffsets(offset)
-    startOffsets.toSeq.map { case (datahubShard, of) =>
-      DatahubContinuousInputPartition(
-        datahubShard.project, datahubShard.topic, datahubShard.shardId, of, sourceOptions)
-      : InputPartition[InternalRow]
-    }.asJava
-  }
 }
 
 case class DatahubContinuousInputPartition(
@@ -101,15 +93,14 @@ case class DatahubContinuousInputPartition(
     topic: String,
     shardId: String,
     offset: Long,
-    sourceOptions: Map[String, String]) extends ContinuousInputPartition[InternalRow] {
-  override def createContinuousReader(offset: PartitionOffset):
-    InputPartitionReader[InternalRow] = {
-    val off = offset.asInstanceOf[DatahubShardOffset]
-    new DatahubContinuousInputPartitionReader(project, topic, shardId, off.offset, sourceOptions)
-  }
+    sourceOptions: Map[String, String]) extends InputPartition
 
-  override def createPartitionReader(): InputPartitionReader[InternalRow] = {
-    new DatahubContinuousInputPartitionReader(project, topic, shardId, offset, sourceOptions)
+object DatahubContinuousReaderFactory extends ContinuousPartitionReaderFactory {
+  override def createReader(partition: InputPartition): ContinuousPartitionReader[InternalRow] = {
+    val p = partition.asInstanceOf[DatahubContinuousInputPartition]
+    new DatahubContinuousInputPartitionReader(
+      p.project, p.topic, p.shardId, p.offset,
+      p.sourceOptions)
   }
 }
 
@@ -119,7 +110,7 @@ class DatahubContinuousInputPartitionReader(
     shardId: String,
     offset: Long,
     sourceOptions: Map[String, String])
-  extends ContinuousInputPartitionReader[InternalRow] with Logging {
+  extends ContinuousPartitionReader[InternalRow] with Logging {
 
   private var datahubClient = DatahubOffsetReader.getOrCreateDatahubClient(sourceOptions)
 
@@ -202,3 +193,4 @@ class DatahubContinuousInputPartitionReader(
     datahubClient = null
   }
 }
+

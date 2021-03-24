@@ -3,13 +3,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>emr_2.11</artifactId>
+        <artifactId>emr_2.12</artifactId>
         <groupId>com.aliyun.emr</groupId>
         <version>2.3.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>emr-druid_2.11</artifactId>
+    <artifactId>emr-druid_2.12</artifactId>
     <packaging>jar</packaging>
     <name>Aliyun E-MapReduce External Druid Support</name>
 
@@ -111,28 +111,28 @@
                             <include>com.fasterxml.jackson.datatype:jackson-datatype-guava</include>
                             <include>com.fasterxml.jackson.dataformat:jackson-dataformat-smile</include>
                             <include>com.google.inject.extensions:guice-multibindings</include>
-                            <include>org.scalaj:scalaj-time_2.11</include>
+                            <include>org.scalaj:scalaj-time_${scala.binary.version}</include>
                             <include>org.apache.curator:curator-x-discovery</include>
-                            <include>com.metamx:loglady_2.11</include>
-                            <include>io.druid:tranquility-core_2.11</include>
-                            <include>io.druid:tranquility-spark_2.11</include>
+                            <include>com.metamx:loglady_${scala.binary.version}</include>
+                            <include>io.druid:tranquility-core_${scala.binary.version}</include>
+                            <include>io.druid:tranquility-spark_${scala.binary.version}</include>
                             <include>io.druid:druid-processing</include>
                             <include>io.druid:druid-api</include>
                             <include>io.druid:druid-common</include>
                             <include>io.druid:druid-server</include>
                             <include>com.metamx:java-util</include>
-                            <include>com.metamx:scala-util_2.11</include>
+                            <include>com.metamx:scala-util_${scala.binary.version}</include>
                             <include>com.metamx:emitter</include>
-                            <include>com.twitter:finagle-core_2.11</include>
-                            <include>com.twitter:util-core_2.11</include>
-                            <include>com.twitter:util-logging_2.11</include>
-                            <include>com.twitter:util-stats_2.11</include>
-                            <include>com.twitter:util-app_2.11</include>
-                            <include>com.twitter:util-registry_2.11</include>
-                            <include>com.twitter:util-collection_2.11</include>
-                            <include>com.twitter:finagle-http_2.11</include>
+                            <include>com.twitter:finagle-core_${scala.binary.version}</include>
+                            <include>com.twitter:util-core_${scala.binary.version}</include>
+                            <include>com.twitter:util-logging_${scala.binary.version}</include>
+                            <include>com.twitter:util-stats_${scala.binary.version}</include>
+                            <include>com.twitter:util-app_${scala.binary.version}</include>
+                            <include>com.twitter:util-registry_${scala.binary.version}</include>
+                            <include>com.twitter:util-collection_${scala.binary.version}</include>
+                            <include>com.twitter:finagle-http_${scala.binary.version}</include>
                             <include>com.twitter:jsr166e</include>
-                            <include>com.twitter:util-jvm_2.11</include>
+                            <include>com.twitter:util-jvm_${scala.binary.version}</include>
                             <include>com.fasterxml:classmate</include>
                             <include>com.fasterxml.jackson.datatype:jackson-datatype-joda</include>
                         </includes>

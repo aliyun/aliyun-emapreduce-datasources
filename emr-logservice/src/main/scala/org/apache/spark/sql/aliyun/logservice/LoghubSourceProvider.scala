@@ -16,19 +16,25 @@
  */
 package org.apache.spark.sql.aliyun.logservice
 
-import java.util.{Locale, Optional, UUID}
+import java.util
+import java.util.Locale
 
 import scala.collection.JavaConverters._
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.aliyun.loghub.LoghubSink
+import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
+import org.apache.spark.sql.connector.catalog._
+import org.apache.spark.sql.connector.expressions.Transform
+import org.apache.spark.sql.connector.read.{Scan, ScanBuilder}
+import org.apache.spark.sql.connector.read.streaming.ContinuousStream
+import org.apache.spark.sql.connector.write.{LogicalWriteInfo, WriteBuilder}
 import org.apache.spark.sql.execution.streaming.{Sink, Source}
 import org.apache.spark.sql.sources._
-import org.apache.spark.sql.sources.v2.{ContinuousReadSupport, DataSourceOptions}
-import org.apache.spark.sql.sources.v2.reader.streaming.ContinuousReader
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 class LoghubSourceProvider extends DataSourceRegister
     with StreamSourceProvider
@@ -36,11 +42,13 @@ class LoghubSourceProvider extends DataSourceRegister
     with SchemaRelationProvider
     with RelationProvider
     with CreatableRelationProvider
-    with ContinuousReadSupport
+    with TableProvider
     with Logging {
   import LoghubSourceProvider._
 
   override def shortName(): String = "loghub"
+
+  override def supportsExternalMetadata(): Boolean = true
 
   override def sourceSchema(
       sqlContext: SQLContext,
@@ -59,8 +67,9 @@ class LoghubSourceProvider extends DataSourceRegister
       schema: Option[StructType],
       providerName: String,
       parameters: Map[String, String]): Source = {
-    Utils.validateOptions(parameters)
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val caseInsensitiveParams = CaseInsensitiveMap(parameters)
+    Utils.validateOptions(caseInsensitiveParams)
+
     val startingStreamOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
       caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
     val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
@@ -90,11 +99,10 @@ class LoghubSourceProvider extends DataSourceRegister
       sqlContext: SQLContext,
       parameters: Map[String, String],
       schema: StructType): BaseRelation = {
-    validateBatchOptions(parameters)
+    val caseInsensitiveParams = CaseInsensitiveMap(parameters)
+    validateBatchOptions(caseInsensitiveParams)
     require(schema.nonEmpty, "Unable to infer the schema. The schema specification " +
       "is required to create the table.;")
-
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
 
     val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
       caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
@@ -116,9 +124,8 @@ class LoghubSourceProvider extends DataSourceRegister
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
-    validateBatchOptions(parameters)
-
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
+    val caseInsensitiveParams = CaseInsensitiveMap(parameters)
+    validateBatchOptions(caseInsensitiveParams)
 
     val startingRelationOffsets = LoghubSourceProvider.getLoghubOffsetRangeLimit(
       caseInsensitiveParams, STARTING_OFFSETS_OPTION_KEY, EarliestOffsetRangeLimit)
@@ -169,45 +176,15 @@ class LoghubSourceProvider extends DataSourceRegister
     }
   }
 
-  override def createContinuousReader(
-      schema: Optional[StructType],
-      checkpointLocation: String,
-      options: DataSourceOptions): ContinuousReader = {
-    val parameters = options.asMap().asScala.toMap
-    val specifiedLoghubParams =
-      parameters
-        .keySet
-        .filter(_.toLowerCase(Locale.ROOT).startsWith("loghub."))
-        .map { k => k.drop(6).toString -> parameters(k) }
-        .toMap
-    val uniqueGroupId = s"spark-loghub-source-${UUID.randomUUID}-${checkpointLocation.hashCode}"
-    val caseInsensitiveParams = parameters.map { case (k, v) => (k.toLowerCase(Locale.ROOT), v) }
-    val startingStreamOffset = LoghubSourceProvider.getLoghubOffsetRangeLimit(caseInsensitiveParams,
-      STARTING_OFFSETS_OPTION_KEY, LatestOffsetRangeLimit)
+  def validateStreamOptions(caseInsensitiveParams: CaseInsensitiveMap[String]): Unit = {
+    // Stream specific options
+    caseInsensitiveParams.get(ENDING_OFFSETS_OPTION_KEY).map(_ =>
+      throw new IllegalArgumentException("ending offset not valid in streaming queries"))
 
-    val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveParams)
-
-    val _schema = schema.orElse({
-      logInfo(s"Using default schema: ${LoghubSourceProvider.getDefaultSchema}")
-      LoghubSourceProvider.getDefaultSchema
-    })
-    new LoghubContinuousReader(
-      _schema,
-      LoghubSourceProvider.isDefaultSchema(_schema),
-      loghubOffsetReader,
-      paramsForExecutors(specifiedLoghubParams, uniqueGroupId),
-      parameters,
-      checkpointLocation,
-      startingStreamOffset)
+    Utils.validateOptions(caseInsensitiveParams)
   }
 
-  def paramsForExecutors(
-      specifiedLoghubParams: Map[String, String],
-      uniqueGroupId: String): java.util.Map[String, Object] =
-    ConfigUpdater("executor", specifiedLoghubParams)
-      .build()
-
-  def validateBatchOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+  def validateBatchOptions(caseInsensitiveParams: CaseInsensitiveMap[String]): Unit = {
     Utils.validateOptions(caseInsensitiveParams)
 
     LoghubSourceProvider.getLoghubOffsetRangeLimit(
@@ -239,6 +216,68 @@ class LoghubSourceProvider extends DataSourceRegister
           case _ => // ignore
         }
     }
+  }
+
+  class LoghubTable(userSpecifiedSchema: Option[StructType])
+    extends Table with SupportsRead with SupportsWrite {
+
+    override def name(): String = "LoghubTable"
+
+    override def schema(): StructType =
+      userSpecifiedSchema.getOrElse(LoghubSourceProvider.getDefaultSchema)
+
+    override def capabilities(): util.Set[TableCapability] = {
+      import TableCapability._
+      Set(CONTINUOUS_READ).asJava
+    }
+
+    override def newScanBuilder(
+        caseInsensitiveStringMap: CaseInsensitiveStringMap): ScanBuilder = {
+      () => new LoghubScan(schema(), caseInsensitiveStringMap)
+    }
+
+    override def newWriteBuilder(logicalWriteInfo: LogicalWriteInfo): WriteBuilder = {
+      new WriteBuilder {}
+    }
+  }
+
+  class LoghubScan(
+      schema: StructType,
+      options: CaseInsensitiveStringMap) extends Scan {
+    override def readSchema(): StructType = schema
+
+    override def toContinuousStream(checkpointLocation: String): ContinuousStream = {
+      val caseInsensitiveOptions = CaseInsensitiveMap(options.asScala.toMap)
+      validateBatchOptions(caseInsensitiveOptions)
+
+      val startingStreamOffset =
+        LoghubSourceProvider.getLoghubOffsetRangeLimit(
+          caseInsensitiveOptions,
+          STARTING_OFFSETS_OPTION_KEY,
+          LatestOffsetRangeLimit)
+      val loghubOffsetReader = new LoghubOffsetReader(caseInsensitiveOptions)
+
+      new LoghubContinuousStream(
+        schema,
+        LoghubSourceProvider.isDefaultSchema(schema),
+        loghubOffsetReader,
+        ConfigUpdater("executor", caseInsensitiveOptions).build(),
+        caseInsensitiveOptions,
+        checkpointLocation,
+        startingStreamOffset)
+    }
+  }
+
+  override def inferSchema(caseInsensitiveStringMap: CaseInsensitiveStringMap): StructType = {
+    null
+  }
+
+  override def getTable(
+      schema: StructType,
+      partitioning: Array[Transform],
+      properties: util.Map[String, String]): Table = {
+    assert(partitioning.isEmpty)
+    new LoghubTable(Option(schema))
   }
 }
 

@@ -17,10 +17,8 @@
 
 package org.apache.spark.sql.aliyun.datahub
 
-import java.{util => ju}
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.util.Optional
 
 import scala.collection.JavaConverters._
 
@@ -29,21 +27,21 @@ import org.apache.commons.io.IOUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.aliyun.datahub.DatahubSourceProvider._
-import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.connector.read.{InputPartition, PartitionReaderFactory}
+import org.apache.spark.sql.connector.read.streaming._
 import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, SerializedOffset}
-import org.apache.spark.sql.sources.v2.DataSourceOptions
-import org.apache.spark.sql.sources.v2.reader.InputPartition
-import org.apache.spark.sql.sources.v2.reader.streaming.{MicroBatchReader, Offset}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
-class DatahubMicroBatchReader(
+
+class DatahubMicroBatchStream(
     @transient offsetReader: DatahubOffsetReader,
-    @transient sourceOptions: DataSourceOptions,
+    @transient sourceOptions: CaseInsensitiveStringMap,
     metadataPath: String,
     startingOffsets: DatahubOffsetRangeLimit,
     failOnDataLoss: Boolean,
     userSpecifiedSchemaDdl: Option[String])
-  extends MicroBatchReader with Serializable with Logging {
+  extends SupportsAdmissionControl with MicroBatchStream with Serializable with Logging {
 
   private val userSpecifiedSchema =
     if (userSpecifiedSchemaDdl.isDefined && userSpecifiedSchemaDdl.get.nonEmpty) {
@@ -52,10 +50,9 @@ class DatahubMicroBatchReader(
       Some(new StructType())
     }
 
-  private var startPartitionOffsets: Map[DatahubShard, Long] = _
-  private var endPartitionOffsets: Map[DatahubShard, Long] = _
+  private var endPartitionOffsets: DatahubSourceOffset = _
   private val maxOffsetsPerTrigger =
-    Option(sourceOptions.get("maxOffsetsPerTrigger").orElse(null)).map(_.toLong)
+    Option(sourceOptions.get("maxOffsetsPerTrigger")).map(_.toLong)
 
   private lazy val initialPartitionOffsets = getOrCreateInitialPartitionOffsets()
 
@@ -80,33 +77,29 @@ class DatahubMicroBatchReader(
     }.shardToOffsets
   }
 
-  override def getEndOffset: Offset = {
-    DatahubSourceOffset(endPartitionOffsets)
+  override def getDefaultReadLimit: ReadLimit = {
+    maxOffsetsPerTrigger.map(ReadLimit.maxRows).getOrElse(super.getDefaultReadLimit)
   }
 
-  override def getStartOffset: Offset = {
-    DatahubSourceOffset(startPartitionOffsets)
+  override def latestOffset: Offset = {
+    throw new UnsupportedOperationException(
+      "latestOffset(Offset, ReadLimit) should be called instead of this method")
   }
 
-  override def setOffsetRange(start: Optional[Offset], end: Optional[Offset]): Unit = {
-    // Make sure initialPartitionOffsets is initialized
-    initialPartitionOffsets
+  override def latestOffset(start: Offset, readLimit: ReadLimit): Offset = {
+    val startPartitionOffsets = start.asInstanceOf[DatahubSourceOffset].shardToOffsets
+    val latestPartitionOffsets = offsetReader.fetchLatestOffsets(Some(startPartitionOffsets))
+    endPartitionOffsets = DatahubSourceOffset(readLimit match {
+      case rows: ReadMaxRows =>
+        rateLimit(rows.maxRows(), startPartitionOffsets, latestPartitionOffsets)
+      case _: ReadAllAvailable =>
+        latestPartitionOffsets
+    })
+    endPartitionOffsets
+  }
 
-    startPartitionOffsets = Option(start.orElse(null))
-      .map(_.asInstanceOf[DatahubSourceOffset].shardToOffsets)
-      .getOrElse(initialPartitionOffsets)
-
-    // todo: if shard merged?
-    endPartitionOffsets = Option(end.orElse(null))
-      .map(_.asInstanceOf[DatahubSourceOffset].shardToOffsets)
-      .getOrElse {
-        val latestPartitionOffsets = offsetReader.fetchLatestOffsets(Some(startPartitionOffsets))
-        maxOffsetsPerTrigger.map { maxOffsets =>
-          rateLimit(maxOffsets, startPartitionOffsets, latestPartitionOffsets)
-        }.getOrElse {
-          latestPartitionOffsets
-        }
-      }
+  override def initialOffset: Offset = {
+    DatahubSourceOffset(initialPartitionOffsets)
   }
 
   private def rateLimit(
@@ -154,8 +147,8 @@ class DatahubMicroBatchReader(
     DatahubSourceOffset(DatahubSourceOffset.partitionOffsets(json))
   }
 
-  override def readSchema(): StructType = {
-    DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions.asMap().asScala.toMap)
+  private def readSchema(): StructType = {
+    DatahubSchema.getSchema(userSpecifiedSchema, sourceOptions.asScala.toMap)
   }
 
   private def reportDataLoss(message: String): Unit = {
@@ -166,7 +159,10 @@ class DatahubMicroBatchReader(
     }
   }
 
-  override def planInputPartitions(): ju.List[InputPartition[InternalRow]] = {
+  override def planInputPartitions(start: Offset, end: Offset): Array[InputPartition] = {
+    val startPartitionOffsets = start.asInstanceOf[DatahubSourceOffset].shardToOffsets
+    val endPartitionOffsets = end.asInstanceOf[DatahubSourceOffset].shardToOffsets
+
     // Find the new partitions, and get their earliest offsets
     val newPartitions = endPartitionOffsets.keySet.diff(startPartitionOffsets.keySet)
     val newPartitionInitialOffsets = offsetReader.fetchEarliestOffsets(newPartitions)
@@ -205,9 +201,9 @@ class DatahubMicroBatchReader(
 
     // Generate factories based on the offset ranges
     offsetRanges.map { range =>
-      new DatahubMicroBatchInputPartition(range, failOnDataLoss,
-        sourceOptions.asMap().asScala.toMap, readSchema().toDDL): InputPartition[InternalRow]
-    }.asJava
+      DatahubBatchInputPartition(range, failOnDataLoss,
+        sourceOptions.asScala.toMap, readSchema().toDDL)
+    }.toArray
   }
 
   override def stop(): Unit = {
@@ -238,7 +234,7 @@ class DatahubMicroBatchReader(
       if (content(0) == 'v') {
         val indexOfNewLine = content.indexOf("\n")
         if (indexOfNewLine > 0) {
-          val version = parseVersion(content.substring(0, indexOfNewLine), VERSION)
+          validateVersion(content.substring(0, indexOfNewLine), VERSION)
           DatahubSourceOffset(SerializedOffset(content.substring(indexOfNewLine + 1)))
         } else {
           throw new IllegalStateException(
@@ -250,4 +246,6 @@ class DatahubMicroBatchReader(
       }
     }
   }
+
+  override def createReaderFactory(): PartitionReaderFactory = DatahubBatchReaderFactory
 }

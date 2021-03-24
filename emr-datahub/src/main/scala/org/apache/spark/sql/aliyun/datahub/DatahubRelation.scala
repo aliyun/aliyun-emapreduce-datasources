@@ -22,6 +22,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
+import org.apache.spark.sql.connector.write.PhysicalWriteInfoImpl
 import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 
@@ -42,11 +43,14 @@ class DatahubRelation(
     val project = parameters.get(DatahubSourceProvider.OPTION_KEY_PROJECT).map(_.trim)
     val topic = parameters.get(DatahubSourceProvider.OPTION_KEY_TOPIC).map(_.trim)
     val schemaDDL = schema.toDDL
-    data.foreachPartition { it =>
+    data.foreachPartition { it: Iterator[Row] =>
       val encoderForDataColumns = RowEncoder(StructType.fromDDL(schemaDDL)).resolveAndBind()
       val writer = new DatahubWriter(project, topic, parameters, None)
-        .createWriterFactory().createDataWriter(-1, -1, -1)
-      it.foreach(t => writer.write(encoderForDataColumns.toRow(t).asInstanceOf[UnsafeRow]))
+        .createBatchWriterFactory(
+          PhysicalWriteInfoImpl(data.rdd.asInstanceOf[RDD[Row]].getNumPartitions))
+        .createWriter(-1, -1)
+      it.foreach(t =>
+        writer.write(encoderForDataColumns.createSerializer.apply(t).asInstanceOf[UnsafeRow]))
     }
   }
 }

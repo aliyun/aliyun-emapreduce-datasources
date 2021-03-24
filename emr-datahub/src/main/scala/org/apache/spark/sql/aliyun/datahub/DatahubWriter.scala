@@ -18,14 +18,14 @@
 package org.apache.spark.sql.aliyun.datahub
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.sources.v2.writer.{DataSourceWriter, DataWriter, DataWriterFactory, WriterCommitMessage}
+import org.apache.spark.sql.connector.write._
 import org.apache.spark.sql.types.StructType
 
 class DatahubWriter(
     project: Option[String],
     topic: Option[String],
     datahubOptions: Map[String, String],
-    schema: Option[StructType]) extends DataSourceWriter {
+    schema: Option[StructType]) extends BatchWrite {
 
   override def commit(messages: Array[WriterCommitMessage]): Unit = {
   }
@@ -33,7 +33,7 @@ class DatahubWriter(
   override def abort(messages: Array[WriterCommitMessage]): Unit = {
   }
 
-  override def createWriterFactory(): DatahubWriterFactory = {
+  override def createBatchWriterFactory(info: PhysicalWriteInfo): DatahubWriterFactory = {
     DatahubWriterFactory(project, topic, datahubOptions, schema)
   }
 }
@@ -42,12 +42,9 @@ case class DatahubWriterFactory(
     project: Option[String],
     topic: Option[String],
     datahubParams: Map[String, String],
-    schema: Option[StructType]) extends DataWriterFactory[InternalRow] {
+    schema: Option[StructType]) extends DataWriterFactory {
 
-  override def createDataWriter(
-      partitionId: Int,
-      taskId: Long,
-      epochId: Long): DataWriter[InternalRow] = {
+  override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow] = {
     new DatahubDataWriter(project, topic, datahubParams, schema)
   }
 }

@@ -177,7 +177,7 @@ class TableStoreSource(
       checkpointTable,
       TableStoreSourceOffset.getUUID(end)
     ).map(it => {
-      encoderForDataColumns.toRow(new GenericRow(it.toArray))
+      encoderForDataColumns.createSerializer().apply(new GenericRow(it.toArray))
     })
 
     currentBatchRDD = rdd

@@ -29,7 +29,9 @@ import org.apache.commons.cli.MissingArgumentException
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.util.DateTimeUtils
+import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, DateTimeUtils}
+import org.apache.spark.sql.catalyst.util.DateTimeUtils.getZoneId
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -37,7 +39,7 @@ object Utils extends Logging {
 
   private type ValueConverter = String => Any
 
-  def validateOptions(caseInsensitiveParams: Map[String, String]): Unit = {
+  def validateOptions(caseInsensitiveParams: CaseInsensitiveMap[String]): Unit = {
     caseInsensitiveParams.getOrElse("sls.project",
       throw new MissingArgumentException("Missing logService project (='sls.project')."))
     caseInsensitiveParams.getOrElse("sls.store",
@@ -131,12 +133,17 @@ object Utils extends Logging {
 
     case _: TimestampType => (d: String) =>
       nullSafeDatum(d, name, nullable) { datum =>
-        DateTimeUtils.stringToTime(datum).getTime * 1000L
+        DateTimeUtils.stringToTimestamp(
+          UTF8String.fromString(datum),
+          getZoneId(SQLConf.get.sessionLocalTimeZone)).get
       }
 
     case _: DateType => (d: String) =>
       nullSafeDatum(d, name, nullable) { datum =>
-        DateTimeUtils.millisToDays(DateTimeUtils.stringToTime(datum).getTime)
+        DateTimeUtils.millisToDays(
+          DateTimeUtils.stringToTimestamp(
+            UTF8String.fromString(datum),
+            getZoneId(SQLConf.get.sessionLocalTimeZone)).get / 1000L )
       }
 
     case _: StringType => (d: String) =>

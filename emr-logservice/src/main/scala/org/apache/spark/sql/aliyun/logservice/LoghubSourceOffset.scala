@@ -22,12 +22,12 @@ import scala.util.control.NonFatal
 import org.json4s.NoTypeHints
 import org.json4s.jackson.Serialization
 
+import org.apache.spark.sql.connector.read.streaming.{Offset => ReadStreamingOffset, PartitionOffset}
 import org.apache.spark.sql.execution.streaming.{Offset, SerializedOffset}
-import org.apache.spark.sql.sources.v2.reader.streaming.{Offset => OffsetV2, PartitionOffset}
 import org.apache.spark.streaming.aliyun.logservice.LoghubClientAgent
 
 // scalastyle:off
-case class LoghubSourceOffset(shardToOffsets: Map[LoghubShard, (Int, String)]) extends OffsetV2 {
+case class LoghubSourceOffset(shardToOffsets: Map[LoghubShard, (Int, String)]) extends Offset {
   override def json(): String = LoghubSourceOffset.partitionOffsets(shardToOffsets)
 
   override def equals(obj: scala.Any): Boolean = {
@@ -61,7 +61,7 @@ case class LoghubShardOffset(
 object LoghubSourceOffset {
   private implicit val formats = Serialization.formats(NoTypeHints)
 
-  def getShardOffsets(offset: Offset, sourceOptions: Map[String, String]):
+  def getShardOffsets(offset: ReadStreamingOffset, sourceOptions: Map[String, String]):
     Map[LoghubShard, (Int, String)] = {
     offset match {
       case o: LoghubSourceOffset => o.shardToOffsets

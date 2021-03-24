@@ -23,11 +23,11 @@ import org.apache.hadoop.hive.serde2.SerDeException
 import org.apache.spark.sql.{DataFrame, QueryTest}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.test.SharedSQLContext
+import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{LongType, StringType, StructType}
 import org.apache.spark.unsafe.types.UTF8String
 
-class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
+class TableStoreRelationSuite extends QueryTest with SharedSparkSession {
   private val testUtils = new TableStoreTestUtil()
 
   override def beforeEach(): Unit = {
@@ -116,7 +116,7 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
     val tableMeta = new TableMeta("test_table")
     tableMeta.addPrimaryKeyColumn("pk", PrimaryKeyType.STRING)
     try {
-      val row = encoder.fromRow(
+      val row = encoder.createDeserializer().apply(
         InternalRow(UTF8String.fromString("pk1"), 1L, UTF8String.fromString("col_str1")))
       tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
     } catch {
@@ -125,7 +125,7 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
     }
 
     try {
-      val row = encoder.fromRow(
+      val row = encoder.createDeserializer().apply(
         InternalRow(UTF8String.fromString("pk1"), null, null))
       tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
     } catch {
@@ -134,7 +134,7 @@ class TableStoreRelationSuite extends QueryTest with SharedSQLContext {
     }
 
     try {
-      val row = encoder.fromRow(
+      val row = encoder.createDeserializer().apply(
         InternalRow(UTF8String.fromString("pk1"), 1L, null))
       tsRelation.convertToOtsRow(row, tableMeta).getRowChanges.get(0)
     } catch {

@@ -30,7 +30,7 @@ class RedisSink(sqlContext: SQLContext, sourceOptions: Map[String, String])
   override def addBatch(batchId: Long, data: DataFrame): Unit = {
     val schema = data.schema
     val encoder = RowEncoder(schema).resolveAndBind()
-    val rdd = data.queryExecution.toRdd.map(r => encoder.fromRow(r))
+    val rdd = data.queryExecution.toRdd.map(r => encoder.createDeserializer().apply(r))
     val df = sqlContext.sparkSession.createDataFrame(rdd, schema)
 
     val saveMode = sqlContext.sparkSession.conf

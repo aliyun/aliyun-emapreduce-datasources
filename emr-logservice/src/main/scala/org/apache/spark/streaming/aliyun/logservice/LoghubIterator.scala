@@ -49,7 +49,7 @@ class LoghubIterator(
 
   val inputMetrics = context.taskMetrics.inputMetrics
 
-  context.addTaskCompletionListener {
+  context.addTaskCompletionListener[Unit] {
     context => closeIfNeeded()
   }
 
