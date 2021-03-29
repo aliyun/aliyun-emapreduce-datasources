@@ -40,7 +40,7 @@
 
         <dependency>
             <groupId>com.redislabs</groupId>
-            <artifactId>spark-redis</artifactId>
+            <artifactId>spark-redis_${scala.binary.version}</artifactId>
         </dependency>
 
         <dependency>
@@ -74,7 +74,7 @@
                     <artifactSet>
                         <includes>
                             <include>redis.clients:jedis</include>
-                            <include>com.redislabs:spark-redis</include>
+                            <include>com.redislabs:spark-redis_${scala.binary.version}</include>
                         </includes>
                     </artifactSet>
                 </configuration>
