@@ -84,7 +84,7 @@
         <protobuf.version>2.5.0</protobuf.version>
         <hbase.version>1.4.9</hbase.version>
         <hbase.mr.version>2.0.4</hbase.mr.version>
-        <spark.redis.version>2.4.0</spark.redis.version>
+        <spark.redis.version>2.4.2</spark.redis.version>
         <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
         <json4s.jackson.version>3.5.3</json4s.jackson.version>
         <curator.version>4.2.0</curator.version>
@@ -534,7 +534,7 @@
 
             <dependency>
                 <groupId>com.redislabs</groupId>
-                <artifactId>spark-redis</artifactId>
+                <artifactId>spark-redis_${scala.binary.version}</artifactId>
                 <version>${spark.redis.version}</version>
             </dependency>
 
