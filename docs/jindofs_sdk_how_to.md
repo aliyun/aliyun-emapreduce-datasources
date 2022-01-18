@@ -184,39 +184,8 @@ client.namespace.rpc.address = header-1:8101
 <br />
 
 
-# 发布日志
+# JindoSDK 发布下载
 
-### v3.1.1
-日期：20201207<br />文件：[jindofs-sdk-3.1.1.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.1.1.jar)<br />更新内容：
-
-1. 修复多个bugs.
-2. 小的性能优化.
-3. 改善兼容性.
-
-
-### v3.0.0
-日期：20201016<br />文件：[jindofs-sdk-3.0.0.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.0.0.jar)<br />更新内容：
-
-1. 修复多个bugs.
-
-
-### v3.0.0
-日期：20201016<br />文件：[jindofs-sdk-3.0.0.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-3.0.0.jar)<br />更新内容：
-
-1. 修复多个bugs.
-
-
-### v2.7.401
-日期：20190914<br />文件：[jindofs-sdk-2.7.401.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.401.jar)<br />更新内容：
-
-1. 修复多个bugs.
-
-
-### v2.7.1
-日期：20190619<br />文件：[jindofs-sdk-2.7.1.jar](https://smartdata-binary.oss-cn-shanghai.aliyuncs.com/jindofs-sdk-2.7.1.jar)<br />更新内容：
-
-1. 支持访问OSS （作为OSS客户端）
-1. 支持访问JindoFS Cache模式集群
-1. 支持访问JindoFS Block模式集群
+https://github.com/aliyun/alibabacloud-jindodata/blob/master/docs/user/3.x/jindosdk_download.md
 
 <br />
