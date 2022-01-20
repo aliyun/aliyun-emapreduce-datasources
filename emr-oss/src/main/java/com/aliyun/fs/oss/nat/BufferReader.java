@@ -92,14 +92,17 @@ public class BufferReader {
         this.bufferSize = (int) Math.pow(2, power);
       }
 
-      if (buffer == null) {
-        buffer = new byte[bufferSize];
-      }
       this.concurrentStreams = conf.getInt("fs.oss.reader.concurrent.number", 4);
       if ((Math.log(concurrentStreams) / Math.log(2)) != 0) {
         int power = (int) Math.ceil(Math.log(concurrentStreams) / Math.log(2));
         this.concurrentStreams = (int) Math.pow(2, power);
       }
+
+      if (buffer == null) {
+        // The last half-1 of the last reader may exceed splitSize, so allocate (concurrentStreams - 1) more bytes to avoid the ArrayIndexOutOfBoundsException
+        buffer = new byte[bufferSize + concurrentStreams - 1];
+      }
+
       this.readers = new ConcurrentReader[concurrentStreams];
       this.splitContentSize = new int[concurrentStreams * 2];
       this.splitSize = bufferSize / concurrentStreams / 2;

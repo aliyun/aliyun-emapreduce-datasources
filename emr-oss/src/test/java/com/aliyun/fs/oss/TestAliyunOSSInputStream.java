@@ -145,4 +145,40 @@ public class TestAliyunOSSInputStream {
     assertTrue(instream.available() == 0);
     IOUtils.closeStream(instream);
   }
+
+  @Test
+  public void testArrayIndexOutOfBoundsException() throws Exception {
+    final int bufLen = 256;
+    long size = 32 * 1024 * 1024 - 2;
+    String filename = "readTestFile_" + size + ".txt";
+    Path readTestFile = setPath("/test/" + filename);
+
+    ContractTestUtils.generateTestFile(this.fs, readTestFile, size, 256, 255);
+    LOG.info(size + "B file created: /test/" + filename);
+
+    FSDataInputStream instream = this.fs.open(readTestFile);
+    byte[] buf = new byte[bufLen];
+    long bytesRead = 0;
+    while (bytesRead < size) {
+      int bytes;
+      if (size - bytesRead < bufLen) {
+        int remaining = (int)(size - bytesRead);
+        bytes = instream.read(buf, 0, remaining);
+      } else {
+        bytes = instream.read(buf, 0, bufLen);
+      }
+      bytesRead += bytes;
+
+      if (bytesRead % (1024 * 1024) == 0) {
+        int available = instream.available();
+        int remaining = (int)(size - bytesRead);
+        assertTrue("expected remaining:" + remaining + ", but got:" + available,
+                remaining == available);
+        LOG.info("Bytes read: " + Math.round((double)bytesRead / (1024 * 1024))
+                + " MB");
+      }
+    }
+    assertTrue(instream.available() == 0);
+    IOUtils.closeStream(instream);
+  }
 }
