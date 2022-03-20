@@ -59,6 +59,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
     odpsUtils.runSQL(project,
       // scalastyle:off
       """
+        |drop table if exists odps_basic_types;
         |CREATE TABLE `odps_basic_types` (
         |	`a` boolean,
         |	`b` smallint,
@@ -71,7 +72,10 @@ class OdpsDataTypeSuite extends SparkFunSuite {
         |	`i` timestamp,
         |	`j` string,
         |	`k` tinyint,
-        |	`l` binary
+        |	`l` binary,
+        | `m` array<double>,
+        | `n` map<double, timestamp>,
+        | `o` struct<s1: double, s2: timestamp>
         |) ;
       """.stripMargin,
       // scalastyle:on
@@ -100,14 +104,21 @@ class OdpsDataTypeSuite extends SparkFunSuite {
         StructField("i", TimestampType, true) ::
         StructField("j", StringType, true) ::
         StructField("k", ByteType, true) ::
-        StructField("l", BinaryType, true) :: Nil)
+        StructField("l", BinaryType, true) ::
+        StructField("m", ArrayType(DoubleType), true) ::
+        StructField("n", MapType(DoubleType, TimestampType)) ::
+        StructField("o", StructType(Array(StructField("s1", DoubleType), StructField("s2", TimestampType)))) ::
+        Nil)
 
     val dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm", Locale.US)
     val dataSeq = Array(
       (false, 1.toShort, 2, 3L, 4.0f, 5.0d, new java.math.BigDecimal("3.520122999999999891"),
         new Date(dateFormat.parse("26/10/2015 18:00").getTime),
-      new Timestamp(1510429612345L), "test-string", "6".toByte, testBytes)
-    )
+        new Timestamp(1510429612345L), "test-string", "6".toByte, testBytes,
+        Array(1.1, 2.2),
+        Map(1.2 -> new Timestamp(1510429612346L)),
+        Row(1.2, new Timestamp(1510429612347L))
+      ))
     val rowRDD = ss.sparkContext.makeRDD(dataSeq).map(attributes => Row(
       attributes._1,
       attributes._2,
@@ -120,7 +131,11 @@ class OdpsDataTypeSuite extends SparkFunSuite {
       attributes._9,
       attributes._10,
       attributes._11,
-      attributes._12))
+      attributes._12,
+      attributes._13,
+      attributes._14,
+      attributes._15
+    ))
 
     val df = ss.createDataFrame(rowRDD, struct)
     df.write.format("org.apache.spark.aliyun.odps.datasource")
@@ -142,14 +157,14 @@ class OdpsDataTypeSuite extends SparkFunSuite {
 
     assert(readDF.schema.fieldNames === struct.fieldNames)
     val collectList = readDF.collect()
-    dataSeq.zip(collectList).foreach( e => {
-        Row.fromTuple(e._1).toSeq.zip(e._2.toSeq).foreach( t => {
-          if (t._1.isInstanceOf[Array[Byte]] && t._2.isInstanceOf[Array[Byte]]) {
-            t._1.asInstanceOf[Array[Byte]].deep == t._2.asInstanceOf[Array[Byte]].deep
-          } else {
-            t._1.toString == t._2.toString
-          }
-        })
+    dataSeq.zip(collectList).foreach(e => {
+      Row.fromTuple(e._1).toSeq.zip(e._2.toSeq).foreach(t => {
+        if (t._1.isInstanceOf[Array[Byte]] && t._2.isInstanceOf[Array[Byte]]) {
+          t._1.asInstanceOf[Array[Byte]].deep == t._2.asInstanceOf[Array[Byte]].deep
+        } else {
+          t._1.toString == t._2.toString
+        }
+      })
     })
   }
 }

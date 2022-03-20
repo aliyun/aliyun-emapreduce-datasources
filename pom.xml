@@ -52,7 +52,7 @@
         <spark.version>2.4.3</spark.version>
         <oss.sdk.version>3.0.0</oss.sdk.version>
         <tablestore.sdk.version>5.10.3</tablestore.sdk.version>
-        <odps.version>0.28.4-public</odps.version>
+        <odps.version>0.37.10-public</odps.version>
         <loghubb.client.version>0.6.15</loghubb.client.version>
         <aliyun.sdk.core>4.3.2</aliyun.sdk.core>
         <aliyun.log.version>0.6.37</aliyun.log.version>

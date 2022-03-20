@@ -20,15 +20,13 @@ package org.apache.spark.sql.aliyun.odps
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-import com.aliyun.odps.TableSchema
+import com.aliyun.odps.{TableSchema}
 import com.aliyun.odps.data.{Binary, Record}
-
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.odps.OdpsOps
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{StructField, _}
 
 class OdpsOpsSuite extends SparkFunSuite {
   val accessKeyId: String = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")
@@ -54,7 +52,9 @@ class OdpsOpsSuite extends SparkFunSuite {
   )
 
   val conf = new SparkConf().setAppName("Test Odps Read").setMaster("local[*]")
-  val ss = SparkSession.builder().appName("Test Odps Read").master("local[*]").getOrCreate()
+  val ss = SparkSession.builder().appName("Test Odps Read")
+    .config("spark.sql.codegen.wholeStage", false)
+    .master("local[*]").getOrCreate()
   val odpsOps = new OdpsOps(ss.sparkContext, accessKeyId, accessKeySecret,
     urls(envType)(0), urls(envType)(1))
   val testBytes = Array[Byte](99.toByte, 134.toByte, 135.toByte, 200.toByte, 205.toByte)
@@ -65,18 +65,21 @@ class OdpsOpsSuite extends SparkFunSuite {
       // scalastyle:off
       """
         |CREATE TABLE `odps_basic_types` (
-        |	`a` boolean,
-        |	`b` smallint,
-        |	`c` int,
-        |	`d` bigint,
-        |	`e` float,
-        |	`f` double,
-        |	`g` decimal,
-        |	`h` datetime,
-        |	`i` timestamp,
-        |	`j` string,
-        |	`k` tinyint,
-        |	`l` binary
+        | `a` boolean,
+        | `b` smallint,
+        | `c` int,
+        | `d` bigint,
+        | `e` float,
+        | `f` double,
+        | `g` decimal,
+        | `h` datetime,
+        | `i` timestamp,
+        | `j` string,
+        | `k` tinyint,
+        | `l` binary,
+        | `m` array<double>,
+        | `n` map<double, timestamp>,
+        | `o` struct<s1: double, s2: timestamp>
         |) ;
       """.stripMargin,
       // scalastyle:on
@@ -105,14 +108,21 @@ class OdpsOpsSuite extends SparkFunSuite {
         StructField("i", TimestampType, true) ::
         StructField("j", StringType, true) ::
         StructField("k", ByteType, true) ::
-        StructField("l", BinaryType, true) :: Nil)
+        StructField("l", BinaryType, true) ::
+        StructField("m", ArrayType(DoubleType), true) ::
+        StructField("n", MapType(DoubleType, TimestampType)) ::
+        StructField("o", StructType(Array(StructField("s1", DoubleType), StructField("s2", TimestampType))))
+        :: Nil)
 
     val dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm", Locale.US)
     val dataSeq = Array(
       (false, 11.toShort, 12, 13L, 14.0f, 15.0d, new java.math.BigDecimal("3.520122999999999891"),
         new Date(dateFormat.parse("01/11/2015 18:00").getTime),
-        new Timestamp(1510429612345L), "test-string", "16".toByte, testBytes)
-    )
+        new Timestamp(1510429612345L), "test-string", "16".toByte, testBytes,
+        Array(1.1, 2.2).toSeq,
+        Map(1.2 -> new Timestamp(1510429612346L)),
+        Row(1.2, new Timestamp(1510429612347L))
+      ))
 
     val data = ss.sparkContext.parallelize(dataSeq, 2)
     val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
@@ -138,7 +148,7 @@ class OdpsOpsSuite extends SparkFunSuite {
 object OdpsOpsSuite {
   def writeTransfer(
       tuple: (Boolean, Short, Int, Long, Float, Double, java.math.BigDecimal,
-        Date, Timestamp, String, Byte, Array[Byte]),
+        Date, Timestamp, String, Byte, Array[Byte], Seq[Double], Map[Double, Timestamp], Row),
       emptyReord: Record,
       schema: TableSchema): Unit = {
     emptyReord.set(0, tuple._1)
@@ -153,5 +163,8 @@ object OdpsOpsSuite {
     emptyReord.set(9, tuple._10)
     emptyReord.set(10, tuple._11)
     emptyReord.set(11, new Binary(tuple._12))
+    emptyReord.set(12, OdpsUtils.sparkData2OdpsData(schema.getColumn(12).getTypeInfo)(tuple._13))
+    emptyReord.set(13, OdpsUtils.sparkData2OdpsData(schema.getColumn(13).getTypeInfo)(tuple._14))
+    emptyReord.set(14, OdpsUtils.sparkData2OdpsData(schema.getColumn(14).getTypeInfo)(tuple._15))
   }
 }

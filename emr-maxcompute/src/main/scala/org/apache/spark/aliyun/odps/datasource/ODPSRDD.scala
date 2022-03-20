@@ -18,16 +18,15 @@ package org.apache.spark.aliyun.odps.datasource
 
 import java.io.EOFException
 import java.sql.{Date, SQLException}
-
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import com.aliyun.odps.{Odps, PartitionSpec}
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
-
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.aliyun.odps.OdpsPartition
+import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
@@ -67,6 +66,7 @@ class ODPSRDD(
         val parSpec = new PartitionSpec(partitionSpec)
         downloadSession = tunnel.createDownloadSession(project, table, parSpec)
       }
+      val typeInfos = downloadSession.getSchema.getColumns.asScala.map(_.getTypeInfo)
       val reader = downloadSession.openRecordReader(split.start, split.count)
       val inputMetrics = context.taskMetrics.inputMetrics
 
@@ -189,6 +189,15 @@ class ODPSRDD(
                         case _ => throw new SQLException(s"Unknown type" +
                           s" ${value.getClass.getCanonicalName}")
                       }
+                    case ArrayType(_, _) =>
+                      val value = r.get(s.name)
+                      mutableRow.update(idx, OdpsUtils.odpsData2SparkData(typeInfos(idx))(value))
+                    case MapType(_, _, _) =>
+                      val value = r.get(s.name)
+                      mutableRow.update(idx, OdpsUtils.odpsData2SparkData(typeInfos(idx))(value))
+                    case StructType(_) =>
+                      val value = r.get(s.name)
+                      mutableRow.update(idx, OdpsUtils.odpsData2SparkData(typeInfos(idx))(value))
                     case NullType =>
                       mutableRow.setNullAt(idx)
                     case _ => throw new SQLException(s"Unknown type")

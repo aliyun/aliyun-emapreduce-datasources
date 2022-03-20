@@ -16,9 +16,7 @@
  */
 package org.apache.spark.aliyun.odps
 
-import java.sql.SQLException
 import java.text.SimpleDateFormat
-
 import scala.reflect.ClassTag
 
 import com.aliyun.odps._
@@ -27,7 +25,6 @@ import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordWriter
-
 import org.apache.spark.{SparkContext, TaskContext}
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
@@ -35,7 +32,7 @@ import org.apache.spark.api.java.function.{Function2 => JFunction2, Function3 =>
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.sql.types.{Decimal, StructType}
+import org.apache.spark.sql.types.StructType
 
 class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     accessKeySecret: String, odpsUrl: String, tunnelUrl: String)
@@ -706,7 +703,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
 
     StructType(
       columns.map(idx => {
-        odpsUtils.getCatalystType(tableSchema(idx)._1, tableSchema(idx)._2, true)
+        OdpsUtils.getCatalystType(tableSchema(idx)._1, tableSchema(idx)._2, true)
       })
     )
   }
@@ -716,46 +713,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     cols.sorted.map { idx =>
       val col = schema.getColumn(idx)
       try {
-        col.getTypeInfo.getOdpsType match {
-          case OdpsType.BIGINT => record.toArray.apply(idx).asInstanceOf[Long]
-          case OdpsType.BINARY =>
-            record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Binary].data()
-          case OdpsType.BOOLEAN => record.toArray.apply(idx).asInstanceOf[Boolean]
-          case OdpsType.CHAR => record.toArray.apply(idx).asInstanceOf[String]
-          case OdpsType.DATE => record.toArray.apply(idx).asInstanceOf[java.sql.Date].getTime
-          case OdpsType.DATETIME =>
-            val r = record.toArray.apply(idx).asInstanceOf[java.util.Date]
-            if (r != null) {
-              new java.sql.Date(r.getTime)
-            } else null
-          case OdpsType.DECIMAL =>
-            new Decimal().set(record.toArray.apply(idx).asInstanceOf[java.math.BigDecimal])
-          case OdpsType.DOUBLE => record.toArray.apply(idx).asInstanceOf[Double]
-          case OdpsType.FLOAT => record.toArray.apply(idx).asInstanceOf[Float]
-          case OdpsType.INT => record.toArray.apply(idx).asInstanceOf[Integer]
-          case OdpsType.SMALLINT => record.toArray.apply(idx).asInstanceOf[Short]
-          case OdpsType.STRING => record.getString(idx)
-          case OdpsType.TIMESTAMP =>
-            val r = record.toArray.apply(idx).asInstanceOf[java.sql.Timestamp]
-            if (r != null) {
-              r
-            } else null
-          case OdpsType.TINYINT => record.toArray.apply(idx).asInstanceOf[Byte]
-          case OdpsType.VARCHAR =>
-            record.toArray.apply(idx).asInstanceOf[com.aliyun.odps.data.Varchar].getValue
-          case OdpsType.VOID => "null"
-          case OdpsType.INTERVAL_DAY_TIME =>
-            throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
-          case OdpsType.INTERVAL_YEAR_MONTH =>
-            throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
-          case OdpsType.MAP =>
-            throw new SQLException(s"Unsupported type 'MAP'")
-          case OdpsType.STRUCT =>
-            throw new SQLException(s"Unsupported type 'STRUCT'")
-          case OdpsType.ARRAY =>
-            throw new SQLException(s"Unsupported type 'ARRAY'")
-          case _ => throw new SQLException(s"Unsupported type ${col.getTypeInfo.getOdpsType}")
-        }
+        OdpsUtils.odpsData2SparkData(col.getTypeInfo, true)(record.get(idx))
       } catch {
         case e: Exception =>
           log.error(s"Can not transfer record column value, idx: $idx, " +
@@ -779,7 +737,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     val schema = odps.tables().get(table).getSchema
     val idx = schema.getColumnIndex(name)
     val colType = schema.getColumn(name).getTypeInfo
-    val field = odpsUtils.getCatalystType(name, colType, true)
+    val field = OdpsUtils.getCatalystType(name, colType, true)
 
     (idx.toString, field.dataType.simpleString)
   }
@@ -791,7 +749,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     val column = schema.getColumn(idx)
     val name = column.getName
     val colType = schema.getColumn(name).getTypeInfo
-    val field = odpsUtils.getCatalystType(name, colType, true)
+    val field = OdpsUtils.getCatalystType(name, colType, true)
 
     (name, field.dataType.simpleString)
   }
