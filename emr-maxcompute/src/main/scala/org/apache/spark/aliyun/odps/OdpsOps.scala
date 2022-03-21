@@ -713,7 +713,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
     cols.sorted.map { idx =>
       val col = schema.getColumn(idx)
       try {
-        OdpsUtils.odpsData2SparkData(col.getTypeInfo, true)(record.get(idx))
+        OdpsUtils.odpsData2SparkData(col.getTypeInfo, false)(record.get(idx))
       } catch {
         case e: Exception =>
           log.error(s"Can not transfer record column value, idx: $idx, " +

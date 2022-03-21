@@ -19,7 +19,7 @@ package org.apache.spark.aliyun.utils
 import java.math.BigDecimal
 import scala.collection.JavaConverters._
 import com.aliyun.odps.{Partition, _}
-import com.aliyun.odps.`type`.{ArrayTypeInfo, CharTypeInfo, DecimalTypeInfo, MapTypeInfo, StructTypeInfo, TypeInfo, VarcharTypeInfo}
+import com.aliyun.odps.`type`._
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.{Binary, Char, SimpleStruct, Varchar}
 import com.aliyun.odps.task.SQLTask
@@ -456,16 +456,30 @@ object OdpsUtils {
     }
   }
 
-  def odpsData2SparkData(t: TypeInfo, load: Boolean = false): Object => Any = {
+  def odpsData2SparkData(t: TypeInfo, isDatasource: Boolean = true): Object => Any = {
     val func = t.getOdpsType match {
       case OdpsType.BOOLEAN => (v: Object) => v.asInstanceOf[java.lang.Boolean]
       case OdpsType.DOUBLE => (v: Object) => v.asInstanceOf[java.lang.Double]
       case OdpsType.BIGINT => (v: Object) => v.asInstanceOf[java.lang.Long]
       case OdpsType.DATETIME => (v: Object) =>
-        new java.sql.Date(v.asInstanceOf[java.util.Date].getTime)
+        if (!isDatasource) {
+          new java.sql.Date(v.asInstanceOf[java.util.Date].getTime)
+        } else {
+          v.asInstanceOf[java.util.Date].getTime.toInt
+        }
       case OdpsType.STRING => (v: Object) => v match {
-        case str: String => str
-        case array: Array[Byte] => new String(array)
+        case str: String =>
+          if(!isDatasource) {
+            str
+          } else {
+            UTF8String.fromString(str)
+          }
+        case bytes: Array[Byte] =>
+          if (!isDatasource) {
+            new String(bytes)
+          } else {
+            UTF8String.fromBytes(bytes)
+          }
       }
       case OdpsType.DECIMAL => (v: Object) => {
         val ti = t.asInstanceOf[DecimalTypeInfo]
@@ -484,9 +498,13 @@ object OdpsUtils {
         UTF8String.fromString(char.getValue.substring(0, char.length()))
       }
       case OdpsType.DATE => (v: Object) =>
-        v.asInstanceOf[java.sql.Date].getTime
+        if (!isDatasource) {
+          v.asInstanceOf[java.sql.Date]
+        } else {
+          v.asInstanceOf[java.sql.Date].getTime
+        }
       case OdpsType.TIMESTAMP => (v: Object) => {
-        if (load) {
+        if (!isDatasource) {
           v.asInstanceOf[java.sql.Timestamp]
         } else {
           v.asInstanceOf[java.sql.Timestamp].getTime * 1000
@@ -498,16 +516,18 @@ object OdpsUtils {
       case OdpsType.TINYINT => (v: Object) => v.asInstanceOf[java.lang.Byte]
       case OdpsType.ARRAY => (v: Object) => {
         val array = v.asInstanceOf[java.util.ArrayList[Object]]
-        if (!load) {
+        if (!isDatasource) {
+          array.asScala
+        } else {
           new GenericArrayData(array.toArray().
             map(odpsData2SparkData(t.asInstanceOf[ArrayTypeInfo].getElementTypeInfo)(_)))
-        } else {
-          array.asScala
         }
       }
       case OdpsType.BINARY => (v: Object) => v.asInstanceOf[Binary].data()
       case OdpsType.MAP => (v: Object) => {
-        if (!load) {
+        if (!isDatasource) {
+          v.asInstanceOf[java.util.HashMap[Object, Object]].asScala
+        } else {
           val m = v.asInstanceOf[java.util.HashMap[Object, Object]]
           val keyArray = m.keySet().toArray()
           new ArrayBasedMapData(
@@ -516,19 +536,17 @@ object OdpsUtils {
             new GenericArrayData(keyArray.map(m.get(_)).
               map(odpsData2SparkData(t.asInstanceOf[MapTypeInfo].getValueTypeInfo)(_)))
           )
-        } else {
-          v.asInstanceOf[java.util.HashMap[Object, Object]].asScala
         }
       }
       case OdpsType.STRUCT => (v: Object) => {
         val struct = v.asInstanceOf[com.aliyun.odps.data.Struct]
-        if (!load) {
+        if (!isDatasource) {
+          Row.fromSeq(struct.getFieldValues.asScala.zipWithIndex
+            .map(x => odpsData2SparkData(struct.getFieldTypeInfo(x._2), isDatasource)(x._1)))
+        } else {
           org.apache.spark.sql.catalyst.InternalRow
             .fromSeq(struct.getFieldValues.asScala.zipWithIndex
-              .map(x => odpsData2SparkData(struct.getFieldTypeInfo(x._2), load)(x._1)))
-        } else {
-          Row.fromSeq(struct.getFieldValues.asScala.zipWithIndex
-            .map(x => odpsData2SparkData(struct.getFieldTypeInfo(x._2), load)(x._1)))
+              .map(x => odpsData2SparkData(struct.getFieldTypeInfo(x._2))(x._1)))
         }
       }
     }
