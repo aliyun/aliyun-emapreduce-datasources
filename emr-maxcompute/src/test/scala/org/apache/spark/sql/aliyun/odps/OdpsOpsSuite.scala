@@ -65,21 +65,21 @@ class OdpsOpsSuite extends SparkFunSuite {
       // scalastyle:off
       """
         |CREATE TABLE `odps_basic_types` (
-        | `a` boolean,
-        | `b` smallint,
-        | `c` int,
-        | `d` bigint,
-        | `e` float,
-        | `f` double,
-        | `g` decimal,
-        | `h` datetime,
-        | `i` timestamp,
-        | `j` string,
-        | `k` tinyint,
-        | `l` binary,
-        | `m` array<double>,
-        | `n` map<double, timestamp>,
-        | `o` struct<s1: double, s2: timestamp>
+        |    `a` boolean,
+        |    `b` smallint,
+        |    `c` int,
+        |    `d` bigint,
+        |    `e` float,
+        |    `f` double,
+        |    `g` decimal,
+        |    `h` datetime,
+        |    `i` timestamp,
+        |    `j` string,
+        |    `k` tinyint,
+        |    `l` binary,
+        |    `m` array<double>,
+        |    `n` map<double, timestamp>,
+        |    `o` struct<s1: double, s2: timestamp>
         |) ;
       """.stripMargin,
       // scalastyle:on
