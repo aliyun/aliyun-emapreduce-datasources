@@ -53,7 +53,7 @@ case class ODPSRelation(
     val tableSchema = odpsUtils.getTableSchema(project, table, false)
 
     StructType(
-      tableSchema.map(e => odpsUtils.getCatalystType(e._1, e._2, true))
+      tableSchema.map(e => OdpsUtils.getCatalystType(e._1, e._2, true))
     )
   }
 

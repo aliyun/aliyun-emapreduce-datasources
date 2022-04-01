@@ -16,18 +16,14 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
-import java.sql.{Date, SQLException}
-
 import com.aliyun.odps._
+import com.aliyun.odps.`type`.TypeInfo
 import com.aliyun.odps.account.AliyunAccount
-import com.aliyun.odps.data.Binary
 import com.aliyun.odps.tunnel.TableTunnel
 import org.slf4j.LoggerFactory
-
 import org.apache.spark.TaskContext
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
-import org.apache.spark.sql.types._
 
 class ODPSWriter(
     accessKeyId: String,
@@ -117,12 +113,8 @@ class ODPSWriter(
       }
       val uploadId = uploadSession.getId
 
-      def writeToFile(schema: Array[(String, OdpsType)], iter: Iterator[Row]) {
-        val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
-        val odps_ = new Odps(account_)
-        odps_.setDefaultProject(project)
-        odps_.setEndpoint(odpsUrl)
-        val tunnel_ = new TableTunnel(odps_)
+      def writeToFile(odps: Odps, schema: Array[(String, TypeInfo)], iter: Iterator[Row]) {
+        val tunnel_ = new TableTunnel(odps)
         tunnel_.setEndpoint(tunnelUrl)
         val uploadSession_ = if (isPartitionTable) {
           val parSpec = new PartitionSpec(partitionSpec)
@@ -140,52 +132,9 @@ class ODPSWriter(
           val record = uploadSession_.newRecord()
 
           schema.zipWithIndex.foreach {
-            case (s: (String, OdpsType), idx: Int) =>
+            case (s: (String, TypeInfo), idx: Int) =>
               try {
-                s._2 match {
-                  case OdpsType.BIGINT =>
-                    record.setBigint(s._1, value.get(idx).toString.toLong)
-                  case OdpsType.BINARY =>
-                    record.set(s._1, new Binary(value.getAs[Array[Byte]](idx)))
-                  case OdpsType.BOOLEAN =>
-                    record.setBoolean(s._1, value.getBoolean(idx))
-                  case OdpsType.CHAR =>
-                    record.set(s._1, new com.aliyun.odps.data.Char(value.get(idx).toString))
-                  case OdpsType.DATE =>
-                    record.set(s._1, value.getAs[Date](idx))
-                  case OdpsType.DATETIME =>
-                    record.set(s._1, new java.util.Date(value.getAs[Date](idx).getTime))
-                  case OdpsType.DECIMAL =>
-                    record.set(s._1, Decimal(value.get(idx).toString).toJavaBigDecimal)
-                  case OdpsType.DOUBLE =>
-                    record.setDouble(s._1, value.getDouble(idx))
-                  case OdpsType.FLOAT =>
-                    record.set(s._1, value.get(idx).toString.toFloat)
-                  case OdpsType.INT =>
-                    record.set(s._1, value.get(idx).toString.toInt)
-                  case OdpsType.SMALLINT =>
-                    record.set(s._1, value.get(idx).toString.toShort)
-                  case OdpsType.STRING =>
-                    record.setString(s._1, value.get(idx).toString)
-                  case OdpsType.TINYINT =>
-                    record.set(s._1, value.getAs[Byte](idx))
-                  case OdpsType.VARCHAR =>
-                    record.set(s._1, new com.aliyun.odps.data.Varchar(value.get(idx).toString))
-                  case OdpsType.TIMESTAMP =>
-                    record.setDatetime(s._1, value.getAs[java.sql.Timestamp](idx))
-                  case OdpsType.VOID => record.set(s._1, null)
-                  case OdpsType.INTERVAL_DAY_TIME =>
-                    throw new SQLException(s"Unsupported type 'INTERVAL_DAY_TIME'")
-                  case OdpsType.INTERVAL_YEAR_MONTH =>
-                    throw new SQLException(s"Unsupported type 'INTERVAL_YEAR_MONTH'")
-                  case OdpsType.MAP =>
-                    throw new SQLException(s"Unsupported type 'MAP'")
-                  case OdpsType.STRUCT =>
-                    throw new SQLException(s"Unsupported type 'STRUCT'")
-                  case OdpsType.ARRAY =>
-                    throw new SQLException(s"Unsupported type 'ARRAY'")
-                  case _ => throw new SQLException(s"Unsupported type ${s._2}")
-                }
+                record.set(s._1, OdpsUtils.sparkData2OdpsData(s._2)(value.get(idx).asInstanceOf[Object]))
               } catch {
                 case e: NullPointerException =>
                   if (value.get(idx) == null) {
@@ -202,11 +151,15 @@ class ODPSWriter(
         writer.close()
       }
 
-      val dataSchema = odpsUtils.getTableSchema(project, table, false)
-        .map{ e => (e._1, e._2.getOdpsType) }
       data.foreachPartition {
         iterator =>
-          writeToFile(dataSchema, iterator)
+          val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
+          val odps = new Odps(account_)
+          odps.setDefaultProject(project)
+          odps.setEndpoint(odpsUrl)
+          val odpsUtils = new OdpsUtils(odps)
+          val dataSchema = odpsUtils.getTableSchema(project, table, false)
+          writeToFile(odps, dataSchema, iterator)
       }
       val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))
       uploadSession.commit(arr)
