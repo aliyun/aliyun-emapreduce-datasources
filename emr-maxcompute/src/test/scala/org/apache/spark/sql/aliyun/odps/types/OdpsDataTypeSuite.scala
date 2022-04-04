@@ -90,7 +90,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
     odpsUtils.runSQL(project, "TRUNCATE TABLE odps_basic_types;")
   }
 
-  test("support basic types") {
+  test("[OdpsDataTypeSuite] support basic types") {
     val table = "odps_basic_types"
     val struct = StructType(
         StructField("a", BooleanType, true) ::

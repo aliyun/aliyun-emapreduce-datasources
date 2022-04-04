@@ -29,7 +29,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.sql.types._
-import org.apache.spark.util.NextIterator
+import org.apache.spark.util.{NextIterator, TaskCompletionListener}
 
 class ODPSRDD(
     sc: SparkContext,
@@ -66,9 +66,11 @@ class ODPSRDD(
       val reader = downloadSession.openRecordReader(split.start, split.count)
       val inputMetrics = context.taskMetrics.inputMetrics
 
-      context.addTaskCompletionListener {
-        context => closeIfNeeded()
-      }
+      context.addTaskCompletionListener(new TaskCompletionListener {
+        override def onTaskCompletion(context: TaskContext): Unit = {
+          closeIfNeeded()
+        }
+      })
 
       val mutableRow = new SpecificInternalRow(schema.fields.map(x => x.dataType))
 

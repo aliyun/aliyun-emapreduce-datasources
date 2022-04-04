@@ -17,20 +17,17 @@
 package org.apache.spark.aliyun.odps
 
 import java.io.EOFException
-
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
-
 import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
-
 import org.apache.spark._
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.util.NextIterator
+import org.apache.spark.util.{NextIterator, TaskCompletionListener}
 
 class OdpsPartition(rddId: Int,
     idx: Int,
@@ -90,9 +87,11 @@ class OdpsRDD[T: ClassTag](@transient sc: SparkContext,
       val reader = downloadSession.openRecordReader(split.start, split.count)
       val inputMetrics = context.taskMetrics.inputMetrics
 
-      context.addTaskCompletionListener {
-        context => closeIfNeeded()
-      }
+      context.addTaskCompletionListener(new TaskCompletionListener {
+        override def onTaskCompletion(context: TaskContext): Unit = {
+          closeIfNeeded()
+        }
+      })
 
       override def getNext() = {
         var ret = null.asInstanceOf[T]
