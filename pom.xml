@@ -796,6 +796,7 @@
             </activation>
         </profile>
         <profile>
+            <id>spark3</id>
             <properties>
                 <scala.version>2.12.15</scala.version>
                 <scala.binary.version>2.12</scala.binary.version>
