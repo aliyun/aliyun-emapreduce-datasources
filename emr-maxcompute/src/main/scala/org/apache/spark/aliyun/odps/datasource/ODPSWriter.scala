@@ -151,8 +151,7 @@ class ODPSWriter(
         writer.close()
       }
 
-      data.foreachPartition {
-        iterator =>
+      data.foreachPartition((iterator: Iterator[Row]) => {
           val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
           val odps = new Odps(account_)
           odps.setDefaultProject(project)
@@ -160,7 +159,7 @@ class ODPSWriter(
           val odpsUtils = new OdpsUtils(odps)
           val dataSchema = odpsUtils.getTableSchema(project, table, false)
           writeToFile(odps, dataSchema, iterator)
-      }
+      })
       val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))
       uploadSession.commit(arr)
     }

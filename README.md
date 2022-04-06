@@ -23,6 +23,13 @@
 
 ```
 
+## Build emr-maxcompute with Spark3.2.0
+```
+	    git clone https://github.com/aliyun/aliyun-emapreduce-datasources.git
+	    cd  aliyun-emapreduce-datasources/emr-maxcompute/
+	    mvn clean package -Pspark3 -DskipTests
+```
+
 #### Use SDK in Eclipse project directly
 
 - copy sdk jar to your project
