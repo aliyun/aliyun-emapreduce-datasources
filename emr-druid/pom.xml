@@ -15,7 +15,7 @@
 
     <properties>
         <druid.tranquility.version>0.8.2</druid.tranquility.version>
-        <jackson.version>2.8.11</jackson.version>
+        <jackson.version>2.12.6.1</jackson.version>
     </properties>
 
     <dependencies>
