@@ -15,7 +15,7 @@
     <name>Aliyun E-MapReduce External JDBC Support</name>
 
     <properties>
-        <mysql.connector.version>5.1.34</mysql.connector.version>
+        <mysql.connector.version>8.0.16</mysql.connector.version>
         <commons.io.version>2.6</commons.io.version>
     </properties>
 
