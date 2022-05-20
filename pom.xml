@@ -70,7 +70,7 @@
         <eclipse.jetty>9.3.24.v20180605</eclipse.jetty>
         <easymock.version>3.2</easymock.version>
         <mockito.version>1.10.19</mockito.version>
-        <gson.version>2.8.5</gson.version>
+        <gson.version>2.8.9</gson.version>
         <dropwizard.metrics.version>3.1.0</dropwizard.metrics.version>
         <okhttp3.version>3.12.0</okhttp3.version>
         <zkclient.version>0.10</zkclient.version>
