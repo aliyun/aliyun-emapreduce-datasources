@@ -16,27 +16,28 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
+import java.util
+
+import scala.collection.JavaConverters._
+
 import com.aliyun.odps._
-import com.aliyun.odps.`type`.TypeInfo
+import com.aliyun.odps.`type`.{TypeInfo, TypeInfoFactory}
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.tunnel.TableTunnel
 import org.slf4j.LoggerFactory
+
 import org.apache.spark.TaskContext
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
 
-class ODPSWriter(
-    accessKeyId: String,
-    accessKeySecret: String,
-    odpsUrl: String,
-    tunnelUrl: String) extends Serializable {
+class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
 
-  @transient val account = new AliyunAccount(accessKeyId, accessKeySecret)
+  @transient val account = new AliyunAccount(odpsOptions.accessKeyId, odpsOptions.accessKeySecret)
   @transient val odps = new Odps(account)
 
-  odps.setEndpoint(odpsUrl)
+  odps.setEndpoint(odpsOptions.odpsUrl)
   @transient val tunnel = new TableTunnel(odps)
-  tunnel.setEndpoint(tunnelUrl)
+  tunnel.setEndpoint(odpsOptions.tunnelUrl)
   @transient val odpsUtils = new OdpsUtils(odps)
 
   private val log = LoggerFactory.getLogger(getClass)
@@ -55,28 +56,25 @@ class ODPSWriter(
    * @return
    */
   def saveToTable(
-    project: String,
-    table: String,
-    data: DataFrame,
-    partitionSpec: String,
-    defaultCreate: Boolean,
-    saveMode: SaveMode,
-    dyncPartition: Option[Seq[String]] = None) {
+      project: String,
+      table: String,
+      data: DataFrame,
+      partitionSpec: String,
+      defaultCreate: Boolean,
+      saveMode: SaveMode,
+      dyncPartition: Option[Seq[String]] = None): Unit = {
     odps.setDefaultProject(project)
 
     val tableExists = odpsUtils.tableExist(table, project)
-    val isPartitionTable = odpsUtils.isPartitionTable(table, project)
 
-    if (isPartitionTable && partitionSpec == null) {
-      sys.error(s"when $project.$table is a partition table, you should provide option " +
-        "'partitionSpec'")
-    }
-
-    val shouldUpload = {
-      if (saveMode == SaveMode.ErrorIfExists && tableExists) {
+    if (tableExists) {
+      // It should be checked after confirming the table is existed whether a table is a
+      // partition table or not, otherwise it will throw OdpsException.
+      val isPartitionTable = odpsUtils.isPartitionTable(table, project)
+      if (saveMode == SaveMode.ErrorIfExists) {
         sys.error(s"$project.$table ${if (isPartitionTable) partitionSpec else ""} " +
           s"already exists and SaveMode is ErrorIfExists")
-      } else if (saveMode == SaveMode.Ignore && tableExists) {
+      } else if (saveMode == SaveMode.Ignore) {
         log.info(s"Table $project.$table already exists and SaveMode is Ignore, No data saved")
         return
       } else if (saveMode == SaveMode.Overwrite) {
@@ -90,78 +88,129 @@ class ODPSWriter(
           odpsUtils.dropPartition(project, table, partitionSpec)
           odpsUtils.createPartition(project, table, partitionSpec)
         }
-        true
-      } else true
+      }
+    } else {
+      val schema = new TableSchema()
+
+      // for `dataframe.write.partitionBy()`
+      val partitionColumns = new util.HashSet[String]()
+      if (odpsOptions.partitionColumns != null) {
+        partitionColumns.addAll(odpsOptions.partitionColumns.asJava)
+        odpsOptions.partitionColumns.foreach { column => log.warn(s"##### partition by $column") }
+      }
+
+      if (!partitionColumns.isEmpty && (partitionSpec == null || partitionSpec.isEmpty)) {
+        // todo: support `partitionBy` without providing partitionSpec
+        sys.error(s"when $project.$table is a partition table, you should provide option " +
+          "'partitionSpec'")
+      }
+
+      // if data didn't contains the partitioned column, add it.
+      val columnNames = data.schema.fields.map(_.name).toSet
+      partitionColumns.asScala.diff(columnNames).foreach(partitionColumn => {
+        val column = new Column(partitionColumn, TypeInfoFactory.STRING)
+        log.warn(s"##### add partition column $partitionColumn which didn't appear at dataframe.")
+        schema.addPartitionColumn(column)
+      })
+
+      data.schema.fields.foreach(f => {
+        val c = new Column(f.name, OdpsUtils.sparkTypeToOdpsType(f.dataType), f.getComment().orNull)
+        if (partitionColumns.contains(f.name.toLowerCase())) {
+          log.warn(s"##### add partition column ${f.name}")
+          schema.addPartitionColumn(c)
+        } else {
+          log.warn(s"##### add normal column ${f.name}")
+          schema.addColumn(c)
+        }
+      })
+
+      odpsUtils.createTable(project, table, schema, ifNotExists = true)
+      if (!partitionColumns.isEmpty) {
+        odpsUtils.createPartition(project, table, partitionSpec)
+      } else if (partitionSpec != null) {
+        log.warn(s"Table $project.$table is not a partition table," +
+          s" partitionSpec $partitionSpec will be ignored.")
+      }
     }
 
-    if (shouldUpload) {
-      if (isPartitionTable && defaultCreate) {
-        odpsUtils.createPartition(project, table, partitionSpec)
-      }
+    upload(project, table, data, partitionSpec, defaultCreate)
+  }
 
-      val account = new AliyunAccount(accessKeyId, accessKeySecret)
-      val odps = new Odps(account)
-      odps.setDefaultProject(project)
-      odps.setEndpoint(odpsUrl)
-      val tunnel = new TableTunnel(odps)
-      tunnel.setEndpoint(tunnelUrl)
-      val uploadSession = if (isPartitionTable) {
-        val parSpec = new PartitionSpec(partitionSpec)
-        tunnel.createUploadSession(project, table, parSpec)
-      } else {
-        tunnel.createUploadSession(project, table)
-      }
-      val uploadId = uploadSession.getId
+  private def writeToFile(
+      uploadSession: TableTunnel#UploadSession,
+      schema: Array[(String, TypeInfo)],
+      iter: Iterator[Row]): Unit = {
+    val writer = uploadSession.openRecordWriter(TaskContext.get.partitionId)
+    var recordsWritten = 0L
 
-      def writeToFile(odps: Odps, schema: Array[(String, TypeInfo)], iter: Iterator[Row]) {
-        val tunnel_ = new TableTunnel(odps)
-        tunnel_.setEndpoint(tunnelUrl)
-        val uploadSession_ = if (isPartitionTable) {
-          val parSpec = new PartitionSpec(partitionSpec)
-          tunnel_.getUploadSession(project, table, parSpec, uploadId)
-        } else {
-          tunnel_.getUploadSession(project, table, uploadId)
-        }
+    while (iter.hasNext) {
+      val value = iter.next()
+      val record = uploadSession.newRecord()
 
-        val writer = uploadSession_.openRecordWriter(TaskContext.get.partitionId)
-
-        var recordsWritten = 0L
-
-        while (iter.hasNext) {
-          val value = iter.next()
-          val record = uploadSession_.newRecord()
-
-          schema.zipWithIndex.foreach {
-            case (s: (String, TypeInfo), idx: Int) =>
-              try {
-                record.set(s._1, OdpsUtils.sparkData2OdpsData(s._2)(value.get(idx).asInstanceOf[Object]))
-              } catch {
-                case e: NullPointerException =>
-                  if (value.get(idx) == null) {
-                    record.set(s._1, null)
-                  } else {
-                    throw e
-                  }
+      schema.zipWithIndex.foreach {
+        case (s: (String, TypeInfo), idx: Int) =>
+          try {
+            record.set(s._1,
+              OdpsUtils.sparkData2OdpsData(s._2)(value.get(idx).asInstanceOf[Object]))
+          } catch {
+            case e: NullPointerException =>
+              if (value.get(idx) == null) {
+                record.set(s._1, null)
+              } else {
+                throw e
               }
           }
-          writer.write(record)
-          recordsWritten += 1
-        }
+      }
+      writer.write(record)
+      recordsWritten += 1
+    }
 
-        writer.close()
+    writer.close()
+  }
+
+  private def upload(
+      project: String,
+      table: String,
+      data: DataFrame,
+      partitionSpec: String,
+      defaultCreate: Boolean): Unit = {
+    val isPartitionTable = odpsUtils.isPartitionTable(table, project)
+    if (isPartitionTable && defaultCreate) {
+      odpsUtils.createPartition(project, table, partitionSpec)
+    }
+
+    val uploadSession = if (isPartitionTable) {
+      val parSpec = new PartitionSpec(partitionSpec)
+      tunnel.createUploadSession(project, table, parSpec)
+    } else {
+      tunnel.createUploadSession(project, table)
+    }
+    val uploadId = uploadSession.getId
+
+    data.foreachPartition((iterator: Iterator[Row]) => {
+      val account = new AliyunAccount(odpsOptions.accessKeyId, odpsOptions.accessKeySecret)
+
+      val odps = new Odps(account)
+      odps.setDefaultProject(project)
+      odps.setEndpoint(odpsOptions.odpsUrl)
+
+      val odpsUtils = new OdpsUtils(odps)
+      val dataSchema = odpsUtils.getTableSchema(project, table, isPartition = false)
+
+      val tunnel = new TableTunnel(odps)
+      tunnel.setEndpoint(odpsOptions.tunnelUrl)
+
+      val uploadSession = if (isPartitionTable) {
+        val parSpec = new PartitionSpec(partitionSpec)
+        tunnel.getUploadSession(project, table, parSpec, uploadId)
+      } else {
+        tunnel.getUploadSession(project, table, uploadId)
       }
 
-      data.foreachPartition((iterator: Iterator[Row]) => {
-          val account_ = new AliyunAccount(accessKeyId, accessKeySecret)
-          val odps = new Odps(account_)
-          odps.setDefaultProject(project)
-          odps.setEndpoint(odpsUrl)
-          val odpsUtils = new OdpsUtils(odps)
-          val dataSchema = odpsUtils.getTableSchema(project, table, false)
-          writeToFile(odps, dataSchema, iterator)
-      })
-      val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))
-      uploadSession.commit(arr)
-    }
- }
+      writeToFile(uploadSession, dataSchema, iterator)
+    })
+    val arr = Array.tabulate(data.rdd.partitions.length)(l => Long.box(l))
+    uploadSession.commit(arr)
+  }
+
 }

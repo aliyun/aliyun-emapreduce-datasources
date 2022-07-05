@@ -17,12 +17,17 @@
 package org.apache.spark.aliyun.utils
 
 import java.math.BigDecimal
+import java.util
+
 import scala.collection.JavaConverters._
+
 import com.aliyun.odps.{Partition, _}
 import com.aliyun.odps.`type`._
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.{Binary, Char, SimpleStruct, Varchar}
 import com.aliyun.odps.task.SQLTask
+import com.aliyun.odps.tunnel.TableTunnel
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, GenericArrayData}
@@ -31,6 +36,12 @@ import org.apache.spark.unsafe.types.UTF8String
 
 class OdpsUtils(odps: Odps) extends Logging{
   import OdpsUtils._
+
+  def getTableTunnel(tunnelUrl: String): TableTunnel = {
+    val tunnel = new TableTunnel(odps)
+    tunnel.setEndpoint(tunnelUrl)
+    tunnel
+  }
 
   /**
    * Check if specific ODPS table and partition exist or else.
@@ -207,6 +218,17 @@ class OdpsUtils(odps: Odps) extends Logging{
   }
 
   /**
+   * Get the table schema of ODPS table
+   * @param project the name of ODPS project
+   * @param table the name of ODPS table
+   * @return a tableSchema
+   */
+  def getTableSchema(project: String, table: String): TableSchema = {
+    odps.setDefaultProject(project)
+    odps.tables().get(table).getSchema
+  }
+
+  /**
    * Get the table schema of ODPS table.
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
@@ -217,7 +239,10 @@ class OdpsUtils(odps: Odps) extends Logging{
       Array[(String, TypeInfo)] = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(table).getSchema
-    val columns = if (isPartition) schema.getPartitionColumns else schema.getColumns
+    val columns = schema.getColumns
+    if (isPartition) {
+      columns.addAll(schema.getPartitionColumns)
+    }
     columns.toArray(new Array[Column](0)).map(e => (e.getName, e.getTypeInfo))
   }
 
@@ -403,8 +428,8 @@ object OdpsUtils {
               .toArray[Object](typeInfo2Type(ti.getElementTypeInfo))
               .map(e => sparkData2OdpsData(ti.getElementTypeInfo)(e)).toList.asJava
           } else if (v.isInstanceOf[Seq[Any]]) {
-            v.asInstanceOf[Seq[Any]]
-              .map(e => sparkData2OdpsData(ti.getElementTypeInfo)(e.asInstanceOf[Object])).toList.asJava
+            v.asInstanceOf[Seq[Any]].map(e =>
+              sparkData2OdpsData(ti.getElementTypeInfo)(e.asInstanceOf[Object])).toList.asJava
           } else null
         } else null
       case OdpsType.BINARY => v: Object => new Binary(v.asInstanceOf[Array[Byte]])
@@ -428,7 +453,7 @@ object OdpsUtils {
             map.keys.foreach(key => {
               m.put(
                 sparkData2OdpsData(ti.getKeyTypeInfo)(key.asInstanceOf[Object]),
-                sparkData2OdpsData(ti.getValueTypeInfo)(map.get(key).getOrElse(null).asInstanceOf[Object])
+                sparkData2OdpsData(ti.getValueTypeInfo)(map.get(key).orNull.asInstanceOf[Object])
               )
             })
           }
@@ -456,6 +481,42 @@ object OdpsUtils {
     }
   }
 
+  private def sparkPrimitiveTypeToOdpsPrimitiveType(t: DataType): TypeInfo = t match {
+    case DataTypes.ByteType => TypeInfoFactory.TINYINT
+    case DataTypes.ShortType => TypeInfoFactory.SMALLINT
+    case DataTypes.IntegerType => TypeInfoFactory.INT
+    case DataTypes.LongType => TypeInfoFactory.BIGINT
+    case DataTypes.FloatType => TypeInfoFactory.FLOAT
+    case DataTypes.DoubleType => TypeInfoFactory.DOUBLE
+    case dt: DecimalType => TypeInfoFactory.getDecimalTypeInfo(dt.precision, dt.scale)
+    case DataTypes.StringType => TypeInfoFactory.STRING
+    case DataTypes.BinaryType => TypeInfoFactory.BINARY
+    case DataTypes.BooleanType => TypeInfoFactory.BOOLEAN
+    case DataTypes.TimestampType => TypeInfoFactory.TIMESTAMP
+    case DataTypes.DateType => TypeInfoFactory.DATE
+    case other =>
+      throw new UnsupportedOperationException(
+        s"Could not convert Spark type ${other.typeName} to ODPS type.")
+  }
+
+  def sparkTypeToOdpsType(t: DataType): TypeInfo = t match {
+    case _ @ ArrayType(elementType, _) =>
+      TypeInfoFactory.getArrayTypeInfo(sparkPrimitiveTypeToOdpsPrimitiveType(elementType))
+    case _ @ MapType(keyType, valueType, _) =>
+      TypeInfoFactory.getMapTypeInfo(
+        sparkPrimitiveTypeToOdpsPrimitiveType(keyType),
+        sparkPrimitiveTypeToOdpsPrimitiveType(valueType))
+    case _ @ StructType(fields) =>
+      val names = new util.ArrayList[String](fields.length)
+      val typeInfos = new util.ArrayList[TypeInfo](fields.length)
+      fields.foreach(field => {
+        names.add(field.name)
+        typeInfos.add(sparkPrimitiveTypeToOdpsPrimitiveType(field.dataType))
+      })
+      TypeInfoFactory.getStructTypeInfo(names, typeInfos)
+    case other => sparkPrimitiveTypeToOdpsPrimitiveType(other)
+  }
+
   def odpsData2SparkData(t: TypeInfo, isDatasource: Boolean = true): Object => Any = {
     val func = t.getOdpsType match {
       case OdpsType.BOOLEAN => (v: Object) => v.asInstanceOf[java.lang.Boolean]
@@ -469,7 +530,7 @@ object OdpsUtils {
         }
       case OdpsType.STRING => (v: Object) => v match {
         case str: String =>
-          if(!isDatasource) {
+          if (!isDatasource) {
             str
           } else {
             UTF8String.fromString(str)
@@ -484,7 +545,8 @@ object OdpsUtils {
       case OdpsType.DECIMAL => (v: Object) => {
         val ti = t.asInstanceOf[DecimalTypeInfo]
         if (ti.getPrecision == 54 && ti.getScale == 18) {
-          (new Decimal).set(v.asInstanceOf[java.math.BigDecimal], ODPS_DECIMAL_DEFAULT_PRECISION, ODPS_DECIMAL_DEFAULT_SCALE)
+          (new Decimal).set(v.asInstanceOf[java.math.BigDecimal],
+            ODPS_DECIMAL_DEFAULT_PRECISION, ODPS_DECIMAL_DEFAULT_SCALE)
         } else {
           (new Decimal).set(v.asInstanceOf[java.math.BigDecimal], ti.getPrecision, ti.getScale)
         }

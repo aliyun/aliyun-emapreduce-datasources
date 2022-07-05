@@ -16,6 +16,8 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
+import org.apache.spark.sql.execution.datasources.DataSourceUtils
+
 class ODPSOptions(
   @transient private val parameters: Map[String, String])
   extends Serializable {
@@ -48,5 +50,11 @@ class ODPSOptions(
 
   // if allowed to create the specific partition which does not exist in table
   val allowCreateNewPartition = parameters.getOrElse("allowCreateNewPartition", "false").toBoolean
+
+  // spark.write.partitionBy(columns)
+  val partitionColumns: Seq[String] = parameters.get(DataSourceUtils.PARTITIONING_COLUMNS_KEY)
+    .map(DataSourceUtils.decodePartitioningColumns)
+    .map(_.map(_.toLowerCase()))
+    .orNull
 
 }

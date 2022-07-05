@@ -20,6 +20,7 @@ import com.aliyun.odps.Odps
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.tunnel.TableTunnel
 
+import org.apache.spark.SparkException
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
@@ -47,55 +48,37 @@ case class ODPSRelation(
   tunnel.setEndpoint(tunnelUrl)
   @transient val odpsUtils = new OdpsUtils(odps)
 
-  override val needConversion: Boolean = false
-
-  override val schema: StructType = {
-    val tableSchema = odpsUtils.getTableSchema(project, table, false)
-
-    StructType(
-      tableSchema.map(e => OdpsUtils.getCatalystType(e._1, e._2, true))
-    )
+  if (!odpsUtils.tableExist(table, project)) {
+    throw new SparkException(s"Table $project.$table didn't exist.")
   }
 
   private val isPartitionTable = odpsUtils.isPartitionTable(table, project)
 
+  override val needConversion: Boolean = false
+
+  override val schema: StructType = {
+    val tableSchema = odpsUtils.getTableSchema(project, table, isPartitionTable)
+
+    StructType(
+      tableSchema.map(e => OdpsUtils.getCatalystType(e._1, e._2, nullable = true))
+    )
+  }
+
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
-    // Rely on a type erasure hack to pass RDD[InternalRow] back as RDD[Row]
-    val parSpec = if (!isPartitionTable) "Non-Partitioned"
-    else if (isPartitionTable && partitionSpec == null) "all"
-    else partitionSpec
-
     val requiredSchema = StructType(requiredColumns.map(c => schema.fields(schema.fieldIndex(c))))
-    val rdd = if (!parSpec.equals("all")) {
-      new ODPSRDD(sqlContext.sparkContext,
-        requiredSchema, accessKeyId,
-        accessKeySecret,
-        odpsUrl,
-        tunnelUrl,
-        project,
-        table,
-        parSpec,
-        numPartitions)
-    } else {
-      val parts = odpsUtils.getAllPartitionSpecs(table, project)
-      if (parts.nonEmpty) {
-        parts.map {
-          ptSpec =>
-            new ODPSRDD(sqlContext.sparkContext,
-              requiredSchema, accessKeyId,
-              accessKeySecret,
-              odpsUrl,
-              tunnelUrl,
-              project,
-              table,
-              ptSpec.toString,
-              numPartitions)
-
-        }.map(_.asInstanceOf[RDD[Row]]).reduce((r1, r2) => r1.union(r2))
-      } else sqlContext.sparkContext.emptyRDD
-    }
-
-    rdd.asInstanceOf[RDD[Row]]
+    log.info(s"##### table $project.$table partitionSpec is" +
+      s" ${Option(partitionSpec).getOrElse("null")} need columns ${requiredColumns.mkString(",")}")
+    new ODPSRDD(
+      sqlContext.sparkContext,
+      requiredSchema,
+      accessKeyId,
+      accessKeySecret,
+      odpsUrl,
+      tunnelUrl,
+      project,
+      table,
+      partitionSpec,
+      numPartitions).asInstanceOf[RDD[Row]]
   }
 
   override def toString: String = {
