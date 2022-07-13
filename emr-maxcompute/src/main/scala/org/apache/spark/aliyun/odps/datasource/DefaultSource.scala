@@ -30,7 +30,7 @@ class DefaultSource extends RelationProvider
     sqlContext: SQLContext,
     parameters: Map[String, String]): BaseRelation = {
     val odpsOptions = new ODPSOptions(parameters)
-    new ODPSRelation(odpsOptions.accessKeyId,
+    ODPSRelation(odpsOptions.accessKeyId,
       odpsOptions.accessKeySecret,
       odpsOptions.odpsUrl,
       odpsOptions.tunnelUrl,

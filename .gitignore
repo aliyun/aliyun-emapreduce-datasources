@@ -1,4 +1,5 @@
 .idea/
+**/target
 emr-baseline-testing/target/*
 emr-baseline-testing/dist/*
 emr-baseline-testing/lib/*
@@ -26,3 +27,4 @@ log.txt
 .DS_Store
 dependency-reduced-pom.xml
 **/dependency-reduced-pom.xml
+

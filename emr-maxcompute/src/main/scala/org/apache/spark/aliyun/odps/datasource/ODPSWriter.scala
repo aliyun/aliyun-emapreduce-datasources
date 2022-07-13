@@ -96,7 +96,6 @@ class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
       val partitionColumns = new util.HashSet[String]()
       if (odpsOptions.partitionColumns != null) {
         partitionColumns.addAll(odpsOptions.partitionColumns.asJava)
-        odpsOptions.partitionColumns.foreach { column => log.warn(s"##### partition by $column") }
       }
 
       if (!partitionColumns.isEmpty && (partitionSpec == null || partitionSpec.isEmpty)) {
@@ -105,21 +104,11 @@ class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
           "'partitionSpec'")
       }
 
-      // if data didn't contains the partitioned column, add it.
-      val columnNames = data.schema.fields.map(_.name).toSet
-      partitionColumns.asScala.diff(columnNames).foreach(partitionColumn => {
-        val column = new Column(partitionColumn, TypeInfoFactory.STRING)
-        log.warn(s"##### add partition column $partitionColumn which didn't appear at dataframe.")
-        schema.addPartitionColumn(column)
-      })
-
       data.schema.fields.foreach(f => {
         val c = new Column(f.name, OdpsUtils.sparkTypeToOdpsType(f.dataType), f.getComment().orNull)
         if (partitionColumns.contains(f.name.toLowerCase())) {
-          log.warn(s"##### add partition column ${f.name}")
           schema.addPartitionColumn(c)
         } else {
-          log.warn(s"##### add normal column ${f.name}")
           schema.addColumn(c)
         }
       })

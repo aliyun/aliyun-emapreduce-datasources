@@ -66,8 +66,6 @@ case class ODPSRelation(
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val requiredSchema = StructType(requiredColumns.map(c => schema.fields(schema.fieldIndex(c))))
-    log.info(s"##### table $project.$table partitionSpec is" +
-      s" ${Option(partitionSpec).getOrElse("null")} need columns ${requiredColumns.mkString(",")}")
     new ODPSRDD(
       sqlContext.sparkContext,
       requiredSchema,

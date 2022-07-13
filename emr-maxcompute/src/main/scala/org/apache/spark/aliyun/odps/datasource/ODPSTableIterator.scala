@@ -60,10 +60,6 @@ private[spark] class ODPSTableIterator(
     }
   })
 
-  log.info(s"##### Table ${split.project}.${split.table}" +
-    s" partition ${Option(split.part).getOrElse("null")}" +
-    s" need columns ${requiredSchema.names.mkString(",")}")
-
   private val odpsUtils = OdpsUtils(split.accessKeyId, split.accessKeySecret, split.odpsUrl)
   private val tunnel = odpsUtils.getTableTunnel(split.tunnelUrl)
 
@@ -76,7 +72,6 @@ private[spark] class ODPSTableIterator(
     }
     (partition(0), partition(1))
   })
-  log.info(s"##### isPartitionTable: $isPartitionTable, partitionName: ${partition.getOrElse("null")}")
 
   validatePartition()
 
@@ -101,14 +96,9 @@ private[spark] class ODPSTableIterator(
       val record = reader.read()
       lastReadableRows -= 1
 
-      record.getColumns.foreach(column => {
-        log.info(s"##### read table ${split.project}.${split.table}, get column ${column.getName}")
-      })
-
       requiredSchema.zipWithIndex.foreach {
         case (s: StructField, idx: Int) =>
           try {
-            log.info(s"##### table ${split.project}.${split.table} column ${s.name}.")
             val (typeInfo, value) =
               if (isPartitionTable && partition.get._1.equalsIgnoreCase(s.name)) {
                 (tableSchema.getPartitionColumn(s.name).getTypeInfo, partition.get._2)
@@ -164,10 +154,5 @@ private[spark] class ODPSTableIterator(
         throw new IllegalArgumentException(errorMessage)
       }
     })
-
-    log.info(s"##### Table ${split.project}.${split.table} get normal columns: " +
-      s"${tableSchema.getColumns.asScala.map(_.getName).mkString(",")}")
-    log.info(s"##### Table ${split.project}.${split.table} get partition columns: " +
-      s"${tableSchema.getPartitionColumns.asScala.map(_.getName).mkString(",")}")
   }
 }
