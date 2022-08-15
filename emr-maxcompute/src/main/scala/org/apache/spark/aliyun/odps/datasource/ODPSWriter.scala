@@ -85,8 +85,10 @@ class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
         } else {
           log.info(s"SaveMode.Overwrite with partition Table, " +
             s"drop the $partitionSpec of $project.$table first")
-          odpsUtils.dropPartition(project, table, partitionSpec)
-          odpsUtils.createPartition(project, table, partitionSpec)
+          partitionSpec.split(",").foreach { spec =>
+            odpsUtils.dropPartition(project, table, spec)
+            odpsUtils.createPartition(project, table, spec)
+          }
         }
       }
     } else {
@@ -115,7 +117,7 @@ class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
 
       odpsUtils.createTable(project, table, schema, ifNotExists = true)
       if (!partitionColumns.isEmpty) {
-        odpsUtils.createPartition(project, table, partitionSpec)
+        partitionSpec.split(",").foreach(spec => odpsUtils.createPartition(project, table, spec))
       } else if (partitionSpec != null) {
         log.warn(s"Table $project.$table is not a partition table," +
           s" partitionSpec $partitionSpec will be ignored.")
@@ -165,7 +167,7 @@ class ODPSWriter(odpsOptions: ODPSOptions) extends Serializable {
       defaultCreate: Boolean): Unit = {
     val isPartitionTable = odpsUtils.isPartitionTable(table, project)
     if (isPartitionTable && defaultCreate) {
-      odpsUtils.createPartition(project, table, partitionSpec)
+      partitionSpec.split(",").foreach(spec => odpsUtils.createPartition(project, table, spec))
     }
 
     val uploadSession = if (isPartitionTable) {

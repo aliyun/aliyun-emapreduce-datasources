@@ -43,7 +43,11 @@ class ODPSRDD(
 
   if (isPartitioned && (partitionSpec == null || partitionSpec.isEmpty)) {
     partitionSpec = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl)
-      .getAllPartitionSpecs(table, project).mkString(",")
+      .getAllPartitionSpecs(table, project)
+      .map(_.toString(false, false))
+      .mkString(",")
+    logInfo(s"Table $project.$table is partition table, but doesn't specify" +
+      s" any partition, read Odps and get $partitionSpec.")
   }
 
   /** Implemented by subclasses to compute a given partition. */
@@ -77,16 +81,17 @@ class ODPSRDD(
         .map(_.asInstanceOf[Partition])
     } else {
       // replace numPartitionSpec to numPartitions
-      partitionSpec.split(",").zipWithIndex.map {
-        case (spec: String, idx: Int) =>
-          val partition = new PartitionSpec(spec)
-          val session = tunnel.createDownloadSession(project, table, partition)
-          val numRecords = session.getRecordCount
-          logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
+      partitionSpec.split(",").map { spec =>
+        val partition = new PartitionSpec(spec)
+        val session = tunnel.createDownloadSession(project, table, partition)
+        val numRecords = session.getRecordCount
+        logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
+        (spec, numRecords)
+      }.filter(entry => entry._2 > 0).zipWithIndex.map {
+        case ((spec, numRecords), idx: Int) =>
           OdpsPartition(this.id, idx, 0, numRecords, accessKeyId, accessKeySecret,
-            odpsUrl, tunnelUrl, project, table, spec)
-      }.filter(p => p.count > 0)
-        .map(_.asInstanceOf[Partition])
+            odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+      }
     }
   }
 
