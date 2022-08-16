@@ -44,7 +44,7 @@ class ODPSRDD(
   if (isPartitioned && (partitionSpec == null || partitionSpec.isEmpty)) {
     partitionSpec = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl)
       .getAllPartitionSpecs(table, project)
-      .map(_.toString(false, false))
+      .map(_.toString(false, true))
       .mkString(",")
     logInfo(s"Table $project.$table is partition table, but doesn't specify" +
       s" any partition, read Odps and get $partitionSpec.")

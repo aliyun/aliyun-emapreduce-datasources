@@ -20,6 +20,7 @@ package org.apache.spark.aliyun.odps.datasource
 import java.io.EOFException
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.HashMap
 
 import com.aliyun.odps.{PartitionSpec, TableSchema}
 import com.aliyun.odps.tunnel.TableTunnel
@@ -37,15 +38,8 @@ import org.apache.spark.util.{NextIterator, TaskCompletionListener}
 /**
  * Single Partition Reader
  * @param split
- * @param accessKeyId
- * @param accessKeySecret
- * @param odpsUrl
- * @param tunnelUrl
  * @param context
- * @param project
- * @param table
  * @param requiredSchema
- * @param partitionSpec partition information, like "a=b", only support one partition.
  */
 private[spark] class ODPSTableIterator(
     split: OdpsPartition,
@@ -65,13 +59,14 @@ private[spark] class ODPSTableIterator(
 
   private val isPartitionTable: Boolean = odpsUtils.isPartitionTable(split.table, split.project)
   private val tableSchema: TableSchema = odpsUtils.getTableSchema(split.project, split.table)
-  private val partition: Option[(String, String)] = Option(split.part).map(spec => {
-    val partition = spec.split("=")
-    if (partition.length != 2) {
-      throw new IllegalArgumentException("PartitionSpec must be specified as 'a=b'")
-    }
-    (partition(0), partition(1))
-  })
+  private val partition: Map[String, String] = Option(split.part)
+    .map(_.split("/").map(spec => {
+      val nameAndValue = spec.split("=")
+      if (nameAndValue.length != 2) {
+        throw new IllegalArgumentException("PartitionSpec must be specified as 'a=b'")
+      }
+      (nameAndValue(0), nameAndValue(1))
+    }).toMap).getOrElse(new HashMap[String, String])
 
   validatePartition()
 
@@ -99,12 +94,11 @@ private[spark] class ODPSTableIterator(
       requiredSchema.zipWithIndex.foreach {
         case (s: StructField, idx: Int) =>
           try {
-            val (typeInfo, value) =
-              if (isPartitionTable && partition.get._1.equalsIgnoreCase(s.name)) {
-                (tableSchema.getPartitionColumn(s.name).getTypeInfo, partition.get._2)
-              } else {
-                (tableSchema.getColumn(s.name).getTypeInfo, record.get(s.name))
-              }
+            val (typeInfo, value) = if (isPartitionTable && partition.contains(s.name)) {
+              (tableSchema.getPartitionColumn(s.name).getTypeInfo, partition(s.name))
+            } else {
+              (tableSchema.getColumn(s.name).getTypeInfo, record.get(s.name))
+            }
             mutableRow.update(idx, OdpsUtils.odpsData2SparkData(typeInfo)(value))
           } catch {
             case e: Exception =>
