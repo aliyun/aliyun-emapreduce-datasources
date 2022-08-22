@@ -16,6 +16,7 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.execution.datasources.DataSourceUtils
 
 class ODPSOptions(
@@ -23,33 +24,34 @@ class ODPSOptions(
   extends Serializable {
 
   // Aliyun Account accessKeySecret
-  val accessKeySecret =
+  val accessKeySecret: String =
     parameters.getOrElse("accessKeySecret", sys.error("Option 'accessKeySecret' not specified"))
 
   // Aliyun Account accessKeyId
-  val accessKeyId =
+  val accessKeyId: String =
     parameters.getOrElse("accessKeyId", sys.error("Option 'accessKeyId' not specified"))
 
   // the odps endpoint URL
-  val odpsUrl = parameters.getOrElse("odpsUrl", sys.error("Option 'odpsUrl' not specified"))
+  val odpsUrl: String = parameters.getOrElse("odpsUrl", sys.error("Option 'odpsUrl' not specified"))
 
   // the TableTunnel endpoint URL
-  val tunnelUrl = parameters.getOrElse("tunnelUrl", sys.error("Option 'tunnelUrl' not specified"))
+  val tunnelUrl: String = parameters.getOrElse("tunnelUrl", sys.error("Option 'tunnelUrl' not specified"))
 
   // the project name
-  val project = parameters.getOrElse("project", sys.error("Option 'project' not specified"))
+  val project: String = parameters.getOrElse("project", sys.error("Option 'project' not specified"))
 
   // the table name
-  val table = parameters.getOrElse("table", sys.error("Option 'table' not specified"))
+  val table: String = parameters.getOrElse("table", sys.error("Option 'table' not specified"))
 
-  // describe the partition of the table, like pt=xxx,dt=xxx
-  val partitionSpec = parameters.getOrElse("partitionSpec", null)
+  // describe the partition of the table, like pt=xxx/dt=xxx,pt=yyy/dt=yyy
+  val partitionSpec: Option[String] = parameters.get("partitionSpec")
 
   // the number of partitions, default value is 1
-  val numPartitions = parameters.getOrElse("numPartitions", "1").toInt
+  val numPartitions: Int = parameters.getOrElse("numPartitions",
+    SparkContext.getActive.map(_.defaultParallelism.toString).getOrElse("1")).toInt
 
   // if allowed to create the specific partition which does not exist in table
-  val allowCreateNewPartition = parameters.getOrElse("allowCreateNewPartition", "false").toBoolean
+  val allowCreateNewPartition: Boolean = parameters.getOrElse("allowCreateNewPartition", "false").toBoolean
 
   // spark.write.partitionBy(columns)
   val partitionColumns: Seq[String] = parameters.get(DataSourceUtils.PARTITIONING_COLUMNS_KEY)

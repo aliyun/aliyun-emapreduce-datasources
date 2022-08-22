@@ -17,6 +17,7 @@
 package org.apache.spark.aliyun.odps.datasource
 
 import com.aliyun.odps.PartitionSpec
+import org.apache.commons.lang.StringUtils
 
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.aliyun.odps.OdpsPartition
@@ -34,20 +35,15 @@ class ODPSRDD(
     tunnelUrl: String,
     project: String,
     table: String,
-    var partitionSpec: String,
+    var requiredPartition: String,
     numPartitions: Int)
   extends RDD[InternalRow](sc, Nil) {
 
   private val isPartitioned = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl)
     .isPartitionTable(table, project)
 
-  if (isPartitioned && (partitionSpec == null || partitionSpec.isEmpty)) {
-    partitionSpec = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl)
-      .getAllPartitionSpecs(table, project)
-      .map(_.toString(false, true))
-      .mkString(",")
-    logInfo(s"Table $project.$table is partition table, but doesn't specify" +
-      s" any partition, read Odps and get $partitionSpec.")
+  if (isPartitioned && (requiredPartition == null || requiredPartition.isEmpty)) {
+    logWarning(s"Table $project.$table is partition table, but doesn't specify any partition")
   }
 
   /** Implemented by subclasses to compute a given partition. */
@@ -62,7 +58,7 @@ class ODPSRDD(
    */
   override def getPartitions: Array[Partition] = {
     val tunnel = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl).getTableTunnel(tunnelUrl)
-    if (!isPartitioned) {
+    val partitions = if (!isPartitioned) {
       val session = tunnel.createDownloadSession(project, table)
       val numRecords = session.getRecordCount
       logInfo(s"Table $project.$table contains $numRecords line data.")
@@ -75,24 +71,49 @@ class ODPSRDD(
           val (start, end) = range(idx)
           val count = (end - start).toInt
           OdpsPartition(this.id, idx, start, count, accessKeyId, accessKeySecret,
-            odpsUrl, tunnelUrl, project, table, partitionSpec)
+            odpsUrl, tunnelUrl, project, table, null)
       }.filter(p => p.count > 0)
         // remove the last count==0 to prevent exceptions from reading odps table.
         .map(_.asInstanceOf[Partition])
     } else {
-      // replace numPartitionSpec to numPartitions
-      partitionSpec.split(",").map { spec =>
-        val partition = new PartitionSpec(spec)
-        val session = tunnel.createDownloadSession(project, table, partition)
-        val numRecords = session.getRecordCount
-        logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
-        (spec, numRecords)
-      }.filter(entry => entry._2 > 0).zipWithIndex.map {
-        case ((spec, numRecords), idx: Int) =>
-          OdpsPartition(this.id, idx, 0, numRecords, accessKeyId, accessKeySecret,
-            odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+      val partitionSpecs = requiredPartition.split(",")
+        .filter(!StringUtils.isBlank(_))
+        .map { spec =>
+          val partition = new PartitionSpec(spec)
+          val session = tunnel.createDownloadSession(project, table, partition)
+          val numRecords = session.getRecordCount
+          logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
+          (spec, numRecords)
+        }.filter(entry => entry._2 > 0)
+        .toMap
+
+      val numPartitionSpec = partitionSpecs.size
+      if (numPartitionSpec >= numPartitions) {
+        // If the size of partition needed to be read is bigger than numPartitions,
+        // replace numPartitionSpec to numPartitions.
+        partitionSpecs.zipWithIndex.map {
+          case ((spec, numRecords), idx: Int) =>
+            OdpsPartition(this.id, idx, 0, numRecords, accessKeyId, accessKeySecret,
+              odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+        }.toArray
+      } else {
+        val totalReadableRecords = partitionSpecs.values.sum
+        val readableRecordsPerPartition = math.max(1, totalReadableRecords / numPartitions)
+
+        partitionSpecs.flatMap {
+          case (spec, numRecords) =>
+            0.asInstanceOf[Long].until(numRecords, readableRecordsPerPartition).map { start =>
+              (spec, start, math.min(start + readableRecordsPerPartition, numRecords))
+            }
+        }.zipWithIndex.map {
+          case ((spec, start, end), idx: Int) =>
+            OdpsPartition(this.id, idx, start, end - start, accessKeyId, accessKeySecret,
+              odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+        }.toArray
       }
     }
+    logInfo(s"Split table $project.$table into ${partitions.length} partition(s).")
+    partitions
   }
 
   /**

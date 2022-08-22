@@ -134,7 +134,7 @@ private[spark] class ODPSTableIterator(
       throw new IllegalArgumentException(errorMessage)
     }
 
-    if (!isPartitionTable && split.part != null && split.part.nonEmpty) {
+    if (!isPartitionTable && (split.part != null && split.part.nonEmpty || partition.nonEmpty)) {
       val errorMessage = s"Table ${split.project}.${split.table} is not a partition table " +
         s"but specify partitionSpec ${split.part}"
       throw new IllegalArgumentException(errorMessage)

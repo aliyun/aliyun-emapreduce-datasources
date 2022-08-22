@@ -30,14 +30,7 @@ class DefaultSource extends RelationProvider
     sqlContext: SQLContext,
     parameters: Map[String, String]): BaseRelation = {
     val odpsOptions = new ODPSOptions(parameters)
-    ODPSRelation(odpsOptions.accessKeyId,
-      odpsOptions.accessKeySecret,
-      odpsOptions.odpsUrl,
-      odpsOptions.tunnelUrl,
-      odpsOptions.project,
-      odpsOptions.table,
-      odpsOptions.partitionSpec,
-      odpsOptions.numPartitions)(sqlContext)
+    ODPSRelation(odpsOptions)(sqlContext)
   }
 
   /**
@@ -52,7 +45,7 @@ class DefaultSource extends RelationProvider
 
     new ODPSWriter(odpsOptions).saveToTable(
       odpsOptions.project, odpsOptions.table, data,
-      odpsOptions.partitionSpec, odpsOptions.allowCreateNewPartition, saveMode)
+      odpsOptions.partitionSpec.orNull, odpsOptions.allowCreateNewPartition, saveMode)
     createRelation(sqlContext, parameters)
   }
 }
