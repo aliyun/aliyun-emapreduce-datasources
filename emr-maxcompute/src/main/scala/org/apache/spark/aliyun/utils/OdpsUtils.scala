@@ -184,6 +184,24 @@ class OdpsUtils(odps: Odps) extends Logging{
   }
 
   /**
+   * Create single partition of ODPS table if not exist.
+   * @param project
+   * @param table
+   * @param partition
+   */
+  def createPartitionIfNotExist(project: String, table: String, partition: String): Unit = {
+    val partitionSpec = new PartitionSpec(partition)
+    odps.setDefaultProject(project)
+
+    try {
+      odps.tables().get(table).createPartition(partitionSpec, true)
+    } catch {
+      case e: OdpsException =>
+        logError(s"somethings wrong happens when create table $table partition $partitionSpec.", e)
+    }
+  }
+
+  /**
    * Create specific partition of ODPS table.
    * @param project The name of ODPS project.
    * @param table The name of ODPS table.
