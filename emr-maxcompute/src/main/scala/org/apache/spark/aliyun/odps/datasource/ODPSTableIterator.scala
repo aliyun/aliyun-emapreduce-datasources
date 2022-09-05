@@ -54,19 +54,15 @@ private[spark] class ODPSTableIterator(
     }
   })
 
-  private val odpsUtils = OdpsUtils(split.accessKeyId, split.accessKeySecret, split.odpsUrl)
-  private val tunnel = odpsUtils.getTableTunnel(split.tunnelUrl)
+  private val odpsUtils = OdpsUtils(split)
+  private val tunnel = odpsUtils.getTableTunnel
 
-  private val isPartitionTable: Boolean = odpsUtils.isPartitionTable(split.table, split.project)
+  private val isPartitionTable: Boolean = odpsUtils.isPartitionTable(split.project, split.table)
   private val tableSchema: TableSchema = odpsUtils.getTableSchema(split.project, split.table)
   private val partition: Map[String, String] = Option(split.part)
-    .map(_.split("/").map(spec => {
-      val nameAndValue = spec.split("=")
-      if (nameAndValue.length != 2) {
-        throw new IllegalArgumentException("PartitionSpec must be specified as 'a=b'")
-      }
-      (nameAndValue(0), nameAndValue(1))
-    }).toMap).getOrElse(new HashMap[String, String])
+    .map(part => new PartitionSpec(part))
+    .map(spec => spec.keys().asScala.map(key => (key, spec.get(key))).toMap)
+    .getOrElse(new HashMap[String, String])
 
   validatePartition()
 
@@ -76,7 +72,7 @@ private[spark] class ODPSTableIterator(
     val partSpec = new PartitionSpec(split.part)
     tunnel.createDownloadSession(split.project, split.table, partSpec)
   }
-  private val reader: TunnelRecordReader = session.openRecordReader(split.start, split.count)
+  private val reader: TunnelRecordReader = session.openRecordReader(split.start, split.count, true)
   private var lastReadableRows: Long = split.count
 
   private val mutableRow = new SpecificInternalRow(requiredSchema.fields.map(x => x.dataType))

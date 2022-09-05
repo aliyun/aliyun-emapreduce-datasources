@@ -16,12 +16,10 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
-import com.aliyun.odps.PartitionSpec
 import org.apache.commons.lang.StringUtils
 
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.aliyun.odps.OdpsPartition
-import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types._
@@ -29,18 +27,14 @@ import org.apache.spark.sql.types._
 class ODPSRDD(
     sc: SparkContext,
     schema: StructType,
-    accessKeyId: String,
-    accessKeySecret: String,
-    odpsUrl: String,
-    tunnelUrl: String,
-    project: String,
-    table: String,
     var requiredPartition: String,
-    numPartitions: Int)
+    options: ODPSOptions)
   extends RDD[InternalRow](sc, Nil) {
 
-  private val isPartitioned = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl)
-    .isPartitionTable(table, project)
+  private val project = options.project
+  private val table = options.table
+
+  private val isPartitioned = options.odpsUtil.isPartitionTable(project, table)
 
   if (isPartitioned && (requiredPartition == null || requiredPartition.isEmpty)) {
     logWarning(s"Table $project.$table is partition table, but doesn't specify any partition")
@@ -57,10 +51,10 @@ class ODPSRDD(
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = {
-    val tunnel = OdpsUtils(accessKeyId, accessKeySecret, odpsUrl).getTableTunnel(tunnelUrl)
+    val numPartitions = options.numPartitions
+
     val partitions = if (!isPartitioned) {
-      val session = tunnel.createDownloadSession(project, table)
-      val numRecords = session.getRecordCount
+      val numRecords = options.odpsUtil.getRecordCount(project, table)
       logInfo(s"Table $project.$table contains $numRecords line data.")
 
       val finalPartitionNumber = math.max(1, math.min(numPartitions, numRecords)).toInt
@@ -70,8 +64,7 @@ class ODPSRDD(
         idx =>
           val (start, end) = range(idx)
           val count = (end - start).toInt
-          OdpsPartition(this.id, idx, start, count, accessKeyId, accessKeySecret,
-            odpsUrl, tunnelUrl, project, table, null)
+          getPartition(idx, start, count)
       }.filter(p => p.count > 0)
         // remove the last count==0 to prevent exceptions from reading odps table.
         .map(_.asInstanceOf[Partition])
@@ -79,9 +72,7 @@ class ODPSRDD(
       val partitionSpecs = requiredPartition.split(",")
         .filter(!StringUtils.isBlank(_))
         .map { spec =>
-          val partition = new PartitionSpec(spec)
-          val session = tunnel.createDownloadSession(project, table, partition)
-          val numRecords = session.getRecordCount
+          val numRecords = options.odpsUtil.getRecordCount(project, table, spec)
           logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
           (spec, numRecords)
         }.filter(entry => entry._2 > 0)
@@ -93,8 +84,7 @@ class ODPSRDD(
         // replace numPartitionSpec to numPartitions.
         partitionSpecs.zipWithIndex.map {
           case ((spec, numRecords), idx: Int) =>
-            OdpsPartition(this.id, idx, 0, numRecords, accessKeyId, accessKeySecret,
-              odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+            getPartition(idx, 0, numRecords, spec).asInstanceOf[Partition]
         }.toArray
       } else {
         val totalReadableRecords = partitionSpecs.values.sum
@@ -107,8 +97,7 @@ class ODPSRDD(
             }
         }.zipWithIndex.map {
           case ((spec, start, end), idx: Int) =>
-            OdpsPartition(this.id, idx, start, end - start, accessKeyId, accessKeySecret,
-              odpsUrl, tunnelUrl, project, table, spec).asInstanceOf[Partition]
+            getPartition(idx, start, end - start, spec).asInstanceOf[Partition]
         }.toArray
       }
     }
@@ -142,6 +131,11 @@ class ODPSRDD(
     ranges
   }
 
+  private def getPartition(
+      index: Int, start: Long, count: Long, spec: String = null): OdpsPartition = {
+    OdpsPartition(this.id, index, start, count, options.accessKeyId, options.accessKeySecret,
+      options.odpsUrl, options.tunnelUrl, project, table, spec)
+  }
 
   override def checkpoint(): Unit = {
     // Do nothing. ODPS RDD should not be checkpointed.

@@ -17,6 +17,7 @@
 package org.apache.spark.aliyun.odps
 
 import java.text.SimpleDateFormat
+
 import scala.reflect.ClassTag
 
 import com.aliyun.odps._
@@ -25,6 +26,7 @@ import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordWriter
+
 import org.apache.spark.{SparkContext, TaskContext}
 import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
@@ -43,7 +45,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
   odps.setEndpoint(odpsUrl)
   @transient val tunnel = new TableTunnel(odps)
   tunnel.setEndpoint(tunnelUrl)
-  @transient val odpsUtils = new OdpsUtils(odps)
+  @transient val odpsUtils = new OdpsUtils(odps, tunnel)
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd")
 
   def fakeClassTag[T]: ClassTag[T] = ClassTag.AnyRef.asInstanceOf[ClassTag[T]]
@@ -337,7 +339,7 @@ class OdpsOps(@transient sc: SparkContext, accessKeyId: String,
       new OdpsRDD[T](sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl,
         project, table, partition, numPartition, func)
     } else {
-      odpsUtils.getAllPartitionSpecs(table, project).map(ptSpec => {
+      odpsUtils.getAllPartitionSpecs(project, table).map(ptSpec => {
         new OdpsRDD[T](sc, accessKeyId, accessKeySecret, odpsUrl, tunnelUrl,
           project, table, ptSpec.toString, numPartition, func)
       }).map(_.asInstanceOf[RDD[T]]).reduce((r1, r2) => r1.union(r2))

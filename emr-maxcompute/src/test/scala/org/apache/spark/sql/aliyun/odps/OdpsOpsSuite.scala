@@ -20,8 +20,10 @@ package org.apache.spark.sql.aliyun.odps
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
+
 import com.aliyun.odps.{TableSchema}
 import com.aliyun.odps.data.{Binary, Record}
+
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.odps.OdpsOps
 import org.apache.spark.aliyun.utils.OdpsUtils
@@ -60,7 +62,7 @@ class OdpsOpsSuite extends SparkFunSuite {
   val testBytes = Array[Byte](99.toByte, 134.toByte, 135.toByte, 200.toByte, 205.toByte)
 
   override def beforeAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project,
       // scalastyle:off
       """
@@ -90,7 +92,7 @@ class OdpsOpsSuite extends SparkFunSuite {
   }
 
   override def afterAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project, "TRUNCATE TABLE odps_basic_types;")
   }
 
@@ -125,7 +127,7 @@ class OdpsOpsSuite extends SparkFunSuite {
       ))
 
     val data = ss.sparkContext.parallelize(dataSeq, 2)
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project, s"TRUNCATE TABLE $table;")
     odpsOps.saveToTable(project, table, data, OdpsOpsSuite.writeTransfer)
 

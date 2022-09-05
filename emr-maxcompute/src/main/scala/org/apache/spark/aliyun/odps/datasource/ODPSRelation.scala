@@ -41,7 +41,7 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
   override val needConversion: Boolean = false
 
   override val schema: StructType = {
-    val odpsUtils = OdpsUtils(options.accessKeyId, options.accessKeySecret, options.odpsUrl)
+    val odpsUtils = options.odpsUtil
     val tableSchema = odpsUtils.getTableSchema(options.project, options.table)
 
     val columns = tableSchema.getColumns
@@ -55,9 +55,9 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val requiredSchema = StructType(requiredColumns.map(c => schema.fields(schema.fieldIndex(c))))
-    val odpsUtils = OdpsUtils(options.accessKeyId, options.accessKeySecret, options.odpsUrl)
+    val odpsUtils = options.odpsUtil
 
-    val requiredPartition = if (odpsUtils.isPartitionTable(options.table, options.project)) {
+    val requiredPartition = if (odpsUtils.isPartitionTable(options.project, options.table)) {
       val partitionColumnNames = odpsUtils.getTableSchema(options.project, options.table)
         .getPartitionColumns.asScala
         .map(_.getName)
@@ -67,13 +67,8 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
         uniqueColumns.nonEmpty && uniqueColumns.subsetOf(partitionColumnNames)
       }.toSet
 
-      val customPartitionSpec = options.partitionSpec
-        .filter(spec => spec != null && spec.nonEmpty)
-        .map(_.split(",").toSet)
-        .getOrElse(new HashSet[String]())
-      val tablePartitionSpec = odpsUtils.getAllPartitionSpecs(options.table, options.project)
-        .map(_.toString(false, true))
-        .toSet
+      val customPartitionSpec = options.partitions
+      val tablePartitionSpec = odpsUtils.getAllPartitions(options.project, options.table).toSet
 
       (customPartitionSpec ++ tablePartitionSpec).filter { spec =>
         val partitionSpec = new PartitionSpec(spec)
@@ -83,17 +78,8 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
       null
     }
 
-    new ODPSRDD(
-      sqlContext.sparkContext,
-      requiredSchema,
-      options.accessKeyId,
-      options.accessKeySecret,
-      options.odpsUrl,
-      options.tunnelUrl,
-      options.project,
-      options.table,
-      requiredPartition,
-      options.numPartitions).asInstanceOf[RDD[Row]]
+    new ODPSRDD(sqlContext.sparkContext, requiredSchema, requiredPartition, options)
+      .asInstanceOf[RDD[Row]]
   }
 
   override def toString: String = {
@@ -102,8 +88,7 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
   }
 
   private def checkTableExist(): Boolean = {
-    val odpsUtils = OdpsUtils(options.accessKeyId, options.accessKeySecret, options.odpsUrl)
-    odpsUtils.tableExist(options.table, options.project)
+    options.odpsUtil.tableExist(options.project, options.table)
   }
 
   private def filterPartition(odpsPartition: PartitionSpec, f: Filter): Boolean = {

@@ -50,7 +50,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
   val ss = SparkSession.builder().appName("Test Odps Read").master("local[*]").getOrCreate()
 
   override def beforeAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     val schema = new TableSchema
     schema.addColumn(new Column("a", OdpsType.INT))
     schema.addColumn(new Column("b", OdpsType.STRING))
@@ -60,7 +60,7 @@ class ODPSDataSourceSuite extends SparkFunSuite {
   }
 
   override def afterAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project, "TRUNCATE TABLE odps_no_partition_table;")
     odpsUtils.runSQL(project, "TRUNCATE TABLE odps_partition_table;")
   }

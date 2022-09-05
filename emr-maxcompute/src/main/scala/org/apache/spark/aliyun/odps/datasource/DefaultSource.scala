@@ -43,9 +43,7 @@ class DefaultSource extends RelationProvider
     data: DataFrame): BaseRelation = {
     val odpsOptions = new ODPSOptions(parameters)
 
-    new ODPSWriter(odpsOptions).saveToTable(
-      odpsOptions.project, odpsOptions.table, data,
-      odpsOptions.partitionSpec.orNull, odpsOptions.allowCreateNewPartition, saveMode)
+    new ODPSWriter(odpsOptions).saveToTable(data, saveMode)
     createRelation(sqlContext, parameters)
   }
 }
