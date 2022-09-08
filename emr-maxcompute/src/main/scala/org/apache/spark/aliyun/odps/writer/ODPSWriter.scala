@@ -39,7 +39,6 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
 
   @transient private val odpsUtils: OdpsUtils = options.odpsUtil
   @transient private val tunnel: TableTunnel = odpsUtils.getTableTunnel
-  @transient private val tableSchema: TableSchema = odpsUtils.getTableSchema(project, table)
 
   case class RecordWrapper(spec: String, record: Record)
 
@@ -58,7 +57,6 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
 
     val schemaMap = data.schema.fieldNames.map(_.toLowerCase).zipWithIndex.toMap
 
-    val start = System.nanoTime()
     if (odpsUtils.tableExist(project, table)) {
       // It should be checked after confirming the table is existed whether a table is a
       // partition table or not, otherwise it will throw OdpsException.
@@ -69,6 +67,7 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
         log.warn(s"Table $project.$table already exists and SaveMode is Ignore, No data saved")
         return
       } else if (saveMode == SaveMode.Overwrite) {
+        val tableSchema = odpsUtils.getTableSchema(project, table)
         val newSchema = schemaMap.keySet
         val oldSchema = (tableSchema.getColumns.asScala ++ tableSchema.getPartitionColumns.asScala)
           .map(_.getName.toLowerCase)
@@ -108,8 +107,6 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
         odpsUtils.createPartition(project, table, spec)
       }
     }
-    val end = System.nanoTime()
-    logInfo(s"##### before upload data use ${end - start} ns.")
 
     val isPartitionTable = odpsUtils.isPartitionTable(project, table)
     if (isPartitionTable && options.allowCreateNewPartition) {
@@ -191,10 +188,7 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
               val (_, writer) = partitionSpecToUploadResources.getOrElse(entry.spec,
                 throw new RuntimeException(
                   s"Couldn't find any upload session for $project.$table partition ${entry.spec}."))
-              val start = System.nanoTime()
               writer.write(entry.record)
-              val end = System.nanoTime()
-              logInfo(s"##### write one record cost ${end - start} ns.")
               recordsWritten += 1
             }
           }

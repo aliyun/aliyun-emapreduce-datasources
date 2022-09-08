@@ -119,7 +119,6 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
 
   def getRecordCountAndSize(project: String, table: String): (Long, Long) = {
     odps.setDefaultProject(project)
-    val start = System.nanoTime()
 
     val odpsTable = odps.tables().get(project, table)
     odpsTable.reload()
@@ -132,9 +131,6 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
       numRecords = session.getRecordCount
     }
 
-    val end = System.nanoTime()
-    logInfo(s"##### time usage: ${end - start} ns.")
-
     (numRecords, tableSize)
   }
 
@@ -144,7 +140,6 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
 
   def getRecordCountAndSize(project: String, table: String, spec: PartitionSpec): (Long, Long) = {
     odps.setDefaultProject(project)
-    val start = System.nanoTime()
 
     val odpsTable = odps.tables().get(project, table)
     val partition = odpsTable.getPartition(spec)
@@ -157,9 +152,6 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
       val session = tunnel.createDownloadSession(project, table, spec)
       numRecords = session.getRecordCount
     }
-
-    val end = System.nanoTime()
-    logInfo(s"##### time usage: ${end - start} ns.")
 
     (numRecords, partitionSize)
   }

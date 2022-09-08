@@ -28,8 +28,6 @@ import org.apache.spark.util.Utils
 class ODPSOptions(parameters: Map[String, String])
   extends Serializable {
 
-  val writeBufferSize: Long = Utils.byteStringAsMb(parameters.getOrElse("writeBufferSize", "64M"))
-  val flushThreshold: Double = parameters.getOrElse("flushThreshold", "0.9").toDouble
   val maxInFlight: Int = parameters.getOrElse("maxInFlight", "256").toInt
 
   // Aliyun Account accessKeyId

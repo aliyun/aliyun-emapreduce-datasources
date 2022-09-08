@@ -78,17 +78,12 @@ private[spark] class ODPSTableIterator(
   }
 
   private val reader = {
-    val start = System.nanoTime()
-
     val requiredColumns = requiredSchema.fields.collect {
       case f if tableSchema.containsColumn(f.name) =>
         new Column(f.name, OdpsUtils.sparkTypeToOdpsType(f.dataType), f.getComment().orNull)
     }.toList.asJava
 
-    val end = System.nanoTime()
-    logInfo(s"##### before open record reader time is ${end - start} ns.")
-
-    val r = if (requiredColumns.isEmpty) {
+    if (requiredColumns.isEmpty) {
       logInfo(s"Table ${split.project}.${split.table} non-partitioned column schema is " +
         s"${tableSchema.getColumns.asScala.map(_.getName).mkString(",")}, but require" +
         s" ${requiredSchema.fieldNames.mkString(",")}.")
@@ -101,9 +96,6 @@ private[spark] class ODPSTableIterator(
       }
       session.openRecordReader(split.start, split.count, true, requiredColumns)
     }
-    logInfo(s"##### open record reader time is ${System.nanoTime() - end} ns.")
-
-    r
   }
   private val queue = new LinkedBlockingQueue[RowWrapper](maxInFlight)
 
@@ -114,12 +106,7 @@ private[spark] class ODPSTableIterator(
       if (finished && queue.size() <= 0) {
         return null
       }
-
-      val start = System.nanoTime()
       val result = queue.take()
-      val end = System.nanoTime()
-      logInfo(s"##### reader read one record use ${end - start} ns.")
-
       result.get()
     } catch {
       case _: EOFException =>

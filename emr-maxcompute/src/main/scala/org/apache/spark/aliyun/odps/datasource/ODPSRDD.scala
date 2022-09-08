@@ -61,8 +61,6 @@ class ODPSRDD(
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = {
-    val start = System.nanoTime()
-
     val partitions = Option(requiredPartition).getOrElse("all").split(",")
       .filter(!StringUtils.isBlank(_))
       .map { spec =>
@@ -71,7 +69,7 @@ class ODPSRDD(
         } else {
           options.odpsUtil.getRecordCountAndSize(project, table, spec)
         }
-        logInfo(s"##### Table $project.$table partition $spec contains" +
+        logInfo(s"Table $project.$table partition $spec contains" +
           s" $numRecords records, total $size bytes.")
         (spec, (numRecords, size))
       }.filter(entry => entry._2._1 > 0 && entry._2._2 > 0)
@@ -100,8 +98,6 @@ class ODPSRDD(
           val numRecordsPerSplit = Math.ceil(1.0 * numRecords / numSplits).toInt
           val numSplitWithSmallPart = numRecordsPerSplit * numSplits - numRecords
           val limit = (numSplits - numSplitWithSmallPart) * numRecordsPerSplit
-          logInfo(s"##### numSplits is $numSplits, numRecordsPerSplit is $numRecordsPerSplit," +
-            s" numSplitWithSmallPart is $numSplitWithSmallPart, limit is $limit.")
 
           0L.until(limit, numRecordsPerSplit).foreach { start =>
             odpsPartitions += getPartition(index, start, numRecordsPerSplit, partitionSpec)
@@ -114,14 +110,6 @@ class ODPSRDD(
             index += 1
           }
         }
-    }
-
-    val end = System.nanoTime()
-    logInfo(s"##### ODPSRDD.getPartitions cost ${end - start} ns.")
-
-    odpsPartitions.foreach { p =>
-      logInfo(s"##### Split $project.$table ($requiredPartition) get partition id ${p.idx}," +
-        s" spec ${p.part}, range [${p.start}, ${p.start + p.count}).")
     }
 
     odpsPartitions.toArray
