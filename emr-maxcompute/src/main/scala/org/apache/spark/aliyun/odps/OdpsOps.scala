@@ -26,9 +26,9 @@ import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordWriter
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 
 import org.apache.spark.{SparkContext, TaskContext}
-import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.function.{Function2 => JFunction2, Function3 => JFunction3}
 import org.apache.spark.internal.Logging

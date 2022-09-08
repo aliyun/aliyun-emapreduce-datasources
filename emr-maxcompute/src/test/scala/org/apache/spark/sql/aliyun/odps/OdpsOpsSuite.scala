@@ -21,14 +21,14 @@ import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-import com.aliyun.odps.{TableSchema}
+import com.aliyun.odps.TableSchema
 import com.aliyun.odps.data.{Binary, Record}
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
 import org.apache.spark.aliyun.odps.OdpsOps
-import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.sql.types.{StructField, _}
+import org.apache.spark.sql.types._
 
 class OdpsOpsSuite extends SparkFunSuite {
   val accessKeyId: String = Option(System.getenv("ALIYUN_ACCESS_KEY_ID")).getOrElse("")

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.aliyun.utils
+package org.apache.spark.aliyun.odps.utils
 
 import java.math.BigDecimal
 import java.util
@@ -48,9 +48,9 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
    * @return Success or not.
    */
   def dropPartition(
-                     project: String,
-                     table: String,
-                     pname: String): Boolean = {
+      project: String,
+      table: String,
+      pname: String): Boolean = {
     try {
       odps.setDefaultProject(project)
       odps.tables().get(project, table).deletePartition(new PartitionSpec(pname), true)
@@ -89,10 +89,10 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
    * @param ifNotExists Fail or not if target table exists.
    */
   def createTable(
-                   project: String,
-                   table: String,
-                   schema: TableSchema,
-                   ifNotExists: Boolean): Unit = {
+      project: String,
+      table: String,
+      schema: TableSchema,
+      ifNotExists: Boolean): Unit = {
     odps.setDefaultProject(project)
     odps.tables().create(project, table, schema, ifNotExists)
   }
@@ -117,34 +117,51 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
     }
   }
 
-  def getRecordCount(project: String, table: String): Long = {
+  def getRecordCountAndSize(project: String, table: String): (Long, Long) = {
     odps.setDefaultProject(project)
-
     val start = System.nanoTime()
 
-    val session = tunnel.createDownloadSession(project, table)
-    val numRecords = session.getRecordCount
+    val odpsTable = odps.tables().get(project, table)
+    odpsTable.reload()
+
+    val tableSize = odpsTable.getSize
+    var numRecords = odpsTable.getRecordNum
+
+    if (numRecords == -1) {
+      val session = tunnel.createDownloadSession(project, table)
+      numRecords = session.getRecordCount
+    }
 
     val end = System.nanoTime()
     logInfo(s"##### time usage: ${end - start} ns.")
 
-    numRecords
+    (numRecords, tableSize)
   }
 
-  def getRecordCount(project: String, table: String, partitionSpec: String): Long = {
-    odps.setDefaultProject(project)
+  def getRecordCountAndSize(project: String, table: String, partitionSpec: String): (Long, Long) = {
+    getRecordCountAndSize(project, table, new PartitionSpec(partitionSpec))
+  }
 
+  def getRecordCountAndSize(project: String, table: String, spec: PartitionSpec): (Long, Long) = {
+    odps.setDefaultProject(project)
     val start = System.nanoTime()
 
-    val spec = new PartitionSpec(partitionSpec)
+    val odpsTable = odps.tables().get(project, table)
+    val partition = odpsTable.getPartition(spec)
+    partition.reload()
 
-    val session = tunnel.createDownloadSession(project, table, spec)
-    val numRecords = session.getRecordCount
+    val partitionSize = partition.getSize
+    var numRecords = partition.getRecordNum
+
+    if (numRecords == -1) {
+      val session = tunnel.createDownloadSession(project, table, spec)
+      numRecords = session.getRecordCount
+    }
 
     val end = System.nanoTime()
     logInfo(s"##### time usage: ${end - start} ns.")
 
-    numRecords
+    (numRecords, partitionSize)
   }
 
   /**
@@ -166,9 +183,9 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
    * @return
    */
   def getTableSchema(
-                      project: String,
-                      table: String,
-                      isPartition: Boolean): Array[(String, TypeInfo)] = {
+      project: String,
+      table: String,
+      isPartition: Boolean): Array[(String, TypeInfo)] = {
     odps.setDefaultProject(project)
     val schema = odps.tables().get(project, table).getSchema
     val columns = schema.getColumns
@@ -231,14 +248,6 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
     }
   }
 
-  def getAllPartitions(project: String, table: String): Iterator[String] = {
-    odps.setDefaultProject(project)
-    odps.tables().get(project, table)
-      .getPartitionSpecs.asScala
-      .map(_.toString(false, true))
-      .toIterator
-  }
-
   /**
    * Get all partition [[PartitionSpec]] of specific ODPS table.
    * @param project The name of ODPS project.
@@ -291,10 +300,10 @@ class OdpsUtils(odps: Odps, tunnel: TableTunnel) extends Logging {
 
 object OdpsUtils {
   def apply(
-             accessKeyId: String,
-             accessKeySecret: String,
-             odpsUrl: String,
-             tunnelUrl: String): OdpsUtils = {
+      accessKeyId: String,
+      accessKeySecret: String,
+      odpsUrl: String,
+      tunnelUrl: String): OdpsUtils = {
 
     val account = new AliyunAccount(accessKeyId, accessKeySecret)
     val odps = new Odps(account)

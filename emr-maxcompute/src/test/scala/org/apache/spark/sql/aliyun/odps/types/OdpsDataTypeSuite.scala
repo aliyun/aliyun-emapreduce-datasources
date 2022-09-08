@@ -17,12 +17,12 @@
 
 package org.apache.spark.sql.aliyun.odps.types
 
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 import org.apache.spark.sql.types._
 

@@ -17,9 +17,9 @@
 package org.apache.spark.sql.aliyun.odps.datasource
 
 import com.aliyun.odps.{Column, OdpsType, TableSchema}
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{SaveMode, SparkSession}
 
 class ODPSDataSourceSuite extends SparkFunSuite {

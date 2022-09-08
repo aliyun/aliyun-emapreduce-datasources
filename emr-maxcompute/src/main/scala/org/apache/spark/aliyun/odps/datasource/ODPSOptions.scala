@@ -20,14 +20,17 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
 
 import com.aliyun.odps.PartitionSpec
-import com.aliyun.odps.tunnel.TableTunnel
 
-import org.apache.spark.SparkContext
-import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import org.apache.spark.sql.execution.datasources.DataSourceUtils
+import org.apache.spark.util.Utils
 
 class ODPSOptions(parameters: Map[String, String])
   extends Serializable {
+
+  val writeBufferSize: Long = Utils.byteStringAsMb(parameters.getOrElse("writeBufferSize", "64M"))
+  val flushThreshold: Double = parameters.getOrElse("flushThreshold", "0.9").toDouble
+  val maxInFlight: Int = parameters.getOrElse("maxInFlight", "256").toInt
 
   // Aliyun Account accessKeyId
   val accessKeyId: String =
@@ -63,10 +66,6 @@ class ODPSOptions(parameters: Map[String, String])
   val partitionSpecs: Map[String, PartitionSpec] = partitions
     .map(spec => (spec, new PartitionSpec(spec))).toMap
 
-  // the number of partitions, default value is 1
-  val numPartitions: Int = parameters.getOrElse("numPartitions",
-    SparkContext.getActive.map(_.defaultParallelism.toString).getOrElse("1")).toInt
-
   // if allowed to create the specific partition which does not exist in table
   val allowCreateNewPartition: Boolean = parameters.getOrElse("allowCreateNewPartition", "true").toBoolean
 
@@ -100,8 +99,4 @@ class ODPSOptions(parameters: Map[String, String])
     }
   }
 
-}
-
-object ODPSOptions {
-  val NO_PARTITION = "all";
 }

@@ -17,13 +17,12 @@
 package org.apache.spark.aliyun.odps.datasource
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.HashSet
 
 import com.aliyun.odps.PartitionSpec
 
 import org.apache.spark.SparkException
 import org.apache.spark.aliyun.odps.datasource.ODPSRelation.OperatorMode
-import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
@@ -38,41 +37,33 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
     throw new SparkException(s"Table ${options.project}.${options.table} didn't exist.")
   }
 
+  @transient
+  private lazy val tableSchema = options.odpsUtil.getTableSchema(options.project, options.table)
+
   override val needConversion: Boolean = false
 
-  override val schema: StructType = {
-    val odpsUtils = options.odpsUtil
-    val tableSchema = odpsUtils.getTableSchema(options.project, options.table)
-
-    val columns = tableSchema.getColumns
-    columns.addAll(tableSchema.getPartitionColumns)
-
-    StructType(
-      columns.asScala.map(column =>
-        OdpsUtils.getCatalystType(column.getName, column.getTypeInfo, column.isNullable))
-    )
-  }
+  override val schema: StructType = StructType(
+    (tableSchema.getColumns.asScala ++ tableSchema.getPartitionColumns.asScala).map { column =>
+      OdpsUtils.getCatalystType(column.getName, column.getTypeInfo, column.isNullable)
+    }
+  )
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val requiredSchema = StructType(requiredColumns.map(c => schema.fields(schema.fieldIndex(c))))
     val odpsUtils = options.odpsUtil
 
     val requiredPartition = if (odpsUtils.isPartitionTable(options.project, options.table)) {
-      val partitionColumnNames = odpsUtils.getTableSchema(options.project, options.table)
-        .getPartitionColumns.asScala
-        .map(_.getName)
-        .toSet
+      val partitionColumnNames = tableSchema.getPartitionColumns.asScala.map(_.getName).toSet
       val partitionColumnFilters = filters.filter { f =>
         val uniqueColumns = f.references.toSet
         uniqueColumns.nonEmpty && uniqueColumns.subsetOf(partitionColumnNames)
       }.toSet
 
-      val customPartitionSpec = options.partitions
-      val tablePartitionSpec = odpsUtils.getAllPartitions(options.project, options.table).toSet
+      val customPartitionSpec = options.partitionSpecs.values
+      val tablePartitionSpec = odpsUtils.getAllPartitionSpecs(options.project, options.table)
 
       (customPartitionSpec ++ tablePartitionSpec).filter { spec =>
-        val partitionSpec = new PartitionSpec(spec)
-        partitionColumnFilters.forall { filter => filterPartition(partitionSpec, filter) }
+        partitionColumnFilters.forall { filter => filterPartition(spec, filter) }
       }.mkString(",")
     } else {
       null

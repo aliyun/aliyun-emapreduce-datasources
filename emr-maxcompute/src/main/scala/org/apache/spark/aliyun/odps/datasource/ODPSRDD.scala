@@ -16,20 +16,29 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
+import scala.collection.mutable.ArrayBuffer
+
 import org.apache.commons.lang.StringUtils
 
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.aliyun.odps.OdpsPartition
+import org.apache.spark.aliyun.odps.reader.ODPSTableIterator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
 class ODPSRDD(
     sc: SparkContext,
     schema: StructType,
-    var requiredPartition: String,
+    requiredPartition: String,
     options: ODPSOptions)
   extends RDD[InternalRow](sc, Nil) {
+
+  @transient
+  private lazy val sqlConf = SQLConf.get
+
+  private val defaultParallelism = sc.defaultParallelism
 
   private val project = options.project
   private val table = options.table
@@ -42,7 +51,8 @@ class ODPSRDD(
 
   /** Implemented by subclasses to compute a given partition. */
   override def compute(theSplit: Partition, context: TaskContext): Iterator[InternalRow] = {
-    val iter = new ODPSTableIterator(theSplit.asInstanceOf[OdpsPartition], context, schema)
+    val iter = new ODPSTableIterator(
+      options.maxInFlight, theSplit.asInstanceOf[OdpsPartition], context, schema)
     new InterruptibleIterator[InternalRow](context, iter)
   }
 
@@ -51,84 +61,70 @@ class ODPSRDD(
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = {
-    val numPartitions = options.numPartitions
+    val start = System.nanoTime()
 
-    val partitions = if (!isPartitioned) {
-      val numRecords = options.odpsUtil.getRecordCount(project, table)
-      logInfo(s"Table $project.$table contains $numRecords line data.")
+    val partitions = Option(requiredPartition).getOrElse("all").split(",")
+      .filter(!StringUtils.isBlank(_))
+      .map { spec =>
+        val (numRecords, size) = if ("all".equalsIgnoreCase(spec)) {
+          options.odpsUtil.getRecordCountAndSize(project, table)
+        } else {
+          options.odpsUtil.getRecordCountAndSize(project, table, spec)
+        }
+        logInfo(s"##### Table $project.$table partition $spec contains" +
+          s" $numRecords records, total $size bytes.")
+        (spec, (numRecords, size))
+      }.filter(entry => entry._2._1 > 0 && entry._2._2 > 0)
+      .toMap
 
-      val finalPartitionNumber = math.max(1, math.min(numPartitions, numRecords)).toInt
-      val range = getRanges(0, numRecords, finalPartitionNumber)
+    val defaultMaxSplitBytes = sqlConf.filesMaxPartitionBytes
+    val openCostInBytes = sqlConf.filesOpenCostInBytes
+    val totalBytes = partitions.map(_._2._2 + openCostInBytes).sum
+    val bytesPerCore = totalBytes / defaultParallelism
 
-      Array.tabulate(finalPartitionNumber) {
-        idx =>
-          val (start, end) = range(idx)
-          val count = (end - start).toInt
-          getPartition(idx, start, count)
-      }.filter(p => p.count > 0)
-        // remove the last count==0 to prevent exceptions from reading odps table.
-        .map(_.asInstanceOf[Partition])
-    } else {
-      val partitionSpecs = requiredPartition.split(",")
-        .filter(!StringUtils.isBlank(_))
-        .map { spec =>
-          val numRecords = options.odpsUtil.getRecordCount(project, table, spec)
-          logInfo(s"Table $project.$table partition $spec contains $numRecords line data.")
-          (spec, numRecords)
-        }.filter(entry => entry._2 > 0)
-        .toMap
+    val maxSplitBytes = Math.min(defaultMaxSplitBytes, Math.max(openCostInBytes, bytesPerCore))
+    logInfo(s"Planning scan with bin packing, max size: $maxSplitBytes bytes, " +
+      s"open cost is considered as scanning $openCostInBytes bytes.")
 
-      val numPartitionSpec = partitionSpecs.size
-      if (numPartitionSpec >= numPartitions) {
-        // If the size of partition needed to be read is bigger than numPartitions,
-        // replace numPartitionSpec to numPartitions.
-        partitionSpecs.zipWithIndex.map {
-          case ((spec, numRecords), idx: Int) =>
-            getPartition(idx, 0, numRecords, spec).asInstanceOf[Partition]
-        }.toArray
-      } else {
-        val totalReadableRecords = partitionSpecs.values.sum
-        val readableRecordsPerPartition = math.max(1, totalReadableRecords / numPartitions)
+    val odpsPartitions = new ArrayBuffer[OdpsPartition]
+    var index = 0
 
-        partitionSpecs.flatMap {
-          case (spec, numRecords) =>
-            0.asInstanceOf[Long].until(numRecords, readableRecordsPerPartition).map { start =>
-              (spec, start, math.min(start + readableRecordsPerPartition, numRecords))
-            }
-        }.zipWithIndex.map {
-          case ((spec, start, end), idx: Int) =>
-            getPartition(idx, start, end - start, spec).asInstanceOf[Partition]
-        }.toArray
-      }
+    partitions.foreach {
+      case (spec, (numRecords, size)) =>
+        val partitionSpec = if (!"all".equalsIgnoreCase(spec)) spec else null
+        if ((size + openCostInBytes) <= maxSplitBytes) {
+          odpsPartitions += getPartition(index, 0, numRecords, partitionSpec)
+          index += 1
+        } else {
+          val numSplits = Math.ceil(1.0 * (size + openCostInBytes) / maxSplitBytes).toInt
+          val numRecordsPerSplit = Math.ceil(1.0 * numRecords / numSplits).toInt
+          val numSplitWithSmallPart = numRecordsPerSplit * numSplits - numRecords
+          val limit = (numSplits - numSplitWithSmallPart) * numRecordsPerSplit
+          logInfo(s"##### numSplits is $numSplits, numRecordsPerSplit is $numRecordsPerSplit," +
+            s" numSplitWithSmallPart is $numSplitWithSmallPart, limit is $limit.")
+
+          0L.until(limit, numRecordsPerSplit).foreach { start =>
+            odpsPartitions += getPartition(index, start, numRecordsPerSplit, partitionSpec)
+            index += 1
+          }
+
+          val smallStep = numRecordsPerSplit - 1
+          limit.until(numRecords, smallStep).foreach { start =>
+            odpsPartitions += getPartition(index, start, smallStep, partitionSpec)
+            index += 1
+          }
+        }
     }
-    logInfo(s"Split table $project.$table into ${partitions.length} partition(s).")
-    partitions
-  }
 
-  /**
-   * calculate the detail [start, end) of every region.
-   * @param min min value
-   * @param max max value
-   * @param numRanges how many region will be split.
-   * @return
-   */
-  private def getRanges(min: Long, max: Long, numRanges: Int): Array[(Long, Long)] = {
-    val span = max - min
-    val initSize = span / numRanges
-    val sizes = Array.fill(numRanges)(initSize)
-    val remainder = span - numRanges * initSize
-    for (i <- 0 until remainder.toInt) {
-      sizes(i) += 1
+    val end = System.nanoTime()
+    logInfo(s"##### ODPSRDD.getPartitions cost ${end - start} ns.")
+
+    odpsPartitions.foreach { p =>
+      logInfo(s"##### Split $project.$table ($requiredPartition) get partition id ${p.idx}," +
+        s" spec ${p.part}, range [${p.start}, ${p.start + p.count}).")
     }
-    assert(sizes.sum == span)
-    var start = min
-    val ranges = sizes.map { size =>
-      val current = start
-      start += size
-      (current, current + size)
-    }
-    assert(start == max)
-    ranges
+
+    odpsPartitions.toArray
   }
 
   private def getPartition(
