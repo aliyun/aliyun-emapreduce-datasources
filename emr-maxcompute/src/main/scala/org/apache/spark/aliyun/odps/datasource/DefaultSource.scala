@@ -17,6 +17,7 @@
 package org.apache.spark.aliyun.odps.datasource
 
 import org.apache.spark.aliyun.odps.writer.ODPSWriter
+
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 

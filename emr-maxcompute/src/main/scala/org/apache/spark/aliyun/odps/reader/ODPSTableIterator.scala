@@ -208,7 +208,7 @@ private[spark] class ODPSTableIterator(
           readFinished.compareAndSet(false, true)
         }
       }
-    }, "ODPS-Record-Reader").start()
+    }, s"ODPS-Record-Reader-${TaskContext.get().taskAttemptId()}").start()
   }
 
 }

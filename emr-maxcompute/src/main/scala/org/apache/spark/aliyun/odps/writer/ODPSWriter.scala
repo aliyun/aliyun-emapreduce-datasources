@@ -203,7 +203,7 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
           }
         }
       }
-    }, "ODPS-Record-Writer")
+    }, s"ODPS-Record-Writer-${TaskContext.get().taskAttemptId()}")
     writeThread.start()
 
     try {

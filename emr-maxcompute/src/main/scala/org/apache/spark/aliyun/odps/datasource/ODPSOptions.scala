@@ -23,12 +23,11 @@ import com.aliyun.odps.PartitionSpec
 
 import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import org.apache.spark.sql.execution.datasources.DataSourceUtils
-import org.apache.spark.util.Utils
 
 class ODPSOptions(parameters: Map[String, String])
   extends Serializable {
 
-  val maxInFlight: Int = parameters.getOrElse("maxInFlight", "256").toInt
+  val maxInFlight: Int = parameters.getOrElse("maxInFlight", "4096").toInt
 
   // Aliyun Account accessKeyId
   val accessKeyId: String =
