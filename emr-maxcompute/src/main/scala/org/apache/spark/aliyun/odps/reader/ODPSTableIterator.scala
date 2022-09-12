@@ -18,7 +18,8 @@
 package org.apache.spark.aliyun.odps.reader
 
 import java.io.EOFException
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.JavaConverters._
 
@@ -82,32 +83,43 @@ private[spark] class ODPSTableIterator(
       case f if tableSchema.containsColumn(f.name) =>
         new Column(f.name, OdpsUtils.sparkTypeToOdpsType(f.dataType), f.getComment().orNull)
     }.toList.asJava
+    val requiredPartitionColumns = requiredSchema.fields.collect {
+      case f if tableSchema.containsPartitionColumn(f.name) =>
+        new Column(f.name, OdpsUtils.sparkTypeToOdpsType(f.dataType), f.getComment().orNull)
+    }.toList.asJava
 
-    if (requiredColumns.isEmpty) {
+    val session = if (!isPartitionTable) {
+      tunnel.createDownloadSession(split.project, split.table)
+    } else {
+      tunnel.createDownloadSession(split.project, split.table, partition)
+    }
+
+    if (requiredColumns.isEmpty && requiredPartitionColumns.isEmpty) {
+      session.openRecordReader(split.start, split.count, true)
+    } else if (!requiredColumns.isEmpty) {
+      session.openRecordReader(split.start, split.count, true, requiredColumns)
+    } else {
       logInfo(s"Table ${split.project}.${split.table} non-partitioned column schema is " +
         s"${tableSchema.getColumns.asScala.map(_.getName).mkString(",")}, but require" +
         s" ${requiredSchema.fieldNames.mkString(",")}.")
       null
-    } else {
-      val session = if (!isPartitionTable) {
-        tunnel.createDownloadSession(split.project, split.table)
-      } else {
-        tunnel.createDownloadSession(split.project, split.table, partition)
-      }
-      session.openRecordReader(split.start, split.count, true, requiredColumns)
     }
   }
+  private val readFinished = new AtomicBoolean(false)
   private val queue = new LinkedBlockingQueue[RowWrapper](maxInFlight)
 
   start()
 
   override def getNext(): InternalRow = {
     try {
-      if (finished && queue.size() <= 0) {
-        return null
+      while (!readFinished.get() || queue.size() > 0) {
+        val result = queue.poll(100, TimeUnit.MILLISECONDS)
+        if (result != null) {
+          return result.get()
+        }
       }
-      val result = queue.take()
-      result.get()
+      finished = true
+      null
     } catch {
       case _: EOFException =>
         finished = true
@@ -189,13 +201,12 @@ private[spark] class ODPSTableIterator(
           case e: Exception =>
             queue.clear()
             queue.put(RowWrapper(None, Some(e)))
-            finished = true
 
             logError("Can not transfer record column value.", e)
             throw e
+        } finally {
+          readFinished.compareAndSet(false, true)
         }
-
-        finished = true
       }
     }, "ODPS-Record-Reader").start()
   }

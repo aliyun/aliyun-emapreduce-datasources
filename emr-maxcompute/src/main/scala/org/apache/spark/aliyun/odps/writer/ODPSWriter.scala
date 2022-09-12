@@ -16,7 +16,7 @@
  */
 package org.apache.spark.aliyun.odps.writer
 
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.JavaConverters._
@@ -67,11 +67,20 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
         log.warn(s"Table $project.$table already exists and SaveMode is Ignore, No data saved")
         return
       } else if (saveMode == SaveMode.Overwrite) {
-        val tableSchema = odpsUtils.getTableSchema(project, table)
         val newSchema = schemaMap.keySet
-        val oldSchema = (tableSchema.getColumns.asScala ++ tableSchema.getPartitionColumns.asScala)
-          .map(_.getName.toLowerCase)
+
+        val tableSchema = odpsUtils.getTableSchema(project, table)
+        val partitionColumns = tableSchema
+          .getPartitionColumns.asScala
+          .map(_.getName.toLowerCase())
           .toSet
+        if (partitionColumns != options.partitionColumns) {
+          throw new RuntimeException(
+            s"Need partitioned by column ${partitionColumns.mkString(",")}")
+        }
+
+        val normalColumns = tableSchema.getColumns.asScala.map(_.getName.toLowerCase).toSet
+        val oldSchema = normalColumns ++ partitionColumns
 
         val diffColumns = (newSchema -- oldSchema) ++ (oldSchema -- newSchema)
         if (diffColumns.nonEmpty) {
@@ -80,15 +89,6 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
         }
 
         log.info(s"Table $project.$table will overwrite data when writing.")
-      }
-
-      val partitionColumns = odpsUtils.getTableSchema(project, table)
-        .getPartitionColumns.asScala
-        .map(_.getName.toLowerCase())
-        .toSet
-
-      if (partitionColumns != options.partitionColumns) {
-        throw new RuntimeException(s"Need partitioned by column ${partitionColumns.mkString(",")}")
       }
     } else {
       val schema = new TableSchema()
@@ -182,8 +182,8 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
     val writeThread = new Thread(new Runnable {
       override def run(): Unit = {
         try {
-          while (!finished.get() && !queue.isEmpty) {
-            val entry: RecordWrapper = queue.take()
+          while (!finished.get() || !queue.isEmpty) {
+            val entry: RecordWrapper = queue.poll(100, TimeUnit.MILLISECONDS)
             if (entry != null) {
               val (_, writer) = partitionSpecToUploadResources.getOrElse(entry.spec,
                 throw new RuntimeException(
@@ -204,7 +204,6 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
         }
       }
     }, "ODPS-Record-Writer")
-
     writeThread.start()
 
     try {
@@ -242,6 +241,7 @@ class ODPSWriter(options: ODPSOptions) extends Serializable with Logging {
     } finally {
       finished.compareAndSet(false, true)
     }
+    writeThread.join()
 
     metrics.setBytesWritten(bytesWritten)
     metrics.setRecordsWritten(recordsWritten)
