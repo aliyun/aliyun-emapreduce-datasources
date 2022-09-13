@@ -25,18 +25,16 @@ import org.apache.spark.aliyun.odps.OdpsPartition
 import org.apache.spark.aliyun.odps.reader.ODPSTableIterator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 
 class ODPSRDD(
     sc: SparkContext,
     schema: StructType,
     requiredPartition: String,
+    defaultMaxSplitBytes: Long,
+    openCostInBytes: Long,
     options: ODPSOptions)
   extends RDD[InternalRow](sc, Nil) {
-
-  @transient
-  private lazy val sqlConf = SQLConf.get
 
   private val defaultParallelism = sc.defaultParallelism
 
@@ -75,8 +73,6 @@ class ODPSRDD(
       }.filter(entry => entry._2._1 > 0 && entry._2._2 > 0)
       .toMap
 
-    val defaultMaxSplitBytes = sqlConf.filesMaxPartitionBytes
-    val openCostInBytes = sqlConf.filesOpenCostInBytes
     val totalBytes = partitions.map(_._2._2 + openCostInBytes).sum
     val bytesPerCore = totalBytes / defaultParallelism
 

@@ -69,8 +69,14 @@ case class ODPSRelation(options: ODPSOptions)(@transient val sqlContext: SQLCont
       null
     }
 
-    new ODPSRDD(sqlContext.sparkContext, requiredSchema, requiredPartition, options)
-      .asInstanceOf[RDD[Row]]
+    val sqlConf = sqlContext.sparkSession.sessionState.conf
+    new ODPSRDD(
+      sqlContext.sparkContext,
+      requiredSchema,
+      requiredPartition,
+      sqlConf.filesMaxPartitionBytes,
+      sqlConf.filesOpenCostInBytes,
+      options).asInstanceOf[RDD[Row]]
   }
 
   override def toString: String = {
