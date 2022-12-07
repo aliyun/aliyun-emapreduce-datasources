@@ -17,12 +17,12 @@
 
 package org.apache.spark.sql.aliyun.odps.types
 
+import org.apache.spark.aliyun.odps.utils.OdpsUtils
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 import org.apache.spark.{SparkConf, SparkFunSuite}
-import org.apache.spark.aliyun.utils.OdpsUtils
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 import org.apache.spark.sql.types._
 
@@ -55,7 +55,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
   val testBytes = Array[Byte](99.toByte, 134.toByte, 135.toByte, 200.toByte, 205.toByte)
 
   override def beforeAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project,
       // scalastyle:off
       """
@@ -86,7 +86,7 @@ class OdpsDataTypeSuite extends SparkFunSuite {
   }
 
   override def afterAll(): Unit = {
-    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0))
+    val odpsUtils = OdpsUtils(accessKeyId, accessKeySecret, urls(envType)(0), urls(envType)(1))
     odpsUtils.runSQL(project, "TRUNCATE TABLE odps_basic_types;")
   }
 

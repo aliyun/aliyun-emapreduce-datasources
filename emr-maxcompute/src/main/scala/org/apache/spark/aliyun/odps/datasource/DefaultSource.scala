@@ -16,7 +16,9 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
-import org.apache.spark.sql.{DataFrame, SaveMode, SQLContext}
+import org.apache.spark.aliyun.odps.writer.ODPSWriter
+
+import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 
 class DefaultSource extends RelationProvider
@@ -30,14 +32,7 @@ class DefaultSource extends RelationProvider
     sqlContext: SQLContext,
     parameters: Map[String, String]): BaseRelation = {
     val odpsOptions = new ODPSOptions(parameters)
-    new ODPSRelation(odpsOptions.accessKeyId,
-      odpsOptions.accessKeySecret,
-      odpsOptions.odpsUrl,
-      odpsOptions.tunnelUrl,
-      odpsOptions.project,
-      odpsOptions.table,
-      odpsOptions.partitionSpec,
-      odpsOptions.numPartitions)(sqlContext)
+    ODPSRelation(odpsOptions)(sqlContext)
   }
 
   /**
@@ -50,13 +45,7 @@ class DefaultSource extends RelationProvider
     data: DataFrame): BaseRelation = {
     val odpsOptions = new ODPSOptions(parameters)
 
-    new ODPSWriter(
-      odpsOptions.accessKeyId,
-      odpsOptions.accessKeySecret,
-      odpsOptions.odpsUrl,
-      odpsOptions.tunnelUrl
-    ).saveToTable(odpsOptions.project, odpsOptions.table, data, odpsOptions.partitionSpec,
-      odpsOptions.allowCreateNewPartition, saveMode)
+    new ODPSWriter(odpsOptions).saveToTable(data, saveMode)
     createRelation(sqlContext, parameters)
   }
 }

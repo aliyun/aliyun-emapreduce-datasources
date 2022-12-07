@@ -16,105 +16,41 @@
  */
 package org.apache.spark.aliyun.odps.datasource
 
-import java.io.EOFException
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-import com.aliyun.odps.{Odps, PartitionSpec}
-import com.aliyun.odps.account.AliyunAccount
-import com.aliyun.odps.tunnel.TableTunnel
+
+import org.apache.commons.lang.StringUtils
+
 import org.apache.spark.{InterruptibleIterator, Partition, SparkContext, TaskContext}
 import org.apache.spark.aliyun.odps.OdpsPartition
-import org.apache.spark.aliyun.utils.OdpsUtils
+import org.apache.spark.aliyun.odps.reader.ODPSTableIterator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.sql.types._
-import org.apache.spark.util.{NextIterator, TaskCompletionListener}
 
 class ODPSRDD(
     sc: SparkContext,
     schema: StructType,
-    accessKeyId: String,
-    accessKeySecret: String,
-    odpsUrl: String,
-    tunnelUrl: String,
-    project: String,
-    table: String,
-    partitionSpec: String,
-    numPartitions: Int)
+    requiredPartition: String,
+    defaultMaxSplitBytes: Long,
+    openCostInBytes: Long,
+    options: ODPSOptions)
   extends RDD[InternalRow](sc, Nil) {
+
+  private val defaultParallelism = sc.defaultParallelism
+
+  private val project = options.project
+  private val table = options.table
+
+  private val isPartitioned = options.odpsUtil.isPartitionTable(project, table)
+
+  if (isPartitioned && (requiredPartition == null || requiredPartition.isEmpty)) {
+    logWarning(s"Table $project.$table is partition table, but doesn't specify any partition")
+  }
 
   /** Implemented by subclasses to compute a given partition. */
   override def compute(theSplit: Partition, context: TaskContext): Iterator[InternalRow] = {
-    val iter = new NextIterator[InternalRow] {
-      val split = theSplit.asInstanceOf[OdpsPartition]
-
-      val account = new AliyunAccount(accessKeyId, accessKeySecret)
-      val odps = new Odps(account)
-      odps.setDefaultProject(project)
-      odps.setEndpoint(odpsUrl)
-      val tunnel = new TableTunnel(odps)
-      tunnel.setEndpoint(tunnelUrl)
-      var downloadSession: TableTunnel#DownloadSession = null
-      if (partitionSpec.equals("Non-Partitioned")) {
-        downloadSession = tunnel.createDownloadSession(project, table)
-      } else {
-        val parSpec = new PartitionSpec(partitionSpec)
-        downloadSession = tunnel.createDownloadSession(project, table, parSpec)
-      }
-      val typeInfos = downloadSession.getSchema.getColumns.asScala.map(_.getTypeInfo)
-      val reader = downloadSession.openRecordReader(split.start, split.count)
-      val inputMetrics = context.taskMetrics.inputMetrics
-
-      context.addTaskCompletionListener(new TaskCompletionListener {
-        override def onTaskCompletion(context: TaskContext): Unit = {
-          closeIfNeeded()
-        }
-      })
-
-      val mutableRow = new SpecificInternalRow(schema.fields.map(x => x.dataType))
-
-      override def getNext(): InternalRow = {
-
-        try {
-          val r = reader.read()
-          if (r != null) {
-            schema.zipWithIndex.foreach {
-              case (s: StructField, idx: Int) =>
-                try {
-                  val value = r.get(s.name)
-                  mutableRow.update(idx, OdpsUtils.odpsData2SparkData(typeInfos(idx))(value))
-                } catch {
-                  case e: Exception =>
-                    log.error(s"Can not transfer record column value, idx: $idx, " +
-                      s"type: ${s.dataType}, value ${r.get(s.name)}")
-                    throw e
-                }
-            }
-            inputMetrics.incRecordsRead(1L)
-            mutableRow
-          } else {
-            finished = true
-            null.asInstanceOf[InternalRow]
-          }
-        } catch {
-          case eof: EOFException =>
-            finished = true
-            null.asInstanceOf[InternalRow]
-        }
-      }
-
-      override def close() {
-        try {
-          val totalBytes = reader.getTotalBytes
-          inputMetrics.incBytesRead(totalBytes)
-          reader.close()
-        } catch {
-          case e: Exception => logWarning("Exception in RecordReader.close()", e)
-        }
-      }
-    }
-
+    val iter = new ODPSTableIterator(
+      options.maxInFlight, theSplit.asInstanceOf[OdpsPartition], context, schema)
     new InterruptibleIterator[InternalRow](context, iter)
   }
 
@@ -123,76 +59,65 @@ class ODPSRDD(
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
   override def getPartitions: Array[Partition] = {
-    var ret = null.asInstanceOf[Array[Partition]]
+    val partitions = Option(requiredPartition).getOrElse("all").split(",")
+      .filter(!StringUtils.isBlank(_))
+      .map { spec =>
+        val (numRecords, size) = if ("all".equalsIgnoreCase(spec)) {
+          options.odpsUtil.getRecordCountAndSize(project, table)
+        } else {
+          options.odpsUtil.getRecordCountAndSize(project, table, spec)
+        }
+        logInfo(s"Table $project.$table partition $spec contains" +
+          s" $numRecords records, total $size bytes.")
+        (spec, (numRecords, size))
+      }.filter(entry => entry._2._1 > 0 && entry._2._2 > 0)
+      .toMap
 
-    val account = new AliyunAccount(accessKeyId, accessKeySecret)
-    val odps = new Odps(account)
-    odps.setDefaultProject(project)
-    odps.setEndpoint(odpsUrl)
-    val tunnel = new TableTunnel(odps)
-    tunnel.setEndpoint(tunnelUrl)
-    var downloadSession: TableTunnel#DownloadSession = null
-    if (partitionSpec == null || partitionSpec.equals("Non-Partitioned")) {
-      downloadSession = tunnel.createDownloadSession(project, table)
-    } else {
-      val parSpec = new PartitionSpec(partitionSpec)
-      downloadSession = tunnel.createDownloadSession(project, table, parSpec)
+    val totalBytes = partitions.map(_._2._2 + openCostInBytes).sum
+    val bytesPerCore = totalBytes / defaultParallelism
+
+    val maxSplitBytes = Math.min(defaultMaxSplitBytes, Math.max(openCostInBytes, bytesPerCore))
+    logInfo(s"Planning scan with bin packing, max size: $maxSplitBytes bytes, " +
+      s"open cost is considered as scanning $openCostInBytes bytes.")
+
+    val odpsPartitions = new ArrayBuffer[OdpsPartition]
+    var index = 0
+
+    partitions.foreach {
+      case (spec, (numRecords, size)) =>
+        val partitionSpec = if (!"all".equalsIgnoreCase(spec)) spec else null
+        if ((size + openCostInBytes) <= maxSplitBytes) {
+          odpsPartitions += getPartition(index, 0, numRecords, partitionSpec)
+          index += 1
+        } else {
+          val numSplits = Math.ceil(1.0 * (size + openCostInBytes) / maxSplitBytes).toInt
+          val numRecordsPerSplit = Math.ceil(1.0 * numRecords / numSplits).toInt
+          val numSplitWithSmallPart = numRecordsPerSplit * numSplits - numRecords
+          val limit = (numSplits - numSplitWithSmallPart) * numRecordsPerSplit
+
+          0L.until(limit, numRecordsPerSplit).foreach { start =>
+            odpsPartitions += getPartition(index, start, numRecordsPerSplit, partitionSpec)
+            index += 1
+          }
+
+          val smallStep = numRecordsPerSplit - 1
+          limit.until(numRecords, smallStep).foreach { start =>
+            odpsPartitions += getPartition(index, start, smallStep, partitionSpec)
+            index += 1
+          }
+        }
     }
-    val downloadCount = downloadSession.getRecordCount
-    logDebug("Odps project " + project + " table " + table + " with partition "
-      + partitionSpec + " contain " + downloadCount + " line data.")
-    var numPartition_ = math.min(math.max(1, numPartitions),
-      if (downloadCount > Int.MaxValue) Int.MaxValue else downloadCount.toInt)
-    if (numPartition_ == 0) {
-      numPartition_ = 1
-      logDebug("OdpsRdd has one partition at least.")
-    }
-    val range = getRanges(downloadCount, 0, numPartition_)
-    ret = Array.tabulate(numPartition_) {
-      idx =>
-        val (start, end) = range(idx)
-        val count = (end - start + 1).toInt
-        new OdpsPartition(
-          this.id,
-          idx,
-          start,
-          count,
-          accessKeyId,
-          accessKeySecret,
-          odpsUrl,
-          tunnelUrl,
-          project,
-          table,
-          partitionSpec
-        )
-    }.filter(p => p.count > 0)
-      // remove the last count==0 to prevent exceptions from reading odps table.
-      .map(_.asInstanceOf[Partition])
-    ret
+
+    odpsPartitions.toArray
   }
 
-  def getRanges(max: Long, min: Long, numRanges: Int): Array[(Long, Long)] = {
-    val span = max - min + 1
-    val initSize = span / numRanges
-    val sizes = Array.fill(numRanges)(initSize)
-    val remainder = span - numRanges * initSize
-    for (i <- 0 until remainder.toInt) {
-      sizes(i) += 1
-    }
-    assert(sizes.reduce(_ + _) == span)
-    val ranges = ArrayBuffer.empty[(Long, Long)]
-    var start = min
-    sizes.filter(_ > 0).foreach { size =>
-      val end = start + size - 1
-      ranges += Tuple2(start, end)
-      start = end + 1
-    }
-    assert(start == max + 1)
-    ranges.toArray
+  private def getPartition(
+      index: Int, start: Long, count: Long, spec: String = null): OdpsPartition = {
+    OdpsPartition(this.id, index, start, count, options.accessKeyId, options.accessKeySecret,
+      options.odpsUrl, options.tunnelUrl, project, table, spec)
   }
 
-
-  override def checkpoint() {
+  override def checkpoint(): Unit = {
     // Do nothing. ODPS RDD should not be checkpointed.
   }
 

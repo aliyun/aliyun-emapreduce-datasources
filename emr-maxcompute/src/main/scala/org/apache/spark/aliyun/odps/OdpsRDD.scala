@@ -17,22 +17,25 @@
 package org.apache.spark.aliyun.odps
 
 import java.io.EOFException
+
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
+
 import com.aliyun.odps.{Odps, PartitionSpec, TableSchema}
 import com.aliyun.odps.account.AliyunAccount
 import com.aliyun.odps.data.Record
 import com.aliyun.odps.tunnel.TableTunnel
 import com.aliyun.odps.tunnel.io.TunnelRecordReader
+
 import org.apache.spark._
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.util.{NextIterator, TaskCompletionListener}
 
-class OdpsPartition(rddId: Int,
+case class OdpsPartition(rddId: Int,
     idx: Int,
-    val start: Long,
-    val count: Long,
+    start: Long,
+    count: Long,
     accessKeyId: String,
     accessKeySecret: String,
     odpsUrl: String,
